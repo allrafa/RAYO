@@ -8,6 +8,7 @@ import { error as sendError } from "./utils/response.js";
 import healthRoutes from "./features/health/routes.js";
 import authRoutes from "./features/auth/routes.js";
 import userRoutes from "./features/users/routes.js";
+import gamificationRoutes from "./features/gamification/routes.js";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -31,6 +32,7 @@ app.use("/api", corsMiddleware);
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", rateLimiter(20, 15 * 60 * 1000), authRoutes);
 app.use("/api/users", rateLimiter(30, 15 * 60 * 1000), userRoutes);
+app.use("/api/gamification", rateLimiter(60, 15 * 60 * 1000), gamificationRoutes);
 
 app.all("/api/{*path}", (req, res) => {
   sendError(res, `Route ${req.method} ${req.path} not found`, "NOT_FOUND", 404);

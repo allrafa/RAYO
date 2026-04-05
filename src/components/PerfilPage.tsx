@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   User, Settings, Bell, Heart, Trophy, Zap, 
   ChevronRight, LogOut, Moon, Sun, Globe, 
@@ -20,6 +20,7 @@ import { toast } from "sonner@2.0.3";
 import { FavoritosPage } from "./youtube/FavoritosPage";
 import { BibliotecaWithBookReader } from "./BibliotecaWithBookReader";
 import { useVideoProgress } from "./hooks/useVideoProgress";
+import { api } from "../lib/api";
 
 export function PerfilPage() {
   const { userData, books } = useApp();
@@ -30,6 +31,47 @@ export function PerfilPage() {
   const [showFavoritos, setShowFavoritos] = useState(false);
   const [showBiblioteca, setShowBiblioteca] = useState(false);
   const { favoriteVideos } = useVideoProgress();
+
+  interface GamificationProfile {
+    xp: number;
+    level: number;
+    levelTitle: string;
+    streak: number;
+    longestStreak: number;
+    xpForNextLevel: number;
+    xpInCurrentLevel: number;
+    xpNeededForNext: number;
+    progressPercentage: number;
+    totalBadges: number;
+  }
+
+  interface BadgeData {
+    id: number;
+    name: string;
+    title: string;
+    description: string;
+    icon: string;
+    tier: string;
+    earned: boolean;
+    earnedAt: string | null;
+  }
+
+  const [gamProfile, setGamProfile] = useState<GamificationProfile | null>(null);
+  const [badges, setBadges] = useState<BadgeData[]>([]);
+
+  useEffect(() => {
+    api.get<{ profile: GamificationProfile }>("/api/gamification/profile").then((res) => {
+      if (res.success && res.data) setGamProfile(res.data.profile);
+    });
+    api.get<{ badges: BadgeData[] }>("/api/gamification/badges").then((res) => {
+      if (res.success && res.data) setBadges(res.data.badges);
+    });
+  }, []);
+
+  const currentLevel = gamProfile?.level ?? userData.level ?? 1;
+  const currentXP = gamProfile?.xp ?? userData.points ?? 0;
+  const currentStreak = gamProfile?.streak ?? userData.streak ?? 0;
+  const earnedBadges = badges.filter((b) => b.earned);
   
   // Calcular total de itens na biblioteca
   const enrolledBooks = books.filter(book => book.isEnrolled);
@@ -49,34 +91,34 @@ export function PerfilPage() {
     { 
       icon: Trophy, 
       label: "Nível", 
-      value: userData.level || 3,
+      value: `${currentLevel} - ${gamProfile?.levelTitle || "Iniciante"}`,
       colorVar: "var(--raio-accent-primary)",
       bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
-      trend: "+2 este mês"
+      trend: `${currentXP} XP total`
     },
     { 
       icon: Zap, 
-      label: "Pontos", 
-      value: userData.points || 250,
+      label: "XP", 
+      value: currentXP,
       colorVar: "var(--raio-accent-primary)",
       bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
-      trend: "+50 esta semana"
+      trend: gamProfile ? `${gamProfile.xpForNextLevel - currentXP} para próximo nível` : ""
     },
     { 
       icon: Target, 
       label: "Sequência", 
-      value: `${userData.streak || 7} dias`,
+      value: `${currentStreak} dias`,
       colorVar: "var(--raio-accent-primary)",
       bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
-      trend: "Recorde: 14 dias"
+      trend: `Recorde: ${gamProfile?.longestStreak || currentStreak} dias`
     },
     { 
       icon: Award, 
       label: "Conquistas", 
-      value: 12,
+      value: earnedBadges.length,
       colorVar: "var(--raio-accent-primary)",
       bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
-      trend: "3 novas"
+      trend: `${badges.length} disponíveis`
     },
   ];
 
@@ -118,11 +160,9 @@ export function PerfilPage() {
     }
   ];
 
-  // Cálculo de progresso para o próximo nível
-  const currentLevel = userData.level || 3;
-  const currentPoints = userData.points || 250;
-  const pointsForNextLevel = currentLevel * 100;
-  const progressPercentage = Math.min((currentPoints / pointsForNextLevel) * 100, 100);
+  const progressPercentage = gamProfile?.progressPercentage ?? 0;
+  const xpInCurrentLevel = gamProfile?.xpInCurrentLevel ?? 0;
+  const xpNeededForNext = gamProfile?.xpNeededForNext ?? 100;
 
   return (
     <div 
@@ -188,7 +228,7 @@ export function PerfilPage() {
                         Premium
                       </Badge>
                       <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
-                        Nível {userData.level || 3}
+                        Nível {currentLevel}
                       </Badge>
                     </div>
 
@@ -199,7 +239,7 @@ export function PerfilPage() {
                           Progresso para Nível {currentLevel + 1}
                         </span>
                         <span className="text-white/90 text-sm" style={{ fontWeight: 600 }}>
-                          {currentPoints}/{pointsForNextLevel}
+                          {xpInCurrentLevel}/{xpNeededForNext} XP
                         </span>
                       </div>
                       <Progress value={progressPercentage} className="h-2 bg-white/20" />

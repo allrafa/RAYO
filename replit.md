@@ -25,7 +25,8 @@ server/                  # Backend
 ├── features/            # Feature folders (routes + service + validation)
 │   ├── health/          # Health check endpoint
 │   ├── auth/            # Authentication (register, login, logout, me)
-│   └── users/           # User profile management (PATCH /api/users/profile)
+│   ├── users/           # User profile management (PATCH /api/users/profile)
+│   └── gamification/    # XP, badges, missions, streaks
 └── utils/               # Response helpers, logger
 
 src/                     # Frontend (React)
@@ -58,6 +59,12 @@ vite.config.ts           # Vite + API proxy config
 - `POST /api/auth/logout` — Logout (clears session)
 - `GET /api/auth/me` — Get current user (requires auth)
 - `PATCH /api/users/profile` — Update user profile fields (segments, interests, goals, content_preferences, name)
+- `GET /api/gamification/profile` — XP, level, streak, progress stats (requires auth)
+- `GET /api/gamification/badges` — All badges with user's earned status (requires auth)
+- `GET /api/gamification/missions` — Active daily/weekly missions with progress (requires auth)
+- `POST /api/gamification/streak` — Update user's daily streak (requires auth)
+- `POST /api/gamification/missions/:id/claim` — Claim completed mission reward (requires auth)
+- Note: addXP(), unlockBadge(), recordMissionProgress() are internal service functions only (not exposed as public APIs)
 
 ## Onboarding Data Flow
 - WelcomeScreen → Onboarding (collects name, segments, interests) → AuthPage (3-step registration)
@@ -70,6 +77,15 @@ vite.config.ts           # Vite + API proxy config
 - Codes expire in 10 minutes, max 5 attempts per code
 - 60-second cooldown between code sends
 - TODO: Connect Resend for actual email delivery (codes currently logged to server console)
+
+## Gamification System
+- XP Levels: Iniciante(0), Aprendiz(100), Praticante(250), Experiente(500), Mestre(1000), Mentor(2000), Líder(5000)
+- 17 badges seeded across tiers: bronze, silver, gold, platinum, premium
+- 6 missions seeded: 3 daily, 3 weekly
+- DB tables: badges, user_badges, xp_log, missions, user_mission_progress
+- users table extended with: longest_streak, last_activity_date
+- Service functions: addXP(), updateStreak(), unlockBadge(), recordMissionProgress(), claimMissionReward()
+- PerfilPage fetches real data from /api/gamification/profile and /api/gamification/badges
 
 ## Development Rules
 1. No business logic in frontend
