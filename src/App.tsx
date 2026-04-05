@@ -203,7 +203,7 @@ function AppContent() {
         />
       )}
 
-      <ConsentBanner />
+      <ConsentBanner onOpenPrivacyPolicy={() => setCurrentTab("privacy")} />
     </div>
   );
 }

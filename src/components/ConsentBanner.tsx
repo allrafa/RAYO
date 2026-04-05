@@ -11,7 +11,7 @@ import { Card } from './ui/card';
 import { X, Shield, Cookie } from 'lucide-react';
 import { useTheme } from './ThemeProvider';
 
-export function ConsentBanner() {
+export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: () => void } = {}) {
   const [showBanner, setShowBanner] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [preferences, setPreferences] = useState<ConsentPreferences>(
@@ -150,23 +150,21 @@ export function ConsentBanner() {
                 style={{ color: 'var(--raio-text-tertiary)' }}
               >
                 Ao continuar, você concorda com nossa{' '}
-                <a 
-                  href="/politica-privacidade" 
+                <button 
+                  onClick={onOpenPrivacyPolicy}
                   className="underline hover:no-underline"
                   style={{ color: 'var(--raio-accent-primary)' }}
-                  target="_blank"
                 >
                   Política de Privacidade
-                </a>
+                </button>
                 {' e '}
-                <a 
-                  href="/termos-uso" 
+                <button 
+                  onClick={onOpenPrivacyPolicy}
                   className="underline hover:no-underline"
                   style={{ color: 'var(--raio-accent-primary)' }}
-                  target="_blank"
                 >
                   Termos de Uso
-                </a>
+                </button>
               </p>
             </div>
           ) : (
@@ -335,14 +333,13 @@ export function ConsentBanner() {
                   </strong>{' '}
                   Você pode acessar, corrigir, exportar ou deletar seus dados a qualquer momento 
                   nas configurações da conta. Leia mais em nossa{' '}
-                  <a 
-                    href="/politica-privacidade" 
+                  <button 
+                    onClick={onOpenPrivacyPolicy}
                     className="underline"
                     style={{ color: 'var(--raio-accent-primary)' }}
-                    target="_blank"
                   >
                     Política de Privacidade
-                  </a>.
+                  </button>.
                 </p>
               </div>
               

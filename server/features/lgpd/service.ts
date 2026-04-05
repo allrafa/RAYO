@@ -1,4 +1,4 @@
-import { query } from "../../db/index.js";
+import { query, getClient } from "../../db/index.js";
 
 interface LgpdRequestRow {
   id: number;
@@ -131,58 +131,75 @@ export async function exportUserData(userId: number): Promise<UserDataExport> {
 }
 
 export async function deleteUserData(userId: number): Promise<void> {
-  await query(
-    `INSERT INTO lgpd_requests (user_id, request_type, status)
-     VALUES ($1, 'deletion', 'processing')`,
-    [userId]
-  );
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
 
-  await query(
-    `UPDATE comments SET content = '[conteúdo removido por solicitação LGPD]'
-     WHERE user_id = $1`,
-    [userId]
-  );
+    await client.query(
+      `INSERT INTO lgpd_requests (user_id, request_type, status)
+       VALUES ($1, 'deletion', 'processing')`,
+      [userId]
+    );
 
-  await query(
-    `UPDATE posts SET title = '[removido]', content = '[conteúdo removido por solicitação LGPD]'
-     WHERE user_id = $1`,
-    [userId]
-  );
+    await client.query(
+      `UPDATE comments SET content = '[conteúdo removido por solicitação LGPD]'
+       WHERE user_id = $1`,
+      [userId]
+    );
 
-  await query(`DELETE FROM post_likes WHERE user_id = $1`, [userId]);
-  await query(`DELETE FROM comment_likes WHERE user_id = $1`, [userId]);
-  await query(`DELETE FROM user_lesson_progress WHERE user_id = $1`, [userId]);
-  await query(`DELETE FROM user_course_progress WHERE user_id = $1`, [userId]);
-  await query(`DELETE FROM user_mission_progress WHERE user_id = $1`, [userId]);
-  await query(`DELETE FROM user_badges WHERE user_id = $1`, [userId]);
-  await query(`DELETE FROM xp_log WHERE user_id = $1`, [userId]);
+    await client.query(
+      `UPDATE posts SET title = '[removido]', content = '[conteúdo removido por solicitação LGPD]'
+       WHERE user_id = $1`,
+      [userId]
+    );
 
-  await query(
-    `UPDATE analytics_events SET user_id = NULL WHERE user_id = $1`,
-    [userId]
-  );
+    await client.query(`DELETE FROM post_likes WHERE user_id = $1`, [userId]);
+    await client.query(`DELETE FROM comment_likes WHERE user_id = $1`, [userId]);
+    await client.query(`DELETE FROM user_lesson_progress WHERE user_id = $1`, [userId]);
+    await client.query(`DELETE FROM user_course_progress WHERE user_id = $1`, [userId]);
+    await client.query(`DELETE FROM user_mission_progress WHERE user_id = $1`, [userId]);
+    await client.query(`DELETE FROM user_badges WHERE user_id = $1`, [userId]);
+    await client.query(`DELETE FROM xp_log WHERE user_id = $1`, [userId]);
 
-  const anonymizedEmail = `deleted_${userId}_${Date.now()}@removed.lgpd`;
-  await query(
-    `UPDATE users SET
-       name = 'Usuário Removido',
-       email = $2,
-       password_hash = 'DELETED',
-       segments = '{}',
-       interests = '{}',
-       goals = '{}',
-       content_preferences = '{}',
-       notification_preferences = '{}',
-       updated_at = NOW()
-     WHERE id = $1`,
-    [userId, anonymizedEmail]
-  );
+    await client.query(
+      `UPDATE analytics_events SET user_id = NULL WHERE user_id = $1`,
+      [userId]
+    );
 
-  await query(`DELETE FROM sessions WHERE user_id = $1`, [userId]);
+    const anonymizedEmail = `deleted_${userId}_${Date.now()}@removed.lgpd`;
+    await client.query(
+      `UPDATE users SET
+         name = 'Usuário Removido',
+         email = $2,
+         password_hash = 'DELETED',
+         segments = '{}',
+         interests = '{}',
+         goals = '{}',
+         content_preferences = '{}',
+         notification_preferences = '{}',
+         updated_at = NOW()
+       WHERE id = $1`,
+      [userId, anonymizedEmail]
+    );
 
-  await query(
-    `UPDATE lgpd_requests SET status = 'completed', completed_at = NOW()
-     WHERE user_id = $1 AND request_type = 'deletion' AND status = 'processing'`,
-    [userId]
-  );
+    await client.query(`DELETE FROM sessions WHERE user_id = $1`, [userId]);
+
+    await client.query(
+      `UPDATE lgpd_requests SET status = 'completed', completed_at = NOW()
+       WHERE user_id = $1 AND request_type = 'deletion' AND status = 'processing'`,
+      [userId]
+    );
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    await query(
+      `UPDATE lgpd_requests SET status = 'failed'
+       WHERE user_id = $1 AND request_type = 'deletion' AND status = 'processing'`,
+      [userId]
+    ).catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
 }
