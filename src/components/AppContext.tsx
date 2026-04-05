@@ -1,10 +1,10 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { enhancedToast } from './EnhancedToast';
 import { Book } from './types/BookTypes';
 import { mockBooks, getEnrolledBooks } from './mockBooks';
 import { useAuth } from './AuthContext';
+import { api } from '../lib/api';
 
-// Tipos de dados
 interface Course {
   id: number;
   title: string;
@@ -12,12 +12,15 @@ interface Course {
   thumbnail: string;
   duration: string;
   lessons: number;
+  total_lessons?: number;
   rating: number;
   students: number;
   price: number;
   category: string;
+  life_context?: string;
   level: string;
   isPremium: boolean;
+  is_premium?: boolean;
   progress: number;
   isEnrolled?: boolean;
   completedLessons?: number;
@@ -123,11 +126,11 @@ interface AppContextType {
   products: Product[];
   playlists: Playlist[];
   
-  // Course functions
   enrollInCourse: (courseId: number) => void;
   startCourse: (courseId: number) => void;
   updateCourseProgress: (courseId: number, progress: number) => void;
   getCourseById: (courseId: number) => Course | undefined;
+  loadCourses: () => Promise<void>;
   
   // Book functions
   enrollInBook: (bookId: string) => void;
@@ -252,58 +255,59 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [authUser]);
 
-  const [courses, setCourses] = useState<Course[]>([
-    {
-      id: 1,
-      title: "Fundamentos do Relacionamento",
-      description: "Construa uma base sólida para seu relacionamento com princípios fundamentais",
-      thumbnail: "https://images.unsplash.com/photo-1680603007731-d8da76c235ba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3VwbGUlMjByZWxhdGlvbnNoaXAlMjBsb3ZlfGVufDF8fHx8MTc1OTYwODMxOXww&ixlib=rb-4.1.0&q=80&w=1080",
-      duration: "4h 30m",
-      lessons: 12,
-      rating: 4.8,
-      students: 2847,
-      price: 197,
-      category: "Relacionamento",
-      level: "Iniciante",
-      isPremium: false,
-      progress: 75,
-      isEnrolled: true,
-      completedLessons: 9
-    },
-    {
-      id: 2,
-      title: "Comunicação Não-Violenta",
-      description: "Aprenda técnicas avançadas de comunicação para resolver conflitos",
-      thumbnail: "https://images.unsplash.com/photo-1624448445915-97154f5e688c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGZhbWlseSUyMHRvZ2V0aGVybmVzc3xlbnwxfHx8fDE3NTk2MDgzMTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      duration: "6h 15m",
-      lessons: 18,
-      rating: 4.9,
-      students: 1923,
-      price: 297,
-      category: "Comunicação",
-      level: "Avançado",
-      isPremium: true,
-      progress: 25,
-      isEnrolled: true,
-      completedLessons: 4
-    },
-    {
-      id: 3,
-      title: "Finanças para Casais",
-      description: "Organize sua vida financeira e construa um futuro próspero juntos",
-      thumbnail: "https://images.unsplash.com/photo-1588912914078-2fe5224fd8b8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvbmxpbmUlMjBsZWFybmluZyUyMGNvdXJzZSUyMGVkdWNhdGlvbnxlbnwxfHx8fDE3NTk1NzgxNDN8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      duration: "5h 45m",
-      lessons: 15,
-      rating: 4.7,
-      students: 3421,
-      price: 247,
-      category: "Finanças",
-      level: "Intermediário",
-      isPremium: false,
-      progress: 0,
-      isEnrolled: false
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [coursesLoaded, setCoursesLoaded] = useState(false);
+
+  const loadCourses = useCallback(async () => {
+    try {
+      const catalogRes = await api.get<{ courses: any[] }>("/api/courses");
+      if (!catalogRes.success || !catalogRes.data) return;
+
+      let enrolledMap: Record<number, any> = {};
+      if (authUser) {
+        const progressRes = await api.get<{ progress: any[] }>("/api/courses/my-progress");
+        if (progressRes.success && progressRes.data) {
+          progressRes.data.progress.forEach((p: any) => {
+            enrolledMap[p.course_id] = p;
+          });
+        }
+      }
+
+      const mapped: Course[] = catalogRes.data.courses.map((c: any) => {
+        const enrollment = enrolledMap[c.id];
+        return {
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          thumbnail: c.thumbnail,
+          duration: c.duration,
+          lessons: c.total_lessons,
+          total_lessons: c.total_lessons,
+          rating: parseFloat(c.rating),
+          students: c.students,
+          price: parseFloat(c.price),
+          category: c.category,
+          life_context: c.life_context,
+          level: c.level,
+          isPremium: c.is_premium,
+          is_premium: c.is_premium,
+          instructor: c.instructor,
+          progress: enrollment ? parseFloat(enrollment.progress_percentage) : 0,
+          isEnrolled: !!enrollment,
+          completedLessons: enrollment ? enrollment.completed_lessons : 0,
+        };
+      });
+
+      setCourses(mapped);
+      setCoursesLoaded(true);
+    } catch (err) {
+      console.error("[AppContext] Failed to load courses:", err);
     }
-  ]);
+  }, [authUser]);
+
+  useEffect(() => {
+    loadCourses();
+  }, [loadCourses]);
 
   const [posts, setPosts] = useState<Post[]>([
     {
@@ -388,14 +392,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Sync courses with user enrollment data
-  useEffect(() => {
-    setCourses(prev => prev.map(course => ({
-      ...course,
-      isEnrolled: userData.enrolledCourses.includes(course.id)
-    })));
-  }, [userData.enrolledCourses]);
-
   // Save user data to localStorage
   const updateUserData = (updates: Partial<UserData>) => {
     const newUserData = { ...userData, ...updates };
@@ -403,13 +399,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('raio-user-extended', JSON.stringify(newUserData));
   };
 
-  // Course functions
-  const enrollInCourse = (courseId: number) => {
+  const enrollInCourse = async (courseId: number) => {
     const course = courses.find(c => c.id === courseId);
     if (!course) return;
 
-    // Check if already enrolled
-    if (userData.enrolledCourses.includes(courseId)) {
+    if (course.isEnrolled) {
       enhancedToast.info({
         title: "Já matriculado",
         description: "Você já tem acesso a este curso",
@@ -418,64 +412,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (course.isPremium && !userData.segments.includes('premium')) {
-      enhancedToast.error({
-        title: "Curso Premium",
-        description: "Você precisa ser premium para acessar este curso",
-        haptic: true,
-        action: {
-          label: "Assinar",
-          onClick: () => console.log("Redirect to subscription")
-        }
-      });
+    const res = await api.post<{ alreadyEnrolled: boolean; courseTitle: string }>(`/api/courses/${courseId}/enroll`);
+    if (!res.success) {
+      if (res.error?.code === "ALREADY_ENROLLED") {
+        enhancedToast.info({ title: "Já matriculado", description: "Você já tem acesso a este curso", haptic: true });
+      } else {
+        enhancedToast.error({
+          title: "Erro ao matricular",
+          description: res.error?.message || "Tente novamente",
+          haptic: true
+        });
+      }
       return;
     }
 
-    updateUserData({
-      enrolledCourses: [...userData.enrolledCourses, courseId],
-      points: userData.points + 100 // Bonus por adquirir curso
-    });
-
-    setCourses(prev => prev.map(c => 
-      c.id === courseId ? { ...c, isEnrolled: true, progress: 0 } : c
+    setCourses(prev => prev.map(c =>
+      c.id === courseId ? { ...c, isEnrolled: true, progress: 0, completedLessons: 0 } : c
     ));
 
     enhancedToast.success({
-      title: "Curso adquirido! 🎉",
-      description: `Você ganhou acesso ao curso "${course.title}" (+100 pontos)`,
+      title: "Matriculado com sucesso!",
+      description: `Você agora tem acesso ao curso "${course.title}"`,
       haptic: true
     });
   };
 
   const startCourse = (courseId: number) => {
-    const course = courses.find(c => c.id === courseId);
-    if (!course) return;
-
-    // Curso iniciado silenciosamente
   };
 
   const updateCourseProgress = (courseId: number, progress: number) => {
-    setCourses(prev => prev.map(c => 
-      c.id === courseId ? { 
-        ...c, 
-        progress, 
+    setCourses(prev => prev.map(c =>
+      c.id === courseId ? {
+        ...c,
+        progress,
         completedLessons: Math.floor((progress / 100) * c.lessons)
       } : c
     ));
-
-    if (progress === 100) {
-      updateUserData({
-        completedCourses: [...userData.completedCourses, courseId],
-        points: userData.points + 500,
-        level: userData.level + (userData.completedCourses.length % 3 === 2 ? 1 : 0)
-      });
-
-      enhancedToast.achievement({
-        title: "Curso concluído! 🏆",
-        description: "Parabéns! Você ganhou 500 pontos",
-        haptic: true
-      });
-    }
   };
 
   // Post functions
@@ -803,6 +775,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       startCourse,
       updateCourseProgress,
       getCourseById,
+      loadCourses,
       enrollInBook,
       updateBookProgress,
       toggleBookFavorite,

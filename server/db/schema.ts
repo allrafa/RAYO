@@ -175,7 +175,109 @@ export async function initializeSchema() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS last_activity_date DATE
   `);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS courses (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(200) NOT NULL,
+      description TEXT,
+      thumbnail VARCHAR(500),
+      duration VARCHAR(50),
+      total_lessons INTEGER DEFAULT 0,
+      rating NUMERIC(3,2) DEFAULT 0,
+      students INTEGER DEFAULT 0,
+      price NUMERIC(10,2) DEFAULT 0,
+      category VARCHAR(100),
+      life_context VARCHAR(50),
+      level VARCHAR(50) DEFAULT 'Iniciante',
+      is_premium BOOLEAN DEFAULT FALSE,
+      instructor VARCHAR(100),
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_courses_life_context ON courses(life_context)
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_courses_category ON courses(category)
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS course_modules (
+      id SERIAL PRIMARY KEY,
+      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+      title VARCHAR(200) NOT NULL,
+      description TEXT,
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_course_modules_course_id ON course_modules(course_id)
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS course_lessons (
+      id SERIAL PRIMARY KEY,
+      module_id INTEGER NOT NULL REFERENCES course_modules(id) ON DELETE CASCADE,
+      title VARCHAR(200) NOT NULL,
+      description TEXT,
+      duration VARCHAR(20),
+      duration_seconds INTEGER DEFAULT 0,
+      video_url VARCHAR(500),
+      content_type VARCHAR(50) DEFAULT 'video',
+      sort_order INTEGER DEFAULT 0,
+      is_free_preview BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_course_lessons_module_id ON course_lessons(module_id)
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS user_course_progress (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+      enrolled_at TIMESTAMP DEFAULT NOW(),
+      completed_at TIMESTAMP,
+      progress_percentage NUMERIC(5,2) DEFAULT 0,
+      completed_lessons INTEGER DEFAULT 0,
+      total_lessons INTEGER DEFAULT 0,
+      last_lesson_id INTEGER REFERENCES course_lessons(id),
+      UNIQUE(user_id, course_id)
+    )
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_user_course_progress_user_id ON user_course_progress(user_id)
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS user_lesson_progress (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      lesson_id INTEGER NOT NULL REFERENCES course_lessons(id) ON DELETE CASCADE,
+      status VARCHAR(20) DEFAULT 'not_started',
+      progress_seconds INTEGER DEFAULT 0,
+      completed_at TIMESTAMP,
+      started_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, lesson_id)
+    )
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_user_lesson_progress_user_id ON user_lesson_progress(user_id)
+  `);
+
   await seedBadgesAndMissions();
+  await seedCourses();
 
   console.log("[DB] Schema initialized successfully.");
 }
@@ -230,4 +332,208 @@ async function seedBadgesAndMissions() {
   }
 
   console.log("[DB] Seeded badges and missions.");
+}
+
+async function seedCourses() {
+  const { rows } = await query(`SELECT COUNT(*) as count FROM courses`);
+  if (parseInt(rows[0].count) > 0) return;
+
+  const coursesData = [
+    {
+      title: 'Fundamentos do Relacionamento',
+      description: 'Construa uma base sólida para seu relacionamento com princípios fundamentais de comunicação, respeito e confiança.',
+      thumbnail: 'https://images.unsplash.com/photo-1680603007731-d8da76c235ba?w=800&fit=crop',
+      duration: '4h 30m',
+      rating: 4.8, students: 2847, price: 0, category: 'Relacionamento',
+      life_context: 'casados', level: 'Iniciante', is_premium: false, instructor: 'Dr. Paulo Mendes',
+      modules: [
+        { title: 'Pilares do Relacionamento', description: 'Os fundamentos essenciais', lessons: [
+          { title: 'Introdução: O que faz um relacionamento funcionar', duration: '12:30', duration_seconds: 750, is_free_preview: true },
+          { title: 'Comunicação efetiva no dia a dia', duration: '18:45', duration_seconds: 1125 },
+          { title: 'Construindo confiança mútua', duration: '15:20', duration_seconds: 920 },
+          { title: 'Exercício prático: Diário de gratidão', duration: '8:10', duration_seconds: 490 },
+        ]},
+        { title: 'Resolvendo Conflitos', description: 'Técnicas para resolver desentendimentos', lessons: [
+          { title: 'Entendendo a raiz dos conflitos', duration: '14:50', duration_seconds: 890 },
+          { title: 'Técnica dos 4 passos para resolver brigas', duration: '20:15', duration_seconds: 1215 },
+          { title: 'Quando buscar ajuda profissional', duration: '11:30', duration_seconds: 690 },
+        ]},
+        { title: 'Crescendo Juntos', description: 'Fortalecendo o vínculo ao longo do tempo', lessons: [
+          { title: 'Mantendo a chama acesa', duration: '16:40', duration_seconds: 1000 },
+          { title: 'Projetos de vida a dois', duration: '19:20', duration_seconds: 1160 },
+          { title: 'Celebrando conquistas juntos', duration: '10:15', duration_seconds: 615 },
+          { title: 'Revisão e próximos passos', duration: '8:45', duration_seconds: 525 },
+        ]},
+      ]
+    },
+    {
+      title: 'Comunicação Não-Violenta para Famílias',
+      description: 'Aprenda técnicas avançadas de CNV para transformar a comunicação em sua família e resolver conflitos com empatia.',
+      thumbnail: 'https://images.unsplash.com/photo-1624448445915-97154f5e688c?w=800&fit=crop',
+      duration: '6h 15m',
+      rating: 4.9, students: 1923, price: 297, category: 'Comunicação',
+      life_context: 'casados', level: 'Avançado', is_premium: true, instructor: 'Dra. Ana Costa',
+      modules: [
+        { title: 'Fundamentos da CNV', description: 'O que é e como funciona', lessons: [
+          { title: 'Introdução à Comunicação Não-Violenta', duration: '15:20', duration_seconds: 920, is_free_preview: true },
+          { title: 'Observação vs. Julgamento', duration: '22:10', duration_seconds: 1330 },
+          { title: 'Identificando sentimentos reais', duration: '18:30', duration_seconds: 1110 },
+          { title: 'Necessidades universais', duration: '16:45', duration_seconds: 1005 },
+        ]},
+        { title: 'CNV na Prática Familiar', description: 'Aplicando no cotidiano', lessons: [
+          { title: 'CNV com seu parceiro(a)', duration: '20:30', duration_seconds: 1230 },
+          { title: 'CNV com filhos pequenos', duration: '19:15', duration_seconds: 1155 },
+          { title: 'CNV com adolescentes', duration: '21:40', duration_seconds: 1300 },
+          { title: 'Pedidos vs. Exigências', duration: '14:50', duration_seconds: 890 },
+        ]},
+        { title: 'Resolução de Conflitos com CNV', description: 'Transformando conflitos', lessons: [
+          { title: 'Mediação familiar empática', duration: '25:10', duration_seconds: 1510 },
+          { title: 'Casos práticos resolvidos', duration: '30:20', duration_seconds: 1820 },
+          { title: 'Exercícios diários de CNV', duration: '12:45', duration_seconds: 765 },
+        ]},
+      ]
+    },
+    {
+      title: 'Finanças para Casais',
+      description: 'Organize sua vida financeira a dois. Orçamento, investimentos e planejamento para construir um futuro próspero juntos.',
+      thumbnail: 'https://images.unsplash.com/photo-1588912914078-2fe5224fd8b8?w=800&fit=crop',
+      duration: '5h 45m',
+      rating: 4.7, students: 3421, price: 0, category: 'Finanças',
+      life_context: 'casados', level: 'Intermediário', is_premium: false, instructor: 'Carlos Oliveira',
+      modules: [
+        { title: 'Diagnóstico Financeiro', description: 'Entendendo sua situação atual', lessons: [
+          { title: 'Mapeando receitas e despesas do casal', duration: '16:20', duration_seconds: 980, is_free_preview: true },
+          { title: 'Dívidas: como sair do vermelho juntos', duration: '22:30', duration_seconds: 1350 },
+          { title: 'Criando o orçamento familiar', duration: '19:45', duration_seconds: 1185 },
+        ]},
+        { title: 'Investindo Juntos', description: 'Construindo patrimônio', lessons: [
+          { title: 'Reserva de emergência do casal', duration: '14:10', duration_seconds: 850 },
+          { title: 'Tipos de investimento para famílias', duration: '25:30', duration_seconds: 1530 },
+          { title: 'Planejando a aposentadoria a dois', duration: '20:15', duration_seconds: 1215 },
+        ]},
+        { title: 'Conversas sobre Dinheiro', description: 'Como alinhar expectativas', lessons: [
+          { title: 'Quebrando tabus financeiros no casamento', duration: '18:40', duration_seconds: 1120 },
+          { title: 'Conta conjunta vs. separada: o que funciona', duration: '15:50', duration_seconds: 950 },
+          { title: 'Ensinando filhos sobre dinheiro', duration: '21:20', duration_seconds: 1280 },
+          { title: 'Planejamento financeiro para grandes sonhos', duration: '17:30', duration_seconds: 1050 },
+        ]},
+      ]
+    },
+    {
+      title: 'Educação Positiva: Criando Filhos Resilientes',
+      description: 'Técnicas comprovadas de disciplina positiva para criar filhos emocionalmente inteligentes, seguros e resilientes.',
+      thumbnail: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=800&fit=crop',
+      duration: '7h 20m',
+      rating: 4.9, students: 4102, price: 347, category: 'Parentalidade',
+      life_context: 'pais', level: 'Intermediário', is_premium: true, instructor: 'Dra. Maria Santos',
+      modules: [
+        { title: 'Bases da Educação Positiva', description: 'Fundamentos científicos', lessons: [
+          { title: 'O que é disciplina positiva', duration: '14:20', duration_seconds: 860, is_free_preview: true },
+          { title: 'Desenvolvimento emocional infantil', duration: '22:45', duration_seconds: 1365 },
+          { title: 'Firmeza com afeto: o equilíbrio ideal', duration: '18:30', duration_seconds: 1110 },
+          { title: 'Erros comuns na educação', duration: '16:15', duration_seconds: 975 },
+        ]},
+        { title: 'Ferramentas Práticas', description: 'Técnicas do dia a dia', lessons: [
+          { title: 'Consequências naturais vs. punição', duration: '20:10', duration_seconds: 1210 },
+          { title: 'Rotina e limites saudáveis', duration: '17:45', duration_seconds: 1065 },
+          { title: 'Lidando com birras e crises', duration: '23:20', duration_seconds: 1400 },
+          { title: 'Reforço positivo efetivo', duration: '15:30', duration_seconds: 930 },
+        ]},
+        { title: 'Desafios Especiais', description: 'Situações complexas', lessons: [
+          { title: 'Educação de adolescentes', duration: '25:40', duration_seconds: 1540 },
+          { title: 'Tecnologia e tempo de tela', duration: '19:15', duration_seconds: 1155 },
+          { title: 'Separação dos pais: como proteger os filhos', duration: '22:30', duration_seconds: 1350 },
+          { title: 'Criando filhos em tempos difíceis', duration: '18:50', duration_seconds: 1130 },
+        ]},
+      ]
+    },
+    {
+      title: 'Preparação para o Namoro Saudável',
+      description: 'Desenvolva habilidades emocionais e relacionais antes de iniciar um relacionamento. Autoconhecimento e expectativas realistas.',
+      thumbnail: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=800&fit=crop',
+      duration: '3h 50m',
+      rating: 4.6, students: 1567, price: 0, category: 'Autoconhecimento',
+      life_context: 'solteiros', level: 'Iniciante', is_premium: false, instructor: 'Juliana Rodrigues',
+      modules: [
+        { title: 'Autoconhecimento', description: 'Conhecendo a si mesmo', lessons: [
+          { title: 'Quem sou eu nos relacionamentos?', duration: '15:40', duration_seconds: 940, is_free_preview: true },
+          { title: 'Padrões de apego e como identificar o seu', duration: '20:25', duration_seconds: 1225 },
+          { title: 'Red flags e green flags', duration: '18:10', duration_seconds: 1090 },
+        ]},
+        { title: 'Habilidades Relacionais', description: 'O que praticar antes de namorar', lessons: [
+          { title: 'Comunicação assertiva', duration: '16:30', duration_seconds: 990 },
+          { title: 'Vulnerabilidade e autenticidade', duration: '14:50', duration_seconds: 890 },
+          { title: 'Estabelecendo limites saudáveis', duration: '19:20', duration_seconds: 1160 },
+        ]},
+        { title: 'Começando com o Pé Direito', description: 'Iniciando um relacionamento', lessons: [
+          { title: 'Expectativas realistas no namoro', duration: '17:15', duration_seconds: 1035 },
+          { title: 'Primeiras conversas importantes', duration: '13:40', duration_seconds: 820 },
+          { title: 'Construindo uma base sólida desde o início', duration: '21:10', duration_seconds: 1270 },
+        ]},
+      ]
+    },
+    {
+      title: 'Construindo um Noivado com Propósito',
+      description: 'O período de noivado é essencial para alinhar expectativas e planejar um casamento com propósito e intenção.',
+      thumbnail: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&fit=crop',
+      duration: '4h 10m',
+      rating: 4.8, students: 892, price: 197, category: 'Preparação',
+      life_context: 'noivos', level: 'Intermediário', is_premium: false, instructor: 'Pastor Ricardo Almeida',
+      modules: [
+        { title: 'Alinhamento de Valores', description: 'Conversas essenciais antes do casamento', lessons: [
+          { title: 'Valores e prioridades: alinhando visões', duration: '18:30', duration_seconds: 1110, is_free_preview: true },
+          { title: 'Expectativas sobre filhos e família', duration: '22:15', duration_seconds: 1335 },
+          { title: 'Divisão de responsabilidades', duration: '16:40', duration_seconds: 1000 },
+        ]},
+        { title: 'Planejamento Prático', description: 'Preparando a vida a dois', lessons: [
+          { title: 'Finanças pré-casamento', duration: '20:50', duration_seconds: 1250 },
+          { title: 'Moradia e logística da vida juntos', duration: '14:30', duration_seconds: 870 },
+          { title: 'Cerimônia com significado', duration: '17:20', duration_seconds: 1040 },
+        ]},
+        { title: 'Fortalecendo o Vínculo', description: 'Crescendo juntos no noivado', lessons: [
+          { title: 'Intimidade emocional no noivado', duration: '19:10', duration_seconds: 1150 },
+          { title: 'Lidando com conflitos durante o noivado', duration: '21:30', duration_seconds: 1290 },
+          { title: 'Preparando-se para a vida conjugal', duration: '15:45', duration_seconds: 945 },
+        ]},
+      ]
+    },
+  ];
+
+  for (const course of coursesData) {
+    const { modules, ...courseFields } = course;
+    let totalLessons = 0;
+    modules.forEach(m => { totalLessons += m.lessons.length; });
+
+    const { rows: courseRows } = await query(
+      `INSERT INTO courses (title, description, thumbnail, duration, total_lessons, rating, students, price, category, life_context, level, is_premium, instructor)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING id`,
+      [courseFields.title, courseFields.description, courseFields.thumbnail, courseFields.duration,
+       totalLessons, courseFields.rating, courseFields.students, courseFields.price, courseFields.category,
+       courseFields.life_context, courseFields.level, courseFields.is_premium, courseFields.instructor]
+    );
+    const courseId = courseRows[0].id;
+
+    for (let mi = 0; mi < modules.length; mi++) {
+      const mod = modules[mi];
+      const { rows: modRows } = await query(
+        `INSERT INTO course_modules (course_id, title, description, sort_order)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [courseId, mod.title, mod.description, mi + 1]
+      );
+      const moduleId = modRows[0].id;
+
+      for (let li = 0; li < mod.lessons.length; li++) {
+        const lesson = mod.lessons[li];
+        await query(
+          `INSERT INTO course_lessons (module_id, title, duration, duration_seconds, video_url, sort_order, is_free_preview)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [moduleId, lesson.title, lesson.duration, lesson.duration_seconds,
+           `https://example.com/videos/placeholder.mp4`, li + 1, lesson.is_free_preview || false]
+        );
+      }
+    }
+  }
+
+  console.log("[DB] Seeded courses with modules and lessons.");
 }

@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Search, Star, Users, ArrowRight, Play, ChevronLeft, ChevronRight, Trophy, Clock, BookOpen, Lock, CheckCircle, ShoppingCart, ChevronUp, Sparkles, Book } from "lucide-react";
+import { api } from "../lib/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Card, CardContent } from "./ui/card";
@@ -439,16 +440,47 @@ interface CourseWithLessonsProps {
 }
 
 function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
-  // Generate mock lessons for each course
-  const lessons = [
-    { id: 1, title: "Introdução ao curso", duration: "5:20", completed: course.progress >= 10, thumbnail: course.thumbnail },
-    { id: 2, title: "Conceitos fundamentais", duration: "12:45", completed: course.progress >= 25, thumbnail: course.thumbnail },
-    { id: 3, title: "Aplicando na prática", duration: "18:30", completed: course.progress >= 40, thumbnail: course.thumbnail },
-    { id: 4, title: "Exercícios práticos", duration: "15:20", completed: course.progress >= 60, thumbnail: course.thumbnail },
-    { id: 5, title: "Estudos de caso", duration: "20:15", completed: course.progress >= 75, thumbnail: course.thumbnail },
-    { id: 6, title: "Revisão e conclusão", duration: "10:30", completed: course.progress >= 90, thumbnail: course.thumbnail },
-    { id: 7, title: "Material complementar", duration: "8:45", completed: course.progress === 100, thumbnail: course.thumbnail },
-  ];
+  const [lessons, setLessons] = useState<any[]>([]);
+  const [lessonsError, setLessonsError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const detailRes = await api.get<{ course: any }>(`/api/courses/${course.id}`);
+        if (cancelled || !detailRes.success || !detailRes.data) {
+          if (!cancelled) setLessonsError(true);
+          return;
+        }
+        const allLessons: any[] = [];
+        const progressRes = await api.get<{ progress: any }>(`/api/courses/${course.id}/progress`);
+        const lessonProgressMap: Record<number, string> = {};
+        if (progressRes.success && progressRes.data?.progress?.lessonProgress) {
+          progressRes.data.progress.lessonProgress.forEach((lp: any) => {
+            lessonProgressMap[lp.lesson_id] = lp.status;
+          });
+        }
+        detailRes.data.course.modules?.forEach((mod: any) => {
+          mod.lessons?.forEach((l: any) => {
+            allLessons.push({
+              id: l.id,
+              title: l.title,
+              duration: l.duration,
+              completed: lessonProgressMap[l.id] === 'completed',
+              thumbnail: course.thumbnail,
+            });
+          });
+        });
+        if (!cancelled) {
+          setLessons(allLessons);
+          setLessonsError(false);
+        }
+      } catch {
+        if (!cancelled) setLessonsError(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [course.id, course.thumbnail]);
 
   const scroll = (direction: "left" | "right") => {
     const container = document.getElementById(`lessons-${course.id}`);
@@ -547,6 +579,15 @@ function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
       </div>
 
       {/* Lessons Carousel */}
+      {lessonsError ? (
+        <div className="px-6 py-4 text-center" style={{ color: 'var(--raio-text-secondary)' }}>
+          <p className="text-[14px]">Não foi possível carregar as aulas. Tente novamente mais tarde.</p>
+        </div>
+      ) : lessons.length === 0 ? (
+        <div className="px-6 py-4 text-center" style={{ color: 'var(--raio-text-secondary)' }}>
+          <p className="text-[14px]">Carregando aulas...</p>
+        </div>
+      ) : (
       <div className="relative group">
         {/* Left Arrow */}
         <button
@@ -581,6 +622,7 @@ function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
           <ChevronRight className="w-6 h-6" />
         </button>
       </div>
+      )}
 
       {/* Divider */}
       <div className="px-6">
