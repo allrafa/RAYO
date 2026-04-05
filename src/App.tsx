@@ -36,6 +36,7 @@ function AppContent() {
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [preAuthStage, setPreAuthStage] = useState<PreAuthStage>("welcome");
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
+  const [showPrivacyOverlay, setShowPrivacyOverlay] = useState(false);
 
   const appContext = useApp();
   const isInBookReader = appContext?.isInBookReader || false;
@@ -102,8 +103,12 @@ function AppContent() {
 
     return (
       <>
-        {preAuthContent}
-        <ConsentBanner />
+        {showPrivacyOverlay ? (
+          <PrivacyPolicyPage onBack={() => setShowPrivacyOverlay(false)} />
+        ) : (
+          preAuthContent
+        )}
+        <ConsentBanner onOpenPrivacyPolicy={() => setShowPrivacyOverlay(true)} />
       </>
     );
   }
