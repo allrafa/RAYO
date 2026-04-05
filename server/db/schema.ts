@@ -155,6 +155,19 @@ export async function initializeSchema() {
   `);
 
   await query(`
+    CREATE TABLE IF NOT EXISTS user_xp (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      total_xp INTEGER DEFAULT 0,
+      current_level INTEGER DEFAULT 1,
+      xp_to_next_level INTEGER DEFAULT 100,
+      current_streak INTEGER DEFAULT 0,
+      longest_streak INTEGER DEFAULT 0,
+      last_activity_date DATE,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS longest_streak INTEGER DEFAULT 0
   `);
 

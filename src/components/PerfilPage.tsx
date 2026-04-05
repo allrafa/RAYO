@@ -318,6 +318,111 @@ export function PerfilPage() {
               </div>
             </div>
 
+            {/* Earned Badges */}
+            {earnedBadges.length > 0 && (
+              <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
+                <Card
+                  className="p-4 lg:p-6 border-0 shadow-md"
+                  style={{ background: 'var(--raio-bg-secondary)' }}
+                >
+                  <h3
+                    className="text-lg mb-4"
+                    style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                  >
+                    Conquistas Obtidas
+                  </h3>
+                  <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+                    {earnedBadges.map((badge) => {
+                      const tierColors: Record<string, string> = {
+                        bronze: 'var(--raio-accent-primary)',
+                        silver: '#94a3b8',
+                        gold: '#eab308',
+                        platinum: '#8b5cf6',
+                        premium: '#06b6d4',
+                      };
+                      return (
+                        <div
+                          key={badge.id}
+                          className="flex flex-col items-center text-center gap-1"
+                          title={badge.description}
+                        >
+                          <div
+                            className="w-12 h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-xl lg:text-2xl"
+                            style={{
+                              background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                              border: `2px solid ${tierColors[badge.tier] || tierColors.bronze}`,
+                            }}
+                          >
+                            {badge.icon}
+                          </div>
+                          <span
+                            className="text-[10px] lg:text-xs leading-tight"
+                            style={{ color: 'var(--raio-text-secondary)', fontWeight: 500 }}
+                          >
+                            {badge.title}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* All Badges (Locked & Unlocked) */}
+            {badges.length > 0 && (
+              <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
+                <Card
+                  className="p-4 lg:p-6 border-0 shadow-md"
+                  style={{ background: 'var(--raio-bg-secondary)' }}
+                >
+                  <h3
+                    className="text-lg mb-4"
+                    style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                  >
+                    Todas as Conquistas
+                  </h3>
+                  <div className="grid grid-cols-4 lg:grid-cols-6 gap-3">
+                    {badges.map((badge) => {
+                      const tierColors: Record<string, string> = {
+                        bronze: 'var(--raio-accent-primary)',
+                        silver: '#94a3b8',
+                        gold: '#eab308',
+                        platinum: '#8b5cf6',
+                        premium: '#06b6d4',
+                      };
+                      return (
+                        <div
+                          key={badge.id}
+                          className="flex flex-col items-center text-center gap-1"
+                          title={badge.description}
+                          style={{ opacity: badge.earned ? 1 : 0.35 }}
+                        >
+                          <div
+                            className="w-10 h-10 lg:w-12 lg:h-12 rounded-full flex items-center justify-center text-lg lg:text-xl"
+                            style={{
+                              background: badge.earned
+                                ? (theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)')
+                                : (theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
+                              border: `2px solid ${badge.earned ? (tierColors[badge.tier] || tierColors.bronze) : 'var(--raio-border-default)'}`,
+                            }}
+                          >
+                            {badge.icon}
+                          </div>
+                          <span
+                            className="text-[10px] leading-tight"
+                            style={{ color: 'var(--raio-text-tertiary)', fontWeight: 500 }}
+                          >
+                            {badge.title}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </div>
+            )}
+
             {/* Activity Stats - Desktop Only */}
             <div className="hidden lg:block px-0 mb-8">
               <Card 
