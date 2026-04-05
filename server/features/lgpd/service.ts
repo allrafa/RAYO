@@ -144,13 +144,15 @@ export async function exportUserData(userId: number): Promise<UserDataExport> {
 export async function deleteUserData(userId: number): Promise<void> {
   const client = await getClient();
   try {
-    await client.query("BEGIN");
-
-    await client.query(
+    const { rows: reqRows } = await query(
       `INSERT INTO lgpd_requests (user_id, request_type, status)
-       VALUES ($1, 'deletion', 'processing')`,
+       VALUES ($1, 'deletion', 'processing')
+       RETURNING id`,
       [userId]
     );
+    const deletionRequestId = reqRows[0].id;
+
+    await client.query("BEGIN");
 
     await client.query(
       `UPDATE comments SET content = '[conteúdo removido por solicitação LGPD]'
@@ -212,19 +214,19 @@ export async function deleteUserData(userId: number): Promise<void> {
 
     await client.query(`DELETE FROM sessions WHERE user_id = $1`, [userId]);
 
-    await client.query(
-      `UPDATE lgpd_requests SET status = 'completed', completed_at = NOW()
-       WHERE user_id = $1 AND request_type = 'deletion' AND status = 'processing'`,
-      [userId]
-    );
-
     await client.query("COMMIT");
+
+    await query(
+      `UPDATE lgpd_requests SET status = 'completed', completed_at = NOW()
+       WHERE id = $1`,
+      [deletionRequestId]
+    );
   } catch (err) {
     await client.query("ROLLBACK");
     await query(
       `UPDATE lgpd_requests SET status = 'failed'
-       WHERE user_id = $1 AND request_type = 'deletion' AND status = 'processing'`,
-      [userId]
+       WHERE id = $1`,
+      [deletionRequestId]
     ).catch(() => {});
     throw err;
   } finally {

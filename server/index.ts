@@ -41,7 +41,7 @@ app.use("/api/gamification", rateLimiter(60, 15 * 60 * 1000), gamificationRoutes
 app.use("/api/courses", rateLimiter(60, 15 * 60 * 1000), academiaRoutes);
 app.use("/api/community", rateLimiter(60, 15 * 60 * 1000), optionalAuth, communityRoutes);
 app.use("/api/dashboard", rateLimiter(60, 15 * 60 * 1000), dashboardRoutes);
-app.use("/api/users", lgpdRoutes);
+app.use("/api/users", rateLimiter(10, 15 * 60 * 1000), lgpdRoutes);
 
 app.all("/api/{*path}", (req, res) => {
   sendError(res, `Route ${req.method} ${req.path} not found`, "NOT_FOUND", 404);
