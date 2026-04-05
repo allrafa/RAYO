@@ -56,13 +56,14 @@ router.post("/streak", async (req, res, next) => {
 router.post("/xp", async (req, res, next) => {
   try {
     const internalKey = req.headers["x-internal-key"];
-    if (internalKey !== process.env.INTERNAL_API_KEY && process.env.INTERNAL_API_KEY) {
-      sendError(res, "Acesso negado", "FORBIDDEN", 403);
+    const expectedKey = process.env.INTERNAL_API_KEY;
+    if (!expectedKey || internalKey !== expectedKey) {
+      sendError(res, "Acesso negado: endpoint interno", "FORBIDDEN", 403);
       return;
     }
 
-    const { reason, userId } = req.body;
-    const targetUserId = userId || req.user!.id;
+    const { reason } = req.body;
+    const targetUserId = req.user!.id;
 
     const validReasons = Object.keys(XP_REWARDS);
     if (!reason || typeof reason !== "string" || !validReasons.includes(reason)) {
