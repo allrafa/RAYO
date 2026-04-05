@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { useApp } from "./AppContext";
+import { useAuth } from "./AuthContext";
 import { useTheme } from "./ThemeProvider";
 import { toast } from "sonner@2.0.3";
 import raioLogo from "figma:asset/827405fdf6d360d2a9ec31dfa3facf23fe3474fb.png";
@@ -17,6 +18,7 @@ interface DesktopSidebarProps {
 
 export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, onToggleMinimize }: DesktopSidebarProps) {
   const { userData } = useApp();
+  const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   
   const menuItems = [
@@ -272,12 +274,9 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
         <Button
           variant="ghost"
           className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20`}
-          onClick={() => {
+          onClick={async () => {
             toast.error("Saindo...");
-            setTimeout(() => {
-              localStorage.removeItem("raio-user");
-              window.location.reload();
-            }, 1000);
+            await logout();
           }}
           title={isMinimized ? "Sair" : undefined}
         >

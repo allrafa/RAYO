@@ -28,9 +28,14 @@ server/                  # Backend
 └── utils/               # Response helpers, logger
 
 src/                     # Frontend (React)
-├── App.tsx              # Root component
-├── components/          # UI components
-├── lib/                 # Client-side utilities
+├── App.tsx              # Root component (uses AuthContext for auth flow)
+├── components/
+│   ├── AuthContext.tsx   # Auth provider (login/register/logout/session check)
+│   ├── AuthPage.tsx      # Login & Register screens
+│   └── ...              # UI components
+├── lib/
+│   ├── api.ts           # API client (fetch wrapper with credentials)
+│   └── ...              # Other utilities
 └── styles/              # CSS
 
 architecture.md          # Development protocol (permanent reference)

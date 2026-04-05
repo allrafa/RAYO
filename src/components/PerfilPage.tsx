@@ -13,6 +13,7 @@ import { Card } from "./ui/card";
 import { Switch } from "./ui/switch";
 import { Progress } from "./ui/progress";
 import { useApp } from "./AppContext";
+import { useAuth } from "./AuthContext";
 import { useAccessibility } from "./AccessibilityContext";
 import { useTheme } from "./ThemeProvider";
 import { toast } from "sonner@2.0.3";
@@ -24,6 +25,7 @@ export function PerfilPage() {
   const { userData, books } = useApp();
   const { settings } = useAccessibility();
   const { theme, toggleTheme } = useTheme();
+  const { logout } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showFavoritos, setShowFavoritos] = useState(false);
   const [showBiblioteca, setShowBiblioteca] = useState(false);
@@ -455,12 +457,9 @@ export function PerfilPage() {
                   e.currentTarget.style.background = 'transparent';
                   e.currentTarget.style.color = theme === 'dark' ? 'rgba(248, 113, 113, 1)' : 'rgba(220, 38, 38, 1)';
                 }}
-                onClick={() => {
+                onClick={async () => {
                   toast.error("Saindo...");
-                  setTimeout(() => {
-                    localStorage.removeItem("raio-user");
-                    window.location.reload();
-                  }, 1000);
+                  await logout();
                 }}
               >
                 <LogOut className="w-5 h-5 mr-2" />
@@ -612,12 +611,9 @@ export function PerfilPage() {
                 e.currentTarget.style.background = 'transparent';
                 e.currentTarget.style.color = theme === 'dark' ? 'rgba(248, 113, 113, 1)' : 'rgba(220, 38, 38, 1)';
               }}
-              onClick={() => {
+              onClick={async () => {
                 toast.error("Saindo...");
-                setTimeout(() => {
-                  localStorage.removeItem("raio-user");
-                  window.location.reload();
-                }, 1000);
+                await logout();
               }}
             >
               <LogOut className="w-5 h-5 mr-2" />
