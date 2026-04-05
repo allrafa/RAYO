@@ -8,14 +8,20 @@ import logoFull from "figma:asset/91df98d68db1bbd58de3db20caeed5acda1da6fc.png";
 
 type AuthMode = "login" | "register";
 
-export function AuthPage() {
+interface AuthPageProps {
+  defaultMode?: AuthMode;
+  prefillName?: string;
+  onGoBack?: () => void;
+}
+
+export function AuthPage({ defaultMode = "login", prefillName, onGoBack }: AuthPageProps) {
   const { login, register } = useAuth();
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const [name, setName] = useState("");
+  const [name, setName] = useState(prefillName || "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -217,7 +223,7 @@ export function AuthPage() {
           </motion.form>
         </AnimatePresence>
 
-        <div className="mt-8 text-center">
+        <div className="mt-8 text-center space-y-3">
           <button
             onClick={switchMode}
             className="text-sm font-medium transition-colors"
@@ -237,6 +243,16 @@ export function AuthPage() {
               </span>
             )}
           </button>
+
+          {onGoBack && (
+            <button
+              onClick={onGoBack}
+              className="block mx-auto text-xs transition-colors"
+              style={{ color: "var(--raio-text-tertiary, #AEAEB2)" }}
+            >
+              Voltar ao início
+            </button>
+          )}
         </div>
       </motion.div>
     </div>

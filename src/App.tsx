@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { Navigation } from "./components/Navigation";
 import { DesktopSidebar } from "./components/DesktopSidebar";
 import { TopNavbar } from "./components/TopNavbar";
+import { WelcomeScreen } from "./components/WelcomeScreen";
+import { Onboarding } from "./components/Onboarding";
 import { AccessibilityProvider } from "./components/AccessibilityContext";
 import { AppProvider, useApp } from "./components/AppContext";
 import { AnalyticsProvider } from "./components/AnalyticsContext";
@@ -19,10 +21,20 @@ import { ConsentBanner } from "./components/ConsentBanner";
 import { LandingPage } from "./components/LandingPage";
 import { analytics } from "./lib/analytics/mixpanel";
 
+type PreAuthStage = "welcome" | "onboarding" | "auth";
+
+interface OnboardingData {
+  name: string;
+  segments: string[];
+  interests: string[];
+}
+
 function AppContent() {
   const { user, isLoading } = useAuth();
   const [currentTab, setCurrentTab] = useState("home");
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
+  const [preAuthStage, setPreAuthStage] = useState<PreAuthStage>("welcome");
+  const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
 
   const appContext = useApp();
   const isInBookReader = appContext?.isInBookReader || false;
@@ -59,8 +71,35 @@ function AppContent() {
   }
 
   if (!user) {
-    return <AuthPage />;
+    if (preAuthStage === "welcome") {
+      return (
+        <WelcomeScreen
+          onStart={() => setPreAuthStage("onboarding")}
+        />
+      );
+    }
+
+    if (preAuthStage === "onboarding") {
+      return (
+        <Onboarding
+          onComplete={(data: OnboardingData) => {
+            setOnboardingData(data);
+            setPreAuthStage("auth");
+          }}
+        />
+      );
+    }
+
+    return (
+      <AuthPage
+        defaultMode="register"
+        prefillName={onboardingData?.name}
+        onGoBack={() => setPreAuthStage("welcome")}
+      />
+    );
   }
+
+  const userSegment = user.segments?.[0] || onboardingData?.segments?.[0] || "solteiro";
 
   const renderCurrentPage = () => {
     try {
@@ -68,7 +107,7 @@ function AppContent() {
         case "home":
           return (
             <HomePage
-              userSegment="solteiro"
+              userSegment={userSegment}
               userName={user.name}
               userLevel={user.level || 1}
             />
@@ -95,7 +134,7 @@ function AppContent() {
         default:
           return (
             <HomePage
-              userSegment="solteiro"
+              userSegment={userSegment}
               userName={user.name}
               userLevel={user.level || 1}
             />
