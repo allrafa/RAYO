@@ -20,10 +20,10 @@ if (!process.env.DATABASE_URL) {
 }
 
 app.use(securityMiddleware);
-app.use(corsMiddleware);
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+app.use("/api", corsMiddleware);
 app.use("/api/health", healthRoutes);
 
 app.all("/api/{*path}", (req, res) => {

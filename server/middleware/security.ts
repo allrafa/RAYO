@@ -13,6 +13,15 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
   : [];
 
+function isReplitOrigin(origin: string): boolean {
+  try {
+    const hostname = new URL(origin).hostname;
+    return hostname.endsWith(".replit.dev") || hostname.endsWith(".repl.co");
+  } catch {
+    return false;
+  }
+}
+
 export const corsMiddleware = cors({
   origin: (origin, callback) => {
     if (!origin) {
@@ -25,7 +34,7 @@ export const corsMiddleware = cors({
       return;
     }
 
-    if (isDev && (origin.endsWith(".replit.dev") || origin.endsWith(".repl.co"))) {
+    if (isDev && isReplitOrigin(origin)) {
       callback(null, true);
       return;
     }
