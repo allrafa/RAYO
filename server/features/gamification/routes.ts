@@ -8,6 +8,9 @@ import {
   getUserMissions,
   updateStreak,
   claimMissionReward,
+  addXP,
+  checkMissionProgress,
+  XP_REWARDS,
 } from "./service.js";
 
 const router = Router();
@@ -44,6 +47,33 @@ router.get("/missions", async (req, res, next) => {
 router.post("/streak", async (req, res, next) => {
   try {
     const result = await updateStreak(req.user!.id);
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/xp", async (req, res, next) => {
+  try {
+    const internalKey = req.headers["x-internal-key"];
+    if (internalKey !== process.env.INTERNAL_API_KEY && process.env.INTERNAL_API_KEY) {
+      sendError(res, "Acesso negado", "FORBIDDEN", 403);
+      return;
+    }
+
+    const { reason, userId } = req.body;
+    const targetUserId = userId || req.user!.id;
+
+    const validReasons = Object.keys(XP_REWARDS);
+    if (!reason || typeof reason !== "string" || !validReasons.includes(reason)) {
+      sendError(res, "Razão inválida para XP", "INVALID_REASON");
+      return;
+    }
+
+    const xpAmount = XP_REWARDS[reason];
+    const result = await addXP(targetUserId, xpAmount, reason);
+    await checkMissionProgress(targetUserId, reason);
+
     success(res, result);
   } catch (err) {
     next(err);

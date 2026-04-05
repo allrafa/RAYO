@@ -182,13 +182,31 @@ export async function unlockBadge(
 }
 
 export async function getGamificationProfile(userId: number) {
-  const { rows: userRows } = await query(
-    `SELECT xp, level, streak, longest_streak, last_activity_date FROM users WHERE id = $1`,
+  const { rows: xpRows } = await query(
+    `SELECT ux.total_xp, ux.current_level, ux.current_streak, ux.longest_streak, ux.last_activity_date
+     FROM user_xp ux WHERE ux.user_id = $1`,
     [userId]
   );
-  if (userRows.length === 0) throw new Error("User not found");
 
-  const user = userRows[0];
+  let user: { xp: number; level: number; streak: number; longest_streak: number; last_activity_date: string | null };
+
+  if (xpRows.length > 0) {
+    user = {
+      xp: xpRows[0].total_xp,
+      level: xpRows[0].current_level,
+      streak: xpRows[0].current_streak,
+      longest_streak: xpRows[0].longest_streak,
+      last_activity_date: xpRows[0].last_activity_date,
+    };
+  } else {
+    const { rows: userRows } = await query(
+      `SELECT xp, level, streak, longest_streak, last_activity_date FROM users WHERE id = $1`,
+      [userId]
+    );
+    if (userRows.length === 0) throw new Error("User not found");
+    user = userRows[0];
+  }
+
   const currentLevel = user.level;
   const xpForNextLevel = getXPForNextLevel(currentLevel);
   const currentLevelXP = XP_LEVELS.find((l) => l.level === currentLevel)?.xp || 0;
@@ -322,6 +340,8 @@ export async function recordMissionProgress(
 
   return { missionsCompleted };
 }
+
+export const checkMissionProgress = recordMissionProgress;
 
 export async function claimMissionReward(
   userId: number,
