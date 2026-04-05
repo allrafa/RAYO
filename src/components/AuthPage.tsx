@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "./AuthContext";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { ArrowRight, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, ArrowLeft, Eye, EyeOff, Mail, ShieldCheck } from "lucide-react";
 import logoIcon from "figma:asset/827405fdf6d360d2a9ec31dfa3facf23fe3474fb.png";
 
 type AuthMode = "login" | "register";
+type RegisterStep = "form" | "verify" | "password";
 
 interface AuthPageProps {
   defaultMode?: AuthMode;
@@ -15,8 +16,9 @@ interface AuthPageProps {
 }
 
 export function AuthPage({ defaultMode = "login", prefillName, onGoBack }: AuthPageProps) {
-  const { login, register } = useAuth();
+  const { login, register, sendVerificationCode, verifyEmailCode } = useAuth();
   const [mode, setMode] = useState<AuthMode>(defaultMode);
+  const [registerStep, setRegisterStep] = useState<RegisterStep>("form");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,23 +26,30 @@ export function AuthPage({ defaultMode = "login", prefillName, onGoBack }: AuthP
   const [name, setName] = useState(prefillName || "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""]);
+  const [resendTimer, setResendTimer] = useState(0);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setResendTimer((t) => t - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  const handleSendCode = async () => {
     setError("");
     setIsSubmitting(true);
-
     try {
-      if (mode === "register") {
-        const result = await register(email, password, name);
-        if (!result.success) {
-          setError(result.error || "Erro ao criar conta");
-        }
+      const result = await sendVerificationCode(email);
+      if (result.success) {
+        setRegisterStep("verify");
+        setResendTimer(60);
+        setTimeout(() => codeInputRefs.current[0]?.focus(), 100);
       } else {
-        const result = await login(email, password);
-        if (!result.success) {
-          setError(result.error || "Erro ao fazer login");
-        }
+        setError(result.error || "Erro ao enviar código");
       }
     } catch {
       setError("Erro de conexão. Tente novamente.");
@@ -49,16 +58,400 @@ export function AuthPage({ defaultMode = "login", prefillName, onGoBack }: AuthP
     }
   };
 
+  const handleVerifyCode = async () => {
+    const code = verificationCode.join("");
+    if (code.length !== 6) return;
+
+    setError("");
+    setIsSubmitting(true);
+    try {
+      const result = await verifyEmailCode(email, code);
+      if (result.success) {
+        setRegisterStep("password");
+      } else {
+        setError(result.error || "Código inválido");
+        setVerificationCode(["", "", "", "", "", ""]);
+        setTimeout(() => codeInputRefs.current[0]?.focus(), 100);
+      }
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (resendTimer > 0) return;
+    setError("");
+    setIsSubmitting(true);
+    try {
+      const result = await sendVerificationCode(email);
+      if (result.success) {
+        setResendTimer(60);
+        setVerificationCode(["", "", "", "", "", ""]);
+        setTimeout(() => codeInputRefs.current[0]?.focus(), 100);
+      } else {
+        setError(result.error || "Erro ao reenviar código");
+      }
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+    try {
+      const result = await register(email, password, name);
+      if (!result.success) {
+        setError(result.error || "Erro ao criar conta");
+      }
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
+    try {
+      const result = await login(email, password);
+      if (!result.success) {
+        setError(result.error || "Erro ao fazer login");
+      }
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCodeInput = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+
+    const newCode = [...verificationCode];
+
+    if (value.length > 1) {
+      const digits = value.replace(/\D/g, "").slice(0, 6);
+      for (let i = 0; i < 6; i++) {
+        newCode[i] = digits[i] || "";
+      }
+      setVerificationCode(newCode);
+      const nextEmpty = newCode.findIndex((d) => d === "");
+      if (nextEmpty >= 0) {
+        codeInputRefs.current[nextEmpty]?.focus();
+      } else {
+        codeInputRefs.current[5]?.focus();
+      }
+      return;
+    }
+
+    newCode[index] = value;
+    setVerificationCode(newCode);
+
+    if (value && index < 5) {
+      codeInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleCodeKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !verificationCode[index] && index > 0) {
+      codeInputRefs.current[index - 1]?.focus();
+    }
+  };
+
   const switchMode = () => {
     setMode(mode === "login" ? "register" : "login");
+    setRegisterStep("form");
     setError("");
+    setVerificationCode(["", "", "", "", "", ""]);
+  };
+
+  const canSendCode = name.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const codeComplete = verificationCode.every((d) => d !== "");
+
+  const renderContent = () => {
+    if (mode === "login") {
+      return (
+        <motion.div
+          key="login"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="text-center mb-10">
+            <div className="w-16 h-16 mx-auto mb-6">
+              <img src={logoIcon} alt="Rayo" className="w-full h-full object-contain" />
+            </div>
+            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+              Bem-vindo(a) de volta
+            </h2>
+            <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+              Entre com seus dados para continuar
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Email</Label>
+              <Input
+                id="email" type="email" placeholder="seu@email.com" value={email}
+                onChange={(e) => setEmail(e.target.value)} required autoComplete="email" autoFocus
+                className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px]"
+                style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Senha</Label>
+              <div className="relative">
+                <Input
+                  id="password" type={showPassword ? "text" : "password"} placeholder="Sua senha"
+                  value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password"
+                  className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px] pr-12"
+                  style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1" style={{ color: "#9CA3AF" }} tabIndex={-1}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            {error && <ErrorMessage message={error} />}
+
+            <ActionButton label="Entrar" isSubmitting={isSubmitting} />
+          </form>
+        </motion.div>
+      );
+    }
+
+    if (registerStep === "form") {
+      return (
+        <motion.div
+          key="register-form"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="text-center mb-10">
+            <div className="w-16 h-16 mx-auto mb-6">
+              <img src={logoIcon} alt="Rayo" className="w-full h-full object-contain" />
+            </div>
+            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+              Crie sua conta
+            </h2>
+            <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+              Vamos verificar seu email para começar
+            </p>
+          </div>
+
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="name" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Nome</Label>
+              <Input
+                id="name" type="text" placeholder="Seu nome" value={name}
+                onChange={(e) => setName(e.target.value)} autoComplete="name"
+                className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px]"
+                style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reg-email" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Email</Label>
+              <Input
+                id="reg-email" type="email" placeholder="seu@email.com" value={email}
+                onChange={(e) => setEmail(e.target.value)} autoComplete="email"
+                className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px]"
+                style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
+              />
+            </div>
+
+            {error && <ErrorMessage message={error} />}
+
+            <div className="w-full max-w-[280px] mx-auto pt-2">
+              <motion.button
+                type="button"
+                onClick={handleSendCode}
+                disabled={isSubmitting || !canSendCode}
+                className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{
+                  background: "#1A1A1A", color: "#FFFFFF", border: "none", borderRadius: "12px",
+                  padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
+                  cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                }}
+                whileHover={canSendCode && !isSubmitting ? { scale: 1.02, boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)" } : {}}
+                whileTap={canSendCode && !isSubmitting ? { scale: 0.98 } : {}}
+              >
+                {isSubmitting ? <Spinner /> : (
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    Enviar código
+                    <Mail className="w-4 h-4" />
+                  </span>
+                )}
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+      );
+    }
+
+    if (registerStep === "verify") {
+      return (
+        <motion.div
+          key="register-verify"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="text-center mb-10">
+            <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#FEF3C7" }}>
+              <Mail className="w-7 h-7" style={{ color: "#D97706" }} />
+            </div>
+            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+              Verifique seu email
+            </h2>
+            <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+              Enviamos um código de 6 dígitos para
+            </p>
+            <p className="text-[15px] mt-1" style={{ color: "#1A1A1A", fontWeight: 500 }}>
+              {email}
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex justify-center gap-3">
+              {verificationCode.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => { codeInputRefs.current[index] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={index === 0 ? 6 : 1}
+                  value={digit}
+                  onChange={(e) => handleCodeInput(index, e.target.value)}
+                  onKeyDown={(e) => handleCodeKeyDown(index, e)}
+                  className="w-12 h-14 text-center text-xl font-semibold rounded-lg border focus:outline-none transition-all"
+                  style={{
+                    background: "#FFFFFF",
+                    color: "#1A1A1A",
+                    borderColor: digit ? "#FCD34D" : "#E5E5E5",
+                    boxShadow: digit ? "0 0 0 1px #FCD34D" : "0 1px 2px rgba(0, 0, 0, 0.05)",
+                  }}
+                />
+              ))}
+            </div>
+
+            {error && <ErrorMessage message={error} />}
+
+            <div className="w-full max-w-[280px] mx-auto">
+              <motion.button
+                type="button"
+                onClick={handleVerifyCode}
+                disabled={isSubmitting || !codeComplete}
+                className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{
+                  background: "#1A1A1A", color: "#FFFFFF", border: "none", borderRadius: "12px",
+                  padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
+                  cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                }}
+                whileHover={codeComplete && !isSubmitting ? { scale: 1.02, boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)" } : {}}
+                whileTap={codeComplete && !isSubmitting ? { scale: 0.98 } : {}}
+              >
+                {isSubmitting ? <Spinner /> : (
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    Verificar
+                    <ShieldCheck className="w-4 h-4" />
+                  </span>
+                )}
+              </motion.button>
+            </div>
+
+            <div className="text-center">
+              <button
+                onClick={handleResendCode}
+                disabled={resendTimer > 0 || isSubmitting}
+                className="text-sm transition-colors disabled:opacity-40"
+                style={{ color: "#6B7280" }}
+              >
+                {resendTimer > 0
+                  ? `Reenviar código em ${resendTimer}s`
+                  : "Reenviar código"}
+              </button>
+            </div>
+
+            <div className="text-center">
+              <button
+                onClick={() => { setRegisterStep("form"); setError(""); setVerificationCode(["", "", "", "", "", ""]); }}
+                className="text-xs flex items-center justify-center gap-1 mx-auto transition-colors"
+                style={{ color: "#9CA3AF" }}
+              >
+                <ArrowLeft size={12} />
+                Alterar email
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      );
+    }
+
+    return (
+      <motion.div
+        key="register-password"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="text-center mb-10">
+          <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#D1FAE5" }}>
+            <ShieldCheck className="w-7 h-7" style={{ color: "#059669" }} />
+          </div>
+          <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+            Email verificado!
+          </h2>
+          <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+            Agora escolha uma senha para sua conta
+          </p>
+        </div>
+
+        <form onSubmit={handleRegister} className="space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="reg-password" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Senha</Label>
+            <div className="relative">
+              <Input
+                id="reg-password" type={showPassword ? "text" : "password"} placeholder="Mínimo 8 caracteres"
+                value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8}
+                autoComplete="new-password" autoFocus
+                className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px] pr-12"
+                style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
+              />
+              <button type="button" onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1" style={{ color: "#9CA3AF" }} tabIndex={-1}>
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {error && <ErrorMessage message={error} />}
+
+          <ActionButton label="Criar conta" isSubmitting={isSubmitting} />
+        </form>
+      </motion.div>
+    );
   };
 
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center overflow-hidden"
-      style={{ background: "#FAFAFA" }}
-    >
+    <div className="fixed inset-0 flex items-center justify-center overflow-hidden" style={{ background: "#FAFAFA" }}>
       <div
         className="absolute inset-0 opacity-[0.015] pointer-events-none"
         style={{
@@ -73,222 +466,29 @@ export function AuthPage({ defaultMode = "login", prefillName, onGoBack }: AuthP
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.43, 0.13, 0.23, 0.96] }}
       >
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 mx-auto mb-6">
-            <img
-              src={logoIcon}
-              alt="Rayo"
-              className="w-full h-full object-contain"
-            />
-          </div>
-          <h2
-            className="text-[24px] tracking-tight mb-3"
-            style={{
-              fontWeight: 600,
-              color: "#1A1A1A",
-            }}
-          >
-            {mode === "login" ? "Bem-vindo(a) de volta" : "Crie sua conta"}
-          </h2>
-          <p
-            className="text-[15px]"
-            style={{
-              color: "#6B7280",
-              lineHeight: 1.6,
-            }}
-          >
-            {mode === "login"
-              ? "Entre com seus dados para continuar"
-              : "Quase lá! Preencha seus dados para começar"}
-          </p>
-        </div>
-
         <AnimatePresence mode="wait">
-          <motion.form
-            key={mode}
-            onSubmit={handleSubmit}
-            initial={{ opacity: 0, x: mode === "register" ? 20 : -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: mode === "register" ? -20 : 20 }}
-            transition={{ duration: 0.3 }}
-            className="space-y-5"
-          >
-            {mode === "register" && (
-              <div className="space-y-2">
-                <Label
-                  htmlFor="name"
-                  style={{
-                    color: "#1A1A1A",
-                    fontSize: "14px",
-                    fontWeight: 500,
-                  }}
-                >
-                  Nome
-                </Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Seu nome"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  autoComplete="name"
-                  className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px]"
-                  style={{
-                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                  }}
-                />
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                style={{
-                  color: "#1A1A1A",
-                  fontSize: "14px",
-                  fontWeight: 500,
-                }}
-              >
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                autoFocus={mode === "login"}
-                className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px]"
-                style={{
-                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                }}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label
-                htmlFor="password"
-                style={{
-                  color: "#1A1A1A",
-                  fontSize: "14px",
-                  fontWeight: 500,
-                }}
-              >
-                Senha
-              </Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder={mode === "register" ? "Mínimo 8 caracteres" : "Sua senha"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={mode === "register" ? 8 : undefined}
-                  autoComplete={mode === "register" ? "new-password" : "current-password"}
-                  className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px] pr-12"
-                  style={{
-                    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-                  style={{ color: "#9CA3AF" }}
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-sm text-center py-2 px-3 rounded-lg"
-                style={{
-                  color: "#DC2626",
-                  background: "rgba(220, 38, 38, 0.06)",
-                }}
-              >
-                {error}
-              </motion.p>
-            )}
-
-            <div className="w-full max-w-[280px] mx-auto pt-2">
-              <motion.button
-                type="submit"
-                disabled={isSubmitting}
-                className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{
-                  background: "#1A1A1A",
-                  color: "#FFFFFF",
-                  border: "none",
-                  borderRadius: "12px",
-                  padding: "16px 32px",
-                  fontSize: "15px",
-                  fontWeight: 500,
-                  letterSpacing: "-0.01em",
-                  cursor: "pointer",
-                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
-                }}
-                whileHover={!isSubmitting ? {
-                  scale: 1.02,
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-                } : {}}
-                whileTap={!isSubmitting ? { scale: 0.98 } : {}}
-              >
-                {isSubmitting ? (
-                  <div
-                    className="w-5 h-5 border-2 rounded-full animate-spin mx-auto"
-                    style={{
-                      borderColor: "rgba(255,255,255,0.3)",
-                      borderTopColor: "#FFFFFF",
-                    }}
-                  />
-                ) : (
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    {mode === "login" ? "Entrar" : "Criar conta"}
-                    <ArrowRight className="w-4 h-4" />
-                  </span>
-                )}
-              </motion.button>
-            </div>
-          </motion.form>
+          {renderContent()}
         </AnimatePresence>
 
         <div className="mt-8 text-center space-y-3">
-          <button
-            onClick={switchMode}
-            className="text-sm transition-colors"
-            style={{ color: "#6B7280", fontWeight: 400 }}
-          >
-            {mode === "login" ? (
-              <span>
-                Ainda não tem conta?{" "}
-                <span style={{ color: "#1A1A1A", fontWeight: 500 }}>
-                  Criar conta
+          {(mode === "login" || registerStep === "form") && (
+            <button onClick={switchMode} className="text-sm transition-colors" style={{ color: "#6B7280", fontWeight: 400 }}>
+              {mode === "login" ? (
+                <span>
+                  Ainda não tem conta?{" "}
+                  <span style={{ color: "#1A1A1A", fontWeight: 500 }}>Criar conta</span>
                 </span>
-              </span>
-            ) : (
-              <span className="flex items-center justify-center gap-1">
-                <ArrowLeft size={14} />
-                Já tenho conta
-              </span>
-            )}
-          </button>
+              ) : (
+                <span className="flex items-center justify-center gap-1">
+                  <ArrowLeft size={14} />
+                  Já tenho conta
+                </span>
+              )}
+            </button>
+          )}
 
-          {onGoBack && (
-            <button
-              onClick={onGoBack}
-              className="block mx-auto text-xs transition-colors"
-              style={{ color: "#9CA3AF" }}
-            >
+          {onGoBack && (mode === "login" || registerStep === "form") && (
+            <button onClick={onGoBack} className="block mx-auto text-xs transition-colors" style={{ color: "#9CA3AF" }}>
               Voltar ao início
             </button>
           )}
@@ -297,13 +497,59 @@ export function AuthPage({ defaultMode = "login", prefillName, onGoBack }: AuthP
 
       <motion.div
         className="absolute bottom-0 left-0 right-0 h-[1px]"
-        style={{
-          background: "linear-gradient(90deg, transparent 0%, rgba(251, 191, 36, 0.15) 50%, transparent 100%)",
-        }}
+        style={{ background: "linear-gradient(90deg, transparent 0%, rgba(251, 191, 36, 0.15) 50%, transparent 100%)" }}
         initial={{ scaleX: 0, opacity: 0 }}
         animate={{ scaleX: 1, opacity: 1 }}
         transition={{ duration: 1.5, delay: 0.5, ease: "easeOut" }}
       />
+    </div>
+  );
+}
+
+function ErrorMessage({ message }: { message: string }) {
+  return (
+    <motion.p
+      initial={{ opacity: 0, y: -5 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="text-sm text-center py-2 px-3 rounded-lg"
+      style={{ color: "#DC2626", background: "rgba(220, 38, 38, 0.06)" }}
+    >
+      {message}
+    </motion.p>
+  );
+}
+
+function Spinner() {
+  return (
+    <div
+      className="w-5 h-5 border-2 rounded-full animate-spin mx-auto"
+      style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#FFFFFF" }}
+    />
+  );
+}
+
+function ActionButton({ label, isSubmitting }: { label: string; isSubmitting: boolean }) {
+  return (
+    <div className="w-full max-w-[280px] mx-auto pt-2">
+      <motion.button
+        type="submit"
+        disabled={isSubmitting}
+        className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
+        style={{
+          background: "#1A1A1A", color: "#FFFFFF", border: "none", borderRadius: "12px",
+          padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
+          cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+        }}
+        whileHover={!isSubmitting ? { scale: 1.02, boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)" } : {}}
+        whileTap={!isSubmitting ? { scale: 0.98 } : {}}
+      >
+        {isSubmitting ? <Spinner /> : (
+          <span className="relative z-10 flex items-center justify-center gap-2">
+            {label}
+            <ArrowRight className="w-4 h-4" />
+          </span>
+        )}
+      </motion.button>
     </div>
   );
 }

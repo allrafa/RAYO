@@ -5,6 +5,9 @@ import type { RegisterInput, LoginInput } from "./validation.js";
 
 const SALT_ROUNDS = 12;
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+const VERIFICATION_CODE_EXPIRY_MS = 10 * 60 * 1000;
+const MAX_CODE_ATTEMPTS = 5;
+const RESEND_COOLDOWN_MS = 60 * 1000;
 
 function generateToken(): string {
   return crypto.randomBytes(32).toString("hex");
@@ -42,7 +45,128 @@ function toSafeUser(row: Record<string, unknown>): SafeUser {
   };
 }
 
+function generateVerificationCode(): string {
+  return String(crypto.randomInt(100000, 999999));
+}
+
+export async function sendVerificationCode(email: string): Promise<{ cooldownSeconds?: number }> {
+  const existing = await query("SELECT id FROM users WHERE email = $1", [email]);
+  if (existing.rows.length > 0) {
+    const err = new Error("Este email já está registrado") as Error & { statusCode: number; code: string };
+    err.statusCode = 409;
+    err.code = "EMAIL_EXISTS";
+    throw err;
+  }
+
+  const recent = await query(
+    `SELECT created_at FROM email_verification_codes
+     WHERE email = $1
+     ORDER BY created_at DESC LIMIT 1`,
+    [email]
+  );
+
+  if (recent.rows.length > 0) {
+    const lastSent = new Date(recent.rows[0].created_at).getTime();
+    const elapsed = Date.now() - lastSent;
+    if (elapsed < RESEND_COOLDOWN_MS) {
+      const remaining = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+      const err = new Error(`Aguarde ${remaining} segundos para reenviar o código`) as Error & { statusCode: number; code: string };
+      err.statusCode = 429;
+      err.code = "COOLDOWN";
+      throw err;
+    }
+  }
+
+  await query("DELETE FROM email_verification_codes WHERE email = $1", [email]);
+
+  const code = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + VERIFICATION_CODE_EXPIRY_MS);
+
+  await query(
+    `INSERT INTO email_verification_codes (email, code, expires_at)
+     VALUES ($1, $2, $3)`,
+    [email, code, expiresAt]
+  );
+
+  // TODO: Replace with Resend email sending when configured
+  console.log(`\n========================================`);
+  console.log(`📧 CÓDIGO DE VERIFICAÇÃO`);
+  console.log(`   Email: ${email}`);
+  console.log(`   Código: ${code}`);
+  console.log(`   Expira em: 10 minutos`);
+  console.log(`========================================\n`);
+
+  return {};
+}
+
+export async function verifyCode(email: string, code: string): Promise<{ verified: boolean }> {
+  const result = await query(
+    `SELECT id, code, attempts, expires_at FROM email_verification_codes
+     WHERE email = $1 AND verified = FALSE
+     ORDER BY created_at DESC LIMIT 1`,
+    [email]
+  );
+
+  if (result.rows.length === 0) {
+    const err = new Error("Nenhum código encontrado. Solicite um novo código.") as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "NO_CODE";
+    throw err;
+  }
+
+  const row = result.rows[0];
+
+  if (new Date(row.expires_at) < new Date()) {
+    await query("DELETE FROM email_verification_codes WHERE email = $1", [email]);
+    const err = new Error("Código expirado. Solicite um novo código.") as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "CODE_EXPIRED";
+    throw err;
+  }
+
+  if (row.attempts >= MAX_CODE_ATTEMPTS) {
+    await query("DELETE FROM email_verification_codes WHERE email = $1", [email]);
+    const err = new Error("Muitas tentativas. Solicite um novo código.") as Error & { statusCode: number; code: string };
+    err.statusCode = 429;
+    err.code = "TOO_MANY_ATTEMPTS";
+    throw err;
+  }
+
+  if (row.code !== code) {
+    await query(
+      "UPDATE email_verification_codes SET attempts = attempts + 1 WHERE id = $1",
+      [row.id]
+    );
+    const remaining = MAX_CODE_ATTEMPTS - (row.attempts + 1);
+    const err = new Error(`Código incorreto. ${remaining} tentativa(s) restante(s).`) as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "INVALID_CODE";
+    throw err;
+  }
+
+  await query(
+    "UPDATE email_verification_codes SET verified = TRUE WHERE id = $1",
+    [row.id]
+  );
+
+  return { verified: true };
+}
+
 export async function registerUser(input: RegisterInput): Promise<{ user: SafeUser; token: string }> {
+  const verified = await query(
+    `SELECT id FROM email_verification_codes
+     WHERE email = $1 AND verified = TRUE AND expires_at > NOW()
+     ORDER BY created_at DESC LIMIT 1`,
+    [input.email]
+  );
+
+  if (verified.rows.length === 0) {
+    const err = new Error("Email não verificado. Solicite um código de verificação.") as Error & { statusCode: number; code: string };
+    err.statusCode = 403;
+    err.code = "EMAIL_NOT_VERIFIED";
+    throw err;
+  }
+
   const existing = await query("SELECT id FROM users WHERE email = $1", [input.email]);
   if (existing.rows.length > 0) {
     const err = new Error("Este email já está registrado") as Error & { statusCode: number; code: string };
@@ -59,6 +183,8 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
      RETURNING id, email, name, level, xp, streak, is_premium, created_at`,
     [input.email, passwordHash, input.name]
   );
+
+  await query("DELETE FROM email_verification_codes WHERE email = $1", [input.email]);
 
   const user = toSafeUser(result.rows[0]);
   const token = await createSession(user.id);

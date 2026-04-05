@@ -50,10 +50,18 @@ vite.config.ts           # Vite + API proxy config
 
 ## Key Endpoints
 - `GET /api/health` — Server + DB status check
-- `POST /api/auth/register` — Create account (email, password, name)
+- `POST /api/auth/send-code` — Send 6-digit verification code to email
+- `POST /api/auth/verify-code` — Verify the code (must be done before register)
+- `POST /api/auth/register` — Create account (requires verified email)
 - `POST /api/auth/login` — Login (returns httpOnly session cookie)
 - `POST /api/auth/logout` — Logout (clears session)
 - `GET /api/auth/me` — Get current user (requires auth)
+
+## Email Verification
+- Registration requires email verification via 6-digit code
+- Codes expire in 10 minutes, max 5 attempts per code
+- 60-second cooldown between code sends
+- TODO: Connect Resend for actual email delivery (codes currently logged to server console)
 
 ## Development Rules
 1. No business logic in frontend

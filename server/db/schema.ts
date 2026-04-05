@@ -55,5 +55,25 @@ export async function initializeSchema() {
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)
   `);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS email_verification_codes (
+      id SERIAL PRIMARY KEY,
+      email VARCHAR(255) NOT NULL,
+      code VARCHAR(6) NOT NULL,
+      attempts INTEGER DEFAULT 0,
+      verified BOOLEAN DEFAULT FALSE,
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_verification_email ON email_verification_codes(email)
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_verification_expires ON email_verification_codes(expires_at)
+  `);
+
   console.log("[DB] Schema initialized successfully.");
 }

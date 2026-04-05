@@ -17,6 +17,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
+  sendVerificationCode: (email: string) => Promise<{ success: boolean; error?: string }>;
+  verifyEmailCode: (email: string, code: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -50,6 +52,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error: res.error?.message || "Erro ao fazer login" };
   }, []);
 
+  const sendVerificationCode = useCallback(async (email: string) => {
+    const res = await api.post<{ message: string }>("/api/auth/send-code", { email });
+    if (res.success) {
+      return { success: true };
+    }
+    return { success: false, error: res.error?.message || "Erro ao enviar código" };
+  }, []);
+
+  const verifyEmailCode = useCallback(async (email: string, code: string) => {
+    const res = await api.post<{ verified: boolean }>("/api/auth/verify-code", { email, code });
+    if (res.success) {
+      return { success: true };
+    }
+    return { success: false, error: res.error?.message || "Erro ao verificar código" };
+  }, []);
+
   const register = useCallback(async (email: string, password: string, name: string) => {
     const res = await api.post<{ user: User }>("/api/auth/register", { email, password, name });
     if (res.success && res.data) {
@@ -65,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, sendVerificationCode, verifyEmailCode, logout }}>
       {children}
     </AuthContext.Provider>
   );

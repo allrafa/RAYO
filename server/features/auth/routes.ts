@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { validateRegister, validateLogin } from "./validation.js";
-import { registerUser, loginUser, logoutUser } from "./service.js";
+import { registerUser, loginUser, logoutUser, sendVerificationCode, verifyCode } from "./service.js";
 import { success, created, error } from "../../utils/response.js";
 import { requireAuth } from "../../middleware/auth.js";
 
@@ -18,6 +18,49 @@ function setSessionCookie(res: Response, token: string) {
     path: "/",
   });
 }
+
+router.post("/send-code", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = req.body || {};
+
+    if (!email || typeof email !== "string") {
+      error(res, "Email é obrigatório", "VALIDATION_ERROR", 400);
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      error(res, "Formato de email inválido", "VALIDATION_ERROR", 400);
+      return;
+    }
+
+    await sendVerificationCode(email.trim().toLowerCase());
+    success(res, { message: "Código enviado com sucesso" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/verify-code", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, code } = req.body || {};
+
+    if (!email || typeof email !== "string") {
+      error(res, "Email é obrigatório", "VALIDATION_ERROR", 400);
+      return;
+    }
+
+    if (!code || typeof code !== "string" || code.length !== 6) {
+      error(res, "Código deve ter 6 dígitos", "VALIDATION_ERROR", 400);
+      return;
+    }
+
+    const result = await verifyCode(email.trim().toLowerCase(), code.trim());
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.post("/register", async (req: Request, res: Response, next: NextFunction) => {
   try {
