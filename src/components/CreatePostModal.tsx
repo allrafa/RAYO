@@ -152,26 +152,19 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home" }: Cr
     setIsSubmitting(true);
 
     try {
-      // Simular upload de imagens e criação do post
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      createPost(content, selectedCategory, {
+      const ok = await createPost(content, selectedCategory, {
         visibility,
-        images: selectedImages.map(file => URL.createObjectURL(file))
+        images: selectedImages.map(file => URL.createObjectURL(file)),
+        forum_id: 7,
       });
       
-      // Reset form
-      setContent("");
-      setSelectedCategory("Relacionamento");
-      setVisibility(currentPage === "comunidade" ? "comunidade" : "publico");
-      setSelectedImages([]);
-      onOpenChange(false);
-
-      enhancedToast.success({
-        title: "Post publicado!",
-        description: "Sua publicação está disponível na comunidade",
-        haptic: true
-      });
+      if (ok) {
+        setContent("");
+        setSelectedCategory("Relacionamento");
+        setVisibility(currentPage === "comunidade" ? "comunidade" : "publico");
+        setSelectedImages([]);
+        onOpenChange(false);
+      }
 
     } catch (error) {
       enhancedToast.error({

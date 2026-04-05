@@ -26,7 +26,9 @@ server/                  # Backend
 │   ├── health/          # Health check endpoint
 │   ├── auth/            # Authentication (register, login, logout, me)
 │   ├── users/           # User profile management (PATCH /api/users/profile)
-│   └── gamification/    # XP, badges, missions, streaks
+│   ├── gamification/    # XP, badges, missions, streaks
+│   ├── academia/        # Courses, modules, lessons, progress
+│   └── community/       # Forums, posts, comments, likes
 └── utils/               # Response helpers, logger
 
 src/                     # Frontend (React)
@@ -86,6 +88,23 @@ vite.config.ts           # Vite + API proxy config
 - users table extended with: longest_streak, last_activity_date
 - Service functions: addXP(), updateStreak(), unlockBadge(), recordMissionProgress(), claimMissionReward()
 - PerfilPage fetches real data from /api/gamification/profile and /api/gamification/badges
+
+## Community System
+- DB tables: forums, posts, comments, post_likes, comment_likes
+- 7 forums seeded: 4 life-context-specific + 3 general (Finanças, Fé & Propósito, Geral)
+- 12 sample posts with comments seeded across forums
+- API endpoints under `/api/community/`:
+  - `GET /forums` — List all forums with post counts
+  - `GET /forums/:id/posts` — Paginated posts for a forum (optional auth for user_liked)
+  - `GET /posts` — All posts paginated (optional auth)
+  - `POST /posts` — Create post (requires auth, needs forum_id + content)
+  - `GET /posts/:id` — Post detail with threaded comments (optional auth)
+  - `POST /posts/:id/like` — Toggle like on post (requires auth)
+  - `POST /posts/:id/comments` — Add comment (requires auth)
+  - `POST /comments/:id/like` — Toggle like on comment (requires auth)
+- `optionalAuth` middleware: attaches `req.user` if session cookie exists, but doesn't block unauthenticated requests
+- Frontend: ComunidadePage loads forums/posts from API, supports real comments panel with submit + like
+- Feature files: `server/features/community/service.ts`, `server/features/community/routes.ts`
 
 ## Development Rules
 1. No business logic in frontend

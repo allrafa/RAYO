@@ -10,6 +10,15 @@ declare global {
   }
 }
 
+export async function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  const token = req.cookies?.session_token;
+  if (token) {
+    const user = await validateSession(token);
+    if (user) req.user = user;
+  }
+  next();
+}
+
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token = req.cookies?.session_token;
 

@@ -10,6 +10,8 @@ import authRoutes from "./features/auth/routes.js";
 import userRoutes from "./features/users/routes.js";
 import gamificationRoutes from "./features/gamification/routes.js";
 import academiaRoutes from "./features/academia/routes.js";
+import communityRoutes from "./features/community/routes.js";
+import { optionalAuth } from "./middleware/auth.js";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -35,6 +37,7 @@ app.use("/api/auth", rateLimiter(20, 15 * 60 * 1000), authRoutes);
 app.use("/api/users", rateLimiter(30, 15 * 60 * 1000), userRoutes);
 app.use("/api/gamification", rateLimiter(60, 15 * 60 * 1000), gamificationRoutes);
 app.use("/api/courses", rateLimiter(60, 15 * 60 * 1000), academiaRoutes);
+app.use("/api/community", rateLimiter(60, 15 * 60 * 1000), optionalAuth, communityRoutes);
 
 app.all("/api/{*path}", (req, res) => {
   sendError(res, `Route ${req.method} ${req.path} not found`, "NOT_FOUND", 404);

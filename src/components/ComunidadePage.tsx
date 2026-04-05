@@ -5,7 +5,7 @@ import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Input } from "./ui/input";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { PullToRefresh } from "./PullToRefresh";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { enhancedToast } from "./EnhancedToast";
@@ -16,6 +16,28 @@ import { FavoriteIcon } from "./FavoriteButton";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { ConversasPage } from "./ConversasPage";
 import { useTheme } from "./ThemeProvider";
+import { api } from "../lib/api";
+
+interface Forum {
+  id: number;
+  name: string;
+  description: string;
+  icon: string;
+  life_context: string | null;
+  category: string;
+  post_count: string;
+}
+
+interface CommentData {
+  id: number;
+  content: string;
+  parent_id: number | null;
+  like_count: number;
+  created_at: string;
+  author_name: string;
+  author_id: number;
+  user_liked: boolean;
+}
 
 export function ComunidadePage() {
   const [selectedPost, setSelectedPost] = useState<any>(null);
@@ -27,9 +49,62 @@ export function ComunidadePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentView, setCurrentView] = useState<"feed" | "grupos" | "trending" | "conversas">("feed");
   
-  const { posts, likePost, sharePost } = useApp();
+  const { posts, likePost, sharePost, loadPosts } = useApp();
   const { reactions, handleReaction } = useReactions();
   const { theme } = useTheme();
+  const [forums, setForums] = useState<Forum[]>([]);
+  const [postComments, setPostComments] = useState<CommentData[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+
+  const loadForums = useCallback(async () => {
+    try {
+      const res = await api.get<{ forums: Forum[] }>("/api/community/forums");
+      if (res.success && res.data) {
+        setForums(res.data.forums);
+      }
+    } catch (err) {
+      console.error("Error loading forums:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadForums();
+  }, [loadForums]);
+
+  const loadPostComments = useCallback(async (postId: number) => {
+    setLoadingComments(true);
+    try {
+      const res = await api.get<{ post: { comments: CommentData[] } }>(`/api/community/posts/${postId}`);
+      if (res.success && res.data) {
+        setPostComments(res.data.post.comments);
+      }
+    } catch (err) {
+      console.error("Error loading comments:", err);
+    } finally {
+      setLoadingComments(false);
+    }
+  }, []);
+
+  const submitComment = useCallback(async (postId: number, content: string) => {
+    const res = await api.post<{ comment: CommentData }>(`/api/community/posts/${postId}/comments`, { content });
+    if (res.success && res.data) {
+      setPostComments(prev => [...prev, res.data!.comment]);
+      await loadPosts();
+      return true;
+    }
+    return false;
+  }, [loadPosts]);
+
+  const toggleCommentLike = useCallback(async (commentId: number) => {
+    const res = await api.post<{ liked: boolean }>(`/api/community/comments/${commentId}/like`);
+    if (res.success && res.data) {
+      setPostComments(prev => prev.map(c =>
+        c.id === commentId
+          ? { ...c, user_liked: res.data!.liked, like_count: res.data!.liked ? c.like_count + 1 : c.like_count - 1 }
+          : c
+      ));
+    }
+  }, []);
 
   const handleReactionWithFeedback = (postId: number, emoji: string) => {
     handleReaction(postId, emoji);
@@ -38,7 +113,7 @@ export function ComunidadePage() {
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await Promise.all([loadPosts(), loadForums()]);
     } catch (error) {
       console.error("Erro ao atualizar feed:", error);
     } finally {
@@ -46,77 +121,26 @@ export function ComunidadePage() {
     }
   };
 
-  const categories = [
-    { id: "relacionamento", name: "Relacionamento", icon: "❤️", gradient: "from-[#FF5A5F] to-[#E91E63]", count: 1247 },
-    { id: "financas", name: "Finanças", icon: "💰", gradient: "from-[#F59E0B] to-[#D97706]", count: 892 },
-    { id: "parentalidade", name: "Parentalidade", icon: "👨‍👩‍👧", gradient: "from-[#EC4899] to-[#DB2777]", count: 2103 },
-    { id: "comunicacao", name: "Comunicação", icon: "💬", gradient: "from-[#3B82F6] to-[#2563EB]", count: 1678 },
-    { id: "espiritualidade", name: "Espiritualidade", icon: "🙏", gradient: "from-[#8B5CF6] to-[#7C3AED]", count: 1456 },
-    { id: "proposito", name: "Propósito", icon: "🎯", gradient: "from-[#10B981] to-[#059669]", count: 987 }
-  ];
+  const categories = forums.map(f => ({
+    id: f.category.toLowerCase().replace(/\s+/g, '-'),
+    name: f.name,
+    icon: f.icon,
+    gradient: "from-[#3B82F6] to-[#2563EB]",
+    count: parseInt(f.post_count) || 0
+  }));
 
-  const groups = [
-    { 
-      id: 1,
-      name: "Recém-Casados", 
-      members: 1247, 
-      isJoined: true, 
-      category: "Relacionamento",
-      activeNow: 34,
-      postsToday: 12,
-      image: "https://images.unsplash.com/photo-1519741497674-611481863552?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400"
-    },
-    { 
-      id: 2,
-      name: "Primeiros Filhos", 
-      members: 892, 
-      isJoined: false, 
-      category: "Parentalidade",
-      activeNow: 28,
-      postsToday: 8,
-      image: "https://images.unsplash.com/photo-1476703993599-0035a21b17a9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400"
-    },
-    { 
-      id: 3,
-      name: "Finanças Familiares", 
-      members: 2103, 
-      isJoined: true, 
-      category: "Finanças",
-      activeNow: 56,
-      postsToday: 15,
-      image: "https://images.unsplash.com/photo-1554224154-26032ffc0d07?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400"
-    },
-    { 
-      id: 4,
-      name: "Comunicação no Relacionamento", 
-      members: 1678, 
-      isJoined: false, 
-      category: "Comunicação",
-      activeNow: 42,
-      postsToday: 10,
-      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400"
-    },
-    { 
-      id: 5,
-      name: "Vida Espiritual", 
-      members: 1456, 
-      isJoined: false, 
-      category: "Espiritualidade",
-      activeNow: 38,
-      postsToday: 9,
-      image: "https://images.unsplash.com/photo-1507692049790-de58290a4334?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400"
-    },
-    { 
-      id: 6,
-      name: "Preparação para Casamento", 
-      members: 987, 
-      isJoined: true, 
-      category: "Relacionamento",
-      activeNow: 22,
-      postsToday: 6,
-      image: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400"
-    }
-  ];
+  const groups = forums.map(f => ({
+    id: f.id,
+    name: f.name,
+    members: parseInt(f.post_count) || 0,
+    isJoined: false,
+    category: f.category,
+    activeNow: 0,
+    postsToday: 0,
+    image: "",
+    description: f.description,
+    icon: f.icon,
+  }));
 
   const trendingTopics = [
     { topic: "#ComunicacaoNaoViolenta", posts: 34, trend: "+12%" },
@@ -323,6 +347,7 @@ export function ComunidadePage() {
               onComment={(post) => {
                 setSelectedPost(post);
                 setShowComments(true);
+                loadPostComments(post.id);
               }}
               onShare={(post) => {
                 setSelectedPost(post);
@@ -347,6 +372,7 @@ export function ComunidadePage() {
               onComment={(post) => {
                 setSelectedPost(post);
                 setShowComments(true);
+                loadPostComments(post.id);
               }}
               onShare={(post) => {
                 setSelectedPost(post);
@@ -363,9 +389,21 @@ export function ComunidadePage() {
           )}
         </div>
 
+        {/* Comments Panel */}
+        {showComments && selectedPost && (
+          <CommentsPanel
+            post={selectedPost}
+            comments={postComments}
+            loadingComments={loadingComments}
+            onClose={() => { setShowComments(false); setSelectedPost(null); setPostComments([]); }}
+            onSubmitComment={(content) => submitComment(selectedPost.id, content)}
+            onLikeComment={toggleCommentLike}
+          />
+        )}
+
         {/* Create Post Modal */}
         {showCreatePost && (
-          <CreatePostModal onClose={() => setShowCreatePost(false)} />
+          <CreatePostModal open={showCreatePost} onOpenChange={setShowCreatePost} currentPage="comunidade" />
         )}
       </div>
     </PullToRefresh>
@@ -1225,5 +1263,116 @@ function GroupCard({ group }: GroupCardProps) {
         </Button>
       </CardContent>
     </Card>
+  );
+}
+
+interface CommentsPanelProps {
+  post: any;
+  comments: CommentData[];
+  loadingComments: boolean;
+  onClose: () => void;
+  onSubmitComment: (content: string) => Promise<boolean>;
+  onLikeComment: (commentId: number) => void;
+}
+
+function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComment, onLikeComment }: CommentsPanelProps) {
+  const [commentText, setCommentText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!commentText.trim() || submitting) return;
+    setSubmitting(true);
+    const ok = await onSubmitComment(commentText.trim());
+    if (ok) setCommentText("");
+    setSubmitting(false);
+  };
+
+  function formatTime(dateStr: string): string {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const mins = Math.floor((now - then) / 60000);
+    if (mins < 1) return "Agora";
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+      <div
+        className="w-full max-w-lg rounded-t-2xl max-h-[80vh] flex flex-col"
+        style={{ background: 'var(--raio-bg-primary)' }}
+      >
+        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--raio-border-default)' }}>
+          <h3 className="text-[16px]" style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}>
+            Comentários ({post.comments})
+          </h3>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <MoreHorizontal className="w-5 h-5" style={{ color: 'var(--raio-text-tertiary)' }} />
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {loadingComments ? (
+            <div className="text-center py-8" style={{ color: 'var(--raio-text-tertiary)' }}>Carregando...</div>
+          ) : comments.length === 0 ? (
+            <div className="text-center py-8" style={{ color: 'var(--raio-text-tertiary)' }}>
+              Nenhum comentário ainda. Seja o primeiro!
+            </div>
+          ) : (
+            comments.map((c) => (
+              <div key={c.id} className="flex gap-3">
+                <Avatar className="w-8 h-8 flex-shrink-0">
+                  <AvatarFallback style={{ background: 'var(--raio-accent-light)', color: 'var(--raio-accent-primary)', fontSize: '12px' }}>
+                    {c.author_name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px]" style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}>
+                      {c.author_name}
+                    </span>
+                    <span className="text-[11px]" style={{ color: 'var(--raio-text-tertiary)' }}>
+                      {formatTime(c.created_at)}
+                    </span>
+                  </div>
+                  <p className="text-[13px] mt-1" style={{ color: 'var(--raio-text-secondary)' }}>
+                    {c.content}
+                  </p>
+                  <button
+                    onClick={() => onLikeComment(c.id)}
+                    className="flex items-center gap-1 mt-1 text-[12px] transition-colors"
+                    style={{ color: c.user_liked ? 'var(--raio-accent-primary)' : 'var(--raio-text-tertiary)' }}
+                  >
+                    <Heart className="w-3 h-3" fill={c.user_liked ? 'currentColor' : 'none'} />
+                    {c.like_count > 0 && <span>{c.like_count}</span>}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="p-4 border-t flex items-center gap-2" style={{ borderColor: 'var(--raio-border-default)' }}>
+          <Input
+            placeholder="Escreva um comentário..."
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
+            className="flex-1"
+            style={{ background: 'var(--raio-bg-secondary)', color: 'var(--raio-text-primary)' }}
+          />
+          <Button
+            size="icon"
+            onClick={handleSubmit}
+            disabled={!commentText.trim() || submitting}
+            style={{ background: 'var(--raio-accent-primary)', color: '#fff' }}
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

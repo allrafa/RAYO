@@ -276,8 +276,84 @@ export async function initializeSchema() {
     CREATE INDEX IF NOT EXISTS idx_user_lesson_progress_user_id ON user_lesson_progress(user_id)
   `);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS forums (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(200) NOT NULL,
+      description TEXT,
+      icon VARCHAR(10),
+      life_context VARCHAR(50),
+      category VARCHAR(100),
+      is_active BOOLEAN DEFAULT TRUE,
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS posts (
+      id SERIAL PRIMARY KEY,
+      forum_id INTEGER NOT NULL REFERENCES forums(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title VARCHAR(300),
+      content TEXT NOT NULL,
+      category VARCHAR(100),
+      is_pinned BOOLEAN DEFAULT FALSE,
+      like_count INTEGER DEFAULT 0,
+      comment_count INTEGER DEFAULT 0,
+      share_count INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`CREATE INDEX IF NOT EXISTS idx_posts_forum_id ON posts(forum_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC)`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS comments (
+      id SERIAL PRIMARY KEY,
+      post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE,
+      like_count INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id)`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS post_likes (
+      id SERIAL PRIMARY KEY,
+      post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(post_id, user_id)
+    )
+  `);
+
+  await query(`CREATE INDEX IF NOT EXISTS idx_post_likes_post_id ON post_likes(post_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_post_likes_user_id ON post_likes(user_id)`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS comment_likes (
+      id SERIAL PRIMARY KEY,
+      comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(comment_id, user_id)
+    )
+  `);
+
+  await query(`CREATE INDEX IF NOT EXISTS idx_comment_likes_comment_id ON comment_likes(comment_id)`);
+
   await seedBadgesAndMissions();
   await seedCourses();
+  await seedForumsAndPosts();
 
   console.log("[DB] Schema initialized successfully.");
 }
@@ -536,4 +612,88 @@ async function seedCourses() {
   }
 
   console.log("[DB] Seeded courses with modules and lessons.");
+}
+
+async function seedForumsAndPosts() {
+  const { rows } = await query(`SELECT COUNT(*) as count FROM forums`);
+  if (parseInt(rows[0].count) > 0) return;
+
+  const forumsData = [
+    { name: 'Solteiros & Preparação', description: 'Espaço para quem está se preparando para um relacionamento saudável', icon: '🚶', life_context: 'solteiro', category: 'Relacionamento', sort_order: 1 },
+    { name: 'Namoro & Noivado', description: 'Para casais que estão construindo um futuro juntos', icon: '💑', life_context: 'namoro', category: 'Relacionamento', sort_order: 2 },
+    { name: 'Vida de Casados', description: 'Fortalecendo o casamento dia após dia', icon: '💍', life_context: 'casados', category: 'Relacionamento', sort_order: 3 },
+    { name: 'Parentalidade', description: 'Educação dos filhos e desafios da maternidade e paternidade', icon: '👨‍👩‍👧', life_context: 'pais', category: 'Família', sort_order: 4 },
+    { name: 'Finanças Familiares', description: 'Dicas e experiências sobre gestão financeira do lar', icon: '💰', life_context: null, category: 'Finanças', sort_order: 5 },
+    { name: 'Fé & Propósito', description: 'Espiritualidade, propósito e crescimento pessoal', icon: '🙏', life_context: null, category: 'Espiritualidade', sort_order: 6 },
+    { name: 'Geral', description: 'Conversas livres e temas variados da comunidade RAIO', icon: '💬', life_context: null, category: 'Geral', sort_order: 7 },
+  ];
+
+  const forumIds: Record<string, number> = {};
+  for (const f of forumsData) {
+    const { rows: fRows } = await query(
+      `INSERT INTO forums (name, description, icon, life_context, category, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [f.name, f.description, f.icon, f.life_context, f.category, f.sort_order]
+    );
+    forumIds[f.name] = fRows[0].id;
+  }
+
+  const seedUserResult = await query(`SELECT id FROM users ORDER BY id LIMIT 1`);
+  let seedUserId: number;
+  if (seedUserResult.rows.length > 0) {
+    seedUserId = seedUserResult.rows[0].id;
+  } else {
+    const { rows: newUser } = await query(
+      `INSERT INTO users (email, password_hash, name, segments)
+       VALUES ('comunidade@raio.app', 'seed_no_login', 'Equipe RAIO', '{casados}')
+       ON CONFLICT (email) DO UPDATE SET name = 'Equipe RAIO'
+       RETURNING id`
+    );
+    seedUserId = newUser[0].id;
+  }
+
+  const samplePosts = [
+    { forum: 'Vida de Casados', title: null, content: 'Acabamos de completar o curso de comunicação não-violenta e já vemos uma diferença gigante no nosso relacionamento! 🙏 Alguém mais teve essa experiência?', category: 'Comunicação', is_pinned: false },
+    { forum: 'Finanças Familiares', title: null, content: 'Dica valiosa: começamos a fazer reuniões mensais para falar sobre nossas finanças. Recomendo demais! 💰', category: 'Finanças', is_pinned: true },
+    { forum: 'Parentalidade', title: null, content: 'Meu filho de 5 anos está na fase de perguntas difíceis. Como vocês lidam com isso? Algum livro ou recurso que recomendam?', category: 'Parentalidade', is_pinned: false },
+    { forum: 'Namoro & Noivado', title: null, content: 'Estamos noivos há 3 meses e já começamos o aconselhamento pré-nupcial. Melhor decisão que tomamos! 💍', category: 'Relacionamento', is_pinned: false },
+    { forum: 'Solteiros & Preparação', title: null, content: 'Aprendi que estar solteiro é o melhor momento para investir em autoconhecimento. O curso de Preparação para Namoro Saudável abriu meus olhos!', category: 'Autoconhecimento', is_pinned: false },
+    { forum: 'Fé & Propósito', title: null, content: 'Vocês também fazem devocional em casal? Começamos essa prática há 2 semanas e tem sido muito especial para nós.', category: 'Espiritualidade', is_pinned: false },
+    { forum: 'Geral', title: null, content: 'Adorei a plataforma RAIO! A comunidade aqui é muito acolhedora e os cursos são muito práticos. Recomendo para todos os casais!', category: 'Geral', is_pinned: true },
+    { forum: 'Vida de Casados', title: null, content: 'Alguém tem dicas de como manter a conexão emocional quando ambos trabalham em horários diferentes? Sinto que estamos nos distanciando...', category: 'Relacionamento', is_pinned: false },
+    { forum: 'Parentalidade', title: null, content: 'Disciplina positiva mudou a nossa família! Antes gritávamos muito e agora conseguimos resolver conflitos com calma. O curso da Dra. Maria Santos é incrível.', category: 'Parentalidade', is_pinned: false },
+    { forum: 'Finanças Familiares', title: null, content: 'Conseguimos quitar nossas dívidas em 8 meses usando a planilha do curso de Finanças para Casais. Estamos livres! 🎉', category: 'Finanças', is_pinned: false },
+    { forum: 'Namoro & Noivado', title: null, content: 'Como vocês lidam com as diferenças culturais no relacionamento? Eu sou do sul e meu namorado do nordeste, e às vezes os costumes são bem diferentes.', category: 'Relacionamento', is_pinned: false },
+    { forum: 'Geral', title: null, content: 'Sugestão para a equipe RAIO: seria incrível ter um podcast semanal com especialistas em relacionamento! 🎙️', category: 'Geral', is_pinned: false },
+  ];
+
+  for (const p of samplePosts) {
+    const forumId = forumIds[p.forum];
+    if (!forumId) continue;
+    const likeCount = Math.floor(Math.random() * 40) + 5;
+    const commentCount = Math.floor(Math.random() * 12) + 1;
+    const offset = Math.floor(Math.random() * 72);
+    await query(
+      `INSERT INTO posts (forum_id, user_id, title, content, category, is_pinned, like_count, comment_count, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW() - INTERVAL '${offset} hours')`,
+      [forumId, seedUserId, p.title, p.content, p.category, p.is_pinned, likeCount, commentCount]
+    );
+  }
+
+  const postRows = await query(`SELECT id FROM posts ORDER BY id LIMIT 5`);
+  const sampleComments = [
+    'Concordo totalmente! Tive a mesma experiência.',
+    'Obrigada por compartilhar! Vou tentar isso também.',
+    'Que inspiração! Precisamos de mais posts assim.',
+    'Recomendo o módulo 3 do curso, ajuda bastante nisso.',
+    'Estamos passando pela mesma situação. Força para vocês!',
+  ];
+  for (let i = 0; i < postRows.rows.length; i++) {
+    await query(
+      `INSERT INTO comments (post_id, user_id, content) VALUES ($1, $2, $3)`,
+      [postRows.rows[i].id, seedUserId, sampleComments[i]]
+    );
+  }
+
+  console.log("[DB] Seeded forums and community posts.");
 }

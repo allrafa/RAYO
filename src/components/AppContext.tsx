@@ -66,6 +66,9 @@ interface Post {
   userShared?: boolean;
   visibility?: 'publico' | 'comunidade' | 'amigos';
   images?: string[];
+  forum_id?: number;
+  forum_name?: string;
+  author_id?: number;
 }
 
 interface Product {
@@ -162,10 +165,11 @@ interface AppContextType {
   toggleBookFavorite: (bookId: string) => void;
   getBookById: (bookId: string) => Book | undefined;
   
-  // Post functions
+  loadPosts: () => Promise<void>;
+  
   likePost: (postId: number) => void;
   sharePost: (postId: number) => void;
-  createPost: (content: string, category: string, options?: { visibility?: string; images?: string[] }) => void;
+  createPost: (content: string, category: string, options?: { visibility?: string; images?: string[]; forum_id?: number }) => Promise<boolean>;
   
   // Product functions
   addToCart: (productId: number) => void;
@@ -333,37 +337,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadCourses();
   }, [loadCourses]);
 
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: 1,
-      author: "Maria Silva",
-      avatar: "/placeholder-avatar.jpg",
-      time: "2h atrás",
-      content: "Acabamos de completar o curso de comunicação não-violenta e já vemos uma diferença gigante no nosso relacionamento! 🙏 Alguém mais teve essa experiência?",
-      category: "Relacionamento",
-      likes: 24,
-      comments: 8,
-      shares: 3,
-      isPinned: false,
-      userReacted: false,
-      visibility: "comunidade"
-    },
-    {
-      id: 2,
-      author: "João Santos",
-      avatar: "/placeholder-avatar.jpg",
-      time: "5h atrás",
-      content: "Dica valiosa: começamos a fazer reuniões mensais para falar sobre nossas finanças. Recomendo demais! 💰",
-      category: "Finanças",
-      likes: 45,
-      comments: 12,
-      shares: 8,
-      isPinned: true,
-      userReacted: true,
-      visibility: "comunidade",
-      images: ["https://images.unsplash.com/photo-1554224155-6726b3ff858f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmaW5hbmNlJTIwcGxhbm5pbmd8ZW58MXx8fHwxNzU5NjA4MzE5fDA&ixlib=rb-4.1.0&q=80&w=1080"]
-    }
-  ]);
+  const [posts, setPosts] = useState<Post[]>([]);
 
   const [products, setProducts] = useState<Product[]>([
     {
@@ -495,8 +469,73 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { success: res.success };
   };
 
-  // Post functions
-  const likePost = (postId: number) => {
+  function formatRelativeTime(dateStr: string): string {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diffMs = now - then;
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return "Agora";
+    if (mins < 60) return `${mins}m atrás`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h atrás`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d atrás`;
+    return new Date(dateStr).toLocaleDateString("pt-BR");
+  }
+
+  interface APIPost {
+    id: number;
+    forum_id: number;
+    title: string | null;
+    content: string;
+    category: string;
+    is_pinned: boolean;
+    like_count: number;
+    comment_count: number;
+    share_count: number;
+    created_at: string;
+    author_name: string;
+    author_id: number;
+    forum_name?: string;
+    user_liked: boolean;
+  }
+
+  function mapAPIPost(p: APIPost): Post {
+    return {
+      id: p.id,
+      author: p.author_name,
+      avatar: "/placeholder-avatar.jpg",
+      time: formatRelativeTime(p.created_at),
+      content: p.content,
+      category: p.category || "",
+      likes: p.like_count,
+      comments: p.comment_count,
+      shares: p.share_count,
+      isPinned: p.is_pinned,
+      userReacted: p.user_liked,
+      visibility: "comunidade",
+      forum_id: p.forum_id,
+      forum_name: p.forum_name,
+      author_id: p.author_id,
+    };
+  }
+
+  const loadPosts = useCallback(async () => {
+    try {
+      const res = await api.get<{ posts: APIPost[]; total: number }>("/api/community/posts");
+      if (res.success && res.data) {
+        setPosts(res.data.posts.map(mapAPIPost));
+      }
+    } catch (err) {
+      console.error("[AppContext] Failed to load posts:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadPosts();
+  }, [loadPosts]);
+
+  const likePost = async (postId: number) => {
     setPosts(prev => prev.map(post => {
       if (post.id === postId) {
         const newLiked = !post.userReacted;
@@ -508,48 +547,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return post;
     }));
+
+    const res = await api.post<{ liked: boolean }>(`/api/community/posts/${postId}/like`);
+    if (!res.success) {
+      setPosts(prev => prev.map(post => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            userReacted: !post.userReacted,
+            likes: post.userReacted ? post.likes - 1 : post.likes + 1
+          };
+        }
+        return post;
+      }));
+    }
   };
 
   const sharePost = (postId: number) => {
     setPosts(prev => prev.map(post => 
       post.id === postId ? { ...post, shares: post.shares + 1, userShared: true } : post
     ));
-
-    // Post compartilhado silenciosamente
   };
 
-  const createPost = (content: string, category: string, options?: { visibility?: string; images?: string[] }) => {
-    const newPost: Post = {
-      id: Date.now(),
-      author: userData.name,
-      avatar: "/placeholder-avatar.jpg",
-      time: "Agora",
+  const createPost = async (content: string, category: string, options?: { visibility?: string; images?: string[]; forum_id?: number }): Promise<boolean> => {
+    const forumId = options?.forum_id || 7;
+
+    const res = await api.post<{ post: APIPost }>("/api/community/posts", {
+      forum_id: forumId,
       content,
       category,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      isPinned: false,
-      userReacted: false,
-      visibility: (options?.visibility as 'publico' | 'comunidade' | 'amigos') || 'comunidade',
-      images: options?.images || []
-    };
-
-    setPosts(prev => [newPost, ...prev]);
-    
-    // Pontos extras por imagens
-    const imageBonus = (options?.images?.length || 0) * 10;
-    const totalPoints = 50 + imageBonus;
-    
-    updateUserData({
-      points: userData.points + totalPoints
     });
 
-    enhancedToast.success({
-      title: "Post publicado! ✨",
-      description: `Você ganhou ${totalPoints} pontos${imageBonus > 0 ? ` (+${imageBonus} por imagens)` : ''}`,
-      haptic: true
-    });
+    if (res.success && res.data) {
+      const mapped = mapAPIPost(res.data.post);
+      setPosts(prev => [mapped, ...prev]);
+
+      enhancedToast.success({
+        title: "Post publicado!",
+        description: "Sua publicação já está visível na comunidade",
+        haptic: true
+      });
+      return true;
+    } else {
+      enhancedToast.error({
+        title: "Erro ao publicar",
+        description: res.error?.message || "Tente novamente",
+        haptic: true
+      });
+      return false;
+    }
   };
 
   // Product functions
@@ -822,6 +868,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getCourseById,
       loadCourses,
       completeLessonOnServer,
+      loadPosts,
       enrollInBook,
       updateBookProgress,
       toggleBookFavorite,
