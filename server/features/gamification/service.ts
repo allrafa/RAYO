@@ -46,6 +46,44 @@ export function getLevelTitle(level: number): string {
   return found ? found.title : "Iniciante";
 }
 
+async function addXPWithClient(
+  client: { query: typeof query },
+  userId: number,
+  amount: number,
+  reason: string
+): Promise<{ newTotalXP: number; newLevel: number; leveledUp: boolean }> {
+  const { rows } = await client.query(
+    `UPDATE users SET xp = xp + $1, updated_at = NOW() WHERE id = $2
+     RETURNING xp, level`,
+    [amount, userId]
+  );
+  if (rows.length === 0) throw new Error("User not found");
+
+  const newTotalXP = rows[0].xp;
+  const currentLevel = rows[0].level;
+  const newLevel = calculateLevel(newTotalXP);
+  const leveledUp = newLevel > currentLevel;
+
+  if (leveledUp) {
+    await client.query(`UPDATE users SET level = $1 WHERE id = $2`, [newLevel, userId]);
+  }
+
+  await client.query(
+    `INSERT INTO xp_log (user_id, amount, reason) VALUES ($1, $2, $3)`,
+    [userId, amount, reason]
+  );
+
+  const xpToNext = getXPForNextLevel(newLevel);
+  await client.query(
+    `INSERT INTO user_xp (user_id, total_xp, current_level, xp_to_next_level, current_streak, longest_streak, last_activity_date, updated_at)
+     VALUES ($1, $2, $3, $4, 0, 0, NULL, NOW())
+     ON CONFLICT (user_id) DO UPDATE SET total_xp = $2, current_level = $3, xp_to_next_level = $4, updated_at = NOW()`,
+    [userId, newTotalXP, newLevel, xpToNext]
+  );
+
+  return { newTotalXP, newLevel, leveledUp };
+}
+
 export async function addXP(
   userId: number,
   amount: number,
@@ -54,46 +92,14 @@ export async function addXP(
   const client = await getClient();
   try {
     await client.query("BEGIN");
-
-    const { rows } = await client.query(
-      `UPDATE users SET xp = xp + $1, updated_at = NOW() WHERE id = $2
-       RETURNING xp, level`,
-      [amount, userId]
-    );
-    if (rows.length === 0) {
-      await client.query("ROLLBACK");
-      throw new Error("User not found");
-    }
-
-    const newTotalXP = rows[0].xp;
-    const currentLevel = rows[0].level;
-    const newLevel = calculateLevel(newTotalXP);
-    const leveledUp = newLevel > currentLevel;
-
-    if (leveledUp) {
-      await client.query(`UPDATE users SET level = $1 WHERE id = $2`, [newLevel, userId]);
-    }
-
-    await client.query(
-      `INSERT INTO xp_log (user_id, amount, reason) VALUES ($1, $2, $3)`,
-      [userId, amount, reason]
-    );
-
-    const xpToNext = getXPForNextLevel(newLevel);
-    await client.query(
-      `INSERT INTO user_xp (user_id, total_xp, current_level, xp_to_next_level, current_streak, longest_streak, last_activity_date, updated_at)
-       VALUES ($1, $2, $3, $4, 0, 0, NULL, NOW())
-       ON CONFLICT (user_id) DO UPDATE SET total_xp = $2, current_level = $3, xp_to_next_level = $4, updated_at = NOW()`,
-      [userId, newTotalXP, newLevel, xpToNext]
-    );
-
+    const result = await addXPWithClient(client, userId, amount, reason);
     await client.query("COMMIT");
 
-    if (leveledUp && [3, 5].includes(newLevel)) {
-      await unlockBadge(userId, `level_${newLevel}`);
+    if (result.leveledUp && [3, 5].includes(result.newLevel)) {
+      await unlockBadge(userId, `level_${result.newLevel}`);
     }
 
-    return { newTotalXP, newLevel, leveledUp };
+    return result;
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
@@ -347,25 +353,39 @@ export async function claimMissionReward(
 ): Promise<{ success: boolean; xpAwarded: number }> {
   const today = new Date().toISOString().split("T")[0];
   const startOfWeek = getStartOfWeek();
+  const client = await getClient();
 
-  const { rows } = await query(
-    `UPDATE user_mission_progress ump
-     SET reward_claimed = true
-     FROM missions m
-     WHERE m.id = ump.mission_id
-       AND ump.user_id = $1 AND ump.mission_id = $2
-       AND ump.completed = true AND ump.reward_claimed = false
-       AND ump.period_start IN ($3::date, $4::date)
-     RETURNING m.xp_reward, m.type`,
-    [userId, missionId, today, startOfWeek]
-  );
+  try {
+    await client.query("BEGIN");
 
-  if (rows.length === 0) return { success: false, xpAwarded: 0 };
+    const { rows } = await client.query(
+      `UPDATE user_mission_progress ump
+       SET reward_claimed = true
+       FROM missions m
+       WHERE m.id = ump.mission_id
+         AND ump.user_id = $1 AND ump.mission_id = $2
+         AND ump.completed = true AND ump.reward_claimed = false
+         AND ump.period_start IN ($3::date, $4::date)
+       RETURNING m.xp_reward, m.type`,
+      [userId, missionId, today, startOfWeek]
+    );
 
-  const xpAwarded = rows[0].xp_reward;
-  await addXP(userId, xpAwarded, `${rows[0].type}_mission`);
+    if (rows.length === 0) {
+      await client.query("ROLLBACK");
+      return { success: false, xpAwarded: 0 };
+    }
 
-  return { success: true, xpAwarded };
+    const xpAwarded = rows[0].xp_reward;
+    await addXPWithClient(client, userId, xpAwarded, `${rows[0].type}_mission`);
+
+    await client.query("COMMIT");
+    return { success: true, xpAwarded };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 function getStartOfWeek(): string {
