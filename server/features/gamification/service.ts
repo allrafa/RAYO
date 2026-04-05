@@ -348,7 +348,7 @@ export async function claimMissionReward(
   if (rows.length === 0) return { success: false, xpAwarded: 0 };
 
   const xpAwarded = rows[0].xp_reward;
-  await addXP(userId, xpAwarded, `mission_${rows[0].type}`);
+  await addXP(userId, xpAwarded, `${rows[0].type}_mission`);
 
   return { success: true, xpAwarded };
 }

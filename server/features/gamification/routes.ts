@@ -15,6 +15,38 @@ import {
 
 const router = Router();
 
+router.post("/xp", async (req, res, next) => {
+  try {
+    const internalKey = req.headers["x-internal-key"];
+    const expectedKey = process.env.INTERNAL_API_KEY;
+    if (!expectedKey || internalKey !== expectedKey) {
+      sendError(res, "Acesso negado: endpoint interno", "FORBIDDEN", 403);
+      return;
+    }
+
+    const { reason, userId } = req.body;
+    if (!userId || isNaN(Number(userId))) {
+      sendError(res, "ID de usuário obrigatório", "INVALID_USER_ID");
+      return;
+    }
+    const targetUserId = Number(userId);
+
+    const validReasons = Object.keys(XP_REWARDS);
+    if (!reason || typeof reason !== "string" || !validReasons.includes(reason)) {
+      sendError(res, "Razão inválida para XP", "INVALID_REASON");
+      return;
+    }
+
+    const xpAmount = XP_REWARDS[reason];
+    const result = await addXP(targetUserId, xpAmount, reason);
+    await checkMissionProgress(targetUserId, reason);
+
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.use(requireAuth);
 
 router.get("/profile", async (req, res, next) => {
@@ -47,39 +79,6 @@ router.get("/missions", async (req, res, next) => {
 router.post("/streak", async (req, res, next) => {
   try {
     const result = await updateStreak(req.user!.id);
-    success(res, result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post("/xp", async (req, res, next) => {
-  try {
-    const internalKey = req.headers["x-internal-key"];
-    const expectedKey = process.env.INTERNAL_API_KEY;
-    if (!expectedKey || internalKey !== expectedKey) {
-      sendError(res, "Acesso negado: endpoint interno", "FORBIDDEN", 403);
-      return;
-    }
-
-    const { reason, userId } = req.body;
-    const targetUserId = userId ? Number(userId) : req.user!.id;
-
-    if (!targetUserId || isNaN(targetUserId)) {
-      sendError(res, "ID de usuário inválido", "INVALID_USER_ID");
-      return;
-    }
-
-    const validReasons = Object.keys(XP_REWARDS);
-    if (!reason || typeof reason !== "string" || !validReasons.includes(reason)) {
-      sendError(res, "Razão inválida para XP", "INVALID_REASON");
-      return;
-    }
-
-    const xpAmount = XP_REWARDS[reason];
-    const result = await addXP(targetUserId, xpAmount, reason);
-    await checkMissionProgress(targetUserId, reason);
-
     success(res, result);
   } catch (err) {
     next(err);
