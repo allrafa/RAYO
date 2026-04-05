@@ -1,0 +1,876 @@
+# 🗺️ JORNADA DO CLIENTE - RAIO PLATFORM
+
+## Visão Geral
+
+Este documento detalha a jornada completa do usuário na plataforma RAIO, desde o primeiro contato até se tornar um membro premium ativo e engajado.
+
+---
+
+## 📊 Métrica North Star
+
+**WAPM (Weekly Active Premium Members)**
+- Objetivo: Maximizar o número de membros premium que retornam semanalmente
+- KPIs Relacionados: Taxa de retenção, engagement, conversão premium
+
+---
+
+## 🎯 Personas e Contextos de Vida
+
+A plataforma RAIO atende 5 contextos principais:
+
+1. **Solteiro** - Preparação pessoal e desenvolvimento individual
+2. **Namoro** - Construção de relacionamentos saudáveis
+3. **Noivos** - Preparação para o casamento
+4. **Casados** - Fortalecimento do matrimônio
+5. **Pais** - Educação de filhos e família
+
+---
+
+## 🚀 FASE 1: DESCOBERTA E AQUISIÇÃO
+
+### Objetivo
+Atrair o usuário para a plataforma e criar interesse inicial
+
+### Pontos de Contato
+- Marketing de conteúdo (blog, vídeos, redes sociais)
+- Indicações de amigos/família
+- Anúncios direcionados
+- Conteúdo gratuito de alta qualidade
+
+### Ações do Usuário
+1. Descobre o RAIO através de conteúdo/indicação
+2. Visita o site/landing page
+3. Consome conteúdo gratuito inicial
+4. Decide criar uma conta
+
+### Gatilhos Emocionais
+- ✨ Esperança de transformação familiar
+- 🤝 Identificação com histórias reais
+- 💡 Valor percebido no conteúdo gratuito
+- 👥 Prova social e testimoniais
+
+### Métricas
+- Taxa de visitantes → cadastros
+- Tempo até primeira conversão
+- Fontes de aquisição mais efetivas
+
+---
+
+## 📝 FASE 2: CADASTRO E ONBOARDING
+
+### Objetivo
+Facilitar o cadastro e personalizar a experiência inicial
+
+### Fluxo de Onboarding (5 telas)
+
+#### Tela 1: Bem-vindo
+```
+┌─────────────────────────────────┐
+│   🌟 Bem-vindo ao RAIO!        │
+│                                 │
+│   Fortaleça sua família através│
+│   de conteúdo transformador     │
+│                                 │
+│   [Continuar]                   │
+└─────────────────────────────────┘
+```
+
+#### Tela 2: Contexto de Vida
+```
+┌─────────────────────────────────┐
+│   Qual é o seu contexto atual?  │
+│                                 │
+│   [ ] Solteiro                  │
+│   [ ] Namoro                    │
+│   [ ] Noivos                    │
+│   [ ] Casados                   │
+│   [ ] Pais                      │
+│                                 │
+│   [Continuar]                   │
+└─────────────────────────────────┘
+```
+
+#### Tela 3: Objetivos
+```
+┌─────────────────────────────────┐
+│   O que você busca?             │
+│   (Selecione até 3)             │
+│                                 │
+│   [ ] Melhorar relacionamento   │
+│   [ ] Crescimento pessoal       │
+│   [ ] Educação dos filhos       │
+│   [ ] Gestão financeira         │
+│   [ ] Comunicação efetiva       │
+│   [ ] Vida espiritual           │
+│                                 │
+│   [Continuar]                   │
+└─────────────────────────────────┘
+```
+
+#### Tela 4: Preferências de Conteúdo
+```
+┌─────────────────────────────────┐
+│   Como prefere aprender?        │
+│                                 │
+│   [ ] Vídeos curtos             │
+│   [ ] Artigos e textos          │
+│   [ ] Podcasts/Áudio            │
+│   [ ] Exercícios práticos       │
+│   [ ] Discussões em comunidade  │
+│                                 │
+│   [Continuar]                   │
+└─────────────────────────────────┘
+```
+
+#### Tela 5: Notificações
+```
+┌─────────────────────────────────┐
+│   Fique por dentro!             │
+│                                 │
+│   [ ] Novos cursos disponíveis  │
+│   [ ] Respostas em discussões   │
+│   [ ] Conquistas e badges       │
+│   [ ] Missões diárias           │
+│   [ ] Newsletter semanal        │
+│                                 │
+│   [Começar minha jornada]       │
+└─────────────────────────────────┘
+```
+
+### Resultado do Onboarding
+- ✅ Perfil personalizado criado
+- ✅ Dashboard customizado com recomendações
+- ✅ Primeiro curso sugerido
+- ✅ Comunidade relevante identificada
+
+### Métricas
+- Taxa de conclusão do onboarding
+- Tempo médio para completar
+- Taxa de abandono por tela
+- Contextos de vida mais comuns
+
+---
+
+## 🏠 FASE 3: EXPLORAÇÃO INICIAL (Dias 1-7)
+
+### Objetivo
+Engajar o usuário com conteúdo de valor e demonstrar a proposta da plataforma
+
+### Experiência Free Tier
+
+#### Dashboard Personalizado
+```
+┌─────────────────────────────────────────────┐
+│  👋 Olá, [Nome]!                            │
+│                                             │
+│  🎯 Seu progresso hoje:                     │
+│  ▓▓▓▓░░░░░░ 40% da meta diária             │
+│                                             │
+│  📚 Recomendado para você:                  │
+│  ┌─────────────────────────────┐           │
+│  │ 🎓 Comunicação no Namoro    │           │
+│  │ ⭐⭐⭐⭐⭐ 4.8 · 2.345 alunos  │           │
+│  │ [Começar agora]              │           │
+│  └─────────────────────────────┘           │
+│                                             │
+│  💬 Discussões ativas:                      │
+│  • "Como lidar com conflitos?"             │
+│  • "Dicas de comunicação"                  │
+│                                             │
+│  🎮 Missão do dia:                          │
+│  Assista 1 aula e comente na comunidade    │
+│  [Ver missão]                               │
+└─────────────────────────────────────────────┘
+```
+
+### Conteúdo Disponível (Free)
+- ✅ 3 cursos introdutórios completos
+- ✅ Acesso à comunidade (leitura ilimitada)
+- ✅ 5 posts por semana na comunidade
+- ✅ Gamificação básica (primeiras badges)
+- ❌ Cursos avançados (BLOQUEADO)
+- ❌ Certificados (BLOQUEADO)
+- ❌ Conteúdo exclusivo (BLOQUEADO)
+
+### Jornada Típica (Usuário Free)
+
+**Dia 1 - Primeira Impressão**
+1. Completa onboarding (5 min)
+2. Explora dashboard personalizado
+3. Inicia primeiro curso recomendado
+4. Assiste 1-2 aulas
+5. Recebe primeira badge: "🌟 Iniciante"
+
+**Dia 2-3 - Engajamento Inicial**
+1. Retorna via notificação/email
+2. Continua curso iniciado
+3. Explora comunidade
+4. Lê discussões relevantes
+5. Completa primeiro curso
+6. Badge: "🎓 Primeira Conquista"
+
+**Dia 4-5 - Aprofundamento**
+1. Inicia segundo curso
+2. Faz primeiro post na comunidade
+3. Interage com outros membros
+4. Descobre cursos premium (paywall)
+5. Badge: "💬 Primeira Participação"
+
+**Dia 6-7 - Decisão**
+1. Tenta acessar conteúdo premium
+2. Vê valor agregado dos planos
+3. **DECISÃO:** Converter para Premium ou continuar Free
+
+### Gatilhos de Conversão
+- 🔒 Paywall em conteúdos avançados
+- 💎 "Premium Badge" visível em outros usuários
+- 📊 "Você está 60% mais próximo de seus objetivos com Premium"
+- 👥 Acesso a grupos exclusivos de discussão
+- 🎓 Certificados reconhecidos
+
+### Métricas
+- Taxa de ativação (7 dias)
+- Cursos iniciados por usuário
+- Posts na comunidade
+- Tempo médio na plataforma
+- Taxa de conversão Free → Premium
+
+---
+
+## 💎 FASE 4: CONVERSÃO PREMIUM
+
+### Objetivo
+Converter usuários engajados em membros premium pagantes
+
+### Planos Disponíveis
+
+#### RAIO Free (R$ 0/mês)
+- ✅ 3 cursos introdutórios
+- ✅ Comunidade (leitura ilimitada, 5 posts/semana)
+- ✅ Gamificação básica
+- ❌ Cursos avançados
+- ❌ Certificados
+- ❌ Conteúdo exclusivo
+- ❌ Grupos premium
+- ❌ Suporte prioritário
+
+#### RAIO Premium (R$ 49,90/mês)
+- ✅ **TUDO do Free +**
+- ✅ 50+ cursos completos
+- ✅ Novos cursos mensais
+- ✅ Certificados reconhecidos
+- ✅ Comunidade ilimitada
+- ✅ Grupos exclusivos por contexto
+- ✅ Badges premium
+- ✅ Suporte prioritário
+- ✅ Lives mensais com especialistas
+- ✅ Conteúdo exclusivo
+
+#### RAIO Premium Anual (R$ 499,90/ano)
+- ✅ **TUDO do Premium +**
+- 💰 **Economia de R$ 99/ano** (2 meses grátis)
+- 🎁 1 curso bônus exclusivo
+- 🎟️ Acesso antecipado a novos recursos
+
+### Fluxo de Conversão
+
+```
+Usuário clica em conteúdo premium
+           ↓
+┌─────────────────────────────────┐
+│   🔒 Conteúdo Premium           │
+│                                 │
+│   Desbloqueie este curso e     │
+│   mais 50+ para continuar sua  │
+│   jornada de transformação     │
+│                                 │
+│   ✓ Acesso ilimitado           │
+│   ✓ Certificados               │
+│   ✓ Grupos exclusivos          │
+│                                 │
+│   [Ver planos] [Continuar Free]│
+└─────────────────────────────────┘
+           ↓
+┌─────────────────────────────────┐
+│   Escolha seu plano             │
+│                                 │
+│   [ ] Mensal - R$ 49,90        │
+│   [x] Anual - R$ 499,90        │
+│       💰 Economize R$ 99        │
+│                                 │
+│   [Assinar agora]               │
+└─────────────────────────────────┘
+           ↓
+Checkout (Stripe/Mercado Pago)
+           ↓
+Confirmação e boas-vindas Premium
+```
+
+### Welcome Premium
+```
+┌─────────────────────────────────────────────┐
+│   🎉 Bem-vindo ao RAIO Premium!            │
+│                                             │
+│   Você agora tem acesso completo a:        │
+│                                             │
+│   ✅ 50+ cursos desbloqueados              │
+│   ✅ Certificados em todos os cursos        │
+│   ✅ Grupos exclusivos da comunidade        │
+│   ✅ Badge Premium visível                  │
+│                                             │
+│   📚 Sugestão: Continue de onde parou!     │
+│   [Ir para meus cursos]                     │
+│                                             │
+│   💎 Badge desbloqueada: "Premium Member"  │
+└─────────────────────────────────────────────┘
+```
+
+### Métricas
+- Taxa de conversão Free → Premium
+- Tempo médio até conversão
+- Plano preferido (mensal vs anual)
+- Taxa de abandono no checkout
+- Motivos de conversão (pesquisa pós-compra)
+
+---
+
+## 🎓 FASE 5: ENGAJAMENTO ATIVO (Semanas 2-12)
+
+### Objetivo
+Manter o usuário premium engajado e extraindo valor contínuo
+
+### Rotina Típica de Usuário Premium Ativo
+
+#### Segunda-feira - Fresh Start
+- 📧 Email: "Seus objetivos da semana"
+- 🎯 Define meta semanal no dashboard
+- 🎓 Continua curso em andamento
+- 💬 Participa de discussão no grupo exclusivo
+
+#### Terça/Quarta - Progresso Constante
+- 🔔 Notificação: "Missão diária disponível"
+- 📹 Assiste 2-3 aulas
+- ✍️ Completa exercícios práticos
+- 🏆 Desbloqueia badges de progresso
+
+#### Quinta-feira - Live Exclusiva
+- 📺 Participa de live mensal com especialista
+- 💬 Faz perguntas em tempo real
+- 📝 Recebe material complementar
+
+#### Sexta-feira - Socialização
+- 👥 Engaja na comunidade
+- 💡 Compartilha insights aprendidos
+- 🤝 Conecta com outros membros
+- ⭐ Dá feedback em cursos
+
+#### Final de Semana - Aplicação Prática
+- 📋 Revisa aprendizados da semana
+- 🏠 Aplica conceitos na vida real
+- 📊 Atualiza progresso no perfil
+- 🎯 Prepara objetivos da próxima semana
+
+### Sistema de Gamificação Premium
+
+#### Badges Exclusivas Premium
+- 💎 **Diamond Learner** - Complete 10 cursos
+- 🎓 **Master Graduate** - Obtenha 5 certificados
+- 👑 **Community Leader** - 100+ interações úteis
+- ⚡ **Lightning Streak** - 30 dias consecutivos
+- 🌟 **Elite Member** - Top 10% em engajamento
+- 🏆 **Champion of Change** - Histórias de transformação
+
+#### Sistema de Níveis
+```
+Nível 1: Iniciante (0-100 XP)
+Nível 2: Aprendiz (101-250 XP)
+Nível 3: Praticante (251-500 XP)
+Nível 4: Experiente (501-1000 XP)
+Nível 5: Mestre (1001-2000 XP)
+Nível 6: Mentor (2001-5000 XP)
+Nível 7: Líder (5001+ XP)
+```
+
+#### Como Ganhar XP
+- Assistir aula completa: +10 XP
+- Completar exercício: +15 XP
+- Finalizar curso: +50 XP
+- Obter certificado: +100 XP
+- Post útil na comunidade: +20 XP
+- Resposta marcada como útil: +30 XP
+- Completar missão diária: +25 XP
+- Manter streak: +5 XP/dia
+
+### Missões e Desafios
+
+#### Missões Diárias
+- ☀️ "Bom Dia Família" - Assista 1 aula (25 XP)
+- 💬 "Voz Ativa" - Comente em 1 discussão (20 XP)
+- 📝 "Reflexão" - Complete 1 exercício (30 XP)
+
+#### Missões Semanais
+- 📚 "Maratonista" - Complete 5 aulas (100 XP)
+- 🤝 "Conector" - Faça 3 posts úteis (150 XP)
+- 🎯 "Focado" - Dedique 3h+ na plataforma (200 XP)
+
+#### Desafios Mensais
+- 🏆 "Transformação Total" - Complete 1 curso (500 XP + Badge)
+- 👥 "Líder Comunitário" - Seja top 10 em engajamento (1000 XP)
+- 🎓 "Acadêmico" - Assista 20 aulas (750 XP)
+
+### Sistema de Streaks
+```
+🔥 Streak atual: 15 dias
+   ▓▓▓▓▓░░ Próximo marco: 30 dias
+   
+Recompensas de Streak:
+✅ 7 dias: Badge "Comprometido"
+✅ 14 dias: +50 XP bônus
+⏳ 30 dias: Badge "Disciplinado" + Curso bônus
+⏳ 60 dias: Badge "Imparável"
+⏳ 90 dias: Badge "Lendário" + Reconhecimento especial
+```
+
+### Certificados e Reconhecimento
+
+#### Certificado de Conclusão
+- Emitido automaticamente após conclusão de curso
+- Assinado digitalmente
+- Compartilhável em redes sociais
+- Código único de verificação
+- Logo RAIO + dados do curso
+
+#### Perfil Premium Visível
+```
+┌─────────────────────────────────────────────┐
+│  👤 [Nome do Usuário] 💎                    │
+│  Nível 5 - Mestre                           │
+│                                             │
+│  🔥 Streak: 45 dias                         │
+│  🎓 Cursos: 12 completos                    │
+│  💬 Posts: 89 | Respostas úteis: 234       │
+│                                             │
+│  Badges destacadas:                         │
+│  💎 👑 ⚡ 🏆 🌟                             │
+│                                             │
+│  [Ver perfil completo]                      │
+└─────────────────────────────────────────────┘
+```
+
+### Ciclos de Retenção
+
+#### Weekly Loop
+Segunda → Define metas
+Meio da semana → Progride em cursos
+Quinta → Live exclusiva
+Fim de semana → Aplicação prática
+Domingo → Review e planejamento
+
+#### Monthly Loop
+Início → Novo conteúdo/curso lançado
+Meio → Desafio mensal em andamento
+Final → Conclusão de desafios + recompensas
+Review → Progresso mensal visível
+
+### Métricas de Engajamento
+- Sessions por semana
+- Tempo médio por session
+- Cursos iniciados vs completados
+- Taxa de participação na comunidade
+- Streaks médios
+- Taxa de conclusão de missões
+
+---
+
+## 🔄 FASE 6: RETENÇÃO E FIDELIZAÇÃO (Mês 3+)
+
+### Objetivo
+Transformar membros premium em defensores da marca e usuários de longo prazo
+
+### Programa de Fidelidade
+
+#### Benefícios Crescentes
+**3 Meses Premium**
+- 🎁 1 curso bônus exclusivo
+- 🌟 Badge "Committed Member"
+- 📧 Newsletter exclusiva mensal
+
+**6 Meses Premium**
+- 🎁 Acesso antecipado a novos cursos
+- 👥 Convite para grupo VIP
+- 💎 Badge "Loyal Champion"
+- 📚 E-book exclusivo
+
+**12 Meses Premium**
+- 🎊 Desconto de 20% na renovação
+- 🏆 Badge "Elite Founder"
+- 🎤 Possibilidade de dar testimony
+- 💬 Sessão de mentoria 1:1 (anual)
+- 🎁 Kit RAIO físico
+
+### Sistema de Referral
+
+```
+┌─────────────────────────────────────────────┐
+│  🎁 Convide Amigos, Ganhe Recompensas       │
+│                                             │
+│  Seu link único:                            │
+│  raio.app/ref/[SEUCODIGO]                  │
+│  [Copiar link] [Compartilhar]              │
+│                                             │
+│  Recompensas por indicação:                 │
+│  • Amigo ganha 1 mês de desconto           │
+│  • Você ganha 1 mês grátis                 │
+│                                             │
+│  Suas indicações: 3                         │
+│  ✅ João Silva - Ativo                      │
+│  ✅ Maria Costa - Ativa                     │
+│  ⏳ Pedro Santos - Pendente                 │
+│                                             │
+│  Próximo marco: 5 indicações = Badge       │
+│  "🌟 Embaixador RAIO"                       │
+└─────────────────────────────────────────────┘
+```
+
+### Comunidade de Elite
+
+#### Grupo VIP Premium
+- Acesso exclusivo para membros 6+ meses
+- Lives trimestrais com fundadores
+- Influência em roadmap de produto
+- Networking com outros membros comprometidos
+- Eventos exclusivos (online/presencial)
+
+#### Programa de Mentoria
+- Membros experientes (Nível 6+) podem se tornar mentores
+- Sistema de match com novos membros
+- Recompensas para mentores ativos
+- Badge "🎓 Mentor Certificado"
+
+### Conteúdo Evolutivo
+
+#### Jornadas de Aprendizado
+Sequências de cursos organizadas por objetivo:
+
+**Jornada: Comunicação no Casamento (4 semanas)**
+```
+Semana 1: Fundamentos da Comunicação
+↓
+Semana 2: Escuta Ativa e Empatia
+↓
+Semana 3: Gestão de Conflitos
+↓
+Semana 4: Construindo Intimidade Emocional
+→ Certificado: "Comunicador Efetivo"
+```
+
+#### Trilhas por Contexto
+- 🚶 Solteiro → Preparação
+- 💑 Namoro → Construção
+- 💍 Noivos → Fundação
+- 💑 Casados → Manutenção
+- 👨‍👩‍👧‍👦 Pais → Expansão
+
+### Check-ins de Progresso
+
+#### Review Mensal Automatizado
+```
+┌─────────────────────────────────────────────┐
+│  📊 Seu Mês em Revisão                      │
+│                                             │
+│  🎓 Cursos completados: 2                   │
+│  ⏱️ Tempo de estudo: 8h 45min              │
+│  💬 Participação comunidade: ▲ 23%         │
+│  🎯 Metas alcançadas: 3 de 4                │
+│                                             │
+│  💡 Insight:                                │
+│  Você está 85% mais engajado que           │
+│  no mês passado! Continue assim! 🎉        │
+│                                             │
+│  📈 Sugestão para próximo mês:              │
+│  "Gestão Financeira Familiar"               │
+│  [Definir como meta]                        │
+└─────────────────────────────────────────────┘
+```
+
+#### Surveys de Satisfação
+- NPS trimestral
+- Feedback sobre novos cursos
+- Sugestões de conteúdo
+- Identificação de riscos de churn
+
+### Estratégias Anti-Churn
+
+#### Triggers de Risco
+Sistema identifica usuários em risco:
+- ❗ Sem login há 7+ dias
+- ❗ Não completou curso em 30 dias
+- ❗ Zero interação na comunidade
+- ❗ Streak quebrado recentemente
+
+#### Ações de Re-engajamento
+```
+Dia 7 sem login:
+📧 Email: "Sentimos sua falta! Aqui está o que você perdeu"
++ Notificação push suave
+
+Dia 14 sem login:
+📧 Email: "Seu progresso está esperando por você"
++ Lista de cursos em andamento
++ Destaque de novidades
+
+Dia 21 sem login:
+📧 Email personalizado do CEO/fundador
++ Oferta especial (desconto na renovação)
++ Pesquisa: "Como podemos melhorar?"
+
+Dia 30 sem login:
+📧 Última tentativa: Oferta de pausa na assinatura
++ 1 mês grátis se retornar
+```
+
+### Win-back Campaigns
+
+#### Para Cancelamentos
+```
+Imediatamente:
+"😢 Lamentamos ver você ir. Feedback?"
++ Pesquisa de cancelamento
++ Oferta: "Fique mais 1 mês com 50% off"
+
+30 dias após:
+"Novidades desde que você saiu"
++ Destacar novos cursos/features
++ Oferta: "Volte com 2 meses grátis"
+
+90 dias após:
+"Transformações que você poderia ter"
++ User stories inspiradoras
++ Oferta: "Nova chance com plano especial"
+```
+
+### Métricas de Retenção
+- MRR (Monthly Recurring Revenue)
+- Churn rate mensal
+- LTV (Customer Lifetime Value)
+- NPS (Net Promoter Score)
+- Taxa de referral
+- Tempo médio de assinatura
+
+---
+
+## 🌟 FASE 7: ADVOCACIA E CRESCIMENTO (Usuários Campeões)
+
+### Objetivo
+Transformar usuários fiéis em embaixadores da marca
+
+### Perfil de Advogado da Marca
+
+Características:
+- ✅ 12+ meses como Premium
+- ✅ Nível 6+ (Mentor/Líder)
+- ✅ 5+ referrals convertidos
+- ✅ NPS 9 ou 10
+- ✅ Altamente ativo na comunidade
+
+### Programa de Embaixadores
+
+#### Benefícios
+- 🎁 Assinatura vitalícia grátis (enquanto ativo)
+- 👕 Kit exclusivo de embaixador
+- 💰 Comissão por vendas via link (20%)
+- 🎤 Oportunidade de criar conteúdo
+- 📺 Participação em campanhas de marketing
+- 🏆 Badge "⚡ Embaixador RAIO"
+
+#### Responsabilidades
+- Compartilhar experiências autênticas
+- Criar conteúdo (vídeos, posts, stories)
+- Participar de eventos e lives
+- Mentorar novos membros
+- Dar feedback sobre produto
+
+### User Generated Content
+
+#### Histórias de Transformação
+```
+┌─────────────────────────────────────────────┐
+│  📖 Compartilhe Sua História               │
+│                                             │
+│  Sua jornada pode inspirar outros!         │
+│                                             │
+│  Conte-nos:                                 │
+│  • Como o RAIO impactou sua vida?          │
+│  • Que desafios você superou?              │
+│  • Que transformação você viveu?           │
+│                                             │
+│  [Compartilhar história]                    │
+│                                             │
+│  💡 Histórias selecionadas:                 │
+│  • Ganham badge "🌟 Inspirador"            │
+│  • São destacadas no site                  │
+│  • Recebem kit exclusivo                   │
+└─────────────────────────────────────────────┘
+```
+
+#### Testemunhos em Vídeo
+- Convites para gravar depoimentos
+- Usado em campanhas de marketing
+- Compartilhado em redes sociais
+- Recompensas especiais
+
+### Eventos Comunitários
+
+#### Encontros Presenciais
+- Meetups regionais trimestrais
+- Conferência anual RAIO
+- Workshops especiais
+- Networking entre membros
+
+#### Lives e Webinars
+- Lives semanais com diferentes temas
+- Q&A com especialistas
+- Painéis com membros campeões
+- Workshops práticos
+
+### Ciclo de Crescimento Viral
+
+```
+Usuário satisfeito (NPS 9-10)
+          ↓
+Compartilha nas redes sociais
+          ↓
+3-5 amigos veem e se interessam
+          ↓
+1-2 se cadastram (orgânico)
+          ↓
+Usuário faz referral ativo
+          ↓
+Mais 2-3 amigos convertem (incentivado)
+          ↓
+Ciclo se repete para cada novo usuário
+```
+
+### Métricas de Advocacia
+- Viral coefficient (K-factor)
+- Taxa de referral
+- % de receita via referral
+- Engajamento em UGC
+- Participação em eventos
+- Menções em redes sociais
+
+---
+
+## 📊 JORNADA COMPLETA - RESUMO VISUAL
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  DESCOBERTA  →  CADASTRO  →  EXPLORAÇÃO  →  CONVERSÃO          │
+│  (Dias -30)     (Dia 0)      (Dias 1-7)     (Dia 7-14)        │
+│     ↓             ↓             ↓              ↓               │
+│  Conteúdo    Onboarding    3 cursos      Paywall +            │
+│  gratuito    5 telas       gratuitos     upgrade              │
+│                                                                 │
+│         ↓                                                       │
+│                                                                 │
+│  ENGAJAMENTO  →  RETENÇÃO  →  FIDELIZAÇÃO  →  ADVOCACIA       │
+│  (Sem 2-12)      (Mês 3-6)    (Mês 6-12)     (Ano 1+)        │
+│     ↓             ↓             ↓              ↓               │
+│  50+ cursos   Anti-churn   Programa de    Embaixadores        │
+│  Gamificação  Re-engage    Fidelidade     UGC                 │
+│  Comunidade   Surveys      Referrals      Eventos             │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🎯 KPIs por Fase
+
+### Fase 1: Descoberta
+- **Objetivo:** 10.000 visitantes/mês
+- CTR landing page: 15%
+- Taxa de cadastro: 25%
+
+### Fase 2: Onboarding
+- **Objetivo:** 2.500 cadastros/mês
+- Taxa de conclusão: 80%
+- Tempo médio: 8 minutos
+
+### Fase 3: Exploração
+- **Objetivo:** 1.250 usuários ativos (7 dias)
+- Taxa de ativação: 50%
+- Cursos iniciados: 2,5/usuário
+
+### Fase 4: Conversão
+- **Objetivo:** 250 conversões Premium/mês
+- Taxa de conversão: 20% (ativos 7d)
+- Preferência anual: 40%
+
+### Fase 5: Engajamento
+- **Objetivo:** 200 WAP M
+- Sessions/semana: 3,5
+- Cursos completados/mês: 1,2
+- Churn mensal: <5%
+
+### Fase 6: Retenção
+- **Objetivo:** LTV > R$ 600
+- Retenção 6 meses: 60%
+- Retenção 12 meses: 40%
+- NPS: 50+
+
+### Fase 7: Advocacia
+- **Objetivo:** 25 embaixadores ativos
+- Referrals/embaixador: 5/mês
+- K-factor: 0,5+
+- % receita via referral: 15%
+
+---
+
+## 💡 Insights e Aprendizados
+
+### Momentos Críticos (Aha Moments)
+1. **Primeiro curso completo** - Maior preditor de conversão
+2. **Primeiro post na comunidade** - 3x mais engajamento
+3. **Primeira badge desbloqueada** - Gatilho de gamificação
+4. **Terceiro login consecutivo** - Formação de hábito
+5. **Semana 2 ativa** - Preditor de retenção longo prazo
+
+### Motivos Principais de Conversão Premium
+1. Acesso a curso específico desejado (45%)
+2. Obter certificados reconhecidos (25%)
+3. Participar de grupos exclusivos (15%)
+4. Gamificação e badges premium (10%)
+5. Suporte e lives exclusivas (5%)
+
+### Motivos Principais de Churn
+1. Preço (não percebe valor) - 35%
+2. Falta de tempo para usar - 25%
+3. Não encontrou o que procurava - 20%
+4. Problemas técnicos/UX - 10%
+5. Mudança de contexto de vida - 10%
+
+---
+
+## 🚀 Próximos Passos
+
+### Melhorias Planejadas
+- [ ] Personalização via ML/AI
+- [ ] App mobile nativo
+- [ ] Integração com calendário
+- [ ] Sistema de gamificação social
+- [ ] Marketplace de cursos externos
+- [ ] API para parceiros
+
+### Expansão de Produto
+- [ ] RAIO Kids (para filhos)
+- [ ] RAIO Empresas (B2B)
+- [ ] RAIO Mentoria (1:1 pago)
+- [ ] RAIO Certificações Profissionais
+
+---
+
+**Última atualização:** Abril 2026  
+**Versão:** 1.0  
+**Responsável:** Produto RAIO
