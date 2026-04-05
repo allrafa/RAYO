@@ -78,8 +78,11 @@ The frontend controls NOTHING. It only captures user intent (clicks, form inputs
 ├── package.json
 ├── tsconfig.json                    # Frontend TypeScript config
 ├── tsconfig.server.json             # Backend TypeScript config
-└── vite.config.ts                   # Vite configuration with API proxy
+└── vite.config.ts                   # Vite configuration
 ```
+
+### Dev server architecture decision
+Express is the single entry point on port 5000. In development, Vite runs in **middleware mode** — mounted inside Express via `vite.middlewares`. This means one process serves both API routes and the frontend. There is no separate Vite dev server and no `/api` proxy needed. In production, Express serves the static build output directly.
 
 ### Feature isolation rule
 Each feature lives in its own folder under `server/features/`. Within each feature folder:
