@@ -1,0 +1,85 @@
+import React, { createContext, useContext, useEffect, useState } from 'react';
+
+type Theme = 'light' | 'dark';
+
+interface ThemeContextType {
+  theme: Theme;
+  toggleTheme: () => void;
+  setTheme: (theme: Theme) => void;
+}
+
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setThemeState] = useState<Theme>('light');
+  const [mounted, setMounted] = useState(false);
+
+  // Carregar tema do localStorage na montagem
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('raio-theme') as Theme | null;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    // Prioridade: 1. localStorage, 2. preferência do sistema, 3. light (padrão)
+    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+    
+    setThemeState(initialTheme);
+    applyTheme(initialTheme);
+    setMounted(true);
+  }, []);
+
+  // Aplicar tema ao DOM
+  const applyTheme = (newTheme: Theme) => {
+    const root = document.documentElement;
+    
+    // Remover classes antigas
+    root.classList.remove('light', 'dark');
+    
+    // Adicionar nova classe
+    root.classList.add(newTheme);
+    
+    // Salvar no localStorage
+    localStorage.setItem('raio-theme', newTheme);
+    
+    // Atualizar meta theme-color para mobile
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+      metaThemeColor.setAttribute(
+        'content',
+        newTheme === 'dark' ? '#0A0A0A' : '#FAFAFA'
+      );
+    }
+  };
+
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
+    applyTheme(newTheme);
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+  };
+
+  // Prevenir flash durante SSR/hydration
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-16 h-16 border-2 border-accent-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+
+export function useTheme() {
+  const context = useContext(ThemeContext);
+  if (context === undefined) {
+    throw new Error('useTheme deve ser usado dentro de ThemeProvider');
+  }
+  return context;
+}

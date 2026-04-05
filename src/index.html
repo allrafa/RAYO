@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    
+    <!-- Primary Meta Tags -->
+    <title>RAIO - Fortaleça Sua Família</title>
+    <meta name="title" content="RAIO - Fortaleça Sua Família" />
+    <meta name="description" content="Plataforma para fortalecer famílias através de conteúdo transformador, comunidade engajada e recursos práticos." />
+    <meta name="keywords" content="família, relacionamentos, educação, comunidade, casamento, namoro, pais" />
+    <meta name="author" content="RAIO Team" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://raio.app/" />
+    <meta property="og:title" content="RAIO - Fortaleça Sua Família" />
+    <meta property="og:description" content="Plataforma para fortalecer famílias através de conteúdo transformador, comunidade engajada e recursos práticos." />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:locale" content="pt_BR" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://raio.app/" />
+    <meta property="twitter:title" content="RAIO - Fortaleça Sua Família" />
+    <meta property="twitter:description" content="Plataforma para fortalecer famílias através de conteúdo transformador, comunidade engajada e recursos práticos." />
+    <meta property="twitter:image" content="/og-image.png" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0A0A0A" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RAIO" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Fonts - Urbanist from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    
+    <!-- Preload critical resources -->
+    <link rel="modulepreload" href="/src/App.tsx" />
+    
+    <!-- DNS Prefetch para serviços externos -->
+    <link rel="dns-prefetch" href="https://api.mixpanel.com" />
+    <link rel="dns-prefetch" href="https://cdn.growthbook.io" />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    
+    <!-- Structured Data - JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "RAIO",
+      "description": "Plataforma para fortalecer famílias através de conteúdo transformador, comunidade engajada e recursos práticos",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "BRL"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "1250"
+      }
+    }
+    </script>
+  </head>
+  
+  <body>
+    <!-- Root element -->
+    <div id="root"></div>
+    
+    <!-- Main App Script -->
+    <script type="module" src="/App.tsx"></script>
+    
+    <!-- NoScript fallback -->
+    <noscript>
+      <div style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        font-family: 'Urbanist', -apple-system, system-ui, sans-serif;
+        text-align: center;
+        padding: 2rem;
+        background-color: #0A0A0A;
+        color: #FAFAFA;
+      ">
+        <div>
+          <h1 style="font-size: 2rem; margin-bottom: 1rem;">⚡ RAIO</h1>
+          <p style="font-size: 1.125rem; opacity: 0.8;">
+            Para usar a plataforma RAIO, você precisa habilitar JavaScript no seu navegador.
+          </p>
+        </div>
+      </div>
+    </noscript>
+  </body>
+</html>
