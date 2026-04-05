@@ -154,7 +154,7 @@ interface AppContextType {
   updateCourseProgress: (courseId: number, progress: number) => void;
   getCourseById: (courseId: number) => Course | undefined;
   loadCourses: () => Promise<void>;
-  completeLessonOnServer: (lessonId: number) => Promise<any>;
+  completeLessonOnServer: (lessonId: number) => Promise<{ success: boolean }>;
   
   // Book functions
   enrollInBook: (bookId: string) => void;
@@ -474,7 +474,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ));
   };
 
-  const completeLessonOnServer = async (lessonId: number) => {
+  const completeLessonOnServer = async (lessonId: number): Promise<{ success: boolean }> => {
     const res = await api.patch<{
       completedLessons: number;
       totalLessons: number;
@@ -492,7 +492,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         });
       }
     }
-    return res;
+    return { success: res.success };
   };
 
   // Post functions

@@ -43,8 +43,9 @@ interface CourseDetailPageProps {
 }
 
 export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
-  const { getCourseById, enrollInCourse, startCourse, userData } = useApp();
+  const { getCourseById, enrollInCourse, startCourse, completeLessonOnServer, userData } = useApp();
   const [isLoading, setIsLoading] = useState(false);
+  const [completingLessonId, setCompletingLessonId] = useState<number | null>(null);
   
   const course = getCourseById(courseId);
   
@@ -77,10 +78,28 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
   const handleStart = () => {
     startCourse(courseId);
     enhancedToast.success({
-      title: "📚 Curso iniciado!",
+      title: "Curso iniciado!",
       description: "Vamos começar sua jornada de aprendizado",
       haptic: true
     });
+  };
+
+  const handleCompleteLesson = async (lessonId: number) => {
+    if (completingLessonId) return;
+    setCompletingLessonId(lessonId);
+    try {
+      const result = await completeLessonOnServer(lessonId);
+      if (result.success) {
+        setLessonProgressMap(prev => ({ ...prev, [lessonId]: 'completed' }));
+        enhancedToast.success({
+          title: "Aula concluída!",
+          description: "Progresso salvo com sucesso.",
+          haptic: true
+        });
+      }
+    } finally {
+      setCompletingLessonId(null);
+    }
   };
 
   const discountedPrice = course.price * 0.5;
@@ -404,7 +423,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                   <p className="text-sm text-muted-foreground">Carregando módulos...</p>
                 ) : modules.map((module, index) => {
                   const modLessons = module.lessonList || [];
-                  const allCompleted = modLessons.length > 0 && modLessons.every((l: any) => lessonProgressMap[l.id] === 'completed');
+                  const allCompleted = modLessons.length > 0 && modLessons.every((l: DetailLesson) => lessonProgressMap[l.id] === 'completed');
                   const durationMin = Math.round(module.duration / 60);
                   const durationStr = durationMin >= 60 ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}min` : `${durationMin}min`;
                   return (
@@ -441,19 +460,33 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                         {modLessons.map((lesson: DetailLesson) => {
                           const lessonStatus = lessonProgressMap[lesson.id];
                           const isLessonCompleted = lessonStatus === 'completed';
+                          const isCompleting = completingLessonId === lesson.id;
                           return (
-                            <div key={lesson.id} className="flex items-center justify-between text-sm py-1">
-                              <div className="flex items-center gap-2">
+                            <div key={lesson.id} className="flex items-center justify-between text-sm py-1.5">
+                              <div className="flex items-center gap-2 flex-1">
                                 {isLessonCompleted ? (
-                                  <CheckCircle className="w-4 h-4 text-green-600" />
+                                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
                                 ) : (
-                                  <Play className="w-4 h-4 text-muted-foreground" />
+                                  <Play className="w-4 h-4 text-muted-foreground shrink-0" />
                                 )}
                                 <span className={isLessonCompleted ? 'text-muted-foreground line-through' : ''}>
                                   {lesson.title}
                                 </span>
                               </div>
-                              <span className="text-muted-foreground">{lesson.duration}</span>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-muted-foreground">{lesson.duration}</span>
+                                {!isLessonCompleted && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={isCompleting}
+                                    onClick={() => handleCompleteLesson(lesson.id)}
+                                    className="h-7 px-2 text-xs"
+                                  >
+                                    {isCompleting ? "..." : "Concluir"}
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
