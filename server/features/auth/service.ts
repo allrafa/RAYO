@@ -1,0 +1,139 @@
+import bcrypt from "bcrypt";
+import crypto from "crypto";
+import { query } from "../../db/index.js";
+import type { RegisterInput, LoginInput } from "./validation.js";
+
+const SALT_ROUNDS = 12;
+const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+
+function generateToken(): string {
+  return crypto.randomBytes(32).toString("hex");
+}
+
+function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+export interface SafeUser {
+  id: number;
+  email: string;
+  name: string;
+  level: number;
+  xp: number;
+  streak: number;
+  is_premium: boolean;
+  created_at: string;
+}
+
+function toSafeUser(row: Record<string, unknown>): SafeUser {
+  const createdAt = row.created_at instanceof Date
+    ? row.created_at.toISOString()
+    : String(row.created_at);
+
+  return {
+    id: row.id as number,
+    email: row.email as string,
+    name: row.name as string,
+    level: row.level as number,
+    xp: row.xp as number,
+    streak: row.streak as number,
+    is_premium: row.is_premium as boolean,
+    created_at: createdAt,
+  };
+}
+
+export async function registerUser(input: RegisterInput): Promise<{ user: SafeUser; token: string }> {
+  const existing = await query("SELECT id FROM users WHERE email = $1", [input.email]);
+  if (existing.rows.length > 0) {
+    const err = new Error("Este email já está registrado") as Error & { statusCode: number; code: string };
+    err.statusCode = 409;
+    err.code = "EMAIL_EXISTS";
+    throw err;
+  }
+
+  const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
+
+  const result = await query(
+    `INSERT INTO users (email, password_hash, name)
+     VALUES ($1, $2, $3)
+     RETURNING id, email, name, level, xp, streak, is_premium, created_at`,
+    [input.email, passwordHash, input.name]
+  );
+
+  const user = toSafeUser(result.rows[0]);
+  const token = await createSession(user.id);
+
+  return { user, token };
+}
+
+export async function loginUser(input: LoginInput, ip?: string, userAgent?: string): Promise<{ user: SafeUser; token: string }> {
+  const result = await query(
+    "SELECT id, email, name, password_hash, level, xp, streak, is_premium, created_at FROM users WHERE email = $1",
+    [input.email]
+  );
+
+  if (result.rows.length === 0) {
+    const err = new Error("Email ou senha incorretos") as Error & { statusCode: number; code: string };
+    err.statusCode = 401;
+    err.code = "INVALID_CREDENTIALS";
+    throw err;
+  }
+
+  const row = result.rows[0];
+  const validPassword = await bcrypt.compare(input.password, row.password_hash);
+
+  if (!validPassword) {
+    const err = new Error("Email ou senha incorretos") as Error & { statusCode: number; code: string };
+    err.statusCode = 401;
+    err.code = "INVALID_CREDENTIALS";
+    throw err;
+  }
+
+  const user = toSafeUser(row);
+  const token = await createSession(user.id, ip, userAgent);
+
+  await query("UPDATE users SET last_active_at = NOW(), updated_at = NOW() WHERE id = $1", [user.id]);
+
+  return { user, token };
+}
+
+async function createSession(userId: number, ip?: string, userAgent?: string): Promise<string> {
+  const token = generateToken();
+  const tokenHash = hashToken(token);
+  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+
+  await query(
+    `INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [userId, tokenHash, expiresAt, ip || null, userAgent || null]
+  );
+
+  return token;
+}
+
+export async function validateSession(token: string): Promise<SafeUser | null> {
+  const tokenHash = hashToken(token);
+
+  const result = await query(
+    `SELECT u.id, u.email, u.name, u.level, u.xp, u.streak, u.is_premium, u.created_at
+     FROM sessions s
+     JOIN users u ON s.user_id = u.id
+     WHERE s.token_hash = $1 AND s.expires_at > NOW()`,
+    [tokenHash]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return toSafeUser(result.rows[0]);
+}
+
+export async function logoutUser(token: string): Promise<void> {
+  const tokenHash = hashToken(token);
+  await query("DELETE FROM sessions WHERE token_hash = $1", [tokenHash]);
+}
+
+export async function logoutAllSessions(userId: number): Promise<void> {
+  await query("DELETE FROM sessions WHERE user_id = $1", [userId]);
+}

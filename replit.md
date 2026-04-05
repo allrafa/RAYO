@@ -23,7 +23,8 @@ server/                  # Backend
 ├── db/                  # Database connection + schema
 ├── middleware/           # Security, auth, error handling
 ├── features/            # Feature folders (routes + service + validation)
-│   └── health/          # Health check endpoint
+│   ├── health/          # Health check endpoint
+│   └── auth/            # Authentication (register, login, logout, me)
 └── utils/               # Response helpers, logger
 
 src/                     # Frontend (React)
@@ -44,6 +45,10 @@ vite.config.ts           # Vite + API proxy config
 
 ## Key Endpoints
 - `GET /api/health` — Server + DB status check
+- `POST /api/auth/register` — Create account (email, password, name)
+- `POST /api/auth/login` — Login (returns httpOnly session cookie)
+- `POST /api/auth/logout` — Logout (clears session)
+- `GET /api/auth/me` — Get current user (requires auth)
 
 ## Development Rules
 1. No business logic in frontend

@@ -1,10 +1,12 @@
 import express from "express";
-import { securityMiddleware, corsMiddleware } from "./middleware/security.js";
+import cookieParser from "cookie-parser";
+import { securityMiddleware, corsMiddleware, rateLimiter } from "./middleware/security.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { initializeSchema } from "./db/schema.js";
 import { logger } from "./utils/logger.js";
 import { error as sendError } from "./utils/response.js";
 import healthRoutes from "./features/health/routes.js";
+import authRoutes from "./features/auth/routes.js";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -20,11 +22,13 @@ if (!process.env.DATABASE_URL) {
 }
 
 app.use(securityMiddleware);
+app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", corsMiddleware);
 app.use("/api/health", healthRoutes);
+app.use("/api/auth", rateLimiter(20, 15 * 60 * 1000), authRoutes);
 
 app.all("/api/{*path}", (req, res) => {
   sendError(res, `Route ${req.method} ${req.path} not found`, "NOT_FOUND", 404);
