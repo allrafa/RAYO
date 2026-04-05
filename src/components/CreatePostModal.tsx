@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Plus, Image, Smile, Send, Globe, Users, Lock, ChevronDown, X, Camera, Upload } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Button } from "./ui/button";
@@ -8,6 +8,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useApp } from "./AppContext";
 import { enhancedToast } from "./EnhancedToast";
+import { api } from "../lib/api";
+
+interface ForumOption {
+  id: number;
+  name: string;
+  icon: string;
+}
 
 interface CreatePostModalProps {
   open: boolean;
@@ -23,6 +30,21 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home" }: Cr
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [forumOptions, setForumOptions] = useState<ForumOption[]>([]);
+  const [selectedForumId, setSelectedForumId] = useState<number>(7);
+
+  useEffect(() => {
+    if (open) {
+      api.get<{ forums: ForumOption[] }>("/api/community/forums").then(res => {
+        if (res.success && res.data) {
+          setForumOptions(res.data.forums);
+          if (res.data.forums.length > 0 && !res.data.forums.find(f => f.id === selectedForumId)) {
+            setSelectedForumId(res.data.forums[res.data.forums.length - 1].id);
+          }
+        }
+      });
+    }
+  }, [open]);
 
   const categories = [
     "Relacionamento",
@@ -155,7 +177,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home" }: Cr
       const ok = await createPost(content, selectedCategory, {
         visibility,
         images: selectedImages.map(file => URL.createObjectURL(file)),
-        forum_id: 7,
+        forum_id: selectedForumId,
       });
       
       if (ok) {
@@ -334,6 +356,27 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home" }: Cr
             className="hidden"
             capture="environment"
           />
+
+          {/* Forum Selection */}
+          {forumOptions.length > 0 && (
+            <div className="space-y-3">
+              <label className="text-sm font-medium">
+                Fórum
+              </label>
+              <Select value={String(selectedForumId)} onValueChange={(v) => setSelectedForumId(parseInt(v, 10))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Escolha um fórum" />
+                </SelectTrigger>
+                <SelectContent>
+                  {forumOptions.map((f) => (
+                    <SelectItem key={f.id} value={String(f.id)}>
+                      {f.icon} {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Categories */}
           <div className="space-y-3">

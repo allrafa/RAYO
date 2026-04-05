@@ -667,20 +667,20 @@ async function seedForumsAndPosts() {
     { forum: 'Geral', title: null, content: 'Sugestão para a equipe RAIO: seria incrível ter um podcast semanal com especialistas em relacionamento! 🎙️', category: 'Geral', is_pinned: false },
   ];
 
+  const postIds: number[] = [];
   for (const p of samplePosts) {
     const forumId = forumIds[p.forum];
     if (!forumId) continue;
-    const likeCount = Math.floor(Math.random() * 40) + 5;
-    const commentCount = Math.floor(Math.random() * 12) + 1;
     const offset = Math.floor(Math.random() * 72);
-    await query(
+    const { rows: pRows } = await query(
       `INSERT INTO posts (forum_id, user_id, title, content, category, is_pinned, like_count, comment_count, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW() - INTERVAL '${offset} hours')`,
-      [forumId, seedUserId, p.title, p.content, p.category, p.is_pinned, likeCount, commentCount]
+       VALUES ($1, $2, $3, $4, $5, $6, 0, 0, NOW() - INTERVAL '${offset} hours')
+       RETURNING id`,
+      [forumId, seedUserId, p.title, p.content, p.category, p.is_pinned]
     );
+    postIds.push(pRows[0].id);
   }
 
-  const postRows = await query(`SELECT id FROM posts ORDER BY id LIMIT 5`);
   const sampleComments = [
     'Concordo totalmente! Tive a mesma experiência.',
     'Obrigada por compartilhar! Vou tentar isso também.',
@@ -688,10 +688,14 @@ async function seedForumsAndPosts() {
     'Recomendo o módulo 3 do curso, ajuda bastante nisso.',
     'Estamos passando pela mesma situação. Força para vocês!',
   ];
-  for (let i = 0; i < postRows.rows.length; i++) {
+  for (let i = 0; i < Math.min(postIds.length, sampleComments.length); i++) {
     await query(
       `INSERT INTO comments (post_id, user_id, content) VALUES ($1, $2, $3)`,
-      [postRows.rows[i].id, seedUserId, sampleComments[i]]
+      [postIds[i], seedUserId, sampleComments[i]]
+    );
+    await query(
+      `UPDATE posts SET comment_count = comment_count + 1 WHERE id = $1`,
+      [postIds[i]]
     );
   }
 
