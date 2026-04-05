@@ -1,4 +1,4 @@
-import { query } from "../../db/index.js";
+import { query, getClient } from "../../db/index.js";
 
 export const XP_LEVELS = [
   { level: 1, xp: 0, title: "Iniciante" },
@@ -51,40 +51,55 @@ export async function addXP(
   amount: number,
   reason: string
 ): Promise<{ newTotalXP: number; newLevel: number; leveledUp: boolean }> {
-  const { rows } = await query(
-    `UPDATE users SET xp = xp + $1, updated_at = NOW() WHERE id = $2
-     RETURNING xp, level`,
-    [amount, userId]
-  );
-  if (rows.length === 0) throw new Error("User not found");
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
 
-  const newTotalXP = rows[0].xp;
-  const currentLevel = rows[0].level;
-  const newLevel = calculateLevel(newTotalXP);
-  const leveledUp = newLevel > currentLevel;
+    const { rows } = await client.query(
+      `UPDATE users SET xp = xp + $1, updated_at = NOW() WHERE id = $2
+       RETURNING xp, level`,
+      [amount, userId]
+    );
+    if (rows.length === 0) {
+      await client.query("ROLLBACK");
+      throw new Error("User not found");
+    }
 
-  if (leveledUp) {
-    await query(`UPDATE users SET level = $1 WHERE id = $2`, [newLevel, userId]);
+    const newTotalXP = rows[0].xp;
+    const currentLevel = rows[0].level;
+    const newLevel = calculateLevel(newTotalXP);
+    const leveledUp = newLevel > currentLevel;
+
+    if (leveledUp) {
+      await client.query(`UPDATE users SET level = $1 WHERE id = $2`, [newLevel, userId]);
+    }
+
+    await client.query(
+      `INSERT INTO xp_log (user_id, amount, reason) VALUES ($1, $2, $3)`,
+      [userId, amount, reason]
+    );
+
+    const xpToNext = getXPForNextLevel(newLevel);
+    await client.query(
+      `INSERT INTO user_xp (user_id, total_xp, current_level, xp_to_next_level, current_streak, longest_streak, last_activity_date, updated_at)
+       VALUES ($1, $2, $3, $4, 0, 0, NULL, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET total_xp = $2, current_level = $3, xp_to_next_level = $4, updated_at = NOW()`,
+      [userId, newTotalXP, newLevel, xpToNext]
+    );
+
+    await client.query("COMMIT");
+
+    if (leveledUp && [3, 5].includes(newLevel)) {
+      await unlockBadge(userId, `level_${newLevel}`);
+    }
+
+    return { newTotalXP, newLevel, leveledUp };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
   }
-
-  await query(
-    `INSERT INTO xp_log (user_id, amount, reason) VALUES ($1, $2, $3)`,
-    [userId, amount, reason]
-  );
-
-  const xpToNext = getXPForNextLevel(newLevel);
-  await query(
-    `INSERT INTO user_xp (user_id, total_xp, current_level, xp_to_next_level, current_streak, longest_streak, last_activity_date, updated_at)
-     VALUES ($1, $2, $3, $4, 0, 0, NULL, NOW())
-     ON CONFLICT (user_id) DO UPDATE SET total_xp = $2, current_level = $3, xp_to_next_level = $4, updated_at = NOW()`,
-    [userId, newTotalXP, newLevel, xpToNext]
-  );
-
-  if (leveledUp && [3, 5].includes(newLevel)) {
-    await unlockBadge(userId, `level_${newLevel}`);
-  }
-
-  return { newTotalXP, newLevel, leveledUp };
 }
 
 export async function updateStreak(userId: number): Promise<{

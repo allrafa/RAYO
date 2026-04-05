@@ -123,7 +123,7 @@ export async function initializeSchema() {
   await query(`
     CREATE TABLE IF NOT EXISTS missions (
       id SERIAL PRIMARY KEY,
-      title VARCHAR(200) NOT NULL,
+      title VARCHAR(200) NOT NULL UNIQUE,
       description TEXT,
       type VARCHAR(20) NOT NULL DEFAULT 'daily',
       action_type VARCHAR(50) NOT NULL,
@@ -181,8 +181,6 @@ export async function initializeSchema() {
 }
 
 async function seedBadgesAndMissions() {
-  const { rows } = await query(`SELECT COUNT(*) as count FROM badges`);
-  if (parseInt(rows[0].count) > 0) return;
 
   const badges = [
     { name: 'newcomer', title: 'Bem-vindo', description: 'Completou o onboarding', icon: '👋', tier: 'bronze', criteria_type: 'onboarding', criteria_value: 1 },
@@ -225,7 +223,8 @@ async function seedBadgesAndMissions() {
   for (const m of missions) {
     await query(
       `INSERT INTO missions (title, description, type, action_type, action_count, xp_reward)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT DO NOTHING`,
       [m.title, m.description, m.type, m.action_type, m.action_count, m.xp_reward]
     );
   }
