@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Play, Clock, BookOpen, Star, Users, Award, CheckCircle, ArrowLeft, Heart, Share2, Download, Target, Zap, Gift } from "lucide-react";
+import { api } from "../lib/api";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -63,20 +64,48 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
   };
 
   const discountedPrice = course.price * 0.5;
-  const modules = [
-    { id: 1, title: "Introdução e Fundamentos", lessons: 3, duration: "45min", completed: course.isEnrolled },
-    { id: 2, title: "Comunicação Efetiva", lessons: 4, duration: "1h 20min", completed: false },
-    { id: 3, title: "Resolvendo Conflitos", lessons: 3, duration: "55min", completed: false },
-    { id: 4, title: "Construindo Intimidade", lessons: 2, duration: "40min", completed: false }
-  ];
+  const [modules, setModules] = useState<any[]>([]);
+  const [lessonProgressMap, setLessonProgressMap] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const detailRes = await api.get<{ course: any }>(`/api/courses/${courseId}`);
+        if (cancelled || !detailRes.success || !detailRes.data) return;
+        const mods = detailRes.data.course.modules || [];
+        setModules(mods.map((m: any) => ({
+          id: m.id,
+          title: m.title,
+          lessons: m.lessons?.length || 0,
+          duration: m.lessons?.reduce((acc: number, l: any) => acc + (l.duration_seconds || 0), 0) || 0,
+          lessonList: m.lessons || [],
+        })));
+
+        if (course.isEnrolled) {
+          const progressRes = await api.get<{ progress: any }>(`/api/courses/${courseId}/progress`);
+          if (!cancelled && progressRes.success && progressRes.data?.progress?.lessonProgress) {
+            const map: Record<number, string> = {};
+            progressRes.data.progress.lessonProgress.forEach((lp: any) => {
+              map[lp.lesson_id] = lp.status;
+            });
+            setLessonProgressMap(map);
+          }
+        }
+      } catch (err) {
+        console.error("[CourseDetail] Failed to load:", err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [courseId, course.isEnrolled]);
 
   const instructor = {
-    name: "Dr. Rafael Santos",
-    title: "Terapeuta de Casais",
+    name: course.instructor || "RAIO Academy",
+    title: "Especialista",
     avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
     experience: "15+ anos",
-    students: "10.000+",
-    rating: 4.9
+    students: `${course.students?.toLocaleString() || '0'}+`,
+    rating: course.rating || 4.9
   };
 
   const testimonials = [
@@ -350,14 +379,21 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {modules.map((module, index) => (
+                {modules.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Carregando módulos...</p>
+                ) : modules.map((module, index) => {
+                  const modLessons = module.lessonList || [];
+                  const allCompleted = modLessons.length > 0 && modLessons.every((l: any) => lessonProgressMap[l.id] === 'completed');
+                  const durationMin = Math.round(module.duration / 60);
+                  const durationStr = durationMin >= 60 ? `${Math.floor(durationMin / 60)}h ${durationMin % 60}min` : `${durationMin}min`;
+                  return (
                   <div key={module.id} className="border border-border rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                          module.completed ? 'bg-green-600 text-white' : 'bg-muted text-muted-foreground'
+                          allCompleted ? 'bg-green-600 text-white' : 'bg-muted text-muted-foreground'
                         }`}>
-                          {module.completed ? <CheckCircle className="w-4 h-4" /> : index + 1}
+                          {allCompleted ? <CheckCircle className="w-4 h-4" /> : index + 1}
                         </div>
                         <div>
                           <h4 className="font-medium">{module.title}</h4>
@@ -368,7 +404,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              {module.duration}
+                              {durationStr}
                             </span>
                           </div>
                         </div>
@@ -379,8 +415,32 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                         </Button>
                       )}
                     </div>
+                    {course.isEnrolled && modLessons.length > 0 && (
+                      <div className="mt-3 space-y-2 pl-11">
+                        {modLessons.map((lesson: any) => {
+                          const lessonStatus = lessonProgressMap[lesson.id];
+                          const isLessonCompleted = lessonStatus === 'completed';
+                          return (
+                            <div key={lesson.id} className="flex items-center justify-between text-sm py-1">
+                              <div className="flex items-center gap-2">
+                                {isLessonCompleted ? (
+                                  <CheckCircle className="w-4 h-4 text-green-600" />
+                                ) : (
+                                  <Play className="w-4 h-4 text-muted-foreground" />
+                                )}
+                                <span className={isLessonCompleted ? 'text-muted-foreground line-through' : ''}>
+                                  {lesson.title}
+                                </span>
+                              </div>
+                              <span className="text-muted-foreground">{lesson.duration}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           </TabsContent>

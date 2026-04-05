@@ -1,6 +1,16 @@
 import { query, getClient } from "../../db/index.js";
 import { addXP, unlockBadge, checkMissionProgress } from "../gamification/service.js";
 
+export class AppError extends Error {
+  statusCode: number;
+  code: string;
+  constructor(message: string, code: string, statusCode: number = 400) {
+    super(message);
+    this.code = code;
+    this.statusCode = statusCode;
+  }
+}
+
 export async function listCourses(filters?: {
   life_context?: string;
   category?: string;
@@ -72,7 +82,7 @@ export async function enrollInCourse(userId: number, courseId: number) {
     `SELECT id, total_lessons, title FROM courses WHERE id = $1 AND is_active = true`,
     [courseId]
   );
-  if (courseRows.length === 0) throw new Error("COURSE_NOT_FOUND");
+  if (courseRows.length === 0) throw new AppError("Curso não encontrado", "COURSE_NOT_FOUND", 404);
 
   const client = await getClient();
   try {
@@ -119,7 +129,7 @@ export async function updateLessonProgress(
      WHERE cl.id = $1`,
     [lessonId]
   );
-  if (lessonRows.length === 0) throw new Error("Aula não encontrada");
+  if (lessonRows.length === 0) throw new AppError("Aula não encontrada", "LESSON_NOT_FOUND", 404);
 
   const courseId = lessonRows[0].course_id;
 
@@ -127,10 +137,16 @@ export async function updateLessonProgress(
     `SELECT id FROM user_course_progress WHERE user_id = $1 AND course_id = $2`,
     [userId, courseId]
   );
-  if (enrollCheck.length === 0) throw new Error("Não matriculado neste curso");
+  if (enrollCheck.length === 0) throw new AppError("Não matriculado neste curso", "NOT_ENROLLED", 403);
 
   const isCompleting = status === "completed";
-  const completedAt = isCompleting ? "NOW()" : "NULL";
+
+  const { rows: prevStatus } = await query(
+    `SELECT status FROM user_lesson_progress WHERE user_id = $1 AND lesson_id = $2`,
+    [userId, lessonId]
+  );
+  const wasAlreadyCompleted = prevStatus.length > 0 && prevStatus[0].status === 'completed';
+  const isFirstCompletion = isCompleting && !wasAlreadyCompleted;
 
   await query(
     `INSERT INTO user_lesson_progress (user_id, lesson_id, status, progress_seconds, completed_at)
@@ -158,7 +174,14 @@ export async function updateLessonProgress(
   const totalLessons = totalRows[0].total_lessons;
 
   const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+  const { rows: prevCourseProgress } = await query(
+    `SELECT completed_at FROM user_course_progress WHERE user_id = $1 AND course_id = $2`,
+    [userId, courseId]
+  );
+  const wasCoursePreviouslyCompleted = prevCourseProgress.length > 0 && prevCourseProgress[0].completed_at !== null;
   const courseCompleted = progressPercentage >= 100;
+  const isFirstCourseCompletion = courseCompleted && !wasCoursePreviouslyCompleted;
 
   await query(
     `UPDATE user_course_progress SET
@@ -170,28 +193,28 @@ export async function updateLessonProgress(
     [completedLessons, progressPercentage, lessonId, courseCompleted, userId, courseId]
   );
 
-  if (isCompleting) {
+  if (isFirstCompletion) {
     try {
       await addXP(userId, 10, "watch_lesson");
       await checkMissionProgress(userId, "watch_lesson");
     } catch (err) {
       console.error("[Academia] Gamification error (non-blocking):", err);
     }
+  }
 
-    if (courseCompleted) {
-      try {
-        await addXP(userId, 50, "complete_course");
-        const { rows: completedCourseCount } = await query(
-          `SELECT COUNT(*) as count FROM user_course_progress WHERE user_id = $1 AND completed_at IS NOT NULL`,
-          [userId]
-        );
-        const totalCompleted = parseInt(completedCourseCount[0].count);
-        if (totalCompleted === 1) await unlockBadge(userId, "first_course");
-        if (totalCompleted === 5) await unlockBadge(userId, "courses_5");
-        if (totalCompleted === 10) await unlockBadge(userId, "courses_10");
-      } catch (err) {
-        console.error("[Academia] Badge/XP error (non-blocking):", err);
-      }
+  if (isFirstCourseCompletion) {
+    try {
+      await addXP(userId, 50, "complete_course");
+      const { rows: completedCourseCount } = await query(
+        `SELECT COUNT(*) as count FROM user_course_progress WHERE user_id = $1 AND completed_at IS NOT NULL`,
+        [userId]
+      );
+      const totalCompleted = parseInt(completedCourseCount[0].count);
+      if (totalCompleted === 1) await unlockBadge(userId, "first_course");
+      if (totalCompleted === 5) await unlockBadge(userId, "courses_5");
+      if (totalCompleted === 10) await unlockBadge(userId, "courses_10");
+    } catch (err) {
+      console.error("[Academia] Badge/XP error (non-blocking):", err);
     }
   }
 

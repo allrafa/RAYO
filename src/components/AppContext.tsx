@@ -131,6 +131,7 @@ interface AppContextType {
   updateCourseProgress: (courseId: number, progress: number) => void;
   getCourseById: (courseId: number) => Course | undefined;
   loadCourses: () => Promise<void>;
+  completeLessonOnServer: (lessonId: number) => Promise<any>;
   
   // Book functions
   enrollInBook: (bookId: string) => void;
@@ -448,6 +449,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
         completedLessons: Math.floor((progress / 100) * c.lessons)
       } : c
     ));
+  };
+
+  const completeLessonOnServer = async (lessonId: number) => {
+    const res = await api.patch<{
+      completedLessons: number;
+      totalLessons: number;
+      progressPercentage: number;
+      courseCompleted: boolean;
+    }>(`/api/courses/lessons/${lessonId}/progress`, { status: "completed" });
+
+    if (res.success && res.data) {
+      await loadCourses();
+      if (res.data.courseCompleted) {
+        enhancedToast.achievement({
+          title: "Curso concluído!",
+          description: "Parabéns! Você completou o curso.",
+          haptic: true,
+        });
+      }
+    }
+    return res;
   };
 
   // Post functions
@@ -776,6 +798,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateCourseProgress,
       getCourseById,
       loadCourses,
+      completeLessonOnServer,
       enrollInBook,
       updateBookProgress,
       toggleBookFavorite,
