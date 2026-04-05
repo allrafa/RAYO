@@ -351,6 +351,33 @@ export async function initializeSchema() {
 
   await query(`CREATE INDEX IF NOT EXISTS idx_comment_likes_comment_id ON comment_likes(comment_id)`);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS lgpd_requests (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      request_type VARCHAR(20) NOT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'pending',
+      completed_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`CREATE INDEX IF NOT EXISTS idx_lgpd_requests_user_id ON lgpd_requests(user_id)`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS analytics_events (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      event_name VARCHAR(100) NOT NULL,
+      metadata JSONB,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`CREATE INDEX IF NOT EXISTS idx_analytics_events_user_id ON analytics_events(user_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_analytics_events_event_name ON analytics_events(event_name)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_analytics_events_created_at ON analytics_events(created_at DESC)`);
+
   await seedBadgesAndMissions();
   await seedCourses();
   await seedForumsAndPosts();

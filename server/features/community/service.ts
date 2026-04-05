@@ -1,5 +1,6 @@
 import { query } from "../../db/index.js";
 import { AppError } from "../academia/service.js";
+import { trackEvent } from "../analytics/service.js";
 
 export async function listForums() {
   const { rows } = await query(
@@ -104,6 +105,8 @@ export async function createPost(
   post.author_id = userId;
   post.user_liked = false;
 
+  trackEvent(userId, "post_created", { post_id: post.id, forum_id: forumId });
+
   return post;
 }
 
@@ -205,6 +208,8 @@ export async function addComment(postId: number, userId: number, content: string
   comment.author_name = userRows[0]?.name || "Anônimo";
   comment.author_id = userId;
   comment.user_liked = false;
+
+  trackEvent(userId, "comment_created", { post_id: postId, comment_id: comment.id });
 
   return comment;
 }

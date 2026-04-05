@@ -1,5 +1,6 @@
 import { query, getClient } from "../../db/index.js";
 import { addXP, unlockBadge, checkMissionProgress } from "../gamification/service.js";
+import { trackEvent } from "../analytics/service.js";
 
 export class AppError extends Error {
   statusCode: number;
@@ -128,6 +129,9 @@ export async function enrollInCourse(userId: number, courseId: number) {
     );
 
     await client.query("COMMIT");
+
+    trackEvent(userId, "course_enrolled", { course_id: courseId, course_title: courseRows[0].title });
+
     return { alreadyEnrolled: false, courseTitle: courseRows[0].title };
   } catch (err) {
     await client.query("ROLLBACK");
@@ -215,6 +219,7 @@ export async function updateLessonProgress(
   );
 
   if (isFirstCompletion) {
+    trackEvent(userId, "lesson_completed", { lesson_id: lessonId, course_id: courseId });
     try {
       await addXP(userId, 10, "watch_lesson");
       await checkMissionProgress(userId, "watch_lesson");
@@ -224,6 +229,7 @@ export async function updateLessonProgress(
   }
 
   if (isFirstCourseCompletion) {
+    trackEvent(userId, "course_completed", { course_id: courseId });
     try {
       await addXP(userId, 50, "complete_course");
       const { rows: completedCourseCount } = await query(

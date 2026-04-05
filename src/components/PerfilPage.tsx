@@ -4,7 +4,7 @@ import {
   ChevronRight, LogOut, Moon, Sun, Globe, 
   Shield, HelpCircle, MessageSquare, Star,
   Award, Target, TrendingUp, Calendar, Crown,
-  BookOpen, Users, Sparkles
+  BookOpen, Users, Sparkles, Download, Trash2, FileText
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -58,6 +58,9 @@ export function PerfilPage() {
 
   const [gamProfile, setGamProfile] = useState<GamificationProfile | null>(null);
   const [badges, setBadges] = useState<BadgeData[]>([]);
+  const [exportingData, setExportingData] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     api.get<{ profile: GamificationProfile }>("/api/gamification/profile").then((res) => {
@@ -159,6 +162,49 @@ export function PerfilPage() {
       ]
     }
   ];
+
+  const handleExportData = async () => {
+    setExportingData(true);
+    try {
+      const res = await api.post<{ message: string; export: Record<string, unknown> }>("/api/users/data-export");
+      if (res.success && res.data) {
+        const blob = new Blob([JSON.stringify(res.data.export, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `raio-meus-dados-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success("Seus dados foram exportados com sucesso!");
+      } else {
+        toast.error(res.error?.message || "Erro ao exportar dados");
+      }
+    } catch {
+      toast.error("Erro ao exportar dados. Tente novamente.");
+    } finally {
+      setExportingData(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      const res = await api.post("/api/users/data-deletion");
+      if (res.success) {
+        toast.success("Sua conta foi removida conforme a LGPD.");
+        await logout();
+      } else {
+        toast.error(res.error?.message || "Erro ao excluir conta");
+      }
+    } catch {
+      toast.error("Erro ao excluir conta. Tente novamente.");
+    } finally {
+      setDeletingAccount(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   const progressPercentage = gamProfile?.progressPercentage ?? 0;
   const xpInCurrentLevel = gamProfile?.xpInCurrentLevel ?? 0;
@@ -585,6 +631,53 @@ export function PerfilPage() {
                 </div>
               ))}
 
+              {/* LGPD - Privacidade e Dados */}
+              <div>
+                <h3
+                  className="text-sm mb-3 px-2"
+                  style={{ fontWeight: 600, color: 'var(--raio-text-secondary)' }}
+                >
+                  Privacidade e Dados (LGPD)
+                </h3>
+                <Card
+                  className="border-0 shadow-md overflow-hidden"
+                  style={{ background: 'var(--raio-bg-secondary)' }}
+                >
+                  <button
+                    onClick={handleExportData}
+                    disabled={exportingData}
+                    className="w-full flex items-center justify-between p-4 transition-colors cursor-pointer"
+                    style={{ background: 'transparent' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--raio-bg-tertiary)' }}>
+                        <Download className="w-5 h-5" style={{ color: 'var(--raio-text-secondary)' }} />
+                      </div>
+                      <span style={{ fontWeight: 500, color: 'var(--raio-text-primary)' }}>
+                        {exportingData ? "Exportando..." : "Exportar meus dados"}
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4" style={{ color: 'var(--raio-text-tertiary)' }} />
+                  </button>
+                  <div className="border-b mx-4" style={{ borderColor: 'var(--raio-border-default)' }} />
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="w-full flex items-center justify-between p-4 transition-colors cursor-pointer"
+                    style={{ background: 'transparent' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: theme === 'dark' ? 'rgba(127, 29, 29, 0.2)' : 'rgba(254, 242, 242, 1)' }}>
+                        <Trash2 className="w-5 h-5" style={{ color: theme === 'dark' ? 'rgba(248, 113, 113, 1)' : 'rgba(220, 38, 38, 1)' }} />
+                      </div>
+                      <span style={{ fontWeight: 500, color: theme === 'dark' ? 'rgba(248, 113, 113, 1)' : 'rgba(220, 38, 38, 1)' }}>
+                        Excluir minha conta
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4" style={{ color: 'var(--raio-text-tertiary)' }} />
+                  </button>
+                </Card>
+              </div>
+
               {/* Logout Button - Mobile */}
               <Button
                 variant="outline"
@@ -739,6 +832,57 @@ export function PerfilPage() {
               </div>
             ))}
 
+            {/* LGPD - Desktop */}
+            <div>
+              <h3
+                className="text-sm mb-3 px-2"
+                style={{ fontWeight: 600, color: 'var(--raio-text-secondary)' }}
+              >
+                Privacidade e Dados (LGPD)
+              </h3>
+              <Card
+                className="border-0 shadow-md overflow-hidden"
+                style={{ background: 'var(--raio-bg-secondary)' }}
+              >
+                <button
+                  onClick={handleExportData}
+                  disabled={exportingData}
+                  className="w-full flex items-center justify-between p-4 transition-colors cursor-pointer"
+                  style={{ background: 'transparent' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--raio-bg-tertiary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--raio-bg-tertiary)' }}>
+                      <Download className="w-5 h-5" style={{ color: 'var(--raio-text-secondary)' }} />
+                    </div>
+                    <span style={{ fontWeight: 500, color: 'var(--raio-text-primary)' }}>
+                      {exportingData ? "Exportando..." : "Exportar meus dados"}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-4 h-4" style={{ color: 'var(--raio-text-tertiary)' }} />
+                </button>
+                <div className="border-b mx-4" style={{ borderColor: 'var(--raio-border-default)' }} />
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full flex items-center justify-between p-4 transition-colors cursor-pointer"
+                  style={{ background: 'transparent' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--raio-bg-tertiary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: theme === 'dark' ? 'rgba(127, 29, 29, 0.2)' : 'rgba(254, 242, 242, 1)' }}>
+                      <Trash2 className="w-5 h-5" style={{ color: theme === 'dark' ? 'rgba(248, 113, 113, 1)' : 'rgba(220, 38, 38, 1)' }} />
+                    </div>
+                    <span style={{ fontWeight: 500, color: theme === 'dark' ? 'rgba(248, 113, 113, 1)' : 'rgba(220, 38, 38, 1)' }}>
+                      Excluir minha conta
+                    </span>
+                  </div>
+                  <ChevronRight className="w-4 h-4" style={{ color: 'var(--raio-text-tertiary)' }} />
+                </button>
+              </Card>
+            </div>
+
             {/* Logout Button - Desktop */}
             <Button
               variant="outline"
@@ -783,6 +927,63 @@ export function PerfilPage() {
           </div>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <Card
+            className="max-w-md w-full p-6 border-0 shadow-2xl"
+            style={{ background: 'var(--raio-bg-secondary)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center mb-4">
+              <div
+                className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+                style={{ background: theme === 'dark' ? 'rgba(127, 29, 29, 0.2)' : 'rgba(254, 242, 242, 1)' }}
+              >
+                <Trash2 className="w-8 h-8" style={{ color: theme === 'dark' ? 'rgba(248, 113, 113, 1)' : 'rgba(220, 38, 38, 1)' }} />
+              </div>
+              <h3
+                className="text-lg mb-2"
+                style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}
+              >
+                Excluir sua conta?
+              </h3>
+              <p
+                className="text-sm"
+                style={{ color: 'var(--raio-text-secondary)' }}
+              >
+                Esta ação é irreversível. Todos os seus dados pessoais serão anonimizados conforme a LGPD.
+                Seu progresso, conquistas e posts serão removidos permanentemente.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowDeleteConfirm(false)}
+                style={{ borderColor: 'var(--raio-border-default)', color: 'var(--raio-text-secondary)' }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount}
+                style={{
+                  background: theme === 'dark' ? 'rgba(220, 38, 38, 0.8)' : 'rgba(220, 38, 38, 1)',
+                  color: '#fff',
+                }}
+              >
+                {deletingAccount ? "Excluindo..." : "Sim, excluir"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

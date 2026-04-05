@@ -19,6 +19,7 @@ import { PerfilPage } from "./components/PerfilPage";
 import { CentralConversasPage } from "./components/TrilhaTransformacao/CentralConversasPage";
 import { ConsentBanner } from "./components/ConsentBanner";
 import { LandingPage } from "./components/LandingPage";
+import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
 import { analytics } from "./lib/analytics/mixpanel";
 
 type PreAuthStage = "welcome" | "onboarding" | "auth";
@@ -133,6 +134,8 @@ function AppContent() {
               showCloseButton={true}
             />
           );
+        case "privacy":
+          return <PrivacyPolicyPage onBack={() => setCurrentTab("perfil")} />;
         default:
           return (
             <HomePage

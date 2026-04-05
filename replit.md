@@ -120,6 +120,17 @@ vite.config.ts           # Vite + API proxy config
 - Frontend: HomePage fetches /api/dashboard and renders: stats cards (streak, level, weekly XP), level progress bar, courses in progress, recommended courses, daily missions, active discussions
 - Feature files: `server/features/dashboard/service.ts`, `server/features/dashboard/routes.ts`
 
+## LGPD Compliance & Analytics
+- DB tables: `lgpd_requests` (tracks export/deletion requests), `analytics_events` (server-side event log)
+- `POST /api/users/data-export` — Exports all user data as JSON (profile, progress, posts, badges, xp, missions, analytics); creates lgpd_request record
+- `POST /api/users/data-deletion` — Anonymizes user PII (name → "Usuário Removido", email → randomized), marks posts/comments as removed, deletes progress/badges/likes, clears sessions
+- Backend event tracking: `trackEvent(userId, eventName, metadata)` in `server/features/analytics/service.ts`
+  - Events tracked: user_registered, user_login, post_created, comment_created, course_enrolled, lesson_completed, course_completed, lgpd_data_export, lgpd_data_deletion_requested
+- Cookie consent: Existing `ConsentBanner` component with necessary/analytics/marketing/personalization toggles (localStorage-persisted)
+- Privacy policy: `PrivacyPolicyPage` accessible from profile → tab "privacy" in App.tsx
+- Profile LGPD section: "Exportar meus dados" (downloads JSON) and "Excluir minha conta" (confirmation dialog + anonymization) buttons in PerfilPage
+- Feature files: `server/features/lgpd/service.ts`, `server/features/lgpd/routes.ts`, `server/features/analytics/service.ts`
+
 ## Development Rules
 1. No business logic in frontend
 2. No API keys or secrets in client code

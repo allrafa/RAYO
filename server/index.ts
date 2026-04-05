@@ -12,6 +12,7 @@ import gamificationRoutes from "./features/gamification/routes.js";
 import academiaRoutes from "./features/academia/routes.js";
 import communityRoutes from "./features/community/routes.js";
 import dashboardRoutes from "./features/dashboard/routes.js";
+import lgpdRoutes from "./features/lgpd/routes.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -40,6 +41,7 @@ app.use("/api/gamification", rateLimiter(60, 15 * 60 * 1000), gamificationRoutes
 app.use("/api/courses", rateLimiter(60, 15 * 60 * 1000), academiaRoutes);
 app.use("/api/community", rateLimiter(60, 15 * 60 * 1000), optionalAuth, communityRoutes);
 app.use("/api/dashboard", rateLimiter(60, 15 * 60 * 1000), dashboardRoutes);
+app.use("/api/users", lgpdRoutes);
 
 app.all("/api/{*path}", (req, res) => {
   sendError(res, `Route ${req.method} ${req.path} not found`, "NOT_FOUND", 404);

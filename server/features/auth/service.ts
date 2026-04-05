@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { query } from "../../db/index.js";
 import type { RegisterInput, LoginInput } from "./validation.js";
+import { trackEvent } from "../analytics/service.js";
 
 const SALT_ROUNDS = 12;
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -199,6 +200,8 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
   const user = toSafeUser(result.rows[0]);
   const token = await createSession(user.id);
 
+  trackEvent(user.id, "user_registered", { method: "email" });
+
   return { user, token };
 }
 
@@ -229,6 +232,8 @@ export async function loginUser(input: LoginInput, ip?: string, userAgent?: stri
   const token = await createSession(user.id, ip, userAgent);
 
   await query("UPDATE users SET last_active_at = NOW(), updated_at = NOW() WHERE id = $1", [user.id]);
+
+  trackEvent(user.id, "user_login", { method: "email" });
 
   return { user, token };
 }
