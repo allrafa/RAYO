@@ -1,4 +1,4 @@
-import { Play, BookOpen, Users, TrendingUp, Star, Clock, ArrowRight, Award, RefreshCw, Heart, Shuffle, MoreHorizontal, Plus, MessageCircle, Sparkles, Target, Brain } from "lucide-react";
+import { Play, BookOpen, Users, TrendingUp, Star, Clock, ArrowRight, Award, RefreshCw, Heart, Shuffle, MoreHorizontal, Plus, MessageCircle, Sparkles, Target, Brain, Flame, Zap, Trophy, CheckCircle2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -15,7 +15,7 @@ import { QuizPage } from "./QuizPage";
 import { SimpleQuizTest } from "./SimpleQuizTest";
 import { MusicPage } from "./MusicPage";
 import { PlaylistsExpandedPage } from "./PlaylistsExpandedPage";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import raioLogoFull from "figma:asset/91df98d68db1bbd58de3db20caeed5acda1da6fc.png";
 import { useYouTubeData } from "./hooks/useYouTubeData";
 import { useVideoProgress } from "./hooks/useVideoProgress";
@@ -27,6 +27,83 @@ import { YouTubeMockBanner } from "./youtube/YouTubeMockBanner";
 import { YouTubePlaylistModal } from "./youtube/YouTubePlaylistModal";
 import { YouTubeVideo, YouTubePlaylist, YouTubeShort } from "./youtube/YouTubeTypes";
 import { fetchPlaylistVideos } from "./youtube/YouTubeService";
+import { api } from "../lib/api";
+import { useAuth } from "./AuthContext";
+
+interface DashboardData {
+  greeting: { name: string; segments: string[] };
+  gamification: {
+    level: number;
+    levelTitle: string;
+    xp: number;
+    streak: number;
+    longestStreak: number;
+    xpForNextLevel: number;
+    levelProgress: number;
+  };
+  weeklyXP: number;
+  completedCoursesCount: number;
+  coursesInProgress: Array<{
+    id: number;
+    title: string;
+    thumbnail: string;
+    category: string;
+    instructor: string;
+    duration: string;
+    progress: number;
+    completedLessons: number;
+    totalLessons: number;
+  }>;
+  enrolledNotStarted: Array<{
+    id: number;
+    title: string;
+    thumbnail: string;
+    category: string;
+    instructor: string;
+    duration: string;
+    progress: number;
+    completedLessons: number;
+    totalLessons: number;
+  }>;
+  recommendedCourses: Array<{
+    id: number;
+    title: string;
+    description: string;
+    thumbnail: string;
+    category: string;
+    lifeContext: string;
+    level: string;
+    duration: string;
+    totalLessons: number;
+    rating: number;
+    students: number;
+    instructor: string;
+    isPremium: boolean;
+  }>;
+  recentPosts: Array<{
+    id: number;
+    content: string;
+    category: string;
+    likeCount: number;
+    commentCount: number;
+    createdAt: string;
+    authorName: string;
+    forumName: string;
+    forumIcon: string;
+  }>;
+  missions: Array<{
+    id: number;
+    title: string;
+    description: string;
+    type: string;
+    actionCount: number;
+    currentProgress: number;
+    completed: boolean;
+    rewardClaimed: boolean;
+    rewardXP: number;
+    icon: string;
+  }>;
+}
 
 interface HomePageProps {
   userSegment: string;
@@ -45,26 +122,42 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   const [playlistVideos, setPlaylistVideos] = useState<YouTubeVideo[]>([]);
   const [loadingPlaylist, setLoadingPlaylist] = useState(false);
   const [playerPlaylist, setPlayerPlaylist] = useState<YouTubePlaylist | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const { user: authUser } = useAuth();
   
-  // YouTube data and progress
   const { data: youtubeData, loading: youtubeLoading } = useYouTubeData();
   const { getInProgressVideos } = useVideoProgress();
 
-  // Scroll para o topo quando quiz abre
+  const loadDashboard = useCallback(async () => {
+    if (!authUser) {
+      setDashboardLoading(false);
+      return;
+    }
+    try {
+      const res = await api.get<DashboardData>("/api/dashboard");
+      if (res.success && res.data) {
+        setDashboard(res.data);
+      }
+    } catch (err) {
+      console.error("[HomePage] Failed to load dashboard:", err);
+    } finally {
+      setDashboardLoading(false);
+    }
+  }, [authUser]);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
   useEffect(() => {
     if (currentQuiz) {
-      // Força scroll para o topo imediatamente
       window.scrollTo({ top: 0, behavior: 'instant' });
-      // Previne scroll no body
       document.body.style.overflow = 'hidden';
     } else {
-      // Restaura scroll quando quiz fecha
       document.body.style.overflow = 'unset';
     }
-
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    return () => { document.body.style.overflow = 'unset'; };
   }, [currentQuiz]);
 
 
@@ -79,7 +172,9 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
     isInCentralConversas, 
     setIsInCentralConversas,
     setCurrentVideoId,
-    setIsInVideoPage
+    setIsInVideoPage,
+    setCurrentCourseId,
+    setIsInCourseDetail
   } = useApp();
   
   const getGreeting = () => {
@@ -92,11 +187,9 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Conteúdo atualizado silenciosamente
+      await loadDashboard();
     } catch (error) {
       console.error("Erro na atualização:", error);
-      // Erro tratado silenciosamente
     } finally {
       setIsLoading(false);
     }
@@ -682,6 +775,205 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
             </Button>
           </div>
         </div>
+
+        {/* Dashboard Loading State */}
+        {dashboardLoading && authUser && (
+          <div className="px-4 mt-8 mb-6 space-y-3">
+            <div className="h-6 w-48 bg-muted rounded animate-pulse" />
+            <div className="grid grid-cols-3 gap-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Dashboard Stats Cards */}
+        {dashboard && (
+          <div className="px-4 mt-8 mb-6">
+            <h2 className="font-display text-xl font-semibold mb-4">
+              {getGreeting()}, {dashboard.greeting.name}!
+            </h2>
+            <div className="grid grid-cols-3 gap-3">
+              <Card className="p-3 text-center bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/30 dark:to-orange-900/20 border-orange-200/50">
+                <div className="flex flex-col items-center gap-1">
+                  <Flame className="w-5 h-5 text-orange-500" />
+                  <span className="text-2xl font-bold text-orange-600">{dashboard.gamification.streak}</span>
+                  <span className="text-xs text-muted-foreground">Sequência</span>
+                </div>
+              </Card>
+              <Card className="p-3 text-center bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20 border-purple-200/50">
+                <div className="flex flex-col items-center gap-1">
+                  <Trophy className="w-5 h-5 text-purple-500" />
+                  <span className="text-2xl font-bold text-purple-600">{dashboard.gamification.level}</span>
+                  <span className="text-xs text-muted-foreground">{dashboard.gamification.levelTitle}</span>
+                </div>
+              </Card>
+              <Card className="p-3 text-center bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/20 border-emerald-200/50">
+                <div className="flex flex-col items-center gap-1">
+                  <Zap className="w-5 h-5 text-emerald-500" />
+                  <span className="text-2xl font-bold text-emerald-600">{dashboard.weeklyXP}</span>
+                  <span className="text-xs text-muted-foreground">XP semanal</span>
+                </div>
+              </Card>
+            </div>
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                <span>Nível {dashboard.gamification.level} → {dashboard.gamification.level + 1}</span>
+                <span>{dashboard.gamification.xp} / {dashboard.gamification.xpForNextLevel} XP</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-500"
+                  style={{ width: `${dashboard.gamification.levelProgress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Continue de onde parou - Cursos em progresso */}
+        {dashboard && dashboard.coursesInProgress.length > 0 && (
+          <div className="px-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-xl font-semibold">Continue de onde parou</h2>
+            </div>
+            <div className="overflow-x-auto scrollbar-hide">
+              <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
+                {dashboard.coursesInProgress.map((course) => (
+                  <Card
+                    key={course.id}
+                    className="w-64 shrink-0 cursor-pointer hover:shadow-lg transition-shadow overflow-hidden"
+                    onClick={() => {
+                      setCurrentCourseId(course.id);
+                      setIsInCourseDetail(true);
+                    }}
+                  >
+                    <div className="relative h-36 overflow-hidden">
+                      <ImageWithFallback
+                        src={course.thumbnail}
+                        alt={course.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/20">
+                        <div className="h-full bg-primary rounded-r-full" style={{ width: `${course.progress}%` }} />
+                      </div>
+                      <Badge className="absolute top-2 right-2 bg-black/70 text-white text-xs">{Math.round(course.progress)}%</Badge>
+                    </div>
+                    <CardContent className="p-3">
+                      <h3 className="font-medium text-sm line-clamp-1 mb-1">{course.title}</h3>
+                      <p className="text-xs text-muted-foreground">{course.completedLessons}/{course.totalLessons} aulas</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recomendado para você */}
+        {dashboard && dashboard.recommendedCourses.length > 0 && (
+          <div className="px-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-xl font-semibold">Recomendado para você</h2>
+            </div>
+            <div className="overflow-x-auto scrollbar-hide">
+              <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
+                {dashboard.recommendedCourses.map((course) => (
+                  <Card
+                    key={course.id}
+                    className="w-52 shrink-0 cursor-pointer hover:shadow-lg transition-shadow overflow-hidden group"
+                    onClick={() => {
+                      setCurrentCourseId(course.id);
+                      setIsInCourseDetail(true);
+                    }}
+                  >
+                    <div className="relative h-32 overflow-hidden">
+                      <ImageWithFallback
+                        src={course.thumbnail}
+                        alt={course.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      {course.isPremium && (
+                        <Badge className="absolute top-2 left-2 bg-yellow-500 text-black text-xs">Premium</Badge>
+                      )}
+                      <Badge className="absolute top-2 right-2 bg-black/70 text-white text-xs">{course.duration}</Badge>
+                    </div>
+                    <CardContent className="p-3">
+                      <h3 className="font-medium text-sm line-clamp-2 mb-1">{course.title}</h3>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                        <span>{course.rating.toFixed(1)}</span>
+                        <span className="mx-1">·</span>
+                        <span>{course.totalLessons} aulas</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Missões Ativas */}
+        {dashboard && dashboard.missions.length > 0 && (
+          <div className="px-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-xl font-semibold">Missões do dia</h2>
+            </div>
+            <div className="space-y-2">
+              {dashboard.missions.filter(m => m.type === 'daily').slice(0, 3).map((mission) => (
+                <Card key={mission.id} className={`p-3 ${mission.completed ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200/50' : ''}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{mission.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm line-clamp-1">{mission.title}</span>
+                        {mission.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${mission.completed ? 'bg-emerald-500' : 'bg-primary'}`}
+                            style={{ width: `${Math.min(100, (mission.currentProgress / mission.actionCount) * 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0">{mission.currentProgress}/{mission.actionCount}</span>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs shrink-0">+{mission.rewardXP} XP</Badge>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Discussões Ativas */}
+        {dashboard && dashboard.recentPosts.length > 0 && (
+          <div className="px-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-xl font-semibold">Discussões ativas</h2>
+            </div>
+            <div className="space-y-2">
+              {dashboard.recentPosts.slice(0, 3).map((post) => (
+                <Card key={post.id} className="p-3 cursor-pointer hover:shadow-md transition-shadow">
+                  <div className="flex gap-3">
+                    <span className="text-xl shrink-0">{post.forumIcon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm line-clamp-2 mb-1">{post.content}</p>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>{post.authorName}</span>
+                        <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {post.likeCount}</span>
+                        <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> {post.commentCount}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Continuar assistindo - Vídeos YouTube em progresso */}
         <div className="px-4 mb-8">

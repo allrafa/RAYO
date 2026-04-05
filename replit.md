@@ -28,7 +28,8 @@ server/                  # Backend
 │   ├── users/           # User profile management (PATCH /api/users/profile)
 │   ├── gamification/    # XP, badges, missions, streaks
 │   ├── academia/        # Courses, modules, lessons, progress
-│   └── community/       # Forums, posts, comments, likes
+│   ├── community/       # Forums, posts, comments, likes
+│   └── dashboard/       # Personalized dashboard aggregation
 └── utils/               # Response helpers, logger
 
 src/                     # Frontend (React)
@@ -105,6 +106,19 @@ vite.config.ts           # Vite + API proxy config
 - `optionalAuth` middleware: attaches `req.user` if session cookie exists, but doesn't block unauthenticated requests
 - Frontend: ComunidadePage loads forums/posts from API, supports real comments panel with submit + like
 - Feature files: `server/features/community/service.ts`, `server/features/community/routes.ts`
+
+## Dashboard System
+- `GET /api/dashboard` — Aggregated personalized payload (requires auth)
+  - Greeting with real user name + segments
+  - Gamification stats: level, levelTitle, xp, streak, longestStreak, xpForNextLevel, levelProgress
+  - Weekly XP (sum of XP earned in current week)
+  - Completed courses count
+  - Courses in progress (with progress %, completed/total lessons)
+  - Recommended courses (filtered by user's life context segments, backfilled with popular courses)
+  - Recent community posts from relevant forums
+  - Active missions with current progress
+- Frontend: HomePage fetches /api/dashboard and renders: stats cards (streak, level, weekly XP), level progress bar, courses in progress, recommended courses, daily missions, active discussions
+- Feature files: `server/features/dashboard/service.ts`, `server/features/dashboard/routes.ts`
 
 ## Development Rules
 1. No business logic in frontend

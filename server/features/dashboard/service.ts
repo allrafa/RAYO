@@ -1,0 +1,233 @@
+import { query } from "../../db/index.js";
+import { XP_LEVELS, getLevelTitle } from "../gamification/service.js";
+
+function calculateLevel(totalXP: number): number {
+  for (let i = XP_LEVELS.length - 1; i >= 0; i--) {
+    if (totalXP >= XP_LEVELS[i].xp) return XP_LEVELS[i].level;
+  }
+  return 1;
+}
+
+function getXPForNextLevel(currentLevel: number): number {
+  const next = XP_LEVELS.find((l) => l.level === currentLevel + 1);
+  return next ? next.xp : XP_LEVELS[XP_LEVELS.length - 1].xp;
+}
+
+function getCurrentLevelXP(level: number): number {
+  const found = XP_LEVELS.find((l) => l.level === level);
+  return found ? found.xp : 0;
+}
+
+function getMissionIcon(actionType: string): string {
+  const icons: Record<string, string> = {
+    watch_lesson: "📚",
+    complete_course: "🎓",
+    create_post: "✍️",
+    community_interact: "💬",
+    daily_login: "🔥",
+    streak_day: "⚡",
+  };
+  return icons[actionType] || "🎯";
+}
+
+export async function getDashboard(userId: number) {
+  const { rows: userRows } = await query(
+    `SELECT id, name, email, level, xp, streak, longest_streak, segments, interests, goals
+     FROM users WHERE id = $1`,
+    [userId]
+  );
+  if (userRows.length === 0) throw new Error("User not found");
+  const user = userRows[0];
+
+  const level = calculateLevel(user.xp);
+  const xpForNext = getXPForNextLevel(level);
+  const currentLevelXP = getCurrentLevelXP(level);
+  const xpInLevel = user.xp - currentLevelXP;
+  const xpNeeded = xpForNext - currentLevelXP;
+  const levelProgress = xpNeeded > 0 ? Math.round((xpInLevel / xpNeeded) * 100) : 100;
+
+  const gamification = {
+    level,
+    levelTitle: getLevelTitle(level),
+    xp: user.xp,
+    streak: user.streak,
+    longestStreak: user.longest_streak,
+    xpForNextLevel: xpForNext,
+    levelProgress,
+  };
+
+  const { rows: progressRows } = await query(
+    `SELECT ucp.course_id, ucp.progress_percentage, ucp.completed_lessons,
+            ucp.total_lessons, ucp.last_lesson_id, ucp.enrolled_at, ucp.completed_at,
+            c.title, c.thumbnail, c.category, c.life_context, c.instructor, c.duration
+     FROM user_course_progress ucp
+     JOIN courses c ON c.id = ucp.course_id
+     WHERE ucp.user_id = $1
+     ORDER BY ucp.enrolled_at DESC`,
+    [userId]
+  );
+
+  const coursesInProgress = progressRows
+    .filter((r: any) => !r.completed_at && parseFloat(r.progress_percentage) > 0)
+    .map((r: any) => ({
+      id: r.course_id,
+      title: r.title,
+      thumbnail: r.thumbnail,
+      category: r.category,
+      instructor: r.instructor,
+      duration: r.duration,
+      progress: parseFloat(r.progress_percentage),
+      completedLessons: r.completed_lessons,
+      totalLessons: r.total_lessons,
+    }));
+
+  const enrolledNotStarted = progressRows
+    .filter((r: any) => !r.completed_at && parseFloat(r.progress_percentage) === 0)
+    .map((r: any) => ({
+      id: r.course_id,
+      title: r.title,
+      thumbnail: r.thumbnail,
+      category: r.category,
+      instructor: r.instructor,
+      duration: r.duration,
+      progress: 0,
+      completedLessons: 0,
+      totalLessons: r.total_lessons,
+    }));
+
+  const completedCount = progressRows.filter((r: any) => r.completed_at).length;
+
+  const userSegments: string[] = user.segments || [];
+  const lifeContextFilter = userSegments.length > 0 ? userSegments : [];
+
+  let recommendedCourses: any[] = [];
+  if (lifeContextFilter.length > 0) {
+    const { rows: recRows } = await query(
+      `SELECT c.id, c.title, c.description, c.thumbnail, c.category, c.life_context,
+              c.level, c.duration, c.total_lessons, c.rating, c.students, c.instructor, c.is_premium
+       FROM courses c
+       WHERE c.is_active = true
+         AND c.life_context = ANY($1)
+         AND c.id NOT IN (SELECT course_id FROM user_course_progress WHERE user_id = $2)
+       ORDER BY c.students DESC
+       LIMIT 6`,
+      [lifeContextFilter, userId]
+    );
+    recommendedCourses = recRows;
+  }
+
+  if (recommendedCourses.length < 6) {
+    const excludeIds = [
+      ...recommendedCourses.map((c: any) => c.id),
+      ...progressRows.map((r: any) => r.course_id),
+    ];
+    const placeholders = excludeIds.length > 0
+      ? `AND c.id NOT IN (${excludeIds.map((_, i) => `$${i + 2}`).join(",")})`
+      : "";
+    const { rows: moreRows } = await query(
+      `SELECT c.id, c.title, c.description, c.thumbnail, c.category, c.life_context,
+              c.level, c.duration, c.total_lessons, c.rating, c.students, c.instructor, c.is_premium
+       FROM courses c
+       WHERE c.is_active = true ${placeholders}
+       ORDER BY c.students DESC
+       LIMIT $1`,
+      [6 - recommendedCourses.length, ...excludeIds]
+    );
+    recommendedCourses = [...recommendedCourses, ...moreRows];
+  }
+
+  const forumWhere = lifeContextFilter.length > 0
+    ? `AND (f.life_context = ANY($1) OR f.life_context IS NULL)`
+    : ``;
+  const forumParams = lifeContextFilter.length > 0 ? [lifeContextFilter] : [];
+  const { rows: recentPosts } = await query(
+    `SELECT p.id, p.content, p.category, p.like_count, p.comment_count,
+            p.created_at, u.name AS author_name, f.name AS forum_name, f.icon AS forum_icon
+     FROM posts p
+     JOIN users u ON u.id = p.user_id
+     JOIN forums f ON f.id = p.forum_id
+     WHERE 1=1 ${forumWhere}
+     ORDER BY p.created_at DESC
+     LIMIT 5`,
+    forumParams
+  );
+
+  const { rows: missionRows } = await query(
+    `SELECT m.id, m.title, m.description, m.type, m.action_type,
+            m.action_count, m.xp_reward,
+            COALESCE(ump.current_progress, 0) AS current_progress,
+            COALESCE(ump.completed, false) AS completed,
+            COALESCE(ump.reward_claimed, false) AS reward_claimed
+     FROM missions m
+     LEFT JOIN user_mission_progress ump ON ump.mission_id = m.id
+       AND ump.user_id = $1
+       AND ump.period_start = (
+         CASE WHEN m.type = 'daily'
+              THEN CURRENT_DATE
+              ELSE date_trunc('week', CURRENT_DATE)::date
+         END
+       )
+     WHERE m.is_active = true
+     ORDER BY m.type, m.id`,
+    [userId]
+  );
+
+  const { rows: weeklyXPRows } = await query(
+    `SELECT COALESCE(SUM(amount), 0) AS weekly_xp
+     FROM xp_log
+     WHERE user_id = $1
+       AND created_at >= date_trunc('week', CURRENT_DATE)`,
+    [userId]
+  );
+  const weeklyXP = parseInt(weeklyXPRows[0].weekly_xp);
+
+  return {
+    greeting: {
+      name: user.name,
+      segments: user.segments || [],
+    },
+    gamification,
+    weeklyXP,
+    completedCoursesCount: completedCount,
+    coursesInProgress,
+    enrolledNotStarted,
+    recommendedCourses: recommendedCourses.map((c: any) => ({
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      thumbnail: c.thumbnail,
+      category: c.category,
+      lifeContext: c.life_context,
+      level: c.level,
+      duration: c.duration,
+      totalLessons: c.total_lessons,
+      rating: parseFloat(c.rating),
+      students: c.students,
+      instructor: c.instructor,
+      isPremium: c.is_premium,
+    })),
+    recentPosts: recentPosts.map((p: any) => ({
+      id: p.id,
+      content: p.content.length > 150 ? p.content.substring(0, 150) + "..." : p.content,
+      category: p.category,
+      likeCount: p.like_count,
+      commentCount: p.comment_count,
+      createdAt: p.created_at,
+      authorName: p.author_name,
+      forumName: p.forum_name,
+      forumIcon: p.forum_icon,
+    })),
+    missions: missionRows.map((m: any) => ({
+      id: m.id,
+      title: m.title,
+      description: m.description,
+      type: m.type,
+      actionCount: m.action_count,
+      currentProgress: parseInt(m.current_progress),
+      completed: m.completed,
+      rewardClaimed: m.reward_claimed,
+      rewardXP: m.xp_reward,
+      icon: getMissionIcon(m.action_type),
+    })),
+  };
+}
