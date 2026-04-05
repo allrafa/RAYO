@@ -170,20 +170,39 @@ export async function getDashboard(userId: number) {
   const completedCount = progressRows.filter((r) => r.completed_at).length;
 
   const userSegments: string[] = user.segments || [];
+  const userInterests: string[] = user.interests || [];
   const lifeContextFilter = userSegments.length > 0 ? userSegments : [];
 
   let recommendedCourses: CourseRow[] = [];
-  if (lifeContextFilter.length > 0) {
+  if (lifeContextFilter.length > 0 || userInterests.length > 0) {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let paramIdx = 1;
+
+    if (lifeContextFilter.length > 0) {
+      conditions.push(`c.life_context = ANY($${paramIdx})`);
+      params.push(lifeContextFilter);
+      paramIdx++;
+    }
+    if (userInterests.length > 0) {
+      conditions.push(`c.category = ANY($${paramIdx})`);
+      params.push(userInterests);
+      paramIdx++;
+    }
+
+    params.push(userId);
+    const userIdParam = paramIdx;
+
     const { rows: recRows } = await query<CourseRow>(
       `SELECT c.id, c.title, c.description, c.thumbnail, c.category, c.life_context,
               c.level, c.duration, c.total_lessons, c.rating, c.students, c.instructor, c.is_premium
        FROM courses c
        WHERE c.is_active = true
-         AND c.life_context = ANY($1)
-         AND c.id NOT IN (SELECT course_id FROM user_course_progress WHERE user_id = $2)
+         AND (${conditions.join(" OR ")})
+         AND c.id NOT IN (SELECT course_id FROM user_course_progress WHERE user_id = $${userIdParam})
        ORDER BY c.students DESC
        LIMIT 6`,
-      [lifeContextFilter, userId]
+      params
     );
     recommendedCourses = recRows;
   }
