@@ -1,6 +1,80 @@
 import { query } from "../../db/index.js";
 import { XP_LEVELS, getLevelTitle } from "../gamification/service.js";
 
+interface UserRow {
+  id: number;
+  name: string;
+  email: string;
+  level: number;
+  xp: number;
+  streak: number;
+  longest_streak: number;
+  segments: string[] | null;
+  interests: string[] | null;
+  goals: string[] | null;
+}
+
+interface ProgressRow {
+  course_id: number;
+  progress_percentage: string;
+  completed_lessons: number;
+  total_lessons: number;
+  last_lesson_id: number | null;
+  enrolled_at: string;
+  completed_at: string | null;
+  title: string;
+  thumbnail: string;
+  category: string;
+  life_context: string;
+  instructor: string;
+  duration: string;
+}
+
+interface CourseRow {
+  id: number;
+  title: string;
+  description: string;
+  thumbnail: string;
+  category: string;
+  life_context: string;
+  level: string;
+  duration: string;
+  total_lessons: number;
+  rating: string;
+  students: number;
+  instructor: string;
+  is_premium: boolean;
+}
+
+interface PostRow {
+  id: number;
+  content: string;
+  category: string;
+  like_count: number;
+  comment_count: number;
+  created_at: string;
+  author_name: string;
+  forum_name: string;
+  forum_icon: string;
+}
+
+interface MissionRow {
+  id: number;
+  title: string;
+  description: string;
+  type: string;
+  action_type: string;
+  action_count: number;
+  xp_reward: number;
+  current_progress: string;
+  completed: boolean;
+  reward_claimed: boolean;
+}
+
+interface WeeklyXPRow {
+  weekly_xp: string;
+}
+
 function calculateLevel(totalXP: number): number {
   for (let i = XP_LEVELS.length - 1; i >= 0; i--) {
     if (totalXP >= XP_LEVELS[i].xp) return XP_LEVELS[i].level;
@@ -30,8 +104,22 @@ function getMissionIcon(actionType: string): string {
   return icons[actionType] || "🎯";
 }
 
+function mapProgressToCourse(r: ProgressRow) {
+  return {
+    id: r.course_id,
+    title: r.title,
+    thumbnail: r.thumbnail,
+    category: r.category,
+    instructor: r.instructor,
+    duration: r.duration,
+    progress: parseFloat(r.progress_percentage),
+    completedLessons: r.completed_lessons,
+    totalLessons: r.total_lessons,
+  };
+}
+
 export async function getDashboard(userId: number) {
-  const { rows: userRows } = await query(
+  const { rows: userRows } = await query<UserRow>(
     `SELECT id, name, email, level, xp, streak, longest_streak, segments, interests, goals
      FROM users WHERE id = $1`,
     [userId]
@@ -56,7 +144,7 @@ export async function getDashboard(userId: number) {
     levelProgress,
   };
 
-  const { rows: progressRows } = await query(
+  const { rows: progressRows } = await query<ProgressRow>(
     `SELECT ucp.course_id, ucp.progress_percentage, ucp.completed_lessons,
             ucp.total_lessons, ucp.last_lesson_id, ucp.enrolled_at, ucp.completed_at,
             c.title, c.thumbnail, c.category, c.life_context, c.instructor, c.duration
@@ -68,41 +156,25 @@ export async function getDashboard(userId: number) {
   );
 
   const coursesInProgress = progressRows
-    .filter((r: any) => !r.completed_at && parseFloat(r.progress_percentage) > 0)
-    .map((r: any) => ({
-      id: r.course_id,
-      title: r.title,
-      thumbnail: r.thumbnail,
-      category: r.category,
-      instructor: r.instructor,
-      duration: r.duration,
-      progress: parseFloat(r.progress_percentage),
-      completedLessons: r.completed_lessons,
-      totalLessons: r.total_lessons,
-    }));
+    .filter((r) => !r.completed_at && parseFloat(r.progress_percentage) > 0)
+    .map(mapProgressToCourse);
 
   const enrolledNotStarted = progressRows
-    .filter((r: any) => !r.completed_at && parseFloat(r.progress_percentage) === 0)
-    .map((r: any) => ({
-      id: r.course_id,
-      title: r.title,
-      thumbnail: r.thumbnail,
-      category: r.category,
-      instructor: r.instructor,
-      duration: r.duration,
+    .filter((r) => !r.completed_at && parseFloat(r.progress_percentage) === 0)
+    .map((r) => ({
+      ...mapProgressToCourse(r),
       progress: 0,
       completedLessons: 0,
-      totalLessons: r.total_lessons,
     }));
 
-  const completedCount = progressRows.filter((r: any) => r.completed_at).length;
+  const completedCount = progressRows.filter((r) => r.completed_at).length;
 
   const userSegments: string[] = user.segments || [];
   const lifeContextFilter = userSegments.length > 0 ? userSegments : [];
 
-  let recommendedCourses: any[] = [];
+  let recommendedCourses: CourseRow[] = [];
   if (lifeContextFilter.length > 0) {
-    const { rows: recRows } = await query(
+    const { rows: recRows } = await query<CourseRow>(
       `SELECT c.id, c.title, c.description, c.thumbnail, c.category, c.life_context,
               c.level, c.duration, c.total_lessons, c.rating, c.students, c.instructor, c.is_premium
        FROM courses c
@@ -118,13 +190,13 @@ export async function getDashboard(userId: number) {
 
   if (recommendedCourses.length < 6) {
     const excludeIds = [
-      ...recommendedCourses.map((c: any) => c.id),
-      ...progressRows.map((r: any) => r.course_id),
+      ...recommendedCourses.map((c) => c.id),
+      ...progressRows.map((r) => r.course_id),
     ];
     const placeholders = excludeIds.length > 0
       ? `AND c.id NOT IN (${excludeIds.map((_, i) => `$${i + 2}`).join(",")})`
       : "";
-    const { rows: moreRows } = await query(
+    const { rows: moreRows } = await query<CourseRow>(
       `SELECT c.id, c.title, c.description, c.thumbnail, c.category, c.life_context,
               c.level, c.duration, c.total_lessons, c.rating, c.students, c.instructor, c.is_premium
        FROM courses c
@@ -140,7 +212,7 @@ export async function getDashboard(userId: number) {
     ? `AND (f.life_context = ANY($1) OR f.life_context IS NULL)`
     : ``;
   const forumParams = lifeContextFilter.length > 0 ? [lifeContextFilter] : [];
-  const { rows: recentPosts } = await query(
+  const { rows: recentPosts } = await query<PostRow>(
     `SELECT p.id, p.content, p.category, p.like_count, p.comment_count,
             p.created_at, u.name AS author_name, f.name AS forum_name, f.icon AS forum_icon
      FROM posts p
@@ -152,7 +224,7 @@ export async function getDashboard(userId: number) {
     forumParams
   );
 
-  const { rows: missionRows } = await query(
+  const { rows: missionRows } = await query<MissionRow>(
     `SELECT m.id, m.title, m.description, m.type, m.action_type,
             m.action_count, m.xp_reward,
             COALESCE(ump.current_progress, 0) AS current_progress,
@@ -172,7 +244,7 @@ export async function getDashboard(userId: number) {
     [userId]
   );
 
-  const { rows: weeklyXPRows } = await query(
+  const { rows: weeklyXPRows } = await query<WeeklyXPRow>(
     `SELECT COALESCE(SUM(amount), 0) AS weekly_xp
      FROM xp_log
      WHERE user_id = $1
@@ -191,7 +263,7 @@ export async function getDashboard(userId: number) {
     completedCoursesCount: completedCount,
     coursesInProgress,
     enrolledNotStarted,
-    recommendedCourses: recommendedCourses.map((c: any) => ({
+    recommendedCourses: recommendedCourses.map((c) => ({
       id: c.id,
       title: c.title,
       description: c.description,
@@ -206,7 +278,7 @@ export async function getDashboard(userId: number) {
       instructor: c.instructor,
       isPremium: c.is_premium,
     })),
-    recentPosts: recentPosts.map((p: any) => ({
+    recentPosts: recentPosts.map((p) => ({
       id: p.id,
       content: p.content.length > 150 ? p.content.substring(0, 150) + "..." : p.content,
       category: p.category,
@@ -217,7 +289,7 @@ export async function getDashboard(userId: number) {
       forumName: p.forum_name,
       forumIcon: p.forum_icon,
     })),
-    missions: missionRows.map((m: any) => ({
+    missions: missionRows.map((m) => ({
       id: m.id,
       title: m.title,
       description: m.description,
