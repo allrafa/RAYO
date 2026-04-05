@@ -8,9 +8,6 @@ import {
   getUserMissions,
   updateStreak,
   claimMissionReward,
-  addXP,
-  recordMissionProgress,
-  XP_REWARDS,
 } from "./service.js";
 
 const router = Router();
@@ -47,27 +44,6 @@ router.get("/missions", async (req, res, next) => {
 router.post("/streak", async (req, res, next) => {
   try {
     const result = await updateStreak(req.user!.id);
-    success(res, result);
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.post("/xp", async (req, res, next) => {
-  try {
-    const { reason } = req.body;
-
-    const validReasons = Object.keys(XP_REWARDS);
-    if (!reason || typeof reason !== "string" || !validReasons.includes(reason)) {
-      sendError(res, "Razão inválida para XP", "INVALID_REASON");
-      return;
-    }
-
-    const xpAmount = XP_REWARDS[reason];
-    const result = await addXP(req.user!.id, xpAmount, reason);
-
-    await recordMissionProgress(req.user!.id, reason);
-
     success(res, result);
   } catch (err) {
     next(err);

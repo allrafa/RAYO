@@ -64,7 +64,7 @@ vite.config.ts           # Vite + API proxy config
 - `GET /api/gamification/missions` — Active daily/weekly missions with progress (requires auth)
 - `POST /api/gamification/streak` — Update user's daily streak (requires auth)
 - `POST /api/gamification/missions/:id/claim` — Claim completed mission reward (requires auth)
-- Note: addXP(), unlockBadge(), recordMissionProgress() are internal service functions only (not exposed as public APIs)
+- XP/badge/mission-progress mutations are internal-only service functions (addXP, unlockBadge, recordMissionProgress); triggered by backend events in academia/community features, not by client requests
 
 ## Onboarding Data Flow
 - WelcomeScreen → Onboarding (collects name, segments, interests) → AuthPage (3-step registration)

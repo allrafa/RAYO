@@ -71,6 +71,14 @@ export async function addXP(
     [userId, amount, reason]
   );
 
+  const xpToNext = getXPForNextLevel(newLevel);
+  await query(
+    `INSERT INTO user_xp (user_id, total_xp, current_level, xp_to_next_level, current_streak, longest_streak, last_activity_date, updated_at)
+     VALUES ($1, $2, $3, $4, 0, 0, NULL, NOW())
+     ON CONFLICT (user_id) DO UPDATE SET total_xp = $2, current_level = $3, xp_to_next_level = $4, updated_at = NOW()`,
+    [userId, newTotalXP, newLevel, xpToNext]
+  );
+
   if (leveledUp && [3, 5].includes(newLevel)) {
     await unlockBadge(userId, `level_${newLevel}`);
   }
@@ -128,6 +136,13 @@ export async function updateStreak(userId: number): Promise<{
   await query(
     `UPDATE users SET streak = $1, longest_streak = $2, last_activity_date = $3, updated_at = NOW() WHERE id = $4`,
     [newStreak, longestStreak, today, userId]
+  );
+
+  await query(
+    `INSERT INTO user_xp (user_id, current_streak, longest_streak, last_activity_date, updated_at)
+     VALUES ($1, $2, $3, $4, NOW())
+     ON CONFLICT (user_id) DO UPDATE SET current_streak = $2, longest_streak = $3, last_activity_date = $4, updated_at = NOW()`,
+    [userId, newStreak, longestStreak, today]
   );
 
   if ([7, 30, 90].includes(newStreak)) {
