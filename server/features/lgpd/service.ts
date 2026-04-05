@@ -24,12 +24,15 @@ interface UserDataExport {
 }
 
 export async function exportUserData(userId: number): Promise<UserDataExport> {
-  await query(
+  const { rows: reqRows } = await query(
     `INSERT INTO lgpd_requests (user_id, request_type, status)
-     VALUES ($1, 'export', 'processing')`,
+     VALUES ($1, 'export', 'processing')
+     RETURNING id`,
     [userId]
   );
+  const requestId = reqRows[0].id;
 
+  try {
   const { rows: profileRows } = await query(
     `SELECT id, email, name, segments, interests, goals, content_preferences,
             level, xp, streak, is_premium, created_at, updated_at
@@ -111,8 +114,8 @@ export async function exportUserData(userId: number): Promise<UserDataExport> {
 
   await query(
     `UPDATE lgpd_requests SET status = 'completed', completed_at = NOW()
-     WHERE user_id = $1 AND request_type = 'export' AND status = 'processing'`,
-    [userId]
+     WHERE id = $1`,
+    [requestId]
   );
 
   return {
@@ -128,6 +131,14 @@ export async function exportUserData(userId: number): Promise<UserDataExport> {
     lgpdRequests,
     exportedAt: new Date().toISOString(),
   };
+  } catch (err) {
+    await query(
+      `UPDATE lgpd_requests SET status = 'failed'
+       WHERE id = $1`,
+      [requestId]
+    ).catch(() => {});
+    throw err;
+  }
 }
 
 export async function deleteUserData(userId: number): Promise<void> {
@@ -151,6 +162,23 @@ export async function deleteUserData(userId: number): Promise<void> {
       `UPDATE posts SET title = '[removido]', content = '[conteúdo removido por solicitação LGPD]'
        WHERE user_id = $1`,
       [userId]
+    );
+
+    await client.query(
+      `UPDATE posts SET like_count = like_count - 1
+       FROM post_likes pl WHERE pl.post_id = posts.id AND pl.user_id = $1`,
+      [userId]
+    );
+    await client.query(
+      `UPDATE comments SET like_count = like_count - 1
+       FROM comment_likes cl WHERE cl.comment_id = comments.id AND cl.user_id = $1`,
+      [userId]
+    );
+    await client.query(
+      `UPDATE posts SET like_count = GREATEST(like_count, 0) WHERE like_count < 0`
+    );
+    await client.query(
+      `UPDATE comments SET like_count = GREATEST(like_count, 0) WHERE like_count < 0`
     );
 
     await client.query(`DELETE FROM post_likes WHERE user_id = $1`, [userId]);
