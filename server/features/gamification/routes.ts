@@ -62,8 +62,13 @@ router.post("/xp", async (req, res, next) => {
       return;
     }
 
-    const { reason } = req.body;
-    const targetUserId = req.user!.id;
+    const { reason, userId } = req.body;
+    const targetUserId = userId ? Number(userId) : req.user!.id;
+
+    if (!targetUserId || isNaN(targetUserId)) {
+      sendError(res, "ID de usuário inválido", "INVALID_USER_ID");
+      return;
+    }
 
     const validReasons = Object.keys(XP_REWARDS);
     if (!reason || typeof reason !== "string" || !validReasons.includes(reason)) {

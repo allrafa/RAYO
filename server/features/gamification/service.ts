@@ -19,6 +19,7 @@ export const XP_REWARDS: Record<string, number> = {
   create_comment: 10,
   receive_like: 5,
   helpful_comment: 30,
+  community_interact: 10,
   daily_mission: 25,
   weekly_mission: 100,
   streak_day: 5,
@@ -139,10 +140,10 @@ export async function updateStreak(userId: number): Promise<{
   );
 
   await query(
-    `INSERT INTO user_xp (user_id, current_streak, longest_streak, last_activity_date, updated_at)
-     VALUES ($1, $2, $3, $4, NOW())
+    `INSERT INTO user_xp (user_id, total_xp, current_level, xp_to_next_level, current_streak, longest_streak, last_activity_date, updated_at)
+     VALUES ($1, (SELECT xp FROM users WHERE id = $1), (SELECT level FROM users WHERE id = $1), $5, $2, $3, $4, NOW())
      ON CONFLICT (user_id) DO UPDATE SET current_streak = $2, longest_streak = $3, last_activity_date = $4, updated_at = NOW()`,
-    [userId, newStreak, longestStreak, today]
+    [userId, newStreak, longestStreak, today, getXPForNextLevel(user.level || 1)]
   );
 
   if ([7, 30, 90].includes(newStreak)) {
@@ -182,31 +183,13 @@ export async function unlockBadge(
 }
 
 export async function getGamificationProfile(userId: number) {
-  const { rows: xpRows } = await query(
-    `SELECT ux.total_xp, ux.current_level, ux.current_streak, ux.longest_streak, ux.last_activity_date
-     FROM user_xp ux WHERE ux.user_id = $1`,
+  const { rows: userRows } = await query(
+    `SELECT xp, level, streak, longest_streak, last_activity_date FROM users WHERE id = $1`,
     [userId]
   );
+  if (userRows.length === 0) throw new Error("User not found");
 
-  let user: { xp: number; level: number; streak: number; longest_streak: number; last_activity_date: string | null };
-
-  if (xpRows.length > 0) {
-    user = {
-      xp: xpRows[0].total_xp,
-      level: xpRows[0].current_level,
-      streak: xpRows[0].current_streak,
-      longest_streak: xpRows[0].longest_streak,
-      last_activity_date: xpRows[0].last_activity_date,
-    };
-  } else {
-    const { rows: userRows } = await query(
-      `SELECT xp, level, streak, longest_streak, last_activity_date FROM users WHERE id = $1`,
-      [userId]
-    );
-    if (userRows.length === 0) throw new Error("User not found");
-    user = userRows[0];
-  }
-
+  const user = userRows[0];
   const currentLevel = user.level;
   const xpForNextLevel = getXPForNextLevel(currentLevel);
   const currentLevelXP = XP_LEVELS.find((l) => l.level === currentLevel)?.xp || 0;
