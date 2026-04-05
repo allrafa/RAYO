@@ -12,10 +12,12 @@ type RegisterStep = "form" | "verify" | "password";
 interface AuthPageProps {
   defaultMode?: AuthMode;
   prefillName?: string;
+  prefillSegments?: string[];
+  prefillInterests?: string[];
   onGoBack?: () => void;
 }
 
-export function AuthPage({ defaultMode = "login", prefillName, onGoBack }: AuthPageProps) {
+export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, prefillInterests, onGoBack }: AuthPageProps) {
   const { login, register, sendVerificationCode, verifyEmailCode } = useAuth();
   const [mode, setMode] = useState<AuthMode>(defaultMode);
   const [registerStep, setRegisterStep] = useState<RegisterStep>("form");
@@ -105,7 +107,10 @@ export function AuthPage({ defaultMode = "login", prefillName, onGoBack }: AuthP
     setError("");
     setIsSubmitting(true);
     try {
-      const result = await register(email, password, name);
+      const result = await register(email, password, name, {
+        segments: prefillSegments,
+        interests: prefillInterests,
+      });
       if (!result.success) {
         setError(result.error || "Erro ao criar conta");
       }

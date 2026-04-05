@@ -24,7 +24,8 @@ server/                  # Backend
 ├── middleware/           # Security, auth, error handling
 ├── features/            # Feature folders (routes + service + validation)
 │   ├── health/          # Health check endpoint
-│   └── auth/            # Authentication (register, login, logout, me)
+│   ├── auth/            # Authentication (register, login, logout, me)
+│   └── users/           # User profile management (PATCH /api/users/profile)
 └── utils/               # Response helpers, logger
 
 src/                     # Frontend (React)
@@ -52,10 +53,17 @@ vite.config.ts           # Vite + API proxy config
 - `GET /api/health` — Server + DB status check
 - `POST /api/auth/send-code` — Send 6-digit verification code to email
 - `POST /api/auth/verify-code` — Verify the code (must be done before register)
-- `POST /api/auth/register` — Create account (requires verified email)
+- `POST /api/auth/register` — Create account (requires verified email; accepts segments, interests, goals, content_preferences)
 - `POST /api/auth/login` — Login (returns httpOnly session cookie)
 - `POST /api/auth/logout` — Logout (clears session)
 - `GET /api/auth/me` — Get current user (requires auth)
+- `PATCH /api/users/profile` — Update user profile fields (segments, interests, goals, content_preferences, name)
+
+## Onboarding Data Flow
+- WelcomeScreen → Onboarding (collects name, segments, interests) → AuthPage (3-step registration)
+- Segments/interests from onboarding are passed through `App.tsx` → `AuthPage` props → `register()` call → backend persists them
+- `AppContext` syncs `userData` from `AuthContext.user` so all components reflect server data
+- `api.ts` supports GET, POST, PUT, PATCH, DELETE methods
 
 ## Email Verification
 - Registration requires email verification via 6-digit code

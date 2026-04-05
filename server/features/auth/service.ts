@@ -21,6 +21,10 @@ export interface SafeUser {
   id: number;
   email: string;
   name: string;
+  segments: string[];
+  interests: string[];
+  goals: string[];
+  content_preferences: string[];
   level: number;
   xp: number;
   streak: number;
@@ -37,6 +41,10 @@ function toSafeUser(row: Record<string, unknown>): SafeUser {
     id: row.id as number,
     email: row.email as string,
     name: row.name as string,
+    segments: (row.segments as string[]) || [],
+    interests: (row.interests as string[]) || [],
+    goals: (row.goals as string[]) || [],
+    content_preferences: (row.content_preferences as string[]) || [],
     level: row.level as number,
     xp: row.xp as number,
     streak: row.streak as number,
@@ -176,12 +184,14 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
   }
 
   const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
+  const segments = input.segments || [];
+  const interests = input.interests || [];
 
   const result = await query(
-    `INSERT INTO users (email, password_hash, name)
-     VALUES ($1, $2, $3)
-     RETURNING id, email, name, level, xp, streak, is_premium, created_at`,
-    [input.email, passwordHash, input.name]
+    `INSERT INTO users (email, password_hash, name, segments, interests)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, email, name, segments, interests, goals, content_preferences, level, xp, streak, is_premium, created_at`,
+    [input.email, passwordHash, input.name, segments, interests]
   );
 
   await query("DELETE FROM email_verification_codes WHERE email = $1", [input.email]);
@@ -194,7 +204,7 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
 
 export async function loginUser(input: LoginInput, ip?: string, userAgent?: string): Promise<{ user: SafeUser; token: string }> {
   const result = await query(
-    "SELECT id, email, name, password_hash, level, xp, streak, is_premium, created_at FROM users WHERE email = $1",
+    "SELECT id, email, name, segments, interests, goals, content_preferences, password_hash, level, xp, streak, is_premium, created_at FROM users WHERE email = $1",
     [input.email]
   );
 
@@ -241,7 +251,7 @@ export async function validateSession(token: string): Promise<SafeUser | null> {
   const tokenHash = hashToken(token);
 
   const result = await query(
-    `SELECT u.id, u.email, u.name, u.level, u.xp, u.streak, u.is_premium, u.created_at
+    `SELECT u.id, u.email, u.name, u.segments, u.interests, u.goals, u.content_preferences, u.level, u.xp, u.streak, u.is_premium, u.created_at
      FROM sessions s
      JOIN users u ON s.user_id = u.id
      WHERE s.token_hash = $1 AND s.expires_at > NOW()`,
@@ -262,4 +272,48 @@ export async function logoutUser(token: string): Promise<void> {
 
 export async function logoutAllSessions(userId: number): Promise<void> {
   await query("DELETE FROM sessions WHERE user_id = $1", [userId]);
+}
+
+export async function updateUserProfile(
+  userId: number,
+  updates: { segments?: string[]; interests?: string[]; goals?: string[]; content_preferences?: string[] }
+): Promise<SafeUser> {
+  const setClauses: string[] = [];
+  const values: unknown[] = [];
+  let paramIndex = 1;
+
+  if (updates.segments !== undefined) {
+    setClauses.push(`segments = $${paramIndex++}`);
+    values.push(updates.segments);
+  }
+  if (updates.interests !== undefined) {
+    setClauses.push(`interests = $${paramIndex++}`);
+    values.push(updates.interests);
+  }
+  if (updates.goals !== undefined) {
+    setClauses.push(`goals = $${paramIndex++}`);
+    values.push(updates.goals);
+  }
+  if (updates.content_preferences !== undefined) {
+    setClauses.push(`content_preferences = $${paramIndex++}`);
+    values.push(updates.content_preferences);
+  }
+
+  setClauses.push(`updated_at = NOW()`);
+  values.push(userId);
+
+  const result = await query(
+    `UPDATE users SET ${setClauses.join(", ")} WHERE id = $${paramIndex}
+     RETURNING id, email, name, segments, interests, goals, content_preferences, level, xp, streak, is_premium, created_at`,
+    values
+  );
+
+  if (result.rows.length === 0) {
+    const err = new Error("Usuário não encontrado") as Error & { statusCode: number; code: string };
+    err.statusCode = 404;
+    err.code = "USER_NOT_FOUND";
+    throw err;
+  }
+
+  return toSafeUser(result.rows[0]);
 }

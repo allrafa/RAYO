@@ -2,6 +2,8 @@ export interface RegisterInput {
   email: string;
   password: string;
   name: string;
+  segments?: string[];
+  interests?: string[];
 }
 
 export interface LoginInput {
@@ -10,7 +12,7 @@ export interface LoginInput {
 }
 
 export function validateRegister(body: unknown): { valid: true; data: RegisterInput } | { valid: false; message: string } {
-  const { email, password, name } = (body || {}) as Record<string, unknown>;
+  const { email, password, name, segments, interests } = (body || {}) as Record<string, unknown>;
 
   if (!email || typeof email !== "string") {
     return { valid: false, message: "Email é obrigatório" };
@@ -46,14 +48,64 @@ export function validateRegister(body: unknown): { valid: true; data: RegisterIn
     return { valid: false, message: "Nome deve ter no máximo 100 caracteres" };
   }
 
+  const validatedSegments = validateStringArray(segments, 10);
+  const validatedInterests = validateStringArray(interests, 20);
+
   return {
     valid: true,
     data: {
       email: email.trim().toLowerCase(),
       password,
       name: trimmedName,
+      segments: validatedSegments,
+      interests: validatedInterests,
     },
   };
+}
+
+function validateStringArray(value: unknown, maxItems: number): string[] {
+  if (!value || !Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    .map(item => item.trim())
+    .slice(0, maxItems);
+}
+
+export interface ProfileUpdateInput {
+  segments?: string[];
+  interests?: string[];
+  goals?: string[];
+  content_preferences?: string[];
+}
+
+export function validateProfileUpdate(body: unknown): { valid: true; data: ProfileUpdateInput } | { valid: false; message: string } {
+  const { segments, interests, goals, content_preferences } = (body || {}) as Record<string, unknown>;
+
+  const data: ProfileUpdateInput = {};
+  let hasField = false;
+
+  if (segments !== undefined) {
+    data.segments = validateStringArray(segments, 10);
+    hasField = true;
+  }
+  if (interests !== undefined) {
+    data.interests = validateStringArray(interests, 20);
+    hasField = true;
+  }
+  if (goals !== undefined) {
+    data.goals = validateStringArray(goals, 10);
+    hasField = true;
+  }
+  if (content_preferences !== undefined) {
+    data.content_preferences = validateStringArray(content_preferences, 10);
+    hasField = true;
+  }
+
+  if (!hasField) {
+    return { valid: false, message: "Pelo menos um campo deve ser fornecido" };
+  }
+
+  return { valid: true, data };
 }
 
 export function validateLogin(body: unknown): { valid: true; data: LoginInput } | { valid: false; message: string } {

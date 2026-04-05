@@ -94,6 +94,8 @@ function AppContent() {
       <AuthPage
         defaultMode="register"
         prefillName={onboardingData?.name}
+        prefillSegments={onboardingData?.segments}
+        prefillInterests={onboardingData?.interests}
         onGoBack={() => setPreAuthStage("welcome")}
       />
     );

@@ -5,6 +5,10 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  segments: string[];
+  interests: string[];
+  goals: string[];
+  content_preferences: string[];
   level: number;
   xp: number;
   streak: number;
@@ -12,13 +16,19 @@ export interface User {
   created_at: string;
 }
 
+interface RegisterOptions {
+  segments?: string[];
+  interests?: string[];
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
+  register: (email: string, password: string, name: string, options?: RegisterOptions) => Promise<{ success: boolean; error?: string }>;
   sendVerificationCode: (email: string) => Promise<{ success: boolean; error?: string }>;
   verifyEmailCode: (email: string, code: string) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (updates: { segments?: string[]; interests?: string[]; goals?: string[]; content_preferences?: string[] }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -68,13 +78,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error: res.error?.message || "Erro ao verificar código" };
   }, []);
 
-  const register = useCallback(async (email: string, password: string, name: string) => {
-    const res = await api.post<{ user: User }>("/api/auth/register", { email, password, name });
+  const register = useCallback(async (email: string, password: string, name: string, options?: RegisterOptions) => {
+    const res = await api.post<{ user: User }>("/api/auth/register", {
+      email,
+      password,
+      name,
+      segments: options?.segments,
+      interests: options?.interests,
+    });
     if (res.success && res.data) {
       setUser(res.data.user);
       return { success: true };
     }
     return { success: false, error: res.error?.message || "Erro ao criar conta" };
+  }, []);
+
+  const updateProfile = useCallback(async (updates: { segments?: string[]; interests?: string[]; goals?: string[]; content_preferences?: string[] }) => {
+    const res = await api.patch<{ user: User }>("/api/users/profile", updates);
+    if (res.success && res.data) {
+      setUser(res.data.user);
+      return { success: true };
+    }
+    return { success: false, error: res.error?.message || "Erro ao atualizar perfil" };
   }, []);
 
   const logout = useCallback(async () => {
@@ -83,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, sendVerificationCode, verifyEmailCode, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, sendVerificationCode, verifyEmailCode, updateProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );

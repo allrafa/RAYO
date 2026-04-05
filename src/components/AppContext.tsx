@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { enhancedToast } from './EnhancedToast';
 import { Book } from './types/BookTypes';
 import { mockBooks, getEnrolledBooks } from './mockBooks';
+import { useAuth } from './AuthContext';
 
 // Tipos de dados
 interface Course {
@@ -199,6 +200,8 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { user: authUser } = useAuth();
+
   const [userData, setUserData] = useState<UserData>({
     name: "Maria",
     segments: ["solteiro"],
@@ -209,7 +212,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     streak: 5,
     completedCourses: [1],
     enrolledCourses: [1, 2],
-    enrolledBooks: ['book-1', 'book-2', 'book-3', 'book-4', 'book-5', 'book-6'], // Livros matriculados
+    enrolledBooks: ['book-1', 'book-2', 'book-3', 'book-4', 'book-5', 'book-6'],
     favoriteProducts: [],
     favorites: [],
     cartItems: [],
@@ -221,18 +224,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
         message: "O curso 'Intimidade no Casamento' acabou de ser lançado",
         type: 'info',
         read: false,
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 horas atrás
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000)
       },
       {
         id: 2,
-        title: "Parabéns! 🎉",
+        title: "Parabéns!",
         message: "Você completou 5 dias consecutivos de estudo",
         type: 'success',
         read: false,
-        timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000) // 1 hora atrás
+        timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000)
       }
     ]
   });
+
+  useEffect(() => {
+    if (authUser) {
+      setUserData(prev => ({
+        ...prev,
+        name: authUser.name,
+        segments: authUser.segments,
+        interests: authUser.interests,
+        goals: authUser.goals,
+        level: authUser.level ?? prev.level,
+        points: authUser.xp ?? prev.points,
+        streak: authUser.streak ?? prev.streak,
+      }));
+    }
+  }, [authUser]);
 
   const [courses, setCourses] = useState<Course[]>([
     {
