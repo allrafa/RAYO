@@ -453,7 +453,7 @@ async function seedCourses() {
       thumbnail: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=800&fit=crop',
       duration: '3h 50m',
       rating: 4.6, students: 1567, price: 0, category: 'Autoconhecimento',
-      life_context: 'solteiros', level: 'Iniciante', is_premium: false, instructor: 'Juliana Rodrigues',
+      life_context: 'solteiro', level: 'Iniciante', is_premium: false, instructor: 'Juliana Rodrigues',
       modules: [
         { title: 'Autoconhecimento', description: 'Conhecendo a si mesmo', lessons: [
           { title: 'Quem sou eu nos relacionamentos?', duration: '15:40', duration_seconds: 940, is_free_preview: true },
@@ -478,7 +478,7 @@ async function seedCourses() {
       thumbnail: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&fit=crop',
       duration: '4h 10m',
       rating: 4.8, students: 892, price: 197, category: 'Preparação',
-      life_context: 'noivos', level: 'Intermediário', is_premium: false, instructor: 'Pastor Ricardo Almeida',
+      life_context: 'namoro', level: 'Intermediário', is_premium: false, instructor: 'Pastor Ricardo Almeida',
       modules: [
         { title: 'Alinhamento de Valores', description: 'Conversas essenciais antes do casamento', lessons: [
           { title: 'Valores e prioridades: alinhando visões', duration: '18:30', duration_seconds: 1110, is_free_preview: true },
