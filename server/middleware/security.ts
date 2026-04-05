@@ -7,23 +7,30 @@ export const securityMiddleware = helmet({
   crossOriginEmbedderPolicy: false,
 });
 
+const isDev = process.env.NODE_ENV !== "production";
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
   : [];
 
 export const corsMiddleware = cors({
   origin: (origin, callback) => {
-    if (
-      !origin ||
-      allowedOrigins.length === 0 ||
-      allowedOrigins.includes(origin) ||
-      origin.endsWith(".replit.dev") ||
-      origin.endsWith(".repl.co")
-    ) {
+    if (!origin) {
       callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+      return;
     }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    if (isDev && (origin.endsWith(".replit.dev") || origin.endsWith(".repl.co"))) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
