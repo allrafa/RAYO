@@ -72,16 +72,15 @@ function AppContent() {
   }
 
   if (!user) {
+    let preAuthContent;
     if (preAuthStage === "welcome") {
-      return (
+      preAuthContent = (
         <WelcomeScreen
           onStart={() => setPreAuthStage("onboarding")}
         />
       );
-    }
-
-    if (preAuthStage === "onboarding") {
-      return (
+    } else if (preAuthStage === "onboarding") {
+      preAuthContent = (
         <Onboarding
           onComplete={(data: OnboardingData) => {
             setOnboardingData(data);
@@ -89,16 +88,23 @@ function AppContent() {
           }}
         />
       );
+    } else {
+      preAuthContent = (
+        <AuthPage
+          defaultMode="register"
+          prefillName={onboardingData?.name}
+          prefillSegments={onboardingData?.segments}
+          prefillInterests={onboardingData?.interests}
+          onGoBack={() => setPreAuthStage("welcome")}
+        />
+      );
     }
 
     return (
-      <AuthPage
-        defaultMode="register"
-        prefillName={onboardingData?.name}
-        prefillSegments={onboardingData?.segments}
-        prefillInterests={onboardingData?.interests}
-        onGoBack={() => setPreAuthStage("welcome")}
-      />
+      <>
+        {preAuthContent}
+        <ConsentBanner />
+      </>
     );
   }
 
@@ -132,6 +138,7 @@ function AppContent() {
               onStartPremium={() => setCurrentTab("home")}
               onClose={() => setCurrentTab("home")}
               showCloseButton={true}
+              onOpenPrivacyPolicy={() => setCurrentTab("privacy")}
             />
           );
         case "privacy":

@@ -27,11 +27,13 @@ interface LandingPageProps {
   onStartPremium?: () => void;
   onClose?: () => void;
   showCloseButton?: boolean;
+  onOpenPrivacyPolicy?: () => void;
 }
 
 export function LandingPage({ 
   onStartFree, 
-  onStartPremium, 
+  onStartPremium,
+  onOpenPrivacyPolicy, 
   onClose,
   showCloseButton = false 
 }: LandingPageProps) {
@@ -664,12 +666,12 @@ export function LandingPage({
               <a href="#" className="text-[var(--raio-text-secondary)] hover:text-[var(--raio-text-primary)] transition-colors">
                 Sobre
               </a>
-              <a href="#" className="text-[var(--raio-text-secondary)] hover:text-[var(--raio-text-primary)] transition-colors">
+              <button onClick={onOpenPrivacyPolicy} className="text-[var(--raio-text-secondary)] hover:text-[var(--raio-text-primary)] transition-colors">
                 Política de Privacidade
-              </a>
-              <a href="#" className="text-[var(--raio-text-secondary)] hover:text-[var(--raio-text-primary)] transition-colors">
+              </button>
+              <button onClick={onOpenPrivacyPolicy} className="text-[var(--raio-text-secondary)] hover:text-[var(--raio-text-primary)] transition-colors">
                 Termos de Uso
-              </a>
+              </button>
               <a href="#" className="text-[var(--raio-text-secondary)] hover:text-[var(--raio-text-primary)] transition-colors">
                 Ajuda
               </a>
