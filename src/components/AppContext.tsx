@@ -27,6 +27,29 @@ interface Course {
   instructor?: string;
 }
 
+interface APICourseRow {
+  id: number;
+  title: string;
+  description: string;
+  thumbnail: string;
+  duration: string;
+  total_lessons: number;
+  rating: string;
+  students: number;
+  price: string;
+  category: string;
+  life_context: string;
+  level: string;
+  is_premium: boolean;
+  instructor: string;
+}
+
+interface APIProgressRow {
+  course_id: number;
+  progress_percentage: string;
+  completed_lessons: number;
+}
+
 interface Post {
   id: number;
   author: string;
@@ -261,20 +284,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const loadCourses = useCallback(async () => {
     try {
-      const catalogRes = await api.get<{ courses: any[] }>("/api/courses");
+      const catalogRes = await api.get<{ courses: APICourseRow[] }>("/api/courses");
       if (!catalogRes.success || !catalogRes.data) return;
 
-      let enrolledMap: Record<number, any> = {};
+      let enrolledMap: Record<number, APIProgressRow> = {};
       if (authUser) {
-        const progressRes = await api.get<{ progress: any[] }>("/api/courses/my-progress");
+        const progressRes = await api.get<{ progress: APIProgressRow[] }>("/api/courses/my-progress");
         if (progressRes.success && progressRes.data) {
-          progressRes.data.progress.forEach((p: any) => {
+          progressRes.data.progress.forEach((p) => {
             enrolledMap[p.course_id] = p;
           });
         }
       }
 
-      const mapped: Course[] = catalogRes.data.courses.map((c: any) => {
+      const mapped: Course[] = catalogRes.data.courses.map((c) => {
         const enrollment = enrolledMap[c.id];
         return {
           id: c.id,

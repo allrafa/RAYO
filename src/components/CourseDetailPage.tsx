@@ -11,6 +11,32 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useApp } from "./AppContext";
 import { enhancedToast } from "./EnhancedToast";
 
+interface DetailLesson {
+  id: number;
+  title: string;
+  duration: string;
+  duration_seconds: number;
+}
+
+interface DetailModule {
+  id: number;
+  title: string;
+  lessons: number;
+  duration: number;
+  lessonList: DetailLesson[];
+}
+
+interface DetailLessonProgress {
+  lesson_id: number;
+  status: string;
+}
+
+interface APIDetailCourseModule {
+  id: number;
+  title: string;
+  lessons: DetailLesson[];
+}
+
 interface CourseDetailPageProps {
   courseId: number;
   onBack: () => void;
@@ -42,13 +68,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
   const handleEnroll = async () => {
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      enrollInCourse(courseId);
-      enhancedToast.success({
-        title: "🎉 Matriculado com sucesso!",
-        description: `Bem-vindo(a) ao curso "${course.title}"`,
-        haptic: true
-      });
+      await enrollInCourse(courseId);
     } finally {
       setIsLoading(false);
     }
@@ -64,29 +84,30 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
   };
 
   const discountedPrice = course.price * 0.5;
-  const [modules, setModules] = useState<any[]>([]);
+
+  const [modules, setModules] = useState<DetailModule[]>([]);
   const [lessonProgressMap, setLessonProgressMap] = useState<Record<number, string>>({});
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const detailRes = await api.get<{ course: any }>(`/api/courses/${courseId}`);
+        const detailRes = await api.get<{ course: { modules: APIDetailCourseModule[] } }>(`/api/courses/${courseId}`);
         if (cancelled || !detailRes.success || !detailRes.data) return;
         const mods = detailRes.data.course.modules || [];
-        setModules(mods.map((m: any) => ({
+        setModules(mods.map((m) => ({
           id: m.id,
           title: m.title,
           lessons: m.lessons?.length || 0,
-          duration: m.lessons?.reduce((acc: number, l: any) => acc + (l.duration_seconds || 0), 0) || 0,
+          duration: m.lessons?.reduce((acc: number, l) => acc + (l.duration_seconds || 0), 0) || 0,
           lessonList: m.lessons || [],
         })));
 
         if (course.isEnrolled) {
-          const progressRes = await api.get<{ progress: any }>(`/api/courses/${courseId}/progress`);
+          const progressRes = await api.get<{ progress: { lessonProgress: DetailLessonProgress[] } | null }>(`/api/courses/${courseId}/progress`);
           if (!cancelled && progressRes.success && progressRes.data?.progress?.lessonProgress) {
             const map: Record<number, string> = {};
-            progressRes.data.progress.lessonProgress.forEach((lp: any) => {
+            progressRes.data.progress.lessonProgress.forEach((lp) => {
               map[lp.lesson_id] = lp.status;
             });
             setLessonProgressMap(map);
@@ -417,7 +438,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                     </div>
                     {course.isEnrolled && modLessons.length > 0 && (
                       <div className="mt-3 space-y-2 pl-11">
-                        {modLessons.map((lesson: any) => {
+                        {modLessons.map((lesson: DetailLesson) => {
                           const lessonStatus = lessonProgressMap[lesson.id];
                           const isLessonCompleted = lessonStatus === 'completed';
                           return (

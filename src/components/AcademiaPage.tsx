@@ -433,35 +433,70 @@ function MinhaBlibiotecaView({
   );
 }
 
-// Course with lessons - Each course in its own row showing lessons in horizontal carousel
+interface APILesson {
+  id: number;
+  title: string;
+  duration: string;
+  duration_seconds: number;
+  module_id: number;
+  sort_order: number;
+  video_url: string | null;
+  content_type: string;
+  is_free_preview: boolean;
+  description: string | null;
+}
+
+interface APIModule {
+  id: number;
+  title: string;
+  description: string;
+  sort_order: number;
+  lessons: APILesson[];
+}
+
+interface APILessonProgress {
+  lesson_id: number;
+  status: string;
+  progress_seconds: number;
+  completed_at: string | null;
+}
+
+interface LessonDisplay {
+  id: number;
+  title: string;
+  duration: string;
+  completed: boolean;
+  thumbnail: string;
+}
+
 interface CourseWithLessonsProps {
-  course: any;
+  course: { id: number; title: string; description: string; thumbnail: string; rating: number; duration: string; lessons: number; students: number; progress: number; isEnrolled?: boolean };
   onLessonClick: (id: string) => void;
 }
 
 function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
-  const [lessons, setLessons] = useState<any[]>([]);
+  const [lessons, setLessons] = useState<LessonDisplay[]>([]);
   const [lessonsError, setLessonsError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const detailRes = await api.get<{ course: any }>(`/api/courses/${course.id}`);
+        const detailRes = await api.get<{ course: { modules: APIModule[] } }>(`/api/courses/${course.id}`);
         if (cancelled || !detailRes.success || !detailRes.data) {
           if (!cancelled) setLessonsError(true);
           return;
         }
-        const allLessons: any[] = [];
-        const progressRes = await api.get<{ progress: any }>(`/api/courses/${course.id}/progress`);
+        const allLessons: LessonDisplay[] = [];
+        const progressRes = await api.get<{ progress: { lessonProgress: APILessonProgress[] } | null }>(`/api/courses/${course.id}/progress`);
         const lessonProgressMap: Record<number, string> = {};
         if (progressRes.success && progressRes.data?.progress?.lessonProgress) {
-          progressRes.data.progress.lessonProgress.forEach((lp: any) => {
+          progressRes.data.progress.lessonProgress.forEach((lp) => {
             lessonProgressMap[lp.lesson_id] = lp.status;
           });
         }
-        detailRes.data.course.modules?.forEach((mod: any) => {
-          mod.lessons?.forEach((l: any) => {
+        detailRes.data.course.modules?.forEach((mod) => {
+          mod.lessons?.forEach((l) => {
             allLessons.push({
               id: l.id,
               title: l.title,

@@ -41,6 +41,26 @@ export async function listCourses(filters?: {
   return rows;
 }
 
+interface DBModule {
+  id: number;
+  title: string;
+  description: string;
+  sort_order: number;
+}
+
+interface DBLesson {
+  id: number;
+  module_id: number;
+  title: string;
+  description: string | null;
+  duration: string;
+  duration_seconds: number;
+  video_url: string | null;
+  content_type: string;
+  sort_order: number;
+  is_free_preview: boolean;
+}
+
 export async function getCourseDetail(courseId: number) {
   const { rows: courseRows } = await query(
     `SELECT * FROM courses WHERE id = $1 AND is_active = true`,
@@ -48,14 +68,15 @@ export async function getCourseDetail(courseId: number) {
   );
   if (courseRows.length === 0) return null;
 
-  const { rows: modules } = await query(
+  const { rows: moduleRows } = await query(
     `SELECT id, title, description, sort_order
      FROM course_modules WHERE course_id = $1 ORDER BY sort_order`,
     [courseId]
   );
+  const modules = moduleRows as DBModule[];
 
-  const moduleIds = modules.map((m: any) => m.id);
-  let lessons: any[] = [];
+  const moduleIds = modules.map((m) => m.id);
+  let lessons: DBLesson[] = [];
   if (moduleIds.length > 0) {
     const { rows: lessonRows } = await query(
       `SELECT id, module_id, title, description, duration, duration_seconds,
@@ -63,12 +84,12 @@ export async function getCourseDetail(courseId: number) {
        FROM course_lessons WHERE module_id = ANY($1) ORDER BY sort_order`,
       [moduleIds]
     );
-    lessons = lessonRows;
+    lessons = lessonRows as DBLesson[];
   }
 
-  const modulesWithLessons = modules.map((mod: any) => ({
+  const modulesWithLessons = modules.map((mod) => ({
     ...mod,
-    lessons: lessons.filter((l: any) => l.module_id === mod.id),
+    lessons: lessons.filter((l) => l.module_id === mod.id),
   }));
 
   return {
