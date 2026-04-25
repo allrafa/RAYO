@@ -588,6 +588,62 @@ export async function initializeSchema() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_content_episodes_series_id ON content_episodes(series_id, sort_order)`);
 
+  // ──────────────────────────────────────────────────────────────────
+  // Home Feed CMS — curated rails on HomePage (Task #20)
+  // Self-contained card data per section; admin reorders / adds / edits.
+  // ──────────────────────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS home_feed_items (
+      id SERIAL PRIMARY KEY,
+      section VARCHAR(40) NOT NULL,
+      title VARCHAR(200) NOT NULL,
+      subtitle VARCHAR(240),
+      image_url VARCHAR(500),
+      gradient VARCHAR(120),
+      badge_text VARCHAR(80),
+      meta_text VARCHAR(120),
+      progress INTEGER,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      content_item_id INTEGER REFERENCES content_items(id) ON DELETE SET NULL,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'home_feed_items_section_check'
+      ) THEN
+        ALTER TABLE home_feed_items
+          ADD CONSTRAINT home_feed_items_section_check
+          CHECK (section IN ('recently_played','made_for_you','trending','podcasts'));
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'home_feed_items_progress_check'
+      ) THEN
+        ALTER TABLE home_feed_items
+          ADD CONSTRAINT home_feed_items_progress_check
+          CHECK (progress IS NULL OR (progress >= 0 AND progress <= 100));
+      END IF;
+      -- Note: an earlier draft of this schema added a UNIQUE (section, title)
+      -- constraint to make the seed idempotent on re-runs. That made admin
+      -- title edits dangerous (the next boot would reseed the original title
+      -- alongside the renamed row), so it is dropped here if it exists. The
+      -- seed in migrate.ts is now gated on "table is empty" instead.
+      IF EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'home_feed_items_section_title_unique'
+      ) THEN
+        ALTER TABLE home_feed_items
+          DROP CONSTRAINT home_feed_items_section_title_unique;
+      END IF;
+    END$$;
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_home_feed_items_section ON home_feed_items(section, sort_order)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_home_feed_items_active ON home_feed_items(is_active)`);
+
   await seedBadgesAndMissions();
   // NOTE: seedCourses() was retired as part of Task #17 — the CMS
   // (`server/features/cms/*`) is now the authoritative source for course
@@ -599,6 +655,8 @@ export async function initializeSchema() {
   await seedForumsAndPosts();
   const { migrateCmsContent } = await import("../features/cms/migrate.js");
   await migrateCmsContent();
+  const { migrateHomeFeed } = await import("../features/home-feed/migrate.js");
+  await migrateHomeFeed();
 
   console.log("[DB] Schema initialized successfully.");
 }

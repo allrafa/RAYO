@@ -15,7 +15,7 @@ import { QuizPage } from "./QuizPage";
 import { SimpleQuizTest } from "./SimpleQuizTest";
 import { MusicPage } from "./MusicPage";
 import { PlaylistsExpandedPage } from "./PlaylistsExpandedPage";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import raioLogoFull from "figma:asset/91df98d68db1bbd58de3db20caeed5acda1da6fc.png";
 import { useYouTubeData } from "./hooks/useYouTubeData";
 import { useVideoProgress } from "./hooks/useVideoProgress";
@@ -111,6 +111,71 @@ interface HomePageProps {
   userLevel: number;
 }
 
+// ── Home Feed (CMS-managed rails) ────────────────────────────────────
+// Mirrors server/features/home-feed/service.ts. Rows are mapped to the
+// shape consumed by the local <ContentCard /> (image/duration/chart/etc).
+type HomeFeedSectionKey =
+  | "recently_played"
+  | "made_for_you"
+  | "trending"
+  | "podcasts";
+
+interface HomeFeedRow {
+  id: number;
+  section: HomeFeedSectionKey;
+  title: string;
+  subtitle: string | null;
+  image_url: string | null;
+  gradient: string | null;
+  badge_text: string | null;
+  meta_text: string | null;
+  progress: number | null;
+  sort_order: number;
+}
+
+type HomeFeedSections = Record<HomeFeedSectionKey, HomeFeedRow[]>;
+
+interface HomeCard {
+  title: string;
+  subtitle: string;
+  image: string;
+  gradient?: string;
+  duration?: string;
+  progress?: number;
+  chart?: string;
+  views?: string;
+  type?: string;
+  episodes?: string;
+}
+
+function mapRowToCard(row: HomeFeedRow): HomeCard {
+  const card: HomeCard = {
+    title: row.title,
+    subtitle: row.subtitle ?? "",
+    image: row.image_url ?? "",
+  };
+  if (row.gradient) card.gradient = row.gradient;
+  if (row.progress !== null) card.progress = row.progress;
+  switch (row.section) {
+    case "recently_played":
+      if (row.badge_text) card.duration = row.badge_text;
+      break;
+    case "trending":
+      if (row.badge_text) card.chart = row.badge_text;
+      if (row.meta_text) card.views = row.meta_text;
+      break;
+    case "podcasts":
+      if (row.badge_text) card.type = row.badge_text;
+      if (row.meta_text) card.episodes = row.meta_text;
+      break;
+    case "made_for_you":
+    default:
+      if (row.badge_text) card.duration = row.badge_text;
+      break;
+  }
+  return card;
+}
+
 export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
@@ -124,6 +189,11 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   const [playerPlaylist, setPlayerPlaylist] = useState<YouTubePlaylist | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+  // Home rails (Tocados recentemente / Feito para você / Em alta / Podcasts)
+  // are sourced from the CMS via /api/home-feed (Task #20). Producers manage
+  // these cards in Admin → Home / Destaques.
+  const [homeFeed, setHomeFeed] = useState<HomeFeedSections | null>(null);
+  const [homeFeedLoading, setHomeFeedLoading] = useState(true);
   const { user: authUser } = useAuth();
   
   const { data: youtubeData, loading: youtubeLoading } = useYouTubeData();
@@ -149,6 +219,27 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+
+  const loadHomeFeed = useCallback(async () => {
+    setHomeFeedLoading(true);
+    try {
+      const res = await api.get<{ sections: HomeFeedSections }>("/api/home-feed");
+      if (res.success && res.data) {
+        setHomeFeed(res.data.sections);
+      } else {
+        setHomeFeed(null);
+      }
+    } catch (err) {
+      console.error("[HomePage] Failed to load home feed:", err);
+      setHomeFeed(null);
+    } finally {
+      setHomeFeedLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHomeFeed();
+  }, [loadHomeFeed]);
 
   useEffect(() => {
     if (currentQuiz) {
@@ -187,7 +278,7 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
-      await loadDashboard();
+      await Promise.all([loadDashboard(), loadHomeFeed()]);
     } catch (error) {
       console.error("Erro na atualização:", error);
     } finally {
@@ -210,94 +301,22 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
     }
   };
 
-  // Categorias de conteúdo inspiradas no Spotify
-  const categories = {
-    recentlyPlayed: [
-      {
-        title: "Como resolver conflitos",
-        subtitle: "Série • Ep. 1/5",
-        image: "https://images.unsplash.com/photo-1758524944375-7d61202cc481?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3VwbGUlMjB0YWxraW5nJTIwcmVsYXRpb25zaGlwfGVufDF8fHx8MTc1OTYyNzMyOXww&ixlib=rb-4.1.0&q=80&w=1080",
-        duration: "18:32",
-        progress: 65
-      },
-      {
-        title: "Linguagens do Amor",
-        subtitle: "Curso Prático",
-        image: "https://images.unsplash.com/photo-1680603007731-d8da76c235ba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3VwbGUlMjByZWxhdGlvbnNoaXAlMjBsb3ZlfGVufDF8fHx8MTc1OTYwODMxOXww&ixlib=rb-4.1.0&q=80&w=1080",
-        duration: "24:15",
-        progress: 30
-      },
-      {
-        title: "Educação Financeira",
-        subtitle: "Para Casais",
-        image: "https://images.unsplash.com/photo-1588912914078-2fe5224fd8b8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvbmxpbmUlMjBsZWFybmluZyUyMGNvdXJzZSUyMGVkdWNhdGlvbnxlbnwxfHx8fDE3NTk1NzgxNDN8MA&ixlib=rb-4.1.0&q=80&w=1080",
-        duration: "31:45",
-        progress: 0
-      }
-    ],
-    madeForYou: [
-      {
-        title: "Mix Relacionamentos",
-        subtitle: "Baseado no seu perfil",
-        image: "https://images.unsplash.com/photo-1624448445915-97154f5e688c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGZhbWlseSUyMHRvZ2V0aGVybmVzc3xlbnwxfHx8fDE3NTk2MDgzMTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-        gradient: "from-purple-500 to-pink-500",
-        isPlaylist: true
-      },
-      {
-        title: "Descobertas Semanais",
-        subtitle: "Novos conteúdos para você",
-        image: "https://images.unsplash.com/photo-1605041140728-fecfe5b22e16?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMGNvdXBsZSUyMGRhdGluZyUyMHJvbWFuY2V8ZW58MXx8fHwxNzU5NjI3MzM3fDA&ixlib=rb-4.1.0&q=80&w=1080",
-        gradient: "from-green-500 to-blue-500",
-        isPlaylist: true
-      },
-      {
-        title: "Radar de Releases",
-        subtitle: "Últimos lançamentos",
-        image: "https://images.unsplash.com/photo-1628676348963-f88c671333f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW1pbHklMjBwYXJlbnRpbmclMjBjaGlsZHJlbnxlbnwxfHx8fDE3NTk2MjczMzV8MA&ixlib=rb-4.1.0&q=80&w=1080",
-        gradient: "from-orange-500 to-red-500",
-        isPlaylist: true
-      }
-    ],
-    trending: [
-      {
-        title: "Top 50 RAIO Brasil",
-        subtitle: "Os mais assistidos",
-        image: "https://images.unsplash.com/photo-1744805624952-dab790f6b3bd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3ZWRkaW5nJTIwY291cGxlJTIwcGxhbm5pbmd8ZW58MXx8fHwxNzU5NjI3MzMyfDA&ixlib=rb-4.1.0&q=80&w=1080",
-        chart: "1",
-        views: "2.3M"
-      },
-      {
-        title: "Viral do Relacionamento",
-        subtitle: "Trending now",
-        image: "https://images.unsplash.com/photo-1680603007731-d8da76c235ba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3VwbGUlMjByZWxhdGlvbnNoaXAlMjBsb3ZlfGVufDF8fHx8MTc1OTYwODMxOXww&ixlib=rb-4.1.0&q=80&w=1080",
-        chart: "2",
-        views: "1.8M"
-      },
-      {
-        title: "Família em Foco",
-        subtitle: "Conteúdo para pais",
-        image: "https://images.unsplash.com/photo-1628676348963-f88c671333f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW1pbHklMjBwYXJlbnRpbmclMjBjaGlsZHJlbnxlbnwxfHx8fDE3NTk2MjczMzV8MA&ixlib=rb-4.1.0&q=80&w=1080",
-        chart: "3",
-        views: "1.5M"
-      }
-    ],
-    podcasts: [
-      {
-        title: "RAIO Talks",
-        subtitle: "Conversas transformadoras",
-        image: "https://images.unsplash.com/photo-1588912914078-2fe5224fd8b8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxvbmxpbmUlMjBsZWFybmluZyUyMGNvdXJzZSUyMGVkdWNhdGlvbnxlbnwxfHx8fDE3NTk1NzgxNDN8MA&ixlib=rb-4.1.0&q=80&w=1080",
-        type: "Podcast",
-        episodes: "12 episódios"
-      },
-      {
-        title: "Histórias Reais",
-        subtitle: "Testemunhos inspiradores",
-        image: "https://images.unsplash.com/photo-1605041140728-fecfe5b22e16?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx5b3VuZyUyMGNvdXBsZSUyMGRhdGluZyUyMHJvbWFuY2V8ZW58MXx8fHwxNzU5NjI3MzM3fDA&ixlib=rb-4.1.0&q=80&w=1080",
-        type: "Podcast",
-        episodes: "8 episódios"
-      }
-    ]
-  };
+  // CMS-managed home rails. Empty arrays render as honest empty states
+  // (or skeletons while loading); legacy mocks were removed in Task #20.
+  const homeCategories = useMemo(() => {
+    const sections = homeFeed ?? {
+      recently_played: [],
+      made_for_you: [],
+      trending: [],
+      podcasts: [],
+    };
+    return {
+      recentlyPlayed: sections.recently_played.map(mapRowToCard),
+      madeForYou: sections.made_for_you.map(mapRowToCard),
+      trending: sections.trending.map(mapRowToCard),
+      podcasts: sections.podcasts.map(mapRowToCard),
+    };
+  }, [homeFeed]);
 
   if (isLoading) {
     return (
@@ -310,6 +329,58 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   const handlePlayVideo = () => {
     setCurrentVideoId("1");
     setIsInVideoPage(true);
+  };
+
+  // Renders a horizontal rail of CMS-managed home cards. Handles loading
+  // (skeletons) and empty (honest empty state) states so producers know
+  // when a section needs content.
+  const HomeFeedRail = ({
+    items,
+    size = "medium",
+    emptyHint,
+  }: {
+    items: HomeCard[];
+    size?: "small" | "medium" | "large";
+    emptyHint: string;
+  }) => {
+    const cardWidth = size === "large" ? "w-60" : size === "small" ? "w-40" : "w-48";
+    const cardHeight = size === "large" ? "h-60" : size === "small" ? "h-40" : "h-48";
+
+    if (homeFeedLoading) {
+      return (
+        <div className="overflow-x-auto scrollbar-hide">
+          <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className={`${cardWidth} shrink-0`}>
+                <div className={`${cardHeight} rounded-lg bg-muted animate-pulse mb-3`} />
+                <div className="h-4 bg-muted rounded w-3/4 animate-pulse mb-1" />
+                <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (items.length === 0) {
+      return (
+        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+          {emptyHint}
+        </div>
+      );
+    }
+
+    return (
+      <div className="overflow-x-auto scrollbar-hide">
+        <div className="flex gap-4 pb-2 transition-all duration-300 ease-out" style={{ width: 'max-content' }}>
+          {items.map((item, index) => (
+            <div key={index} className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
+              <ContentCard item={item} size={size} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   const ContentCard = ({ item, size = "medium" }: { item: any, size?: "small" | "medium" | "large" }) => {
@@ -1052,6 +1123,18 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
           </div>
         )}
 
+        {/* Tocados recentemente — CMS-managed rail (Task #20) */}
+        <div className="px-4 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-xl font-semibold">Tocados recentemente</h2>
+          </div>
+          <HomeFeedRail
+            items={homeCategories.recentlyPlayed}
+            size="medium"
+            emptyHint="Sem itens recentes em destaque. Adicione cards em Admin → Home / Destaques."
+          />
+        </div>
+
         {/* Feito para você - Playlists do YouTube */}
         <div className="px-4 mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -1081,16 +1164,12 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
                   ))}
                 </div>
               ) : (
-                // Fallback para playlists mock
-                <div className="overflow-x-auto scrollbar-hide">
-                  <div className="flex gap-4 pb-2 transition-all duration-300 ease-out" style={{ width: 'max-content' }}>
-                    {categories.madeForYou.map((item, index) => (
-                      <div key={index} className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
-                        <ContentCard item={item} size="large" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                // Fallback: cards curados pelo CMS (Admin → Home / Destaques).
+                <HomeFeedRail
+                  items={homeCategories.madeForYou}
+                  size="large"
+                  emptyHint="Nenhuma playlist em destaque ainda. Producers podem adicionar cards em Admin → Home / Destaques."
+                />
               )}
             </>
           )}
@@ -1110,15 +1189,11 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
               Ver tudo
             </Button>
           </div>
-          <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex gap-4 pb-2 transition-all duration-300 ease-out" style={{ width: 'max-content' }}>
-              {categories.trending.map((item, index) => (
-                <div key={index} className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
-                  <ContentCard item={item} size="medium" />
-                </div>
-              ))}
-            </div>
-          </div>
+          <HomeFeedRail
+            items={homeCategories.trending}
+            size="medium"
+            emptyHint="Sem destaques 'Em alta' no momento. Adicione cards em Admin → Home / Destaques."
+          />
         </div>
 
         {/* Smart Recommendations */}
@@ -1209,15 +1284,11 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
             <h2 className="text-xl font-semibold">Podcasts para você</h2>
             <Button variant="ghost" size="sm">Ver tudo</Button>
           </div>
-          <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex gap-4 pb-2 transition-all duration-300 ease-out" style={{ width: 'max-content' }}>
-              {categories.podcasts.map((item, index) => (
-                <div key={index} className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
-                  <ContentCard item={item} size="medium" />
-                </div>
-              ))}
-            </div>
-          </div>
+          <HomeFeedRail
+            items={homeCategories.podcasts}
+            size="medium"
+            emptyHint="Nenhum podcast em destaque ainda. Adicione cards em Admin → Home / Destaques."
+          />
         </div>
 
         {/* Adicionar conteúdo - CTA */}

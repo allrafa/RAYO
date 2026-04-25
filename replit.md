@@ -106,6 +106,20 @@ vite.config.ts           # Vite + API proxy config
 - VideoPage (`src/components/VideoPage.tsx`) loads videos from `/api/content?kind=video` (no more hardcoded `mockVideos`); shows a loader and an empty-state when the catalogue is empty. Reader pages key by `book.slug ?? book.id`; transcripts in `src/data/mockTranscripts.ts` are keyed by slug.
 - `GET /uploads/<path>` — static file delivery for uploaded media
 
+## Home Feed CMS (Task #20)
+- Curated rails on `HomePage.tsx` (Tocados recentemente, Feito para você, Em alta no RAIO, Podcasts) are sourced from the `home_feed_items` table (no more hardcoded `categories` mock arrays)
+- Schema: single self-contained table with `(section, title, subtitle, image_url, gradient, badge_text, meta_text, progress, sort_order, is_active, content_item_id)`; CHECK constraints enforce valid section keys and `progress ∈ [0,100]`; UNIQUE `(section, title)` makes the seed idempotent
+- Section keys: `recently_played`, `made_for_you`, `trending`, `podcasts`
+- Boot-time idempotent seed in `server/features/home-feed/migrate.ts` mirrors the legacy hardcoded arrays so the home page is never empty on a fresh install; producers can override (edit/disable/reorder) any seeded card
+- Backend feature folder: `server/features/home-feed/{service.ts, routes.ts, migrate.ts}`
+- Public endpoint: `GET /api/home-feed` — returns `{ sections: { recently_played:[], made_for_you:[], trending:[], podcasts:[] } }` (only `is_active=true`)
+- Admin endpoints under `/api/admin/home-feed/*` require `producer` role:
+  - `GET /` (filter `?section=`), `POST /`, `PATCH /:id`, `DELETE /:id`
+  - `POST /reorder` with `{section, ordered_ids:[...]}` rewrites `sort_order` for that section
+- Admin UI: AdminShell → "Home / Destaques" tab (`AdminHomeFeedPage.tsx`) — grouped by section with per-card up/down reorder, hide/show, edit, delete
+- Field mapping for the existing `<ContentCard />`: `badge_text` → `duration`/`type`/`chart` depending on section; `meta_text` → `views`/`episodes`; `progress` only honored on `recently_played`; `gradient` (Tailwind classes) replaces `image_url` when set
+- HomePage rails render skeletons while loading and an honest empty state ("Adicione cards em Admin → Home / Destaques.") when a section has no active items
+
 ## Onboarding Data Flow
 - WelcomeScreen → Onboarding (collects name, segments, interests) → AuthPage (3-step registration)
 - Segments/interests from onboarding are passed through `App.tsx` → `AuthPage` props → `register()` call → backend persists them
