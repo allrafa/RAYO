@@ -1,10 +1,11 @@
-import { Home, GraduationCap, Users, User, Settings, LogOut, ChevronLeft, ChevronRight, Moon, Sun } from "lucide-react";
+import { Home, GraduationCap, Users, User, Settings, LogOut, ChevronLeft, ChevronRight, Moon, Sun, MessageCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { useApp } from "./AppContext";
 import { useAuth } from "./AuthContext";
 import { useTheme } from "./ThemeProvider";
+import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { toast } from "sonner@2.0.3";
 import raioLogo from "figma:asset/827405fdf6d360d2a9ec31dfa3facf23fe3474fb.png";
 import { motion } from "motion/react";
@@ -20,12 +21,14 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
   const { userData } = useApp();
   const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  
+  const { count: unreadMessages } = useUnreadMessages();
+
   const menuItems = [
     { id: "home", label: "Início", icon: Home },
     { id: "academia", label: "Academia", icon: GraduationCap },
     { id: "conselheiro", label: "Conselheiro", icon: null, isSpecial: true }, // Logo RAIO customizada
-    { id: "comunidade", label: "Comunidade", icon: Users, badge: 3 },
+    { id: "comunidade", label: "Comunidade", icon: Users },
+    { id: "conversas", label: "Mensagens", icon: MessageCircle, badge: unreadMessages },
     { id: "perfil", label: "Perfil", icon: User },
   ];
 
