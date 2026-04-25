@@ -119,6 +119,7 @@ vite.config.ts           # Vite + API proxy config
 - Admin UI: AdminShell → "Home / Destaques" tab (`AdminHomeFeedPage.tsx`) — grouped by section with per-card up/down reorder, hide/show, edit, delete
 - Field mapping for the existing `<ContentCard />`: `badge_text` → `duration`/`type`/`chart` depending on section; `meta_text` → `views`/`episodes`; `progress` only honored on `recently_played`; `gradient` (Tailwind classes) replaces `image_url` when set
 - HomePage rails render skeletons while loading and an honest empty state ("Adicione cards em Admin → Home / Destaques.") when a section has no active items
+- Status-aware visibility (Task #25): `GET /api/home-feed` LEFT JOINs `content_items` and hides any card whose linked content is not `published`; cards with `content_item_id IS NULL` (static promos) are always visible. The admin list LEFT JOINs the same table and exposes `linked_content_status` + a derived `link_state` (`ok` | `draft` | `missing`) so `AdminHomeFeedPage` flags problem cards with a red "conteúdo em rascunho" / "conteúdo removido" badge. Integration script: `scripts/test-home-feed-status.ts` covers publish/unpublish/delete transitions.
 
 ## Onboarding Data Flow
 - WelcomeScreen → Onboarding (collects name, segments, interests) → AuthPage (3-step registration)

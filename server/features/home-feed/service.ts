@@ -49,6 +49,23 @@ export interface HomeFeedItemRow {
   updated_at: Date;
 }
 
+// Possible visibility states the admin UI surfaces per card. These describe
+// the *linked content* (not the card itself):
+//   - "ok"          → no link or linked content is published
+//   - "draft"       → linked content_item exists but is not published
+//   - "missing"     → content_item_id is set but the row was deleted
+//                     (FK uses ON DELETE SET NULL, so the column is null in
+//                      practice; we expose this state defensively in case
+//                      the FK ever changes or the join misses)
+export type LinkedContentStatus = "ok" | "draft" | "missing";
+
+export interface AdminHomeFeedItemRow extends HomeFeedItemRow {
+  linked_content_status: "draft" | "published" | null;
+  linked_content_title: string | null;
+  linked_content_kind: string | null;
+  link_state: LinkedContentStatus;
+}
+
 export interface HomeFeedItemInput {
   section: HomeFeedSection;
   title: string;
@@ -113,29 +130,56 @@ export async function listAdminHomeFeed(filters?: { section?: string }) {
   let idx = 1;
   if (filters?.section && filters.section !== "all") {
     validateSection(filters.section);
-    where.push(`section = $${idx++}`);
+    where.push(`h.section = $${idx++}`);
     params.push(filters.section);
   }
   const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  // LEFT JOIN content_items so producers can see at a glance whether a card's
+  // linked content is published, in draft, or missing entirely. We expose the
+  // raw status as well as a derived `link_state` to keep the UI logic simple.
   const { rows } = await query(
-    `SELECT id, section, title, subtitle, image_url, gradient, badge_text,
-            meta_text, progress, sort_order, is_active, content_item_id,
-            created_by, created_at, updated_at
-       FROM home_feed_items
+    `SELECT h.id, h.section, h.title, h.subtitle, h.image_url, h.gradient,
+            h.badge_text, h.meta_text, h.progress, h.sort_order, h.is_active,
+            h.content_item_id, h.created_by, h.created_at, h.updated_at,
+            ci.status   AS linked_content_status,
+            ci.title    AS linked_content_title,
+            ci.kind     AS linked_content_kind
+       FROM home_feed_items h
+       LEFT JOIN content_items ci ON ci.id = h.content_item_id
        ${whereClause}
-       ORDER BY section, sort_order, id`,
+       ORDER BY h.section, h.sort_order, h.id`,
     params,
   );
-  return { items: rows };
+  const items: AdminHomeFeedItemRow[] = (rows as Array<
+    HomeFeedItemRow & {
+      linked_content_status: "draft" | "published" | null;
+      linked_content_title: string | null;
+      linked_content_kind: string | null;
+    }
+  >).map((r) => {
+    let link_state: LinkedContentStatus = "ok";
+    if (r.content_item_id !== null) {
+      if (r.linked_content_status === null) link_state = "missing";
+      else if (r.linked_content_status !== "published") link_state = "draft";
+    }
+    return { ...r, link_state };
+  });
+  return { items };
 }
 
 export async function listPublicHomeFeed() {
+  // Filter out cards whose linked content is not published. Cards without a
+  // link (content_item_id IS NULL) remain visible — they are static
+  // promotions curated by producers and have no detail page to 404 on.
   const { rows } = await query(
-    `SELECT id, section, title, subtitle, image_url, gradient, badge_text,
-            meta_text, progress, sort_order, content_item_id
-       FROM home_feed_items
-       WHERE is_active = TRUE
-       ORDER BY section, sort_order, id`,
+    `SELECT h.id, h.section, h.title, h.subtitle, h.image_url, h.gradient,
+            h.badge_text, h.meta_text, h.progress, h.sort_order,
+            h.content_item_id
+       FROM home_feed_items h
+       LEFT JOIN content_items ci ON ci.id = h.content_item_id
+       WHERE h.is_active = TRUE
+         AND (h.content_item_id IS NULL OR ci.status = 'published')
+       ORDER BY h.section, h.sort_order, h.id`,
   );
   // Group items by section so the frontend can render rails directly.
   const sections: Record<HomeFeedSection, HomeFeedItemRow[]> = {

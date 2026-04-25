@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Plus, Edit2, Trash2, Eye, EyeOff, RefreshCw, ArrowUp, ArrowDown, X,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { api } from "../../lib/api";
@@ -29,6 +30,8 @@ const SECTION_HINTS: Record<Section, string> = {
   podcasts: "Use 'Texto do badge' como tipo (Podcast) e 'Texto extra' para nº de episódios.",
 };
 
+type LinkState = "ok" | "draft" | "missing";
+
 interface HomeFeedItem {
   id: number;
   section: Section;
@@ -44,6 +47,12 @@ interface HomeFeedItem {
   content_item_id: number | null;
   created_at: string;
   updated_at: string;
+  // Populated by GET /api/admin/home-feed (LEFT JOIN content_items).
+  // Optional in the type so create/update payloads don't need to send them.
+  linked_content_status?: "draft" | "published" | null;
+  linked_content_title?: string | null;
+  linked_content_kind?: string | null;
+  link_state?: LinkState;
 }
 
 interface FormState {
@@ -305,6 +314,30 @@ export function AdminHomeFeedPage() {
                               {!item.is_active && (
                                 <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(234,179,8,0.15)", color: "rgb(180,131,7)" }}>
                                   oculto
+                                </span>
+                              )}
+                              {item.link_state === "draft" && (
+                                <span
+                                  className="text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                                  style={{ background: "rgba(220,38,38,0.12)", color: "rgb(185,28,28)" }}
+                                  title={
+                                    item.linked_content_title
+                                      ? `Conteúdo vinculado em rascunho: "${item.linked_content_title}". O card está oculto na home pública até a publicação.`
+                                      : "Conteúdo vinculado em rascunho — card oculto na home pública."
+                                  }
+                                >
+                                  <AlertTriangle className="w-3 h-3" />
+                                  conteúdo em rascunho
+                                </span>
+                              )}
+                              {item.link_state === "missing" && (
+                                <span
+                                  className="text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                                  style={{ background: "rgba(220,38,38,0.12)", color: "rgb(185,28,28)" }}
+                                  title="O conteúdo vinculado foi excluído. O card está oculto na home pública — edite para vincular outro conteúdo."
+                                >
+                                  <AlertTriangle className="w-3 h-3" />
+                                  conteúdo removido
                                 </span>
                               )}
                             </div>
