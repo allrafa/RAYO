@@ -10,6 +10,7 @@ import {
   createContent,
   updateContent,
   setContentStatus,
+  getLinkedHomeCards,
   deleteContent,
   listEpisodes,
   createEpisode,
@@ -228,8 +229,8 @@ adminCmsRouter.post("/:id/publish", async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
-    const item = await setContentStatus(req.user!, id, "published");
-    success(res, { item });
+    const result = await setContentStatus(req.user!, id, "published");
+    success(res, result);
   } catch (err) { handle(err, res, next); }
 });
 
@@ -237,8 +238,21 @@ adminCmsRouter.post("/:id/unpublish", async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
-    const item = await setContentStatus(req.user!, id, "draft");
-    success(res, { item });
+    const result = await setContentStatus(req.user!, id, "draft");
+    success(res, result);
+  } catch (err) { handle(err, res, next); }
+});
+
+// Pre-flight for the unpublish flow: returns the curated home-feed cards
+// that point at this content item, so the CMS can warn producers that
+// unpublishing will silently hide those rails (Task #25 hides them; this
+// surfaces the impact before the producer commits).
+adminCmsRouter.get("/:id/linked-home-cards", async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const linked_home_cards = await getLinkedHomeCards(id);
+    success(res, { linked_home_cards });
   } catch (err) { handle(err, res, next); }
 });
 

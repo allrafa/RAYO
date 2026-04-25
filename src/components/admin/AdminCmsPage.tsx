@@ -1,12 +1,41 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Edit2, Trash2, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Plus, Edit2, Trash2, Eye, EyeOff, RefreshCw, AlertTriangle } from "lucide-react";
 import { Button } from "../ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 import { api } from "../../lib/api";
 import { toast } from "sonner@2.0.3";
 import { AdminCmsForm } from "./AdminCmsForm";
 
 type Kind = "audio" | "video" | "reels" | "serie" | "curso" | "livro";
 type Status = "draft" | "published";
+
+interface LinkedHomeCard {
+  id: number;
+  section: string;
+  title: string;
+}
+
+// Mirror of `SECTION_LABELS` in `server/features/home-feed/service.ts`. Kept
+// in sync manually because the admin UI doesn't share types with the server.
+const HOME_SECTION_LABELS: Record<string, string> = {
+  recently_played: "Tocados recentemente",
+  made_for_you: "Feito para você",
+  trending: "Em alta no RAIO",
+  podcasts: "Podcasts",
+};
+
+function sectionLabel(section: string): string {
+  return HOME_SECTION_LABELS[section] ?? section;
+}
 
 interface ContentRow {
   id: number;
@@ -52,6 +81,16 @@ export function AdminCmsPage() {
   const [editing, setEditing] = useState<{ open: boolean; id: number | null; defaultKind?: Kind }>({
     open: false, id: null,
   });
+  // Pre-flight state for the "warn before unpublishing" flow. `cards` holds
+  // the home rails that will be hidden; `loading` covers the GET pre-flight
+  // and the eventual POST so the confirm button can be disabled while in
+  // flight.
+  const [unpublishConfirm, setUnpublishConfirm] = useState<{
+    open: boolean;
+    item: ContentRow | null;
+    cards: LinkedHomeCard[];
+    loading: boolean;
+  }>({ open: false, item: null, cards: [], loading: false });
 
   async function load() {
     setLoading(true);
@@ -83,17 +122,60 @@ export function AdminCmsPage() {
     return c;
   }, [items]);
 
+  // Direct publish/unpublish without confirmation. Used for the publish
+  // direction (no impact) and as the final step inside the unpublish modal.
+  async function performStatusChange(item: ContentRow, target: Status): Promise<boolean> {
+    const url = target === "draft"
+      ? `/api/admin/cms/${item.id}/unpublish`
+      : `/api/admin/cms/${item.id}/publish`;
+    const res = await api.post<{ item: unknown }>(url, {});
+    if (!res.success) {
+      toast.error(res.error?.message ?? "Erro ao alterar status");
+      return false;
+    }
+    toast.success(target === "draft" ? "Despublicado" : "Publicado");
+    load();
+    return true;
+  }
+
   async function togglePublish(item: ContentRow) {
-    try {
-      const url = item.status === "published"
-        ? `/api/admin/cms/${item.id}/unpublish`
-        : `/api/admin/cms/${item.id}/publish`;
-      await api.post(url, {});
-      toast.success(item.status === "published" ? "Despublicado" : "Publicado");
-      load();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro";
-      toast.error(msg);
+    // Publishing never hides home cards, so it stays a one-click action.
+    if (item.status !== "published") {
+      await performStatusChange(item, "published");
+      return;
+    }
+    // Unpublish is gated by a pre-flight that lists the home rails Task #25
+    // would silently hide. Open the modal first so the producer can see the
+    // impact, even when the GET is still in flight.
+    setUnpublishConfirm({ open: true, item, cards: [], loading: true });
+    const res = await api.get<{ linked_home_cards: LinkedHomeCard[] }>(
+      `/api/admin/cms/${item.id}/linked-home-cards`,
+    );
+    if (!res.success) {
+      toast.error(res.error?.message ?? "Falha ao verificar impacto");
+      setUnpublishConfirm({ open: false, item: null, cards: [], loading: false });
+      return;
+    }
+    const cards = res.data?.linked_home_cards ?? [];
+    // No impact → skip the modal entirely. This keeps the flow snappy when
+    // there's nothing to warn about.
+    if (cards.length === 0) {
+      setUnpublishConfirm({ open: false, item: null, cards: [], loading: false });
+      await performStatusChange(item, "draft");
+      return;
+    }
+    setUnpublishConfirm({ open: true, item, cards, loading: false });
+  }
+
+  async function confirmUnpublish() {
+    const item = unpublishConfirm.item;
+    if (!item) return;
+    setUnpublishConfirm((s) => ({ ...s, loading: true }));
+    const ok = await performStatusChange(item, "draft");
+    if (ok) {
+      setUnpublishConfirm({ open: false, item: null, cards: [], loading: false });
+    } else {
+      setUnpublishConfirm((s) => ({ ...s, loading: false }));
     }
   }
 
@@ -295,6 +377,75 @@ export function AdminCmsPage() {
           </div>
         )}
       </div>
+
+      <AlertDialog
+        open={unpublishConfirm.open}
+        onOpenChange={(open) => {
+          // Don't allow dismissal mid-flight; otherwise the toast and the
+          // modal can race and produce a stale UI.
+          if (!open && unpublishConfirm.loading) return;
+          if (!open) setUnpublishConfirm({ open: false, item: null, cards: [], loading: false });
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Despublicar este conteúdo?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {unpublishConfirm.item ? (
+                <>
+                  <strong>"{unpublishConfirm.item.title}"</strong> está vinculado a{" "}
+                  {unpublishConfirm.cards.length} card
+                  {unpublishConfirm.cards.length === 1 ? "" : "s"} na home. Esses cards
+                  serão automaticamente ocultados dos usuários enquanto o conteúdo
+                  estiver em rascunho.
+                </>
+              ) : (
+                "Carregando..."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {unpublishConfirm.cards.length > 0 && (
+            <div
+              className="rounded-md border max-h-56 overflow-y-auto"
+              style={{ borderColor: "var(--raio-border-default)" }}
+            >
+              <ul className="divide-y" style={{ borderColor: "var(--raio-border-default)" }}>
+                {unpublishConfirm.cards.map((card) => (
+                  <li key={card.id} className="px-3 py-2 text-sm">
+                    <div style={{ color: "var(--raio-text-primary)", fontWeight: 500 }}>
+                      {card.title}
+                    </div>
+                    <div className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+                      {sectionLabel(card.section)}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unpublishConfirm.loading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                // Prevent Radix's default auto-close so we can keep the modal
+                // open while the POST is in flight and close it ourselves on
+                // success.
+                e.preventDefault();
+                confirmUnpublish();
+              }}
+              disabled={unpublishConfirm.loading || !unpublishConfirm.item}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {unpublishConfirm.loading ? "Despublicando..." : "Despublicar mesmo assim"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

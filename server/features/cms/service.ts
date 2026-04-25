@@ -498,6 +498,29 @@ export async function updateContent(user: SafeUser, id: number, input: Partial<C
     : runUpdate(current.slug!);
 }
 
+// Each home card that links to a given content_item. Used by both
+// `getLinkedHomeCards` (read-only, called by the pre-flight endpoint) and
+// `setContentStatus` (returned on unpublish so the UI can confirm impact).
+export interface LinkedHomeCard {
+  id: number;
+  section: string;
+  title: string;
+}
+
+// Returns the curated home-feed cards that point at `contentItemId`. Task #25
+// silently hides cards whose linked content is unpublished; this query lets
+// the CMS warn producers about that side effect before they commit.
+export async function getLinkedHomeCards(contentItemId: number): Promise<LinkedHomeCard[]> {
+  const { rows } = await query(
+    `SELECT id, section, title
+       FROM home_feed_items
+      WHERE content_item_id = $1
+      ORDER BY section ASC, sort_order ASC, id ASC`,
+    [contentItemId]
+  );
+  return rows as LinkedHomeCard[];
+}
+
 export async function setContentStatus(user: SafeUser, id: number, status: ContentStatus) {
   validateStatus(status);
   const { rows: existing } = await query(
@@ -513,7 +536,12 @@ export async function setContentStatus(user: SafeUser, id: number, status: Conte
      WHERE id = $3 RETURNING id, status, published_at`,
     [status, publishedAt, id]
   );
-  return rows[0];
+  // Only resolve linked cards when the transition actually hides content
+  // (published → draft). Publishing never blanks out a rail, so we skip the
+  // join in that direction to keep `/publish` cheap.
+  const linkedHomeCards =
+    wasPublished && status === "draft" ? await getLinkedHomeCards(id) : [];
+  return { item: rows[0], linked_home_cards: linkedHomeCards };
 }
 
 export async function deleteContent(user: SafeUser, id: number) {
