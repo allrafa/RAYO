@@ -102,25 +102,24 @@ export async function sendVerificationCode(email: string): Promise<{ cooldownSec
   );
 
   const isDev = process.env.NODE_ENV !== "production";
-
-  if (isDev) {
-    console.log(`\n========================================`);
-    console.log(`📧 CÓDIGO DE VERIFICAÇÃO (dev fallback)`);
-    console.log(`   Email: ${email}`);
-    console.log(`   Código: ${code}`);
-    console.log(`   Expira em: 10 minutos`);
-    console.log(`========================================\n`);
-  }
-
   const sendResult = await sendVerificationCodeEmail(email, code);
 
-  if (!sendResult.sent && !isDev) {
-    const err = new Error(
-      "Não foi possível enviar o código por e-mail. Tente novamente em instantes.",
-    ) as Error & { statusCode: number; code: string };
-    err.statusCode = 502;
-    err.code = "EMAIL_SEND_FAILED";
-    throw err;
+  if (!sendResult.sent) {
+    if (isDev) {
+      console.log(`\n========================================`);
+      console.log(`📧 CÓDIGO DE VERIFICAÇÃO (dev fallback)`);
+      console.log(`   Email: ${email}`);
+      console.log(`   Código: ${code}`);
+      console.log(`   Expira em: 10 minutos`);
+      console.log(`========================================\n`);
+    } else {
+      const err = new Error(
+        "Não foi possível enviar o código por e-mail. Tente novamente em instantes.",
+      ) as Error & { statusCode: number; code: string };
+      err.statusCode = 502;
+      err.code = "EMAIL_SEND_FAILED";
+      throw err;
+    }
   }
 
   return {};
