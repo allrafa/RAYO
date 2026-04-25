@@ -79,7 +79,23 @@ vite.config.ts           # Vite + API proxy config
 - Registration requires email verification via 6-digit code
 - Codes expire in 10 minutes, max 5 attempts per code
 - 60-second cooldown between code sends
-- TODO: Connect Resend for actual email delivery (codes currently logged to server console)
+- In development, the code is fixed as `123456` and also logged to console as fallback
+- Real e-mails are sent via Resend (`server/lib/email.ts`); see "Email Sending (Resend)" section below
+
+## Email Sending (Resend)
+- Provider: Resend (`resend` npm package)
+- Module: `server/lib/email.ts` exposes `sendVerificationCodeEmail`, `sendWelcomeEmail`, `sendDataExportEmail`, `sendAccountDeletionEmail`
+- Triggers:
+  - Verification code → on `POST /api/auth/send-code`
+  - Welcome → after successful `POST /api/auth/register`
+  - LGPD export confirmation → after successful `POST /api/users/data-export`
+  - LGPD deletion confirmation → after successful `POST /api/users/data-deletion` (sent to original e-mail before anonymization completes downstream effects)
+- Failure handling: welcome / LGPD e-mails are best-effort (failures logged, never block the request). Verification e-mails block in production (`NODE_ENV=production`); in development, console fallback ensures the code is always reachable
+- Required env vars:
+  - `resend_api_key` — Resend API key (already configured)
+- Optional env vars:
+  - `RESEND_FROM_EMAIL` — sender address (default: `RAIO <onboarding@resend.dev>`). The default Resend test sender only delivers to the e-mail tied to your Resend account; for general delivery, verify the `raio.app` domain in the Resend dashboard and set `RESEND_FROM_EMAIL=RAIO <noreply@raio.app>`
+  - `APP_URL` — public URL used in e-mail links (default: `https://${REPLIT_DEV_DOMAIN}`)
 
 ## Gamification System
 - XP Levels: Iniciante(0), Aprendiz(100), Praticante(250), Experiente(500), Mestre(1000), Mentor(2000), Líder(5000)

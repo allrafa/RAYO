@@ -1,4 +1,5 @@
 import { query, getClient } from "../../db/index.js";
+import { sendDataExportEmail, sendAccountDeletionEmail } from "../../lib/email.js";
 
 interface LgpdRequestRow {
   id: number;
@@ -118,6 +119,11 @@ export async function exportUserData(userId: number): Promise<UserDataExport> {
     [requestId]
   );
 
+  const profile = profileRows[0] as { email?: string; name?: string } | undefined;
+  if (profile?.email) {
+    sendDataExportEmail(profile.email, profile.name || "Usuário").catch(() => {});
+  }
+
   return {
     profile: profileRows[0] || {},
     courseProgress,
@@ -144,6 +150,13 @@ export async function exportUserData(userId: number): Promise<UserDataExport> {
 export async function deleteUserData(userId: number): Promise<void> {
   const client = await getClient();
   try {
+    const { rows: userRows } = await query<{ email: string; name: string }>(
+      `SELECT email, name FROM users WHERE id = $1`,
+      [userId]
+    );
+    const originalEmail = userRows[0]?.email;
+    const originalName = userRows[0]?.name || "Usuário";
+
     const { rows: reqRows } = await query(
       `INSERT INTO lgpd_requests (user_id, request_type, status)
        VALUES ($1, 'deletion', 'processing')
@@ -221,6 +234,10 @@ export async function deleteUserData(userId: number): Promise<void> {
        WHERE id = $1`,
       [deletionRequestId]
     );
+
+    if (originalEmail) {
+      sendAccountDeletionEmail(originalEmail, originalName).catch(() => {});
+    }
   } catch (err) {
     await client.query("ROLLBACK");
     await query(

@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { query } from "../../db/index.js";
 import type { RegisterInput, LoginInput } from "./validation.js";
 import { trackEvent } from "../analytics/service.js";
+import { sendVerificationCodeEmail, sendWelcomeEmail } from "../../lib/email.js";
 
 const SALT_ROUNDS = 12;
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -100,13 +101,27 @@ export async function sendVerificationCode(email: string): Promise<{ cooldownSec
     [email, code, expiresAt]
   );
 
-  // TODO: Replace with Resend email sending when configured
-  console.log(`\n========================================`);
-  console.log(`📧 CÓDIGO DE VERIFICAÇÃO`);
-  console.log(`   Email: ${email}`);
-  console.log(`   Código: ${code}`);
-  console.log(`   Expira em: 10 minutos`);
-  console.log(`========================================\n`);
+  const isDev = process.env.NODE_ENV !== "production";
+
+  if (isDev) {
+    console.log(`\n========================================`);
+    console.log(`📧 CÓDIGO DE VERIFICAÇÃO (dev fallback)`);
+    console.log(`   Email: ${email}`);
+    console.log(`   Código: ${code}`);
+    console.log(`   Expira em: 10 minutos`);
+    console.log(`========================================\n`);
+  }
+
+  const sendResult = await sendVerificationCodeEmail(email, code);
+
+  if (!sendResult.sent && !isDev) {
+    const err = new Error(
+      "Não foi possível enviar o código por e-mail. Tente novamente em instantes.",
+    ) as Error & { statusCode: number; code: string };
+    err.statusCode = 502;
+    err.code = "EMAIL_SEND_FAILED";
+    throw err;
+  }
 
   return {};
 }
@@ -204,6 +219,8 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
   const token = await createSession(user.id);
 
   trackEvent(user.id, "user_registered", { method: "email" });
+
+  sendWelcomeEmail(user.email, user.name).catch(() => {});
 
   return { user, token };
 }
