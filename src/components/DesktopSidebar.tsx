@@ -1,4 +1,4 @@
-import { Home, GraduationCap, Users, User, Settings, LogOut, ChevronLeft, ChevronRight, Moon, Sun, MessageCircle, ShieldAlert } from "lucide-react";
+import { Home, GraduationCap, Users, User, Settings, LogOut, ChevronLeft, ChevronRight, Moon, Sun, MessageCircle, ShieldAlert, type LucideIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -23,13 +23,14 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
   const { theme, toggleTheme } = useTheme();
   const { count: unreadMessages } = useUnreadMessages();
 
-  const baseItems: Array<{
+  type MenuItem = {
     id: string;
     label: string;
-    icon: any;
+    icon: LucideIcon | null;
     isSpecial?: boolean;
     badge?: number;
-  }> = [
+  };
+  const baseItems: MenuItem[] = [
     { id: "home", label: "Início", icon: Home },
     { id: "academia", label: "Academia", icon: GraduationCap },
     { id: "conselheiro", label: "Conselheiro", icon: null, isSpecial: true }, // Logo RAIO customizada
@@ -37,7 +38,9 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
     { id: "conversas", label: "Mensagens", icon: MessageCircle, badge: unreadMessages },
     { id: "perfil", label: "Perfil", icon: User },
   ];
-  const menuItems = userHasRole(user, "moderator")
+  // Producer+ sees the Admin shell entry. Sections inside the shell self-gate
+  // (Users → admin, Moderation → moderator+).
+  const menuItems: MenuItem[] = userHasRole(user, "producer")
     ? [...baseItems, { id: "admin", label: "Admin", icon: ShieldAlert }]
     : baseItems;
 

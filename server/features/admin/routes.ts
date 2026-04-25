@@ -16,8 +16,12 @@ import type { UserRole } from "../auth/service.js";
 
 const router = Router();
 
-// All routes require at least moderator. Role-checks tighten on individual routes.
-router.use(requireRole("moderator"));
+// Baseline admin-shell access starts at "producer" (content authors, future
+// CMS in Task #17). Sensitive endpoints add their own requireRole guard:
+//   /users               -> admin
+//   /users/:id/role      -> admin
+//   /moderation/*        -> moderator+
+router.use(requireRole("producer"));
 
 function parsePagination(req: Request): { page: number; limit: number } {
   const page = Math.max(1, parseInt((req.query.page as string) || "1", 10) || 1);
@@ -90,7 +94,7 @@ router.patch(
   },
 );
 
-router.get("/moderation/posts", async (req, res, next) => {
+router.get("/moderation/posts", requireRole("moderator"), async (req, res, next) => {
   try {
     const status = parseStatus(req.query.status);
     if (status === null) {
@@ -105,7 +109,7 @@ router.get("/moderation/posts", async (req, res, next) => {
   }
 });
 
-router.post("/moderation/posts/:id/hide", async (req, res, next) => {
+router.post("/moderation/posts/:id/hide", requireRole("moderator"), async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id) || id < 1) {
@@ -123,7 +127,7 @@ router.post("/moderation/posts/:id/hide", async (req, res, next) => {
   }
 });
 
-router.post("/moderation/posts/:id/restore", async (req, res, next) => {
+router.post("/moderation/posts/:id/restore", requireRole("moderator"), async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id) || id < 1) {
@@ -141,7 +145,7 @@ router.post("/moderation/posts/:id/restore", async (req, res, next) => {
   }
 });
 
-router.get("/moderation/comments", async (req, res, next) => {
+router.get("/moderation/comments", requireRole("moderator"), async (req, res, next) => {
   try {
     const status = parseStatus(req.query.status);
     if (status === null) {
@@ -156,7 +160,7 @@ router.get("/moderation/comments", async (req, res, next) => {
   }
 });
 
-router.post("/moderation/comments/:id/hide", async (req, res, next) => {
+router.post("/moderation/comments/:id/hide", requireRole("moderator"), async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id) || id < 1) {
@@ -174,7 +178,7 @@ router.post("/moderation/comments/:id/hide", async (req, res, next) => {
   }
 });
 
-router.post("/moderation/comments/:id/restore", async (req, res, next) => {
+router.post("/moderation/comments/:id/restore", requireRole("moderator"), async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id) || id < 1) {

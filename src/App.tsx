@@ -158,7 +158,10 @@ function AppContent() {
   const userSegment = user.segments?.[0] || onboardingData?.segments?.[0] || "solteiro";
 
   if (currentTab === "admin") {
-    if (!userHasRole(user, "moderator")) {
+    // Baseline shell access starts at "producer" (content authors). The shell
+    // itself hides sections the user can't access (Users → admin-only,
+    // Moderation → moderator+).
+    if (!userHasRole(user, "producer")) {
       setTimeout(() => setCurrentTab("home"), 0);
       return null;
     }
