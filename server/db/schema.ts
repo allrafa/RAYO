@@ -200,6 +200,12 @@ export async function initializeSchema() {
   `);
 
   await query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'client'
+  `);
+
+  await query(`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`);
+
+  await query(`
     CREATE TABLE IF NOT EXISTS courses (
       id SERIAL PRIMARY KEY,
       title VARCHAR(200) NOT NULL,
@@ -349,6 +355,29 @@ export async function initializeSchema() {
 
   await query(`CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments(post_id)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id)`);
+
+  // Moderation soft-hide columns (idempotent; added after posts/comments tables exist)
+  await query(`
+    ALTER TABLE posts ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE
+  `);
+  await query(`
+    ALTER TABLE posts ADD COLUMN IF NOT EXISTS hidden_at TIMESTAMP
+  `);
+  await query(`
+    ALTER TABLE posts ADD COLUMN IF NOT EXISTS hidden_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_posts_is_hidden ON posts(is_hidden)`);
+
+  await query(`
+    ALTER TABLE comments ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE
+  `);
+  await query(`
+    ALTER TABLE comments ADD COLUMN IF NOT EXISTS hidden_at TIMESTAMP
+  `);
+  await query(`
+    ALTER TABLE comments ADD COLUMN IF NOT EXISTS hidden_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_comments_is_hidden ON comments(is_hidden)`);
 
   await query(`
     CREATE TABLE IF NOT EXISTS post_likes (

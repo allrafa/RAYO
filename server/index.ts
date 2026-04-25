@@ -14,6 +14,8 @@ import communityRoutes from "./features/community/routes.js";
 import dashboardRoutes from "./features/dashboard/routes.js";
 import lgpdRoutes from "./features/lgpd/routes.js";
 import messagesRoutes from "./features/messages/routes.js";
+import adminRoutes from "./features/admin/routes.js";
+import { bootstrapAdminsFromEnv } from "./features/admin/bootstrap.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -47,6 +49,7 @@ app.use("/api/users", rateLimiter(10, 15 * 60 * 1000), lgpdRoutes);
 // unread-count every 20s); each authenticated user must comfortably fit a 15-min
 // active session without hitting 429.
 app.use("/api/messages", rateLimiter(600, 15 * 60 * 1000), messagesRoutes);
+app.use("/api/admin", rateLimiter(120, 15 * 60 * 1000), adminRoutes);
 
 app.all("/api/{*path}", (req, res) => {
   sendError(res, `Route ${req.method} ${req.path} not found`, "NOT_FOUND", 404);
@@ -57,6 +60,8 @@ async function start() {
     logger.info("Server", "Initializing database schema...");
     await initializeSchema();
     logger.info("Server", "Database schema ready.");
+
+    await bootstrapAdminsFromEnv();
 
     if (isDev) {
       const vite = await createViteServer({

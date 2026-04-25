@@ -22,7 +22,7 @@ export async function getForumPosts(
   const offset = (page - 1) * limit;
 
   const { rows: countRows } = await query(
-    `SELECT COUNT(*) AS total FROM posts WHERE forum_id = $1`,
+    `SELECT COUNT(*) AS total FROM posts WHERE forum_id = $1 AND is_hidden = FALSE`,
     [forumId]
   );
   const total = parseInt(countRows[0].total);
@@ -34,7 +34,7 @@ export async function getForumPosts(
        ${userId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $4) AS user_liked` : `false AS user_liked`}
      FROM posts p
      JOIN users u ON u.id = p.user_id
-     WHERE p.forum_id = $1
+     WHERE p.forum_id = $1 AND p.is_hidden = FALSE
      ORDER BY p.is_pinned DESC, p.created_at DESC
      LIMIT $2 OFFSET $3`,
     userId ? [forumId, limit, offset, userId] : [forumId, limit, offset]
@@ -50,7 +50,9 @@ export async function getAllPosts(
 ) {
   const offset = (page - 1) * limit;
 
-  const { rows: countRows } = await query(`SELECT COUNT(*) AS total FROM posts`);
+  const { rows: countRows } = await query(
+    `SELECT COUNT(*) AS total FROM posts WHERE is_hidden = FALSE`
+  );
   const total = parseInt(countRows[0].total);
 
   const { rows } = await query(
@@ -62,6 +64,7 @@ export async function getAllPosts(
      FROM posts p
      JOIN users u ON u.id = p.user_id
      JOIN forums f ON f.id = p.forum_id
+     WHERE p.is_hidden = FALSE
      ORDER BY p.is_pinned DESC, p.created_at DESC
      LIMIT $1 OFFSET $2`,
     userId ? [limit, offset, userId] : [limit, offset]
@@ -120,7 +123,7 @@ export async function getPostDetail(postId: number, userId?: number) {
      FROM posts p
      JOIN users u ON u.id = p.user_id
      JOIN forums f ON f.id = p.forum_id
-     WHERE p.id = $1`,
+     WHERE p.id = $1 AND p.is_hidden = FALSE`,
     userId ? [postId, userId] : [postId]
   );
 
@@ -134,7 +137,7 @@ export async function getPostDetail(postId: number, userId?: number) {
        ${userId ? `EXISTS(SELECT 1 FROM comment_likes cl WHERE cl.comment_id = c.id AND cl.user_id = $2) AS user_liked` : `false AS user_liked`}
      FROM comments c
      JOIN users u ON u.id = c.user_id
-     WHERE c.post_id = $1
+     WHERE c.post_id = $1 AND c.is_hidden = FALSE
      ORDER BY c.created_at ASC`,
     userId ? [postId, userId] : [postId]
   );

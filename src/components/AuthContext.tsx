@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { api } from "../lib/api";
 
+export type UserRole = "client" | "producer" | "moderator" | "admin";
+
 export interface User {
   id: number;
   email: string;
@@ -13,7 +15,21 @@ export interface User {
   xp: number;
   streak: number;
   is_premium: boolean;
+  role: UserRole;
   created_at: string;
+}
+
+const ROLE_RANK: Record<UserRole, number> = {
+  client: 0,
+  producer: 1,
+  moderator: 2,
+  admin: 3,
+};
+
+export function userHasRole(user: User | null | undefined, minRole: UserRole): boolean {
+  if (!user) return false;
+  const role = (user.role || "client") as UserRole;
+  return ROLE_RANK[role] >= ROLE_RANK[minRole];
 }
 
 interface RegisterOptions {

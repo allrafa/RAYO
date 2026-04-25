@@ -31,7 +31,8 @@ server/                  # Backend
 │   ├── community/       # Forums, posts, comments, likes
 │   ├── dashboard/       # Personalized dashboard aggregation
 │   ├── lgpd/            # LGPD: data export & account deletion (anonymizes messages)
-│   └── messages/        # Direct messaging (conversations + messages + unread count)
+│   ├── messages/        # Direct messaging (conversations + messages + unread count)
+│   └── admin/           # Admin/moderation: overview metrics, user role mgmt, hide/restore posts & comments
 └── utils/               # Response helpers, logger
 
 src/                     # Frontend (React)
@@ -161,6 +162,19 @@ vite.config.ts           # Vite + API proxy config
 - `POST /api/messages/conversations/:id/read` — Mark all incoming messages as read
 - `GET /api/messages/unread-count` — Count of conversations with at least one unread message (for nav badge)
 - `GET /api/messages/users/search?q=` — Search users by name (prefix) or exact email; excludes self
+
+## Admin & Moderation
+- Roles (column `users.role`): `client` (default) < `producer` < `moderator` < `admin` (numeric hierarchy enforced by `requireRole(minRole)` middleware in `server/middleware/auth.ts`)
+- Bootstrap: env var `ADMIN_EMAILS` (comma-separated emails) promotes those accounts to `admin` on every server boot (idempotent)
+- Soft hide: `posts.is_hidden`/`comments.is_hidden` (+ `hidden_at`/`hidden_by`); community feed and post detail filter `is_hidden = FALSE`. No hard deletes — moderators can restore.
+- `GET /api/admin/overview` — Aggregate metrics (users by role, premium, content counts, posts/comments visible vs hidden, last-7d) — moderator+
+- `GET /api/admin/users?search=&role=&segment=&premium=&page=&limit=` — Paginated user list — moderator+
+- `PATCH /api/admin/users/:id/role` — Change a user's role `{role}` — admin only; blocks self-demotion
+- `GET /api/admin/moderation/posts?status=visible|hidden|all` — List posts for moderation — moderator+
+- `GET /api/admin/moderation/comments?status=visible|hidden|all` — List comments for moderation — moderator+
+- `POST /api/admin/moderation/posts/:id/hide` and `/restore` — Toggle post visibility — moderator+
+- `POST /api/admin/moderation/comments/:id/hide` and `/restore` — Toggle comment visibility — moderator+
+- Frontend: dedicated `<AdminShell>` (full-screen takeover at `currentTab="admin"`, hides `Navigation`/`DesktopSidebar`/`TopNavbar`); sidebar entry only visible when `userHasRole(user, "moderator")`. Pages in `src/components/admin/`: `AdminOverviewPage`, `AdminUsersPage`, `AdminModerationPage`.
 - Frontend: `ConversasPage` (real DMs with polling: 15s convs, 5s messages, mark-read on open), `useUnreadMessages` hook (polls 20s + on visibility) feeding badge in `Navigation` and `TopNavbar`
 - LGPD: account deletion anonymizes message contents to `[mensagem removida por solicitação LGPD]` (preserves conversation history for the other party)
 - Feature files: `server/features/messages/service.ts`, `server/features/messages/routes.ts`, `src/components/ConversasPage.tsx`, `src/components/hooks/useUnreadMessages.ts`

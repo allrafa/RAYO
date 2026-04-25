@@ -1,9 +1,9 @@
-import { Home, GraduationCap, Users, User, Settings, LogOut, ChevronLeft, ChevronRight, Moon, Sun, MessageCircle } from "lucide-react";
+import { Home, GraduationCap, Users, User, Settings, LogOut, ChevronLeft, ChevronRight, Moon, Sun, MessageCircle, ShieldAlert } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { useApp } from "./AppContext";
-import { useAuth } from "./AuthContext";
+import { useAuth, userHasRole } from "./AuthContext";
 import { useTheme } from "./ThemeProvider";
 import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { toast } from "sonner@2.0.3";
@@ -19,11 +19,17 @@ interface DesktopSidebarProps {
 
 export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, onToggleMinimize }: DesktopSidebarProps) {
   const { userData } = useApp();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { count: unreadMessages } = useUnreadMessages();
 
-  const menuItems = [
+  const baseItems: Array<{
+    id: string;
+    label: string;
+    icon: any;
+    isSpecial?: boolean;
+    badge?: number;
+  }> = [
     { id: "home", label: "Início", icon: Home },
     { id: "academia", label: "Academia", icon: GraduationCap },
     { id: "conselheiro", label: "Conselheiro", icon: null, isSpecial: true }, // Logo RAIO customizada
@@ -31,6 +37,9 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
     { id: "conversas", label: "Mensagens", icon: MessageCircle, badge: unreadMessages },
     { id: "perfil", label: "Perfil", icon: User },
   ];
+  const menuItems = userHasRole(user, "moderator")
+    ? [...baseItems, { id: "admin", label: "Admin", icon: ShieldAlert }]
+    : baseItems;
 
   return (
     <aside 

@@ -7,7 +7,8 @@ import { Onboarding } from "./components/Onboarding";
 import { AccessibilityProvider } from "./components/AccessibilityContext";
 import { AppProvider, useApp } from "./components/AppContext";
 import { AnalyticsProvider } from "./components/AnalyticsContext";
-import { AuthProvider, useAuth } from "./components/AuthContext";
+import { AuthProvider, useAuth, userHasRole } from "./components/AuthContext";
+import { AdminShell } from "./components/admin/AdminShell";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { UnreadMessagesProvider } from "./components/hooks/useUnreadMessages";
 import { Toaster } from "./components/ui/sonner";
@@ -155,6 +156,14 @@ function AppContent() {
   }
 
   const userSegment = user.segments?.[0] || onboardingData?.segments?.[0] || "solteiro";
+
+  if (currentTab === "admin") {
+    if (!userHasRole(user, "moderator")) {
+      setTimeout(() => setCurrentTab("home"), 0);
+      return null;
+    }
+    return <AdminShell onExitAdmin={() => setCurrentTab("home")} />;
+  }
 
   const renderCurrentPage = () => {
     try {

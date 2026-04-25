@@ -29,6 +29,8 @@ function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+export type UserRole = "client" | "producer" | "moderator" | "admin";
+
 export interface SafeUser {
   id: number;
   email: string;
@@ -41,6 +43,7 @@ export interface SafeUser {
   xp: number;
   streak: number;
   is_premium: boolean;
+  role: UserRole;
   created_at: string;
 }
 
@@ -48,6 +51,12 @@ function toSafeUser(row: Record<string, unknown>): SafeUser {
   const createdAt = row.created_at instanceof Date
     ? row.created_at.toISOString()
     : String(row.created_at);
+
+  const rawRole = (row.role as string | undefined) || "client";
+  const role: UserRole =
+    rawRole === "admin" || rawRole === "moderator" || rawRole === "producer"
+      ? rawRole
+      : "client";
 
   return {
     id: row.id as number,
@@ -61,6 +70,7 @@ function toSafeUser(row: Record<string, unknown>): SafeUser {
     xp: row.xp as number,
     streak: row.streak as number,
     is_premium: row.is_premium as boolean,
+    role,
     created_at: createdAt,
   };
 }
@@ -218,7 +228,7 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
   const result = await query(
     `INSERT INTO users (email, password_hash, name, segments, interests)
      VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, email, name, segments, interests, goals, content_preferences, level, xp, streak, is_premium, created_at`,
+     RETURNING id, email, name, segments, interests, goals, content_preferences, level, xp, streak, is_premium, role, created_at`,
     [input.email, passwordHash, input.name, segments, interests]
   );
 
@@ -236,7 +246,7 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
 
 export async function loginUser(input: LoginInput, ip?: string, userAgent?: string): Promise<{ user: SafeUser; token: string }> {
   const result = await query(
-    "SELECT id, email, name, segments, interests, goals, content_preferences, password_hash, level, xp, streak, is_premium, created_at FROM users WHERE email = $1",
+    "SELECT id, email, name, segments, interests, goals, content_preferences, password_hash, level, xp, streak, is_premium, role, created_at FROM users WHERE email = $1",
     [input.email]
   );
 
@@ -285,7 +295,7 @@ export async function validateSession(token: string): Promise<SafeUser | null> {
   const tokenHash = hashToken(token);
 
   const result = await query(
-    `SELECT u.id, u.email, u.name, u.segments, u.interests, u.goals, u.content_preferences, u.level, u.xp, u.streak, u.is_premium, u.created_at
+    `SELECT u.id, u.email, u.name, u.segments, u.interests, u.goals, u.content_preferences, u.level, u.xp, u.streak, u.is_premium, u.role, u.created_at
      FROM sessions s
      JOIN users u ON s.user_id = u.id
      WHERE s.token_hash = $1 AND s.expires_at > NOW()`,
