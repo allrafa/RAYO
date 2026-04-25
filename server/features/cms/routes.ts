@@ -18,6 +18,7 @@ import {
   listMediaAssets,
   recordMediaAsset,
   listCoursesForCms,
+  createCourseFromCms,
   listCourseModulesWithLessons,
   createCourseModule,
   updateCourseModule,
@@ -63,6 +64,13 @@ adminCmsRouter.get("/courses", async (_req, res, next) => {
     const courses = await listCoursesForCms();
     success(res, { courses });
   } catch (err) { next(err); }
+});
+
+adminCmsRouter.post("/courses", async (req: Request, res, next) => {
+  try {
+    const result = await createCourseFromCms(req.user!, req.body);
+    success(res, result, 201);
+  } catch (err) { handle(err, res, next); }
 });
 
 // Course module/lesson authoring (replaces seedCourses-only authoring).
@@ -176,10 +184,11 @@ adminCmsRouter.post("/media/upload", (req: Request, res: Response, next: NextFun
 // 2) Content list/create at the router root.
 adminCmsRouter.get("/", async (req, res, next) => {
   try {
-    const { kind, status, search, page, limit } = req.query;
+    const { kind, status, segment, search, page, limit } = req.query;
     const result = await listAdminContent({
       kind: kind as string | undefined,
       status: status as string | undefined,
+      segment: segment as string | undefined,
       search: search as string | undefined,
       page: page ? parseInt(page as string, 10) : undefined,
       limit: limit ? parseInt(limit as string, 10) : undefined,

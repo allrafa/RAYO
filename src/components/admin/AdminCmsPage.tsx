@@ -47,6 +47,7 @@ export function AdminCmsPage() {
   const [loading, setLoading] = useState(true);
   const [kindFilter, setKindFilter] = useState<Kind | "all">("all");
   const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
+  const [segmentFilter, setSegmentFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<{ open: boolean; id: number | null; defaultKind?: Kind }>({
     open: false, id: null,
@@ -58,6 +59,7 @@ export function AdminCmsPage() {
       const params = new URLSearchParams();
       if (kindFilter !== "all") params.set("kind", kindFilter);
       if (statusFilter !== "all") params.set("status", statusFilter);
+      if (segmentFilter !== "all") params.set("segment", segmentFilter);
       if (search.trim()) params.set("search", search.trim());
       params.set("limit", "100");
       const res = await api.get<{ items: ContentRow[] }>(`/api/admin/cms?${params.toString()}`);
@@ -73,7 +75,7 @@ export function AdminCmsPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kindFilter, statusFilter]);
+  }, [kindFilter, statusFilter, segmentFilter]);
 
   const counts = useMemo(() => {
     const c = { total: items.length, published: 0, draft: 0 };
@@ -172,6 +174,25 @@ export function AdminCmsPage() {
             {s === "all" ? "Todos status" : s === "draft" ? "Rascunho" : "Publicado"}
           </button>
         ))}
+        <select
+          value={segmentFilter}
+          onChange={(e) => setSegmentFilter(e.target.value)}
+          className="px-3 py-1.5 text-sm rounded-md border outline-none"
+          style={{
+            background: "var(--raio-bg-secondary)",
+            color: "var(--raio-text-primary)",
+            borderColor: "var(--raio-border-default)",
+          }}
+        >
+          <option value="all">Todos segmentos</option>
+          <option value="solteiros">Solteiros</option>
+          <option value="namorando">Namorando</option>
+          <option value="noivos">Noivos</option>
+          <option value="casados">Casados</option>
+          <option value="separados">Separados</option>
+          <option value="recasados">Recasados</option>
+          <option value="pais">Pais</option>
+        </select>
         <input
           type="text"
           value={search}

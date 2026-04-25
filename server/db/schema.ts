@@ -589,7 +589,13 @@ export async function initializeSchema() {
   await query(`CREATE INDEX IF NOT EXISTS idx_content_episodes_series_id ON content_episodes(series_id, sort_order)`);
 
   await seedBadgesAndMissions();
-  await seedCourses();
+  // NOTE: seedCourses() was retired as part of Task #17 — the CMS
+  // (`server/features/cms/*`) is now the authoritative source for course
+  // authoring. Producers create courses via POST /api/admin/cms/courses,
+  // and modules/lessons via /api/admin/cms/courses/:id/modules*. The legacy
+  // seed function is kept below for historical reference but is no longer
+  // invoked on boot. Existing databases that were already seeded keep their
+  // data untouched (no destructive cleanup); fresh databases start empty.
   await seedForumsAndPosts();
   const { migrateCmsContent } = await import("../features/cms/migrate.js");
   await migrateCmsContent();

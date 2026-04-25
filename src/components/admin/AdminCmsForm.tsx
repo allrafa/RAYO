@@ -345,20 +345,51 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
           {/* Type-specific */}
           {data.kind === "curso" ? (
             <>
-              <Field label="Curso vinculado" hint="Selecione o curso da Academia que esta entrada do CMS representa.">
-                <select className={cls} style={inputStyle} value={data.course_id ?? ""}
-                  onChange={(e) => set("course_id", e.target.value ? parseInt(e.target.value, 10) : null)}>
-                  <option value="">— Selecione um curso —</option>
-                  {courses.map((c) => (
-                    <option key={c.id} value={c.id}>{c.title}</option>
-                  ))}
-                </select>
+              <Field label="Curso vinculado" hint="Vincule a um curso existente da Academia ou crie um novo curso direto pelo CMS.">
+                <div className="flex gap-2">
+                  <select className={cls} style={inputStyle} value={data.course_id ?? ""}
+                    onChange={(e) => set("course_id", e.target.value ? parseInt(e.target.value, 10) : null)}>
+                    <option value="">— Selecione um curso —</option>
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                  <Button variant="outline" size="sm" onClick={async () => {
+                    const newTitle = window.prompt("Título do novo curso:", data.title || "");
+                    if (!newTitle || !newTitle.trim()) return;
+                    try {
+                      const res = await api.post<{ course_id: number; content_item_id: number }>(
+                        `/api/admin/cms/courses`,
+                        {
+                          title: newTitle.trim(),
+                          description: data.short_description ?? "",
+                          thumbnail: data.cover_url ?? "",
+                          segments: data.segments,
+                          interests: data.interests,
+                          is_premium: data.is_premium,
+                          price: data.price ?? 0,
+                        }
+                      );
+                      if (res.data?.course_id) {
+                        const list = await api.get<{ courses: Array<{ id: number; title: string; content_item_id: number | null }> }>(`/api/admin/cms/courses`);
+                        if (list.data) setCourses(list.data.courses);
+                        set("course_id", res.data.course_id);
+                        toast.success("Curso criado e vinculado");
+                      }
+                    } catch (err) {
+                      const msg = err instanceof Error ? err.message : "Erro ao criar curso";
+                      toast.error(msg);
+                    }
+                  }}>
+                    <Plus className="w-4 h-4 mr-1" /> Novo curso
+                  </Button>
+                </div>
               </Field>
               {data.course_id ? (
                 <CourseModulesEditor courseId={data.course_id} />
               ) : (
                 <p className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
-                  Selecione um curso para gerenciar seus módulos e lições.
+                  Selecione (ou crie) um curso para gerenciar seus módulos e lições.
                 </p>
               )}
             </>

@@ -145,6 +145,7 @@ function toNumberOrNull(v: unknown): number | null {
 export async function listAdminContent(filters: {
   kind?: string;
   status?: string;
+  segment?: string;
   search?: string;
   page?: number;
   limit?: number;
@@ -170,6 +171,12 @@ export async function listAdminContent(filters: {
     }
     where.push(`status = $${idx++}`);
     params.push(filters.status);
+  }
+  if (filters.segment && filters.segment !== "all") {
+    // Universal items (no segment) match every filter; otherwise must include.
+    where.push(`(cardinality(segments) = 0 OR $${idx} = ANY(segments))`);
+    params.push(filters.segment);
+    idx++;
   }
   if (filters.search) {
     where.push(`(title ILIKE $${idx} OR short_description ILIKE $${idx})`);
@@ -651,6 +658,75 @@ export async function listCoursesForCms() {
        ORDER BY c.id DESC`
   );
   return rows;
+}
+
+// ── Course creation from CMS ──────────────────────────────────────────
+// Lets producers create a brand-new course (and its mirroring CMS row) in
+// one step, replacing the legacy seed-driven flow. The `courses` table
+// continues to own canonical fields the Academia UI consumes (thumbnail,
+// duration, rating, etc.); the CMS `content_items` row holds discovery
+// metadata (segments, interests, tags). Both rows are linked via
+// `content_items.course_id`.
+export interface CreateCourseInput {
+  title: string;
+  description?: string | null;
+  thumbnail?: string | null;
+  category?: string | null;
+  level?: string | null;
+  is_premium?: boolean;
+  price?: number;
+  instructor?: string | null;
+  segments?: string[];
+  interests?: string[];
+}
+
+export async function createCourseFromCms(actor: SafeUser, input: CreateCourseInput) {
+  if (!input.title || typeof input.title !== "string" || input.title.trim().length === 0) {
+    throw new CmsError("Título é obrigatório", "TITLE_REQUIRED", 400);
+  }
+  const title = input.title.trim();
+  const description = input.description ?? "";
+  const thumbnail = input.thumbnail ?? "";
+  const category = input.category ?? "Geral";
+  const level = input.level ?? "Iniciante";
+  const isPremium = !!input.is_premium;
+  const price = input.price ?? 0;
+  const instructor = input.instructor ?? "";
+
+  // Insert the canonical Academia course row first.
+  const { rows: courseRows } = await query(
+    `INSERT INTO courses
+        (title, description, thumbnail, duration, total_lessons, rating, students,
+         price, category, life_context, level, is_premium, instructor)
+     VALUES ($1,$2,$3,'0h 0m',0,0,0,$4,$5,$6,$7,$8,$9)
+     RETURNING id, title`,
+    [title, description, thumbnail, price, category, "casados", level, isPremium, instructor]
+  );
+  const courseId = courseRows[0].id as number;
+
+  // Then mirror it as a CMS content_item so it appears in the CMS list and
+  // public feed alongside other content.
+  const segments = input.segments && input.segments.length > 0 ? input.segments : ["casados"];
+  const interests = input.interests ?? [];
+  const { rows: itemRows } = await query(
+    `INSERT INTO content_items
+        (kind, title, slug, short_description, long_description, cover_url,
+         segments, interests, tags, status, is_premium, price,
+         course_id, created_by, published_at)
+     VALUES ('curso', $1, $2, $3, $3, $4, $5, $6, ARRAY[]::text[], 'draft',
+             $7, $8, $9, $10, NULL)
+     RETURNING id`,
+    [title, slugifyTitle(title, courseId), description, thumbnail, segments, interests, isPremium, price, courseId, actor.id]
+  );
+  return { course_id: courseId, content_item_id: itemRows[0].id };
+}
+
+function slugifyTitle(title: string, suffix: number): string {
+  const base = title.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return base ? `${base}-${suffix}` : `curso-${suffix}`;
 }
 
 // ── Course authoring (módulos / lições) ───────────────────────────────
