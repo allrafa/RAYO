@@ -2,12 +2,13 @@ import helmet from "helmet";
 import cors from "cors";
 import type { Request, Response, NextFunction } from "express";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 export const securityMiddleware = helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
+  frameguard: isDev ? false : { action: "sameorigin" },
 });
-
-const isDev = process.env.NODE_ENV !== "production";
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
