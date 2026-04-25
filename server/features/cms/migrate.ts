@@ -5,6 +5,70 @@ import { query } from "../../db/index.js";
 // schema initialization on every boot. A migration row is considered
 // already-applied when a content_item with the same `slug` exists.
 
+interface VideoSeed {
+  slug: string;
+  title: string;
+  short_description: string;
+  long_description: string;
+  cover_url: string;
+  duration_seconds: number;
+  segments: string[];
+  interests: string[];
+  tags: string[];
+}
+
+// Migrated from VideoPage's `mockVideos` so the public video catalogue lives
+// in the CMS. external_url is null for now — these were thumbnail-only mocks
+// in the legacy code; producers can attach real media files via the upload
+// endpoint, which writes to media_url.
+const VIDEO_SEEDS: VideoSeed[] = [
+  {
+    slug: "como-transformar-seu-casamento-em-30-dias",
+    title: "Como Transformar Seu Casamento em 30 Dias",
+    short_description: "5 estratégias fundamentais que salvaram mais de 10.000 casamentos.",
+    long_description: "Descubra as 5 estratégias fundamentais que salvaram mais de 10.000 casamentos. Jessica e Rafa Raio compartilham insights exclusivos baseados em 15 anos de experiência.",
+    cover_url: "https://images.unsplash.com/photo-1522621032211-ac0031dfbddc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080",
+    duration_seconds: 45 * 60 + 32,
+    segments: ["casados"], interests: ["Relacionamentos"], tags: ["casamento"],
+  },
+  {
+    slug: "5-sinais-relacionamento-precisa-ajuda",
+    title: "5 Sinais de que Seu Relacionamento Precisa de Ajuda",
+    short_description: "Identifique os sinais de alerta antes que seja tarde demais.",
+    long_description: "Identifique os sinais de alerta antes que seja tarde demais. Este vídeo pode salvar seu relacionamento.",
+    cover_url: "https://images.unsplash.com/photo-1601573264251-9c8015828db2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080",
+    duration_seconds: 23 * 60 + 15,
+    segments: ["casados", "namorando"], interests: ["Relacionamentos"], tags: ["alerta", "casamento"],
+  },
+  {
+    slug: "educar-filhos-com-disciplina-positiva",
+    title: "Como Educar Filhos com Disciplina Positiva — Método RAIO",
+    short_description: "Eduque sem gritos, castigos ou chantagens.",
+    long_description: "Aprenda a educar seus filhos sem gritos, castigos ou chantagens. Método testado por mais de 50.000 famílias.",
+    cover_url: "https://images.unsplash.com/photo-1551498800-17cbc39c85bb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080",
+    duration_seconds: 38 * 60 + 47,
+    segments: ["pais"], interests: ["Parentalidade"], tags: ["disciplina", "filhos"],
+  },
+  {
+    slug: "financas-do-casal-organizar-dinheiro",
+    title: "Finanças do Casal: Como Organizar o Dinheiro sem Brigas",
+    short_description: "Método definitivo para casais organizarem as finanças em harmonia.",
+    long_description: "O método definitivo para casais organizarem as finanças em harmonia. Inclui planilha gratuita.",
+    cover_url: "https://images.unsplash.com/photo-1758686254415-9348b5b5df01?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080",
+    duration_seconds: 52 * 60 + 18,
+    segments: ["casados"], interests: ["Finanças"], tags: ["finanças", "casal"],
+  },
+  {
+    slug: "intimidade-no-casamento-reconectando",
+    title: "Intimidade no Casamento: Reconectando Corpo e Alma",
+    short_description: "Reavive a intimidade no casamento de forma saudável e respeitosa.",
+    long_description: "Como reavivar a intimidade no casamento de forma saudável e respeitosa. Conteúdo exclusivo para casais.",
+    cover_url: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080",
+    duration_seconds: 29 * 60 + 33,
+    segments: ["casados"], interests: ["Intimidade"], tags: ["intimidade", "casal"],
+  },
+];
+
 interface BookSeed {
   slug: string;
   title: string;
@@ -181,7 +245,25 @@ export async function migrateCmsContent() {
     );
   }
 
-  console.log("[CMS] Migration ensured: books seeded, courses reflected.");
+  // 3) Seed videos migrated from legacy mockVideos in VideoPage. Uses the
+  // same ON CONFLICT (slug) DO NOTHING pattern for idempotency.
+  for (const v of VIDEO_SEEDS) {
+    await query(
+      `INSERT INTO content_items
+        (kind, title, slug, short_description, long_description, cover_url,
+         segments, interests, tags, status, is_premium, price,
+         duration_seconds, published_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, NOW())
+       ON CONFLICT (slug) DO NOTHING`,
+      [
+        "video", v.title, v.slug, v.short_description, v.long_description, v.cover_url,
+        v.segments, v.interests, v.tags, "published", false, 0,
+        v.duration_seconds,
+      ]
+    );
+  }
+
+  console.log("[CMS] Migration ensured: books seeded, courses reflected, videos seeded.");
 }
 
 function slugifyText(input: string): string {

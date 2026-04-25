@@ -3,6 +3,7 @@ import { ArrowLeft, Upload, Loader2, Trash2, Plus } from "lucide-react";
 import { Button } from "../ui/button";
 import { api } from "../../lib/api";
 import { toast } from "sonner@2.0.3";
+import { CourseModulesEditor } from "./CourseModulesEditor";
 
 type Kind = "audio" | "video" | "reels" | "serie" | "curso" | "livro";
 type Status = "draft" | "published";
@@ -321,15 +322,24 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
 
           {/* Type-specific */}
           {data.kind === "curso" ? (
-            <Field label="Curso vinculado" hint="Cursos já existentes na Academia. Conteúdo CMS apenas adiciona metadados de descoberta.">
-              <select className={cls} style={inputStyle} value={data.course_id ?? ""}
-                onChange={(e) => set("course_id", e.target.value ? parseInt(e.target.value, 10) : null)}>
-                <option value="">— Selecione um curso —</option>
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>{c.title}</option>
-                ))}
-              </select>
-            </Field>
+            <>
+              <Field label="Curso vinculado" hint="Selecione o curso da Academia que esta entrada do CMS representa.">
+                <select className={cls} style={inputStyle} value={data.course_id ?? ""}
+                  onChange={(e) => set("course_id", e.target.value ? parseInt(e.target.value, 10) : null)}>
+                  <option value="">— Selecione um curso —</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>{c.title}</option>
+                  ))}
+                </select>
+              </Field>
+              {data.course_id ? (
+                <CourseModulesEditor courseId={data.course_id} />
+              ) : (
+                <p className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+                  Selecione um curso para gerenciar seus módulos e lições.
+                </p>
+              )}
+            </>
           ) : data.kind === "serie" ? (
             <div
               className="rounded-md border p-4 space-y-3"

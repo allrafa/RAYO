@@ -1,4 +1,4 @@
-import { query, getClient } from "../../db/index.js";
+import { query } from "../../db/index.js";
 import type { SafeUser, UserRole } from "../auth/service.js";
 
 export class CmsError extends Error {
@@ -631,6 +631,172 @@ export async function listCoursesForCms() {
   return rows;
 }
 
-// Used by AppContext.refreshBooks() to know which books exist, even drafts not visible to the public.
-// Public consumption goes through listPublicContent / getPublicContentDetail.
-export const __noop = () => getClient; // keep import of getClient if needed later
+// ── Course authoring (módulos / lições) ───────────────────────────────
+// The legacy `course_modules` / `course_lessons` tables already exist in
+// schema.ts. Task #17 adds an admin write surface so producers can author
+// course content from the CMS instead of relying on `seedCourses()`.
+
+export interface CourseModuleInput {
+  title: string;
+  description?: string | null;
+  sort_order?: number | null;
+}
+
+export interface CourseLessonInput {
+  title: string;
+  description?: string | null;
+  duration?: string | null;
+  duration_seconds?: number | null;
+  video_url?: string | null;
+  content_type?: string | null; // 'video' | 'audio' | 'text'
+  sort_order?: number | null;
+  is_free_preview?: boolean | null;
+}
+
+async function assertCourseExists(courseId: number) {
+  const { rows } = await query(`SELECT id FROM courses WHERE id = $1`, [courseId]);
+  if (rows.length === 0) throw new CmsError("Curso não encontrado", "COURSE_NOT_FOUND", 404);
+}
+
+export async function listCourseModulesWithLessons(courseId: number) {
+  await assertCourseExists(courseId);
+  const { rows: modules } = await query(
+    `SELECT id, course_id, title, description, sort_order
+       FROM course_modules
+      WHERE course_id = $1
+      ORDER BY sort_order ASC, id ASC`,
+    [courseId]
+  );
+  if (modules.length === 0) return [];
+  const ids = modules.map((m) => m.id);
+  const { rows: lessons } = await query(
+    `SELECT id, module_id, title, description, duration, duration_seconds,
+            video_url, content_type, sort_order, is_free_preview
+       FROM course_lessons
+      WHERE module_id = ANY($1::int[])
+      ORDER BY sort_order ASC, id ASC`,
+    [ids]
+  );
+  const byModule = new Map<number, unknown[]>();
+  for (const m of modules) byModule.set(m.id, []);
+  for (const l of lessons) byModule.get(l.module_id)?.push(l);
+  return modules.map((m) => ({ ...m, lessons: byModule.get(m.id) ?? [] }));
+}
+
+function validateModuleInput(input: CourseModuleInput) {
+  if (!input.title || typeof input.title !== "string" || input.title.trim().length === 0) {
+    throw new CmsError("Título do módulo é obrigatório", "TITLE_REQUIRED", 400);
+  }
+}
+
+export async function createCourseModule(courseId: number, input: CourseModuleInput) {
+  await assertCourseExists(courseId);
+  validateModuleInput(input);
+  const { rows } = await query(
+    `INSERT INTO course_modules (course_id, title, description, sort_order)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, course_id, title, description, sort_order`,
+    [courseId, input.title.trim(), input.description ?? null, input.sort_order ?? 0]
+  );
+  return { ...rows[0], lessons: [] };
+}
+
+export async function updateCourseModule(courseId: number, moduleId: number, input: Partial<CourseModuleInput>) {
+  const { rows: existing } = await query(
+    `SELECT * FROM course_modules WHERE id = $1 AND course_id = $2`,
+    [moduleId, courseId]
+  );
+  if (existing.length === 0) throw new CmsError("Módulo não encontrado", "MODULE_NOT_FOUND", 404);
+  const cur = existing[0];
+  const title = input.title?.trim() ?? cur.title;
+  if (!title) throw new CmsError("Título do módulo é obrigatório", "TITLE_REQUIRED", 400);
+  const { rows } = await query(
+    `UPDATE course_modules
+        SET title = $1, description = $2, sort_order = $3
+      WHERE id = $4
+      RETURNING id, course_id, title, description, sort_order`,
+    [title, input.description ?? cur.description, input.sort_order ?? cur.sort_order, moduleId]
+  );
+  return rows[0];
+}
+
+export async function deleteCourseModule(courseId: number, moduleId: number) {
+  // ON DELETE CASCADE on course_lessons.module_id removes child lessons.
+  const { rows } = await query(
+    `DELETE FROM course_modules WHERE id = $1 AND course_id = $2 RETURNING id`,
+    [moduleId, courseId]
+  );
+  if (rows.length === 0) throw new CmsError("Módulo não encontrado", "MODULE_NOT_FOUND", 404);
+  return { id: rows[0].id };
+}
+
+async function assertModuleBelongsToCourse(courseId: number, moduleId: number) {
+  const { rows } = await query(
+    `SELECT 1 FROM course_modules WHERE id = $1 AND course_id = $2`,
+    [moduleId, courseId]
+  );
+  if (rows.length === 0) throw new CmsError("Módulo não encontrado", "MODULE_NOT_FOUND", 404);
+}
+
+export async function createCourseLesson(courseId: number, moduleId: number, input: CourseLessonInput) {
+  await assertModuleBelongsToCourse(courseId, moduleId);
+  if (!input.title || typeof input.title !== "string" || input.title.trim().length === 0) {
+    throw new CmsError("Título da lição é obrigatório", "TITLE_REQUIRED", 400);
+  }
+  const { rows } = await query(
+    `INSERT INTO course_lessons
+        (module_id, title, description, duration, duration_seconds,
+         video_url, content_type, sort_order, is_free_preview)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     RETURNING id, module_id, title, description, duration, duration_seconds,
+               video_url, content_type, sort_order, is_free_preview`,
+    [
+      moduleId, input.title.trim(), input.description ?? null,
+      input.duration ?? null, input.duration_seconds ?? 0,
+      input.video_url ?? null, input.content_type ?? "video",
+      input.sort_order ?? 0, !!input.is_free_preview,
+    ]
+  );
+  return rows[0];
+}
+
+export async function updateCourseLesson(
+  courseId: number, moduleId: number, lessonId: number, input: Partial<CourseLessonInput>,
+) {
+  await assertModuleBelongsToCourse(courseId, moduleId);
+  const { rows: existing } = await query(
+    `SELECT * FROM course_lessons WHERE id = $1 AND module_id = $2`,
+    [lessonId, moduleId]
+  );
+  if (existing.length === 0) throw new CmsError("Lição não encontrada", "LESSON_NOT_FOUND", 404);
+  const cur = existing[0];
+  const title = input.title?.trim() ?? cur.title;
+  if (!title) throw new CmsError("Título da lição é obrigatório", "TITLE_REQUIRED", 400);
+  const { rows } = await query(
+    `UPDATE course_lessons SET
+        title = $1, description = $2, duration = $3, duration_seconds = $4,
+        video_url = $5, content_type = $6, sort_order = $7, is_free_preview = $8
+      WHERE id = $9
+      RETURNING id, module_id, title, description, duration, duration_seconds,
+                video_url, content_type, sort_order, is_free_preview`,
+    [
+      title, input.description ?? cur.description,
+      input.duration ?? cur.duration, input.duration_seconds ?? cur.duration_seconds,
+      input.video_url ?? cur.video_url, input.content_type ?? cur.content_type,
+      input.sort_order ?? cur.sort_order,
+      input.is_free_preview === undefined ? cur.is_free_preview : !!input.is_free_preview,
+      lessonId,
+    ]
+  );
+  return rows[0];
+}
+
+export async function deleteCourseLesson(courseId: number, moduleId: number, lessonId: number) {
+  await assertModuleBelongsToCourse(courseId, moduleId);
+  const { rows } = await query(
+    `DELETE FROM course_lessons WHERE id = $1 AND module_id = $2 RETURNING id`,
+    [lessonId, moduleId]
+  );
+  if (rows.length === 0) throw new CmsError("Lição não encontrada", "LESSON_NOT_FOUND", 404);
+  return { id: rows[0].id };
+}

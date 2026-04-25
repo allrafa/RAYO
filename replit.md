@@ -78,7 +78,7 @@ vite.config.ts           # Vite + API proxy config
 - Six content kinds: `audio`, `video`, `reels`, `serie`, `curso`, `livro`
 - Tables: `content_items` (unified), `content_episodes` (children of series), `media_assets` (uploads catalog)
 - `kind='curso'` content_items link to existing `courses.id` (FK, ON DELETE SET NULL); the legacy Academia course pipeline keeps owning modules/lessons/progress, the CMS just adds discovery metadata
-- Boot-time idempotent migration in `server/features/cms/migrate.ts` seeds 10 books (kind=`livro`) and reflects every existing course as a CMS row; safe to re-run on every restart (slug-based dedupe + `course_id` lookup)
+- Boot-time idempotent migration in `server/features/cms/migrate.ts` seeds 10 books (kind=`livro`), 5 videos migrated from legacy `mockVideos` (kind=`video`), and reflects every existing course as a CMS row; safe to re-run on every restart (`ON CONFLICT (slug) DO NOTHING` + `course_id` lookup)
 - Admin endpoints under `/api/admin/cms/*` require `producer` role and enforce CHECK constraints on kind/status; episodes only attachable to `kind='serie'`
 - Public endpoints under `/api/content/*` only return `status='published'` rows; segment filter uses GIN index on `segments[]`; detail bumps `view_count`
 - Uploads: multer disk storage at `./uploads/<kind>/`, 200 MB cap, allow-list MIME, served back via `/uploads/*` static (cache-7d, CORP cross-origin) — swap-file for object storage later
@@ -97,8 +97,13 @@ vite.config.ts           # Vite + API proxy config
 - `POST /api/admin/cms/:id/publish` | `/unpublish` [producer]
 - `DELETE /api/admin/cms/:id` — delete (cascades to episodes) [producer]
 - `GET|POST|PATCH|DELETE /api/admin/cms/:id/episodes[/:epId]` — series episodes CRUD [producer]
+- `GET|POST|PATCH|DELETE /api/admin/cms/courses/:courseId/modules[/:moduleId]` — course modules CRUD [producer]
+- `POST|PATCH|DELETE /api/admin/cms/courses/:courseId/modules/:moduleId/lessons[/:lessonId]` — course lessons CRUD [producer]
 - `POST /api/admin/cms/media/upload` — multipart `file` field [producer]
 - `GET /api/admin/cms/media/list` — assets uploaded by current user [producer]
+- **Route order matters**: in `server/features/cms/routes.ts` all fixed-prefix routes (`/kinds`, `/courses*`, `/media/*`) are declared BEFORE the `/:id` catch-all family — Express matches in registration order, so a request like `GET /media/list` would otherwise resolve to `GET /:id` with `id="media"` and return `INVALID_ID`. Keep new fixed paths above `/:id`.
+- Object-level authz: producers can only mutate content they created (`created_by = req.user.id`); moderator+ override that check. Slug uniqueness retries with a numeric suffix on PG `23505`. Series cannot be deleted while episodes exist (`SERIES_HAS_EPISODES` 409). Course modules cascade-delete their lessons via the existing FK.
+- VideoPage (`src/components/VideoPage.tsx`) loads videos from `/api/content?kind=video` (no more hardcoded `mockVideos`); shows a loader and an empty-state when the catalogue is empty. Reader pages key by `book.slug ?? book.id`; transcripts in `src/data/mockTranscripts.ts` are keyed by slug.
 - `GET /uploads/<path>` — static file delivery for uploaded media
 
 ## Onboarding Data Flow
