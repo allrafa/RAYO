@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner@2.0.3";
 import { useApp } from "./AppContext";
 import { useScrollDirection } from "./hooks/useScrollDirection";
+import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { useTheme } from "./ThemeProvider";
 
 interface TopNavbarProps {
@@ -17,6 +18,7 @@ export function TopNavbar({ onTabChange }: TopNavbarProps) {
   const { userData } = useApp();
   const { scrollDirection, isAtTop } = useScrollDirection({ threshold: 100 });
   const { theme, toggleTheme } = useTheme();
+  const { count: unreadMessages } = useUnreadMessages();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,13 +97,16 @@ export function TopNavbar({ onTabChange }: TopNavbarProps) {
             size="icon"
             className="relative hover:bg-gray-100 dark:hover:bg-gray-800"
             onClick={() => onTabChange('conversas')}
+            aria-label={unreadMessages > 0 ? `Mensagens (${unreadMessages} não lidas)` : 'Mensagens'}
           >
             <MessageCircle className="w-5 h-5" />
-            <Badge 
-              className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-[9px] bg-destructive text-destructive-foreground"
-            >
-              3
-            </Badge>
+            {unreadMessages > 0 && (
+              <Badge 
+                className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-[9px] bg-destructive text-destructive-foreground"
+              >
+                {unreadMessages > 9 ? '9+' : unreadMessages}
+              </Badge>
+            )}
           </Button>
 
           {/* Notificações */}

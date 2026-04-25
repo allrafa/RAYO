@@ -402,6 +402,37 @@ export async function initializeSchema() {
   await query(`CREATE INDEX IF NOT EXISTS idx_analytics_events_event_name ON analytics_events(event_name)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_analytics_events_created_at ON analytics_events(created_at DESC)`);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS conversations (
+      id SERIAL PRIMARY KEY,
+      user_a_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_b_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      last_message_at TIMESTAMP DEFAULT NOW(),
+      created_at TIMESTAMP DEFAULT NOW(),
+      CONSTRAINT conversations_user_order CHECK (user_a_id < user_b_id),
+      UNIQUE (user_a_id, user_b_id)
+    )
+  `);
+
+  await query(`CREATE INDEX IF NOT EXISTS idx_conversations_user_a ON conversations(user_a_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_conversations_user_b ON conversations(user_b_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_conversations_last_message_at ON conversations(last_message_at DESC)`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id SERIAL PRIMARY KEY,
+      conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      read_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id, created_at DESC)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(conversation_id, sender_id) WHERE read_at IS NULL`);
+
   await seedBadgesAndMissions();
   await seedCourses();
   await seedForumsAndPosts();

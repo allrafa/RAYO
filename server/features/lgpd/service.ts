@@ -187,6 +187,12 @@ export async function deleteUserData(userId: number): Promise<void> {
     );
 
     await client.query(
+      `UPDATE messages SET content = '[mensagem removida por solicitação LGPD]'
+       WHERE sender_id = $1`,
+      [userId]
+    );
+
+    await client.query(
       `UPDATE posts SET like_count = like_count - 1
        FROM post_likes pl WHERE pl.post_id = posts.id AND pl.user_id = $1`,
       [userId]

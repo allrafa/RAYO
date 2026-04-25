@@ -29,7 +29,9 @@ server/                  # Backend
 │   ├── gamification/    # XP, badges, missions, streaks
 │   ├── academia/        # Courses, modules, lessons, progress
 │   ├── community/       # Forums, posts, comments, likes
-│   └── dashboard/       # Personalized dashboard aggregation
+│   ├── dashboard/       # Personalized dashboard aggregation
+│   ├── lgpd/            # LGPD: data export & account deletion (anonymizes messages)
+│   └── messages/        # Direct messaging (conversations + messages + unread count)
 └── utils/               # Response helpers, logger
 
 src/                     # Frontend (React)
@@ -149,6 +151,19 @@ vite.config.ts           # Vite + API proxy config
 - Privacy policy: `PrivacyPolicyPage` accessible from profile → tab "privacy" in App.tsx
 - Profile LGPD section: "Exportar meus dados" (downloads JSON) and "Excluir minha conta" (confirmation dialog + anonymization) buttons in PerfilPage
 - Feature files: `server/features/lgpd/service.ts`, `server/features/lgpd/routes.ts`, `server/features/analytics/service.ts`
+
+## Direct Messaging
+- DB tables: `conversations` (user_a_id < user_b_id with UNIQUE constraint to enforce one canonical conv per pair), `messages` (with read_at)
+- `GET /api/messages/conversations` — List user's conversations with last message + unread_count
+- `POST /api/messages/conversations` — Create or fetch existing conversation `{user_id}` (idempotent; rejects self)
+- `GET /api/messages/conversations/:id/messages` — Paginated messages with sender_name, plus other_user_id/name (membership enforced)
+- `POST /api/messages/conversations/:id/messages` — Send message `{content}` (membership enforced; empty content rejected)
+- `POST /api/messages/conversations/:id/read` — Mark all incoming messages as read
+- `GET /api/messages/unread-count` — Count of conversations with at least one unread message (for nav badge)
+- `GET /api/messages/users/search?q=` — Search users by name (prefix) or exact email; excludes self
+- Frontend: `ConversasPage` (real DMs with polling: 15s convs, 5s messages, mark-read on open), `useUnreadMessages` hook (polls 20s + on visibility) feeding badge in `Navigation` and `TopNavbar`
+- LGPD: account deletion anonymizes message contents to `[mensagem removida por solicitação LGPD]` (preserves conversation history for the other party)
+- Feature files: `server/features/messages/service.ts`, `server/features/messages/routes.ts`, `src/components/ConversasPage.tsx`, `src/components/hooks/useUnreadMessages.ts`
 
 ## Development Rules
 1. No business logic in frontend

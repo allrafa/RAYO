@@ -1,347 +1,310 @@
-import { useState, useEffect } from "react";
-import { MessageCircle, UserPlus, Search, Phone, Video, MoreVertical, Send, Smile, Paperclip, Users, ArrowLeft } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { MessageCircle, UserPlus, Search, MoreVertical, Send, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Badge } from "./ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { ScrollArea } from "./ui/scroll-area";
-import { Separator } from "./ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "./ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { Skeleton } from "./ui/skeleton";
-import { useApp } from "./AppContext";
+import { useAuth } from "./AuthContext";
 import { toast } from "sonner@2.0.3";
+import { api } from "../lib/api";
 
-interface Message {
-  id: string;
-  senderId: string;
+interface ConversationItem {
+  id: number;
+  user_a_id: number;
+  user_b_id: number;
+  last_message_at: string;
+  created_at: string;
+  other_user_id: number;
+  other_user_name: string;
+  last_message_content: string | null;
+  last_message_sender_id: number | null;
+  last_message_created_at: string | null;
+  unread_count: number;
+}
+
+interface MessageItem {
+  id: number;
+  conversation_id: number;
+  sender_id: number;
+  sender_name: string;
   content: string;
-  timestamp: Date;
-  read: boolean;
-  type: 'text' | 'image' | 'audio';
+  read_at: string | null;
+  created_at: string;
 }
 
-interface Conversation {
-  id: string;
-  participantId: string;
-  participantName: string;
-  participantAvatar?: string;
-  lastMessage?: Message;
-  unreadCount: number;
-  isOnline: boolean;
-  lastSeen?: Date;
-}
-
-interface Contact {
-  id: string;
+interface UserSearchResult {
+  id: number;
   name: string;
-  phone?: string;
-  email?: string;
-  avatar?: string;
-  isConnected: boolean;
-  mutualConnections?: number;
+}
+
+const CONVERSATION_POLL_MS = 15_000;
+const MESSAGES_POLL_MS = 5_000;
+
+function getInitials(name: string): string {
+  return (name || "?").trim().slice(0, 2).toUpperCase();
+}
+
+function formatTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(d);
+}
+
+function formatRelative(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin < 1) return "agora";
+  if (diffMin < 60) return `${diffMin}min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 7) return `${diffD}d`;
+  return d.toLocaleDateString("pt-BR");
 }
 
 export function ConversasPage() {
-  const { userData, updateUserData } = useApp();
-  const [activeConversation, setActiveConversation] = useState<string | null>(null);
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? 0;
+
+  const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [conversationsLoading, setConversationsLoading] = useState(true);
+  const [conversationsError, setConversationsError] = useState<string | null>(null);
+
+  const [activeId, setActiveId] = useState<number | null>(null);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
+
   const [newMessage, setNewMessage] = useState("");
+  const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showContactsDialog, setShowContactsDialog] = useState(false);
-  const [isConnectingContacts, setIsConnectingContacts] = useState(false);
 
-  // Mock data - em produção viria do backend
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: "1",
-      participantId: "user1",
-      participantName: "João Silva",
-      participantAvatar: "",
-      lastMessage: {
-        id: "msg1",
-        senderId: "user1",
-        content: "Oi! Como foi o curso de comunicação?",
-        timestamp: new Date(Date.now() - 30 * 60 * 1000),
-        read: false,
-        type: 'text'
-      },
-      unreadCount: 2,
-      isOnline: true
-    },
-    {
-      id: "2",
-      participantId: "user2",
-      participantName: "Ana Costa",
-      participantAvatar: "",
-      lastMessage: {
-        id: "msg2",
-        senderId: "user2",
-        content: "Obrigada pela dica do livro! 📚",
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        read: true,
-        type: 'text'
-      },
-      unreadCount: 0,
-      isOnline: false,
-      lastSeen: new Date(Date.now() - 60 * 60 * 1000)
-    },
-    {
-      id: "3",
-      participantId: "user3",
-      participantName: "Carlos Mendes",
-      participantAvatar: "",
-      lastMessage: {
-        id: "msg3",
-        senderId: "user3",
-        content: "Vamos marcar aquele encontro de casais?",
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
-        read: true,
-        type: 'text'
-      },
-      unreadCount: 0,
-      isOnline: true
-    }
-  ]);
+  const [showNewConvDialog, setShowNewConvDialog] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userSearchResults, setUserSearchResults] = useState<UserSearchResult[]>([]);
+  const [userSearching, setUserSearching] = useState(false);
+  const [creatingConversation, setCreatingConversation] = useState(false);
 
-  const [contacts, setContacts] = useState<Contact[]>([
-    {
-      id: "contact1",
-      name: "Maria Santos",
-      phone: "+55 11 99999-9999",
-      email: "maria@email.com",
-      isConnected: false,
-      mutualConnections: 3
-    },
-    {
-      id: "contact2",
-      name: "Pedro Oliveira",
-      phone: "+55 11 88888-8888",
-      email: "pedro@email.com",
-      isConnected: false,
-      mutualConnections: 1
-    }
-  ]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastMessageIdRef = useRef<number | null>(null);
 
-  const [messages, setMessages] = useState<{ [conversationId: string]: Message[] }>({
-    "1": [
-      {
-        id: "msg1-1",
-        senderId: "user1",
-        content: "Oi! Como foi o curso de comunicação?",
-        timestamp: new Date(Date.now() - 30 * 60 * 1000),
-        read: false,
-        type: 'text'
-      },
-      {
-        id: "msg1-2",
-        senderId: "user1",
-        content: "Estou ansioso para aplicar as dicas!",
-        timestamp: new Date(Date.now() - 25 * 60 * 1000),
-        read: false,
-        type: 'text'
-      }
-    ]
-  });
-
-  const handleConnectContacts = async () => {
-    setIsConnectingContacts(true);
-    
-    // Verificar se o navegador suporta acesso aos contatos
-    if (!('contacts' in navigator)) {
-      toast.info("Seu navegador não suporta acesso aos contatos. Simulando descoberta...");
-    }
-    
-    try {
-      // Simular permissão e conexão com contatos
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock: adicionar novos contatos descobertos
-      const newContacts = [
-        {
-          id: "contact3",
-          name: "Lucia Fernandes",
-          phone: "+55 11 77777-7777",
-          isConnected: false,
-          mutualConnections: 2
-        },
-        {
-          id: "contact4",
-          name: "Roberto Silva",
-          phone: "+55 11 66666-6666",
-          isConnected: false,
-          mutualConnections: 5
-        }
-      ];
-      
-      setContacts(prev => {
-        // Evitar duplicatas
-        const existingIds = prev.map(c => c.id);
-        const uniqueNewContacts = newContacts.filter(c => !existingIds.includes(c.id));
-        return [...prev, ...uniqueNewContacts];
-      });
-      
-      const foundCount = newContacts.length;
-      if (foundCount > 0) {
-        toast.success(`🎉 Encontramos ${foundCount} contatos que também usam o RAIO!`);
-      } else {
-        toast.info("Nenhum novo contato encontrado no momento.");
-      }
-      
-    } catch (error) {
-      toast.error("Erro ao conectar contatos. Verifique suas permissões e tente novamente.");
-    } finally {
-      setIsConnectingContacts(false);
-    }
-  };
-
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !activeConversation) return;
-
-    const message: Message = {
-      id: `msg-${Date.now()}`,
-      senderId: userData.id || "current-user",
-      content: newMessage,
-      timestamp: new Date(),
-      read: true,
-      type: 'text'
-    };
-
-    setMessages(prev => ({
-      ...prev,
-      [activeConversation]: [...(prev[activeConversation] || []), message]
-    }));
-
-    // Atualizar última mensagem da conversa
-    setConversations(prev =>
-      prev.map(conv =>
-        conv.id === activeConversation
-          ? { ...conv, lastMessage: message, unreadCount: 0 }
-          : conv
-      )
-    );
-
-    setNewMessage("");
-    toast.success("Mensagem enviada!");
-  };
-
-  const handleConnectUser = (contactId: string) => {
-    setContacts(prev =>
-      prev.map(contact =>
-        contact.id === contactId
-          ? { ...contact, isConnected: true }
-          : contact
-      )
-    );
-    toast.success("Convite de conexão enviado!");
-  };
-
-  const filteredConversations = conversations.filter(conv =>
-    conv.participantName.toLowerCase().includes(searchTerm.toLowerCase())
+  const activeConversation = useMemo(
+    () => conversations.find((c) => c.id === activeId) || null,
+    [conversations, activeId]
   );
 
-  const activeConv = conversations.find(conv => conv.id === activeConversation);
-  const conversationMessages = activeConversation ? messages[activeConversation] || [] : [];
+  const loadConversations = useCallback(async () => {
+    const res = await api.get<{ conversations: ConversationItem[] }>("/api/messages/conversations");
+    if (res.success && res.data) {
+      setConversations(res.data.conversations);
+      setConversationsError(null);
+    } else if (res.error) {
+      setConversationsError(res.error.message);
+    }
+    setConversationsLoading(false);
+  }, []);
 
-  const formatTime = (date: Date) => {
-    return new Intl.DateTimeFormat('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
+  const loadMessages = useCallback(async (conversationId: number, silent = false) => {
+    if (!silent) {
+      setMessagesLoading(true);
+      setMessagesError(null);
+    }
+    const res = await api.get<{ messages: MessageItem[] }>(
+      `/api/messages/conversations/${conversationId}/messages?limit=100`
+    );
+    if (res.success && res.data) {
+      const newest = res.data.messages[res.data.messages.length - 1]?.id ?? null;
+      const prevNewest = lastMessageIdRef.current;
+      setMessages(res.data.messages);
+      lastMessageIdRef.current = newest;
+      if (!silent || (newest !== null && newest !== prevNewest)) {
+        requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: silent ? "smooth" : "auto" });
+        });
+      }
+    } else if (res.error && !silent) {
+      setMessagesError(res.error.message);
+    }
+    if (!silent) setMessagesLoading(false);
+  }, []);
+
+  const markRead = useCallback(async (conversationId: number) => {
+    const res = await api.post<{ marked: number }>(`/api/messages/conversations/${conversationId}/read`);
+    if (res.success && res.data && res.data.marked > 0) {
+      setConversations((prev) =>
+        prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c))
+      );
+    }
+  }, []);
+
+  // Initial load + polling for conversation list
+  useEffect(() => {
+    void loadConversations();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadConversations();
+    }, CONVERSATION_POLL_MS);
+    return () => window.clearInterval(interval);
+  }, [loadConversations]);
+
+  // Load messages and poll when conversation is active
+  useEffect(() => {
+    if (activeId == null) {
+      setMessages([]);
+      lastMessageIdRef.current = null;
+      return;
+    }
+    void loadMessages(activeId, false).then(() => void markRead(activeId));
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void loadMessages(activeId, true).then(() => void markRead(activeId));
+      }
+    }, MESSAGES_POLL_MS);
+    return () => window.clearInterval(interval);
+  }, [activeId, loadMessages, markRead]);
+
+  // User search debounce
+  useEffect(() => {
+    if (!showNewConvDialog) return;
+    const q = userSearchQuery.trim();
+    if (q.length < 2) {
+      setUserSearchResults([]);
+      return;
+    }
+    setUserSearching(true);
+    const handle = window.setTimeout(async () => {
+      const res = await api.get<{ users: UserSearchResult[] }>(
+        `/api/messages/users/search?q=${encodeURIComponent(q)}`
+      );
+      if (res.success && res.data) {
+        setUserSearchResults(res.data.users);
+      } else {
+        setUserSearchResults([]);
+      }
+      setUserSearching(false);
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [userSearchQuery, showNewConvDialog]);
+
+  const handleSendMessage = async () => {
+    const content = newMessage.trim();
+    if (!content || activeId == null || sending) return;
+    setSending(true);
+    const res = await api.post<{ message: MessageItem }>(
+      `/api/messages/conversations/${activeId}/messages`,
+      { content }
+    );
+    setSending(false);
+    if (res.success && res.data) {
+      setNewMessage("");
+      setMessages((prev) => [...prev, res.data!.message]);
+      lastMessageIdRef.current = res.data.message.id;
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      });
+      void loadConversations();
+    } else if (res.error) {
+      toast.error(res.error.message);
+    }
   };
 
-  const formatLastSeen = (date?: Date) => {
-    if (!date) return "";
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMins / 60);
-    
-    if (diffMins < 60) return `Visto há ${diffMins}min`;
-    if (diffHours < 24) return `Visto há ${diffHours}h`;
-    return `Visto ${date.toLocaleDateString('pt-BR')}`;
+  const handleStartConversation = async (otherUserId: number) => {
+    if (creatingConversation) return;
+    setCreatingConversation(true);
+    const res = await api.post<{ conversation: { id: number } }>(
+      "/api/messages/conversations",
+      { user_id: otherUserId }
+    );
+    setCreatingConversation(false);
+    if (res.success && res.data) {
+      const id = res.data.conversation.id;
+      setShowNewConvDialog(false);
+      setUserSearchQuery("");
+      setUserSearchResults([]);
+      await loadConversations();
+      setActiveId(id);
+    } else if (res.error) {
+      toast.error(res.error.message);
+    }
   };
+
+  const filteredConversations = conversations.filter((c) =>
+    c.other_user_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="flex h-[calc(100vh-8rem)] max-w-6xl mx-auto bg-background">
       {/* Lista de Conversas */}
-      <div className={`${activeConversation ? 'hidden md:block' : 'block'} w-full md:w-1/3 border-r border-border bg-card`}>
+      <div className={`${activeId != null ? "hidden md:block" : "block"} w-full md:w-1/3 border-r border-border bg-card`}>
         <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="font-display font-bold">Conversas</h1>
-            <Dialog open={showContactsDialog} onOpenChange={setShowContactsDialog}>
+            <h1 className="font-display font-bold">Mensagens</h1>
+            <Dialog open={showNewConvDialog} onOpenChange={setShowNewConvDialog}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline">
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Conectar
+                  Nova
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="font-display">Conectar Contatos</DialogTitle>
+                  <DialogTitle className="font-display">Nova conversa</DialogTitle>
                   <DialogDescription className="font-body">
-                    Descubra e conecte-se com pessoas na comunidade RAIO
+                    Procure por nome ou e-mail exato de outro usuário do RAIO
                   </DialogDescription>
                 </DialogHeader>
-                <Tabs defaultValue="discover" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="discover">Descobrir</TabsTrigger>
-                    <TabsTrigger value="contacts">Contatos</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="discover" className="space-y-4">
-                    <div className="text-center py-6">
-                      <Phone className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                      <h3 className="font-body font-medium mb-2">Encontre amigos no RAIO</h3>
-                      <p className="font-body text-sm text-muted-foreground mb-4">
-                        Conecte seus contatos para encontrar quem já usa o RAIO
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Nome ou e-mail..."
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      className="pl-9"
+                      autoFocus
+                    />
+                  </div>
+                  <ScrollArea className="h-64">
+                    {userSearching ? (
+                      <div className="flex items-center justify-center py-6 text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Procurando...
+                      </div>
+                    ) : userSearchQuery.trim().length < 2 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">
+                        Digite ao menos 2 caracteres
                       </p>
-                      <Button 
-                        onClick={handleConnectContacts}
-                        disabled={isConnectingContacts}
-                        className="w-full"
-                      >
-                        {isConnectingContacts ? "Conectando..." : "Conectar Contatos"}
-                      </Button>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="contacts" className="space-y-2">
-                    <ScrollArea className="h-64">
-                      {contacts.map(contact => (
-                        <div key={contact.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-accent">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="w-8 h-8">
-                              <AvatarImage src={contact.avatar} />
-                              <AvatarFallback>{contact.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-medium">{contact.name}</p>
-                              {contact.mutualConnections && (
-                                <p className="text-xs text-muted-foreground">
-                                  {contact.mutualConnections} conexões em comum
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant={contact.isConnected ? "secondary" : "default"}
-                            onClick={() => handleConnectUser(contact.id)}
-                            disabled={contact.isConnected}
+                    ) : userSearchResults.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">
+                        Nenhum usuário encontrado
+                      </p>
+                    ) : (
+                      <div className="space-y-1">
+                        {userSearchResults.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => handleStartConversation(u.id)}
+                            disabled={creatingConversation}
+                            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-accent text-left disabled:opacity-50"
                           >
-                            {contact.isConnected ? "Conectado" : "Conectar"}
-                          </Button>
-                        </div>
-                      ))}
-                    </ScrollArea>
-                  </TabsContent>
-                </Tabs>
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback>{getInitials(u.name)}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium">{u.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
               </DialogContent>
             </Dialog>
           </div>
-          
+
           <div className="relative">
             <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
@@ -354,185 +317,173 @@ export function ConversasPage() {
         </div>
 
         <ScrollArea className="flex-1">
-          {filteredConversations.length === 0 ? (
+          {conversationsLoading ? (
+            <div className="p-8 text-center text-muted-foreground">
+              <Loader2 className="w-6 h-6 mx-auto mb-2 animate-spin" />
+              Carregando conversas...
+            </div>
+          ) : conversationsError ? (
+            <div className="p-8 text-center">
+              <p className="text-sm text-destructive mb-3">{conversationsError}</p>
+              <Button size="sm" variant="outline" onClick={() => { setConversationsLoading(true); void loadConversations(); }}>
+                Tentar novamente
+              </Button>
+            </div>
+          ) : filteredConversations.length === 0 ? (
             <div className="p-8 text-center">
               <MessageCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-medium mb-2">Nenhuma conversa ainda</h3>
+              <h3 className="font-medium mb-2">Nenhuma conversa</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Conecte-se com outros membros para começar a conversar
+                Comece uma conversa com outro membro
               </p>
-              <Button onClick={() => setShowContactsDialog(true)}>
+              <Button onClick={() => setShowNewConvDialog(true)}>
                 <UserPlus className="w-4 h-4 mr-2" />
-                Encontrar Pessoas
+                Iniciar conversa
               </Button>
             </div>
           ) : (
-            filteredConversations.map(conversation => (
-              <div
-                key={conversation.id}
-                onClick={() => setActiveConversation(conversation.id)}
-                className={`p-4 cursor-pointer hover:bg-accent border-b transition-colors ${
-                  activeConversation === conversation.id ? 'bg-accent' : ''
+            filteredConversations.map((conv) => (
+              <button
+                key={conv.id}
+                type="button"
+                onClick={() => setActiveId(conv.id)}
+                className={`w-full p-4 cursor-pointer hover:bg-accent border-b transition-colors text-left ${
+                  activeId === conv.id ? "bg-accent" : ""
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage src={conversation.participantAvatar} />
-                      <AvatarFallback>
-                        {conversation.participantName.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    {conversation.isOnline && (
-                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
-                    )}
-                  </div>
-                  
+                  <Avatar className="w-12 h-12">
+                    <AvatarFallback>{getInitials(conv.other_user_name)}</AvatarFallback>
+                  </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium truncate">{conversation.participantName}</h3>
-                      {conversation.lastMessage && (
-                        <span className="text-xs text-muted-foreground">
-                          {formatTime(conversation.lastMessage.timestamp)}
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="font-medium truncate">{conv.other_user_name}</h3>
+                      {conv.last_message_created_at && (
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {formatRelative(conv.last_message_created_at)}
                         </span>
                       )}
                     </div>
-                    
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <p className="text-sm text-muted-foreground truncate">
-                        {conversation.lastMessage?.content || "Começar conversa..."}
+                        {conv.last_message_content
+                          ? (conv.last_message_sender_id === currentUserId ? "Você: " : "") + conv.last_message_content
+                          : "Comece a conversa..."}
                       </p>
-                      {conversation.unreadCount > 0 && (
-                        <Badge className="ml-2">{conversation.unreadCount}</Badge>
+                      {conv.unread_count > 0 && (
+                        <Badge className="ml-2 shrink-0">{conv.unread_count}</Badge>
                       )}
                     </div>
-                    
-                    {!conversation.isOnline && conversation.lastSeen && (
-                      <p className="text-xs text-muted-foreground">
-                        {formatLastSeen(conversation.lastSeen)}
-                      </p>
-                    )}
                   </div>
                 </div>
-              </div>
+              </button>
             ))
           )}
         </ScrollArea>
       </div>
 
       {/* Área de Conversa */}
-      <div className={`${activeConversation ? 'flex' : 'hidden md:flex'} flex-1 flex-col`}>
-        {activeConv ? (
+      <div className={`${activeId != null ? "flex" : "hidden md:flex"} flex-1 flex-col`}>
+        {activeConversation ? (
           <>
-            {/* Header da Conversa */}
             <div className="p-4 border-b bg-card flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {/* Botão Voltar - Mobile */}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="md:hidden"
-                  onClick={() => setActiveConversation(null)}
+                  onClick={() => setActiveId(null)}
+                  aria-label="Voltar para a lista de conversas"
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </Button>
-                <div className="relative">
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={activeConv.participantAvatar} />
-                    <AvatarFallback>
-                      {activeConv.participantName.slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  {activeConv.isOnline && (
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
-                  )}
-                </div>
+                <Avatar className="w-10 h-10">
+                  <AvatarFallback>{getInitials(activeConversation.other_user_name)}</AvatarFallback>
+                </Avatar>
                 <div>
-                  <h2 className="font-body font-medium">{activeConv.participantName}</h2>
-                  <p className="font-body text-xs text-muted-foreground">
-                    {activeConv.isOnline ? "Online" : formatLastSeen(activeConv.lastSeen)}
-                  </p>
+                  <h2 className="font-body font-medium">{activeConversation.other_user_name}</h2>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">
-                  <Phone className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Video className="w-4 h-4" />
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem>Ver perfil</DropdownMenuItem>
-                    <DropdownMenuItem>Silenciar notificações</DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">Bloquear usuário</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" aria-label="Opções da conversa">
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => void loadMessages(activeConversation.id, false)}>
+                    Atualizar
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
-            {/* Mensagens */}
             <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {conversationMessages.map(message => (
-                  <div
-                    key={message.id}
-                    className={`flex ${
-                      message.senderId === (userData.id || "current-user") ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
-                    <div
-                      className={`max-w-[70%] rounded-lg p-3 ${
-                        message.senderId === (userData.id || "current-user")
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                      }`}
-                    >
-                      <p className="text-sm">{message.content}</p>
-                      <p className={`text-xs mt-1 ${
-                        message.senderId === (userData.id || "current-user")
-                          ? 'text-primary-foreground/70'
-                          : 'text-muted-foreground'
-                      }`}>
-                        {formatTime(message.timestamp)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {messagesLoading ? (
+                <div className="flex items-center justify-center py-10 text-muted-foreground">
+                  <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                  Carregando mensagens...
+                </div>
+              ) : messagesError ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-destructive mb-3">{messagesError}</p>
+                  <Button size="sm" variant="outline" onClick={() => void loadMessages(activeConversation.id, false)}>
+                    Tentar novamente
+                  </Button>
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground">
+                  <MessageCircle className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Nenhuma mensagem ainda. Envie a primeira!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {messages.map((m) => {
+                    const mine = m.sender_id === currentUserId;
+                    return (
+                      <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-[70%] rounded-lg p-3 ${
+                            mine ? "bg-primary text-primary-foreground" : "bg-muted"
+                          }`}
+                        >
+                          <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
+                          <p
+                            className={`text-xs mt-1 ${
+                              mine ? "text-primary-foreground/70" : "text-muted-foreground"
+                            }`}
+                          >
+                            {formatTime(m.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
             </ScrollArea>
 
-            {/* Input de Mensagem */}
             <div className="p-4 border-t bg-card">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm">
-                  <Paperclip className="w-4 h-4" />
-                </Button>
-                <div className="flex-1 relative">
+                <div className="flex-1">
                   <Input
                     placeholder="Digite sua mensagem..."
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        handleSendMessage();
+                        void handleSendMessage();
                       }
                     }}
-                    className="pr-10"
+                    disabled={sending}
+                    maxLength={4000}
                   />
-                  <Button variant="ghost" size="sm" className="absolute right-1 top-1">
-                    <Smile className="w-4 h-4" />
-                  </Button>
                 </div>
-                <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
-                  <Send className="w-4 h-4" />
+                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || sending} aria-label="Enviar mensagem">
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </Button>
               </div>
             </div>
@@ -543,7 +494,7 @@ export function ConversasPage() {
               <MessageCircle className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
               <h2 className="font-display font-medium mb-2">Selecione uma conversa</h2>
               <p className="font-body text-muted-foreground">
-                Escolha uma conversa para começar a trocar mensagens
+                Escolha uma conversa ou inicie uma nova para começar
               </p>
             </div>
           </div>

@@ -9,6 +9,7 @@ import { AppProvider, useApp } from "./components/AppContext";
 import { AnalyticsProvider } from "./components/AnalyticsContext";
 import { AuthProvider, useAuth } from "./components/AuthContext";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { UnreadMessagesProvider } from "./components/hooks/useUnreadMessages";
 import { Toaster } from "./components/ui/sonner";
 import { AuthPage } from "./components/AuthPage";
 import { HomePage } from "./components/HomePage";
@@ -17,6 +18,7 @@ import { ConselheiroPage } from "./components/ConselheiroPage";
 import { ComunidadePage } from "./components/ComunidadePage";
 import { PerfilPage } from "./components/PerfilPage";
 import { CentralConversasPage } from "./components/TrilhaTransformacao/CentralConversasPage";
+import { ConversasPage } from "./components/ConversasPage";
 import { ConsentBanner } from "./components/ConsentBanner";
 import { LandingPage } from "./components/LandingPage";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
@@ -172,6 +174,8 @@ function AppContent() {
         case "comunidade":
           return <ComunidadePage />;
         case "conversas":
+          return <ConversasPage />;
+        case "trilha-conversas":
           return <CentralConversasPage />;
         case "perfil":
           return <PerfilPage />;
@@ -266,8 +270,10 @@ export default function App() {
         <AuthProvider>
           <AppProvider>
             <AnalyticsProvider>
-              <AppContent />
-              <Toaster />
+              <UnreadMessagesProvider>
+                <AppContent />
+                <Toaster />
+              </UnreadMessagesProvider>
             </AnalyticsProvider>
           </AppProvider>
         </AuthProvider>

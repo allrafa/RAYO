@@ -1,6 +1,7 @@
-import { Home, GraduationCap, Users, User } from "lucide-react";
+import { Home, GraduationCap, Users, User, MessageCircle } from "lucide-react";
 import { useApp } from "./AppContext";
 import { useScrollDirection } from "./hooks/useScrollDirection";
+import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { useTheme } from "./ThemeProvider";
 import raioLogo from "figma:asset/827405fdf6d360d2a9ec31dfa3facf23fe3474fb.png";
 
@@ -17,9 +18,7 @@ export function Navigation({ currentTab, onTabChange }: NavigationProps) {
   const { userData } = useApp();
   const { scrollDirection, isAtTop } = useScrollDirection({ threshold: 50 });
   const { theme } = useTheme();
-  
-  // Mock data para mensagens não lidas
-  const unreadMessages = 3;
+  const { count: unreadMessages } = useUnreadMessages();
   
   /**
    * Auto-hide navbar behavior (Mobile):
@@ -34,6 +33,7 @@ export function Navigation({ currentTab, onTabChange }: NavigationProps) {
     { id: "academia", icon: GraduationCap },
     { id: "conselheiro", icon: null }, // Logo RAIO customizada
     { id: "comunidade", icon: Users },
+    { id: "conversas", icon: MessageCircle },
     { id: "perfil", icon: User },
   ];
 
@@ -58,7 +58,7 @@ export function Navigation({ currentTab, onTabChange }: NavigationProps) {
             const Icon = tab.icon;
             const isActive = currentTab === tab.id;
             const isConselheiro = tab.id === "conselheiro";
-            const isComunidade = tab.id === "comunidade";
+            const isConversas = tab.id === "conversas";
             
             // Botão especial para Conselheiro (centro)
             if (isConselheiro) {
@@ -133,14 +133,15 @@ export function Navigation({ currentTab, onTabChange }: NavigationProps) {
                     strokeWidth={isActive ? 2.5 : 2}
                   />
                   
-                  {/* Badge de notificações */}
-                  {isComunidade && unreadMessages > 0 && (
+                  {/* Badge de notificações: mensagens não lidas */}
+                  {isConversas && unreadMessages > 0 && (
                     <div 
                       className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center border-2"
                       style={{
                         background: 'var(--raio-error)',
                         borderColor: 'var(--raio-bg-primary)',
                       }}
+                      aria-label={`${unreadMessages} mensagens não lidas`}
                     >
                       <span 
                         className="text-[9px]"
@@ -149,7 +150,7 @@ export function Navigation({ currentTab, onTabChange }: NavigationProps) {
                           fontWeight: 700,
                         }}
                       >
-                        {unreadMessages}
+                        {unreadMessages > 9 ? '9+' : unreadMessages}
                       </span>
                     </div>
                   )}
