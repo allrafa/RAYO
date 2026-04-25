@@ -29,11 +29,15 @@ function assertCanMutate(user: SafeUser | undefined | null, ownerId: number | nu
 }
 
 export type ContentKind = "audio" | "video" | "reels" | "serie" | "curso" | "livro";
-export type ContentStatus = "draft" | "published";
+export type ContentStatus = "draft" | "published" | "archived";
 export type EpisodeKind = "audio" | "video";
 
 export const VALID_KINDS: ContentKind[] = ["audio", "video", "reels", "serie", "curso", "livro"];
-export const VALID_STATUSES: ContentStatus[] = ["draft", "published"];
+// `archived` is the third state (Task #26): used to retire content without
+// deleting it. Archived rows are excluded from every public listing/detail
+// just like drafts, but the admin UI surfaces them distinctly so producers
+// can find and restore them later.
+export const VALID_STATUSES: ContentStatus[] = ["draft", "published", "archived"];
 
 interface ContentItemRow {
   id: number;
@@ -123,7 +127,11 @@ function validateKind(kind: unknown): asserts kind is ContentKind {
 
 function validateStatus(status: unknown): asserts status is ContentStatus {
   if (typeof status !== "string" || !VALID_STATUSES.includes(status as ContentStatus)) {
-    throw new CmsError("Status inválido (draft|published)", "INVALID_STATUS", 400);
+    throw new CmsError(
+      `Status inválido (${VALID_STATUSES.join("|")})`,
+      "INVALID_STATUS",
+      400,
+    );
   }
 }
 

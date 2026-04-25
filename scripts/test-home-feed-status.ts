@@ -1,14 +1,19 @@
 /**
- * Integration test for Task #25 — home rails should never display archived
- * or unpublished content.
+ * Integration test for Task #25 / Task #26 — home rails should never display
+ * archived or unpublished content.
  *
- * Exercises the publish / unpublish / delete-content transitions against the
- * live database (DATABASE_URL) and asserts:
+ * Exercises the publish / unpublish / archive / delete-content transitions
+ * against the live database (DATABASE_URL) and asserts:
  *   1. A card linked to a published content_item appears in the public feed.
  *   2. Setting that content_item to status='draft' removes the card from the
  *      public feed (but keeps it in the admin list flagged with link_state
  *      'draft').
  *   3. Re-publishing the content_item brings the card back to public.
+ *   3b. Setting that content_item to status='archived' (Task #26) also hides
+ *       it from public, but the admin list flags it with link_state
+ *       'archived' (a distinct state from 'draft' so producers can tell
+ *       intentional retirement apart from work-in-progress).
+ *   3c. Re-publishing from archive restores the card to public.
  *   4. Deleting the content_item leaves the card in admin (with
  *      content_item_id NULL via FK ON DELETE SET NULL) and visible to public
  *      because cards without a link are treated as static promotions.
@@ -48,7 +53,10 @@ async function findCardInAdmin(title: string) {
   return items.find((c) => c.title === title) ?? null;
 }
 
-async function setContentStatus(id: number, status: "published" | "draft") {
+async function setContentStatus(
+  id: number,
+  status: "published" | "draft" | "archived",
+) {
   await query(
     `UPDATE content_items
         SET status = $1::varchar,
@@ -149,6 +157,36 @@ async function run() {
     `expected link_state=ok after re-publish, got ${adminCard?.link_state}`,
   );
   console.log("  ✓ re-publish content → card visible again");
+
+  // ── 3b. Archive content (Task #26) → hidden from public, distinct admin badge
+  await setContentStatus(contentId!, "archived");
+  publicCard = await findCardInPublic("made_for_you", CARD_LINKED_TITLE);
+  assert(
+    !publicCard,
+    "linked card must be hidden when content is archived",
+  );
+  staticCard = await findCardInPublic("made_for_you", CARD_STATIC_TITLE);
+  assert(staticCard, "static card unaffected by unrelated content status");
+  adminCard = await findCardInAdmin(CARD_LINKED_TITLE);
+  assert(adminCard, "linked card still present in admin after archive");
+  assert(
+    adminCard.link_state === "archived",
+    `expected link_state=archived when content is archived, got ${adminCard.link_state}`,
+  );
+  assert(
+    adminCard.linked_content_status === "archived",
+    "linked_content_status surfaced as 'archived' for admin UI",
+  );
+  console.log("  ✓ archived content → card hidden in public, flagged 'archived' in admin");
+
+  // ── 3c. Re-publish from archive → back to ok ────────────────────────
+  await setContentStatus(contentId!, "published");
+  adminCard = await findCardInAdmin(CARD_LINKED_TITLE);
+  assert(
+    adminCard?.link_state === "ok",
+    `expected link_state=ok after restoring from archive, got ${adminCard?.link_state}`,
+  );
+  console.log("  ✓ restore from archive → card visible again");
 
   // ── 4. Delete content → FK SET NULL, card stays as static ───────────
   await query(`DELETE FROM content_items WHERE id = $1`, [contentId]);

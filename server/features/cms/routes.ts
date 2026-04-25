@@ -256,6 +256,43 @@ adminCmsRouter.get("/:id/linked-home-cards", async (req, res, next) => {
   } catch (err) { handle(err, res, next); }
 });
 
+// Task #26: archive a content_item without deleting it. Archived rows are
+// hidden from every public listing/detail (just like drafts) but stay in the
+// admin list with a distinct badge so producers can find/restore them later.
+adminCmsRouter.post("/:id/archive", async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const item = await setContentStatus(req.user!, id, "archived");
+    success(res, { item });
+  } catch (err) { handle(err, res, next); }
+});
+
+// Restore an archived item back to draft (the producer must explicitly
+// publish again to make it public). Reject the call if the item isn't
+// actually archived, so the route name matches its semantics: this isn't a
+// generic "force to draft" endpoint — `/unpublish` already covers that — and
+// silently transitioning a non-archived item would mask client bugs.
+adminCmsRouter.post("/:id/unarchive", async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const detail = await getAdminContentDetail(id);
+    if (!detail) { sendError(res, "Conteúdo não encontrado", "CONTENT_NOT_FOUND", 404); return; }
+    if (detail.status !== "archived") {
+      sendError(
+        res,
+        "Apenas conteúdos arquivados podem ser restaurados.",
+        "NOT_ARCHIVED",
+        409,
+      );
+      return;
+    }
+    const item = await setContentStatus(req.user!, id, "draft");
+    success(res, { item });
+  } catch (err) { handle(err, res, next); }
+});
+
 adminCmsRouter.delete("/:id", async (req, res, next) => {
   try {
     const id = parseId(req.params.id);

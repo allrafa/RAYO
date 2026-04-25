@@ -30,7 +30,7 @@ const SECTION_HINTS: Record<Section, string> = {
   podcasts: "Use 'Texto do badge' como tipo (Podcast) e 'Texto extra' para nº de episódios.",
 };
 
-type LinkState = "ok" | "draft" | "missing";
+type LinkState = "ok" | "draft" | "archived" | "missing";
 
 interface HomeFeedItem {
   id: number;
@@ -49,7 +49,7 @@ interface HomeFeedItem {
   updated_at: string;
   // Populated by GET /api/admin/home-feed (LEFT JOIN content_items).
   // Optional in the type so create/update payloads don't need to send them.
-  linked_content_status?: "draft" | "published" | null;
+  linked_content_status?: "draft" | "published" | "archived" | null;
   linked_content_title?: string | null;
   linked_content_kind?: string | null;
   link_state?: LinkState;
@@ -328,6 +328,24 @@ export function AdminHomeFeedPage() {
                                 >
                                   <AlertTriangle className="w-3 h-3" />
                                   conteúdo em rascunho
+                                </span>
+                              )}
+                              {item.link_state === "archived" && (
+                                <span
+                                  className="text-xs px-2 py-0.5 rounded-full inline-flex items-center gap-1"
+                                  // Slate tone — distinct from draft (red) and
+                                  // missing (red): archived is an intentional
+                                  // retirement, not a broken/unfinished link,
+                                  // so the visual weight is muted.
+                                  style={{ background: "rgba(100,116,139,0.18)", color: "rgb(71,85,105)" }}
+                                  title={
+                                    item.linked_content_title
+                                      ? `Conteúdo vinculado arquivado: "${item.linked_content_title}". O card está oculto na home pública — restaure ou vincule outro conteúdo.`
+                                      : "Conteúdo vinculado arquivado — card oculto na home pública."
+                                  }
+                                >
+                                  <AlertTriangle className="w-3 h-3" />
+                                  conteúdo arquivado
                                 </span>
                               )}
                               {item.link_state === "missing" && (

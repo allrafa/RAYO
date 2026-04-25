@@ -549,7 +549,25 @@ export async function initializeSchema() {
       ) THEN
         ALTER TABLE content_items
           ADD CONSTRAINT content_items_status_check
-          CHECK (status IN ('draft','published'));
+          CHECK (status IN ('draft','published','archived'));
+      ELSE
+        -- Task #26: widen the constraint to accept 'archived' (older deployments
+        -- created the constraint with the original 2-value definition). DROP +
+        -- re-ADD is the simplest portable upgrade since CHECK constraints can't
+        -- be altered in place. Scope the lookup to the content_items relation
+        -- explicitly (via conrelid) so the check is unambiguous even if another
+        -- table happens to use the same constraint name.
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'content_items_status_check'
+            AND conrelid = 'content_items'::regclass
+            AND pg_get_constraintdef(oid) ILIKE '%archived%'
+        ) THEN
+          ALTER TABLE content_items DROP CONSTRAINT content_items_status_check;
+          ALTER TABLE content_items
+            ADD CONSTRAINT content_items_status_check
+            CHECK (status IN ('draft','published','archived'));
+        END IF;
       END IF;
     END$$;
   `);

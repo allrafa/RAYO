@@ -6,7 +6,7 @@ import { toast } from "sonner@2.0.3";
 import { CourseModulesEditor } from "./CourseModulesEditor";
 
 type Kind = "audio" | "video" | "reels" | "serie" | "curso" | "livro";
-type Status = "draft" | "published";
+type Status = "draft" | "published" | "archived";
 
 interface ContentDetail {
   id: number;

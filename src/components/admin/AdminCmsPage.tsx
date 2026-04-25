@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Edit2, Trash2, Eye, EyeOff, RefreshCw, AlertTriangle } from "lucide-react";
+import { Plus, Edit2, Trash2, Eye, EyeOff, RefreshCw, AlertTriangle, Archive, ArchiveRestore } from "lucide-react";
 import { Button } from "../ui/button";
 import {
   AlertDialog,
@@ -16,7 +16,7 @@ import { toast } from "sonner@2.0.3";
 import { AdminCmsForm } from "./AdminCmsForm";
 
 type Kind = "audio" | "video" | "reels" | "serie" | "curso" | "livro";
-type Status = "draft" | "published";
+type Status = "draft" | "published" | "archived";
 
 interface LinkedHomeCard {
   id: number;
@@ -117,8 +117,12 @@ export function AdminCmsPage() {
   }, [kindFilter, statusFilter, segmentFilter]);
 
   const counts = useMemo(() => {
-    const c = { total: items.length, published: 0, draft: 0 };
-    items.forEach((i) => { if (i.status === "published") c.published++; else c.draft++; });
+    const c = { total: items.length, published: 0, draft: 0, archived: 0 };
+    items.forEach((i) => {
+      if (i.status === "published") c.published++;
+      else if (i.status === "archived") c.archived++;
+      else c.draft++;
+    });
     return c;
   }, [items]);
 
@@ -139,6 +143,9 @@ export function AdminCmsPage() {
   }
 
   async function togglePublish(item: ContentRow) {
+    // Archived items don't render the publish toggle (Task #26 — they must
+    // go through draft first via the archive button), so this only ever
+    // flips between draft and published.
     // Publishing never hides home cards, so it stays a one-click action.
     if (item.status !== "published") {
       await performStatusChange(item, "published");
@@ -179,6 +186,27 @@ export function AdminCmsPage() {
     }
   }
 
+  async function toggleArchive(item: ContentRow) {
+    try {
+      const archiving = item.status !== "archived";
+      if (archiving) {
+        const ok = confirm(
+          `Arquivar "${item.title}"? O conteúdo deixará de aparecer no app, mas o histórico será mantido.`,
+        );
+        if (!ok) return;
+      }
+      const url = archiving
+        ? `/api/admin/cms/${item.id}/archive`
+        : `/api/admin/cms/${item.id}/unarchive`;
+      await api.post(url, {});
+      toast.success(archiving ? "Conteúdo arquivado" : "Conteúdo restaurado para rascunho");
+      load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro";
+      toast.error(msg);
+    }
+  }
+
   async function remove(item: ContentRow) {
     if (!confirm(`Excluir "${item.title}" definitivamente?`)) return;
     try {
@@ -209,7 +237,7 @@ export function AdminCmsPage() {
             Conteúdo (CMS)
           </h1>
           <p className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
-            {counts.total} item{counts.total === 1 ? "" : "s"} · {counts.published} publicado{counts.published === 1 ? "" : "s"} · {counts.draft} rascunho{counts.draft === 1 ? "" : "s"}
+            {counts.total} item{counts.total === 1 ? "" : "s"} · {counts.published} publicado{counts.published === 1 ? "" : "s"} · {counts.draft} rascunho{counts.draft === 1 ? "" : "s"} · {counts.archived} arquivado{counts.archived === 1 ? "" : "s"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -242,7 +270,7 @@ export function AdminCmsPage() {
           </button>
         ))}
         <div className="h-5 w-px mx-1" style={{ background: "var(--raio-border-default)" }} />
-        {(["all", "draft", "published"] as const).map((s) => (
+        {(["all", "draft", "published", "archived"] as const).map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
@@ -253,7 +281,13 @@ export function AdminCmsPage() {
               borderColor: "var(--raio-border-default)",
             }}
           >
-            {s === "all" ? "Todos status" : s === "draft" ? "Rascunho" : "Publicado"}
+            {s === "all"
+              ? "Todos status"
+              : s === "draft"
+              ? "Rascunho"
+              : s === "published"
+              ? "Publicado"
+              : "Arquivado"}
           </button>
         ))}
         <select
@@ -329,12 +363,22 @@ export function AdminCmsPage() {
                     </span>
                     <span
                       className="text-xs px-2 py-0.5 rounded-full"
-                      style={{
-                        background: item.status === "published" ? "rgba(34,197,94,0.15)" : "rgba(234,179,8,0.15)",
-                        color: item.status === "published" ? "rgb(22,163,74)" : "rgb(180,131,7)",
-                      }}
+                      style={
+                        item.status === "published"
+                          ? { background: "rgba(34,197,94,0.15)", color: "rgb(22,163,74)" }
+                          : item.status === "archived"
+                          // Slate / muted tone — distinct from draft (amber)
+                          // and published (green) so producers can scan the
+                          // list and immediately tell archived rows apart.
+                          ? { background: "rgba(100,116,139,0.18)", color: "rgb(71,85,105)" }
+                          : { background: "rgba(234,179,8,0.15)", color: "rgb(180,131,7)" }
+                      }
                     >
-                      {item.status === "published" ? "Publicado" : "Rascunho"}
+                      {item.status === "published"
+                        ? "Publicado"
+                        : item.status === "archived"
+                        ? "Arquivado"
+                        : "Rascunho"}
                     </span>
                     {item.is_premium && (
                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(168,85,247,0.15)", color: "rgb(147,51,234)" }}>
@@ -362,8 +406,24 @@ export function AdminCmsPage() {
                   {new Date(item.updated_at).toLocaleDateString("pt-BR")}
                 </div>
                 <div className="flex gap-1">
-                  <Button variant="ghost" size="sm" onClick={() => togglePublish(item)} title={item.status === "published" ? "Despublicar" : "Publicar"}>
-                    {item.status === "published" ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {/* Archived items can't be toggled directly to/from published —
+                      they must go through draft first via the archive button. */}
+                  {item.status !== "archived" && (
+                    <Button variant="ghost" size="sm" onClick={() => togglePublish(item)} title={item.status === "published" ? "Despublicar" : "Publicar"}>
+                      {item.status === "published" ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleArchive(item)}
+                    title={item.status === "archived" ? "Restaurar para rascunho" : "Arquivar"}
+                  >
+                    {item.status === "archived" ? (
+                      <ArchiveRestore className="w-4 h-4" />
+                    ) : (
+                      <Archive className="w-4 h-4" />
+                    )}
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setEditing({ open: true, id: item.id })} title="Editar">
                     <Edit2 className="w-4 h-4" />

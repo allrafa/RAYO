@@ -52,15 +52,20 @@ export interface HomeFeedItemRow {
 // Possible visibility states the admin UI surfaces per card. These describe
 // the *linked content* (not the card itself):
 //   - "ok"          → no link or linked content is published
-//   - "draft"       → linked content_item exists but is not published
+//   - "draft"       → linked content_item exists but is in draft (not yet
+//                      published — work-in-progress)
+//   - "archived"    → linked content_item was retired by a producer (Task #26).
+//                      Hidden from the public feed for the same reason as draft,
+//                      but surfaced distinctly in admin so producers know it
+//                      was an intentional retirement (not unfinished work).
 //   - "missing"     → content_item_id is set but the row was deleted
 //                     (FK uses ON DELETE SET NULL, so the column is null in
 //                      practice; we expose this state defensively in case
 //                      the FK ever changes or the join misses)
-export type LinkedContentStatus = "ok" | "draft" | "missing";
+export type LinkedContentStatus = "ok" | "draft" | "archived" | "missing";
 
 export interface AdminHomeFeedItemRow extends HomeFeedItemRow {
-  linked_content_status: "draft" | "published" | null;
+  linked_content_status: "draft" | "published" | "archived" | null;
   linked_content_title: string | null;
   linked_content_kind: string | null;
   link_state: LinkedContentStatus;
@@ -152,7 +157,7 @@ export async function listAdminHomeFeed(filters?: { section?: string }) {
   );
   const items: AdminHomeFeedItemRow[] = (rows as Array<
     HomeFeedItemRow & {
-      linked_content_status: "draft" | "published" | null;
+      linked_content_status: "draft" | "published" | "archived" | null;
       linked_content_title: string | null;
       linked_content_kind: string | null;
     }
@@ -160,6 +165,7 @@ export async function listAdminHomeFeed(filters?: { section?: string }) {
     let link_state: LinkedContentStatus = "ok";
     if (r.content_item_id !== null) {
       if (r.linked_content_status === null) link_state = "missing";
+      else if (r.linked_content_status === "archived") link_state = "archived";
       else if (r.linked_content_status !== "published") link_state = "draft";
     }
     return { ...r, link_state };
