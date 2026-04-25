@@ -31,10 +31,20 @@ interface SendResult {
   error?: string;
 }
 
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return "***";
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}${"*".repeat(Math.max(1, local.length - visible.length))}@${domain}`;
+}
+
 export async function sendEmail(options: SendEmailOptions): Promise<SendResult> {
   const client = getClient();
+  const masked = maskEmail(options.to);
   if (!client) {
-    logger.warn("Email", `Resend API key not configured; skipping email to ${options.to}`);
+    logger.warn("Email", `Resend API key not configured; skipping email to ${masked}`);
     return { sent: false, error: "RESEND_NOT_CONFIGURED" };
   }
 
@@ -48,15 +58,15 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendResult> 
     });
 
     if (error) {
-      logger.error("Email", `Resend error sending to ${options.to}: ${error.message || error.name}`);
+      logger.error("Email", `Resend error sending to ${masked}: ${error.message || error.name}`);
       return { sent: false, error: error.message || error.name || "RESEND_ERROR" };
     }
 
-    logger.info("Email", `Sent "${options.subject}" to ${options.to}`);
+    logger.info("Email", `Sent "${options.subject}" to ${masked}`);
     return { sent: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error("Email", `Failed to send email to ${options.to}: ${message}`);
+    logger.error("Email", `Failed to send email to ${masked}: ${message}`);
     return { sent: false, error: message };
   }
 }
