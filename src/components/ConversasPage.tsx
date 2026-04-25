@@ -10,6 +10,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from "./AuthContext";
 import { toast } from "sonner@2.0.3";
 import { api } from "../lib/api";
+import { EmptyStateNoConversations, EmptyStateError } from "./EmptyState";
+import { SkeletonLoader } from "./SkeletonLoader";
 
 interface ConversationItem {
   id: number;
@@ -331,29 +333,13 @@ export function ConversasPage() {
 
         <ScrollArea className="flex-1">
           {conversationsLoading ? (
-            <div className="p-8 text-center text-muted-foreground">
-              <Loader2 className="w-6 h-6 mx-auto mb-2 animate-spin" />
-              Carregando conversas...
+            <div className="p-4">
+              <SkeletonLoader type="list" count={4} />
             </div>
           ) : conversationsError ? (
-            <div className="p-8 text-center">
-              <p className="text-sm text-destructive mb-3">{conversationsError}</p>
-              <Button size="sm" variant="outline" onClick={() => { setConversationsLoading(true); void loadConversations(); }}>
-                Tentar novamente
-              </Button>
-            </div>
+            <EmptyStateError onRetry={() => { setConversationsLoading(true); void loadConversations(); }} />
           ) : filteredConversations.length === 0 ? (
-            <div className="p-8 text-center">
-              <MessageCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="font-medium mb-2">Nenhuma conversa</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Comece uma conversa com outro membro
-              </p>
-              <Button onClick={() => setShowNewConvDialog(true)}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                Iniciar conversa
-              </Button>
-            </div>
+            <EmptyStateNoConversations onStart={() => setShowNewConvDialog(true)} />
           ) : (
             filteredConversations.map((conv) => (
               <button

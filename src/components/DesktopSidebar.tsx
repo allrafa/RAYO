@@ -248,7 +248,7 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
         {onToggleMinimize && (
           <Button
             variant="ghost"
-            className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 mb-2`}
+            className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-foreground hover:bg-muted mb-2`}
             onClick={onToggleMinimize}
             title={isMinimized ? "Expandir sidebar" : "Minimizar sidebar"}
             aria-label={isMinimized ? "Expandir sidebar" : "Minimizar sidebar"}
@@ -267,7 +267,7 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
         {/* Theme Toggle */}
         <Button
           variant="ghost"
-          className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800`}
+          className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-foreground hover:bg-muted`}
           onClick={toggleTheme}
           title={isMinimized ? (theme === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro') : undefined}
           aria-label={theme === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}
@@ -282,7 +282,7 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
 
         <Button
           variant="ghost"
-          className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50`}
+          className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-foreground hover:bg-muted disabled:opacity-50`}
           disabled
           aria-disabled="true"
           aria-label="Configurações (em breve)"
@@ -294,7 +294,7 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
         
         <Button
           variant="ghost"
-          className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20`}
+          className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-destructive hover:bg-destructive/10`}
           onClick={async () => {
             toast.error("Saindo...");
             await logout();

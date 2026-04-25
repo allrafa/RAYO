@@ -22,9 +22,13 @@ ou abrir um sprint de polimento visual.
    placeholder devem ter `disabled`, `aria-disabled`, tooltip "Em breve" e
    visual atenuado. **Não** dispare apenas `toast.info("Em breve!")` em
    produção.
-4. **Estados de carga/vazio/erro são padronizados.** Use `SkeletonLoader`
-   (loading), uma `Card` com ilustração + CTA (vazio) e `enhancedToast.error`
-   (erro de rede). Sempre os três — nunca só dois.
+4. **Estados de carga/vazio/erro são padronizados.** Use os componentes
+   compartilhados: `<SkeletonLoader type="..."/>` para loading,
+   `<EmptyStateNo<Tema> .../>` (NoCommunity, NoConversations, NoCourses,
+   NoResults) para vazio, `<EmptyStateError onRetry/>` para erro e
+   `<EmptyStateOffline onRetry/>` para offline. Não criar markup ad-hoc do
+   tipo "`<div>Nenhum…</div>`" nem usar apenas toast para erro de carga.
+   Sempre os três estados — nunca só dois.
 5. **Acessibilidade mínima.** Todo botão de ícone tem `aria-label`. Item de
    navegação ativo usa `aria-current="page"`. Foco precisa ter contorno
    visível (Shadcn cobre por padrão; não remover `focus-visible:ring-*`).
@@ -98,18 +102,21 @@ nesta tarefa para evitar overlap com o domínio do CMS.
 
 ### 3.3 Cores literais ainda no código
 
-- `DesktopSidebar.tsx`: várias classes `text-gray-700 dark:text-gray-300` e
-  `hover:bg-gray-100 dark:hover:bg-gray-800` no rodapé (toggle minimizar, tema,
-  configurações, sair).
 - `ConselheiroPage.tsx` avatar do usuário: `linear-gradient(135deg, #6B7280 0%, #4B5563 100%)`.
-- `TopNavbar.tsx` badge de mensagens: `bg-destructive text-destructive-foreground`
-  (token Shadcn, OK; mantido).
+- `HomePage.tsx`: cards de dashboard usam gradientes Tailwind literais
+  (`from-orange-50 to-orange-100 dark:from-orange-950/30`, etc.) em vez de
+  tokens.
+- Várias páginas internas têm classes `from-[#XXXXXX] to-[#XXXXXX]` em
+  gradientes decorativos.
 
 Não foram removidas nesta passagem (custo/benefício baixo, risco visual). Ficam
 listadas aqui para o próximo sprint de polimento.
 
-> A badge mock fixa `bg-[#22C55E]` no Bell do `TopNavbar` foi **removida** nesta
-> tarefa: o sino agora fica desabilitado sem badge falsa.
+> Removidas nesta tarefa: badge mock fixa `bg-[#22C55E]` no Bell do `TopNavbar`,
+> classes `text-gray-*` / `bg-gray-*` no `TopNavbar` e `DesktopSidebar` (agora
+> usam tokens semânticos `text-foreground`, `hover:bg-muted`,
+> `text-destructive`), e o ícone de busca do `TopNavbar` (agora usa
+> `var(--raio-text-tertiary)`).
 
 ### 3.4 Componentes mortos removidos
 
@@ -157,6 +164,44 @@ efeito colateral real:
 
 ## 5. Acessibilidade (estado atual)
 
+### Padrão canônico de estados assíncronos (loading / empty / error)
+
+Toda página que carrega dados via API deve usar os componentes compartilhados:
+
+| Estado    | Componente canônico                        | Onde fica          |
+|-----------|--------------------------------------------|--------------------|
+| Loading   | `<SkeletonLoader type="..." count={N} />`  | `src/components/SkeletonLoader.tsx` |
+| Empty     | `<EmptyStateNo<Tema> ... />`               | `src/components/EmptyState.tsx` (variantes: NoCommunity, NoConversations, NoCourses, NoResults) |
+| Error     | `<EmptyStateError onRetry={...} />`        | `src/components/EmptyState.tsx` |
+| Offline   | `<EmptyStateOffline onRetry={...} />`      | `src/components/EmptyState.tsx` |
+
+`SkeletonLoader` já inclui `role="status"` + texto SR. `EmptyState` aceita
+ícone, título, descrição e até dois CTAs. Não criar markup ad-hoc do tipo
+"`<div className="p-8 text-center">Nenhum...</div>`" — sempre usar a variante
+correta (ou estender `EmptyState`).
+
+✅ Aplicado nesta tarefa em `ConversasPage` (lista de conversas:
+SkeletonLoader → EmptyStateError → EmptyStateNoConversations) e em
+`ComunidadePage` aba Grupos (EmptyStateError quando o fetch de fóruns falha,
+EmptyStateNoCommunity quando volta vazio).
+
+### Tokens canônicos para shell (TopNavbar / DesktopSidebar)
+
+Substituídas literais Tailwind por tokens nesta tarefa:
+
+| Antes                                           | Depois                                |
+|-------------------------------------------------|---------------------------------------|
+| `text-gray-400`                                 | `style={{ color: 'var(--raio-text-tertiary)' }}` |
+| `text-gray-700 dark:text-gray-300`              | `text-foreground`                     |
+| `hover:bg-gray-100 dark:hover:bg-gray-800`      | `hover:bg-muted`                      |
+
+Onde fizer sentido visual, preferir tokens `--raio-*` (mais expressivos para
+o sistema RAIO). Onde não houver token RAIO equivalente, usar Shadcn
+semantic vars (`foreground`, `muted`, `accent`) — nunca classes Tailwind
+literais com cor.
+
+---
+
 ✅ **Implementado nesta tarefa:**
 - `aria-label` em todos os botões de ícone do `TopNavbar` (Plus, Heart, Mensagens, Bell, Premium).
 - `aria-label` em todos os itens do `DesktopSidebar` (nav + minimize, tema, configurações, sair).
@@ -171,7 +216,6 @@ chegando em breve".
 
 ⚠️ **Pendente para próximos sprints:**
 - Verificar contraste WCAG AA em badges com texto branco sobre `--raio-accent-primary` (verde-floresta) — pode estar abaixo de 4.5:1 dependendo do tom final.
-- Adicionar `role="status"` em `SkeletonLoader` para leitores de tela.
 - Trap de foco nos modais full-screen (Quiz, Music, Central de Conversas).
 - Testar navegação por teclado completa no `ConselheiroPage` (sheets, voice button).
 

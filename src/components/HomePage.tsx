@@ -778,13 +778,8 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
 
         {/* Dashboard Loading State */}
         {dashboardLoading && authUser && (
-          <div className="px-4 mt-8 mb-6 space-y-3">
-            <div className="h-6 w-48 bg-muted rounded animate-pulse" />
-            <div className="grid grid-cols-3 gap-3">
-              {[1, 2, 3].map(i => (
-                <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
-              ))}
-            </div>
+          <div className="px-4 mt-8 mb-6">
+            <SkeletonLoader type="card" count={1} />
           </div>
         )}
 

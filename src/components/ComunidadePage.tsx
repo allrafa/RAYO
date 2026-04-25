@@ -8,6 +8,7 @@ import { Input } from "./ui/input";
 import { useState, useEffect, useCallback } from "react";
 import { PullToRefresh } from "./PullToRefresh";
 import { SkeletonLoader } from "./SkeletonLoader";
+import { EmptyStateError, EmptyStateNoCommunity } from "./EmptyState";
 import { enhancedToast } from "./EnhancedToast";
 import { useApp } from "./AppContext";
 import { CreatePostModal } from "./CreatePostModal";
@@ -53,17 +54,26 @@ export function ComunidadePage() {
   const { reactions, handleReaction } = useReactions();
   const { theme } = useTheme();
   const [forums, setForums] = useState<Forum[]>([]);
+  const [forumsLoading, setForumsLoading] = useState(true);
+  const [forumsError, setForumsError] = useState<string | null>(null);
   const [postComments, setPostComments] = useState<CommentData[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
 
   const loadForums = useCallback(async () => {
+    setForumsLoading(true);
+    setForumsError(null);
     try {
       const res = await api.get<{ forums: Forum[] }>("/api/community/forums");
       if (res.success && res.data) {
         setForums(res.data.forums);
+      } else {
+        setForumsError("Não foi possível carregar a comunidade");
       }
     } catch (err) {
       console.error("Error loading forums:", err);
+      setForumsError("Não foi possível carregar a comunidade");
+    } finally {
+      setForumsLoading(false);
     }
   }, []);
 
@@ -361,6 +371,9 @@ export function ComunidadePage() {
             <GruposView 
               groups={groups}
               categories={categories}
+              loading={forumsLoading}
+              error={forumsError}
+              onRetry={loadForums}
             />
           )}
 
@@ -659,14 +672,33 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
 interface GruposViewProps {
   groups: any[];
   categories: any[];
+  loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
-function GruposView({ groups, categories }: GruposViewProps) {
+function GruposView({ groups, categories, loading, error, onRetry }: GruposViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const filteredGroups = selectedCategory
     ? groups.filter(g => g.category === selectedCategory)
     : groups;
+
+  if (loading && groups.length === 0) {
+    return (
+      <div className="space-y-4">
+        <SkeletonLoader type="card" count={3} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <EmptyStateError onRetry={onRetry} />;
+  }
+
+  if (groups.length === 0) {
+    return <EmptyStateNoCommunity />;
+  }
 
   return (
     <div className="space-y-8">
