@@ -26,7 +26,8 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
   const { toggleBookFavorite } = useApp();
   const [imageLoaded, setImageLoaded] = useState(false);
   
-  const content = getBookContent(book.id);
+  // Use slug (CMS) and fall back to id so any legacy data still resolves.
+  const content = getBookContent(book.slug ?? book.id);
   const estimatedDuration = content ? estimateReadingDuration(content.transcript) : book.estimatedReadTime;
 
   return (

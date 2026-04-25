@@ -16,6 +16,8 @@ import lgpdRoutes from "./features/lgpd/routes.js";
 import messagesRoutes from "./features/messages/routes.js";
 import adminRoutes from "./features/admin/routes.js";
 import { bootstrapAdminsFromEnv } from "./features/admin/bootstrap.js";
+import { adminCmsRouter, publicCmsRouter } from "./features/cms/routes.js";
+import { UPLOAD_ROOT } from "./features/cms/upload.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -50,6 +52,17 @@ app.use("/api/users", rateLimiter(10, 15 * 60 * 1000), lgpdRoutes);
 // active session without hitting 429.
 app.use("/api/messages", rateLimiter(600, 15 * 60 * 1000), messagesRoutes);
 app.use("/api/admin", rateLimiter(120, 15 * 60 * 1000), adminRoutes);
+app.use("/api/admin/cms", rateLimiter(300, 15 * 60 * 1000), adminCmsRouter);
+app.use("/api/content", rateLimiter(120, 15 * 60 * 1000), publicCmsRouter);
+
+// Static media uploads (CMS). Served outside of the /api prefix so the
+// frontend can reference URLs like `/uploads/audio/...mp3` directly.
+app.use("/uploads", express.static(UPLOAD_ROOT, {
+  maxAge: "7d",
+  setHeaders: (res) => {
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  },
+}));
 
 app.all("/api/{*path}", (req, res) => {
   sendError(res, `Route ${req.method} ${req.path} not found`, "NOT_FOUND", 404);

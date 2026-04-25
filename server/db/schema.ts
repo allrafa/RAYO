@@ -477,9 +477,122 @@ export async function initializeSchema() {
   await query(`CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(conversation_id, sender_id) WHERE read_at IS NULL`);
 
+  // ──────────────────────────────────────────────────────────────────
+  // CMS — content_items + child tables + media_assets
+  // ──────────────────────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS media_assets (
+      id SERIAL PRIMARY KEY,
+      uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      filename VARCHAR(500) NOT NULL,
+      original_name VARCHAR(500),
+      mime_type VARCHAR(100),
+      size_bytes BIGINT,
+      storage_path VARCHAR(500) NOT NULL,
+      public_url VARCHAR(500) NOT NULL,
+      kind VARCHAR(20),
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_media_assets_uploaded_by ON media_assets(uploaded_by)`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS content_items (
+      id SERIAL PRIMARY KEY,
+      kind VARCHAR(20) NOT NULL,
+      title VARCHAR(300) NOT NULL,
+      slug VARCHAR(320) UNIQUE,
+      short_description TEXT,
+      long_description TEXT,
+      cover_url VARCHAR(500),
+      segments TEXT[] DEFAULT '{}',
+      interests TEXT[] DEFAULT '{}',
+      tags TEXT[] DEFAULT '{}',
+      status VARCHAR(20) NOT NULL DEFAULT 'draft',
+      is_premium BOOLEAN DEFAULT FALSE,
+      price NUMERIC(10,2) DEFAULT 0,
+
+      -- type-specific fields (nullable depending on kind)
+      media_url VARCHAR(500),
+      external_url VARCHAR(500),
+      duration_seconds INTEGER,
+      transcript TEXT,
+      hook TEXT,
+      cta TEXT,
+      author VARCHAR(200),
+      pages INTEGER,
+
+      -- link to existing courses table for kind='curso'
+      course_id INTEGER REFERENCES courses(id) ON DELETE SET NULL,
+
+      view_count INTEGER DEFAULT 0,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      published_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.constraint_column_usage
+        WHERE table_name = 'content_items' AND constraint_name = 'content_items_kind_check'
+      ) THEN
+        ALTER TABLE content_items
+          ADD CONSTRAINT content_items_kind_check
+          CHECK (kind IN ('audio','video','reels','serie','curso','livro'));
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.constraint_column_usage
+        WHERE table_name = 'content_items' AND constraint_name = 'content_items_status_check'
+      ) THEN
+        ALTER TABLE content_items
+          ADD CONSTRAINT content_items_status_check
+          CHECK (status IN ('draft','published'));
+      END IF;
+    END$$;
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_content_items_kind ON content_items(kind)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_content_items_status ON content_items(status)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_content_items_course_id ON content_items(course_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_content_items_segments ON content_items USING GIN(segments)`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS content_episodes (
+      id SERIAL PRIMARY KEY,
+      series_id INTEGER NOT NULL REFERENCES content_items(id) ON DELETE CASCADE,
+      title VARCHAR(300) NOT NULL,
+      description TEXT,
+      episode_kind VARCHAR(20) NOT NULL DEFAULT 'audio',
+      media_url VARCHAR(500),
+      external_url VARCHAR(500),
+      duration_seconds INTEGER,
+      transcript TEXT,
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.constraint_column_usage
+        WHERE table_name = 'content_episodes' AND constraint_name = 'content_episodes_kind_check'
+      ) THEN
+        ALTER TABLE content_episodes
+          ADD CONSTRAINT content_episodes_kind_check
+          CHECK (episode_kind IN ('audio','video'));
+      END IF;
+    END$$;
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_content_episodes_series_id ON content_episodes(series_id, sort_order)`);
+
   await seedBadgesAndMissions();
   await seedCourses();
   await seedForumsAndPosts();
+  const { migrateCmsContent } = await import("../features/cms/migrate.js");
+  await migrateCmsContent();
 
   console.log("[DB] Schema initialized successfully.");
 }

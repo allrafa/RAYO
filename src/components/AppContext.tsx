@@ -1,9 +1,61 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { enhancedToast } from './EnhancedToast';
 import { Book } from './types/BookTypes';
-import { mockBooks, getEnrolledBooks } from './mockBooks';
 import { useAuth } from './AuthContext';
 import { api } from '../lib/api';
+
+// Maps a CMS content_item (kind='livro') row into the rich Book shape used
+// across the Biblioteca UI. Reading state (currentPage / progress / notes /
+// highlights) is owned by the client until per-user reading progress lands
+// in its own table.
+interface CmsLivro {
+  id: number;
+  title: string;
+  slug: string | null;
+  short_description: string | null;
+  long_description?: string | null;
+  cover_url: string | null;
+  segments: string[];
+  interests: string[];
+  tags: string[];
+  is_premium: boolean;
+  price: number | string;
+  author: string | null;
+  pages: number | null;
+  view_count: number;
+  published_at: string | null;
+}
+
+function mapLivroToBook(c: CmsLivro): Book {
+  const pages = c.pages && c.pages > 0 ? c.pages : 1;
+  return {
+    id: String(c.id),
+    slug: c.slug ?? undefined,
+    title: c.title,
+    author: c.author ?? 'RAIO',
+    coverImage: c.cover_url ?? '',
+    description: c.long_description ?? c.short_description ?? '',
+    category: c.interests && c.interests.length > 0 ? c.interests : ['Geral'],
+    pages,
+    language: 'pt-BR',
+    publishedYear: c.published_at ? new Date(c.published_at).getFullYear() : new Date().getFullYear(),
+    currentPage: 0,
+    progress: 0,
+    isCompleted: false,
+    estimatedReadTime: `${Math.max(1, Math.round((pages * 2) / 60))}h`,
+    isFavorite: false,
+    isEnrolled: false,
+    notes: [],
+    highlights: [],
+    format: 'pdf',
+    isPremium: !!c.is_premium,
+    price: typeof c.price === 'string' ? parseFloat(c.price) : (c.price ?? 0),
+    readers: c.view_count,
+    averageRating: 0,
+    reviews: [],
+    tags: c.tags,
+  };
+}
 
 interface Course {
   id: number;
@@ -243,7 +295,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     streak: 5,
     completedCourses: [1],
     enrolledCourses: [1, 2],
-    enrolledBooks: ['book-1', 'book-2', 'book-3', 'book-4', 'book-5', 'book-6'],
+    enrolledBooks: [],
     favoriteProducts: [],
     favorites: [],
     cartItems: [],
@@ -630,8 +682,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Favorito atualizado silenciosamente
   };
 
-  // Book functions
-  const [books, setBooks] = useState<Book[]>(mockBooks);
+  // Book functions — books are sourced from the CMS (`/api/content?kind=livro`)
+  // and merged with per-user reading state held in this context. Refreshes on
+  // mount; the admin CMS triggers a manual reload via window event below.
+  const [books, setBooks] = useState<Book[]>([]);
+
+  const refreshBooks = useCallback(async () => {
+    try {
+      const res = await api.get<{ items: CmsLivro[] }>(`/api/content?kind=livro&limit=50`);
+      if (!res.success || !res.data) return;
+      const fetched = res.data.items.map(mapLivroToBook);
+      setBooks((prev) => {
+        // Preserve any client-side reading state (progress / favorite / enrolled)
+        // when the catalogue refreshes.
+        const prevById = new Map(prev.map((b) => [b.id, b]));
+        return fetched.map((b) => {
+          const old = prevById.get(b.id);
+          if (!old) return b;
+          return {
+            ...b,
+            currentPage: old.currentPage,
+            progress: old.progress,
+            isCompleted: old.isCompleted,
+            isFavorite: old.isFavorite,
+            isEnrolled: old.isEnrolled,
+            notes: old.notes,
+            highlights: old.highlights,
+            lastRead: old.lastRead,
+          };
+        });
+      });
+    } catch (err) {
+      console.error('[Biblioteca] Falha ao carregar livros', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshBooks();
+  }, [refreshBooks]);
 
   const enrollInBook = (bookId: string) => {
     if (userData.enrolledBooks.includes(bookId)) {

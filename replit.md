@@ -74,6 +74,33 @@ vite.config.ts           # Vite + API proxy config
 - `POST /api/gamification/missions/:id/claim` — Claim completed mission reward (requires auth)
 - XP/badge/mission-progress mutations are internal-only service functions (addXP, unlockBadge, recordMissionProgress); triggered by backend events in academia/community features, not by client requests
 
+## Content CMS (Task #17)
+- Six content kinds: `audio`, `video`, `reels`, `serie`, `curso`, `livro`
+- Tables: `content_items` (unified), `content_episodes` (children of series), `media_assets` (uploads catalog)
+- `kind='curso'` content_items link to existing `courses.id` (FK, ON DELETE SET NULL); the legacy Academia course pipeline keeps owning modules/lessons/progress, the CMS just adds discovery metadata
+- Boot-time idempotent migration in `server/features/cms/migrate.ts` seeds 10 books (kind=`livro`) and reflects every existing course as a CMS row; safe to re-run on every restart (slug-based dedupe + `course_id` lookup)
+- Admin endpoints under `/api/admin/cms/*` require `producer` role and enforce CHECK constraints on kind/status; episodes only attachable to `kind='serie'`
+- Public endpoints under `/api/content/*` only return `status='published'` rows; segment filter uses GIN index on `segments[]`; detail bumps `view_count`
+- Uploads: multer disk storage at `./uploads/<kind>/`, 200 MB cap, allow-list MIME, served back via `/uploads/*` static (cache-7d, CORP cross-origin) — swap-file for object storage later
+- Admin UI lives at AdminShell → "Conteúdo": list with kind/status filters, type-aware form (cover + media uploaders, segment chips, premium pricing), series episode editor
+- Client refactor: `mockBooks.ts` deleted; `AppContext` fetches `/api/content?kind=livro` on mount and merges per-user reading state (progress/favorite/notes) when refreshing
+
+### CMS Endpoints
+- `GET /api/content` — public list (filters: `kind`, `segment`, `search`, `page`, `limit`)
+- `GET /api/content/:id` — public detail (published only; increments view_count)
+- `GET /api/admin/cms` — admin list (filters: `kind`, `status`, `search`, `page`, `limit`) [producer]
+- `GET /api/admin/cms/kinds` — list of valid kinds [producer]
+- `GET /api/admin/cms/courses` — courses available for kind=`curso` linkage [producer]
+- `GET /api/admin/cms/:id` — full detail incl. episodes [producer]
+- `POST /api/admin/cms` — create (defaults to draft) [producer]
+- `PATCH /api/admin/cms/:id` — update [producer]
+- `POST /api/admin/cms/:id/publish` | `/unpublish` [producer]
+- `DELETE /api/admin/cms/:id` — delete (cascades to episodes) [producer]
+- `GET|POST|PATCH|DELETE /api/admin/cms/:id/episodes[/:epId]` — series episodes CRUD [producer]
+- `POST /api/admin/cms/media/upload` — multipart `file` field [producer]
+- `GET /api/admin/cms/media/list` — assets uploaded by current user [producer]
+- `GET /uploads/<path>` — static file delivery for uploaded media
+
 ## Onboarding Data Flow
 - WelcomeScreen → Onboarding (collects name, segments, interests) → AuthPage (3-step registration)
 - Segments/interests from onboarding are passed through `App.tsx` → `AuthPage` props → `register()` call → backend persists them

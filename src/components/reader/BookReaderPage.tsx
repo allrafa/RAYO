@@ -267,7 +267,9 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
 
 // Wrapper com Provider
 export function BookReaderPage({ book, onBack }: BookReaderPageProps) {
-  const content = getBookContent(book.id);
+  // CMS-managed books expose a stable `slug` (e.g. "os-5-pilares...") so the
+  // reader keeps working after numeric CMS IDs replaced the legacy "book-N".
+  const content = getBookContent(book.slug ?? book.id);
 
   if (!content) {
     return (

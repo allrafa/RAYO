@@ -30,6 +30,12 @@ export interface BookReview {
 
 export interface Book {
   id: string;
+  /**
+   * Stable, human-readable identifier shared with the CMS (`content_items.slug`).
+   * The reader/transcript layer keys content by slug because numeric CMS IDs
+   * change between environments while slugs are stable.
+   */
+  slug?: string;
   title: string;
   author: string;
   coverImage: string;

@@ -1,13 +1,14 @@
 import { useState, useMemo } from "react";
-import { LayoutDashboard, Users as UsersIcon, ShieldAlert, ArrowLeft, LogOut, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Users as UsersIcon, ShieldAlert, ArrowLeft, LogOut, FileText, type LucideIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuth, userHasRole } from "../AuthContext";
 import type { UserRole } from "../AuthContext";
 import { AdminOverviewPage } from "./AdminOverviewPage";
 import { AdminUsersPage } from "./AdminUsersPage";
 import { AdminModerationPage } from "./AdminModerationPage";
+import { AdminCmsPage } from "./AdminCmsPage";
 
-type AdminSection = "overview" | "users" | "moderation";
+type AdminSection = "overview" | "cms" | "users" | "moderation";
 
 interface AdminShellProps {
   onExitAdmin: () => void;
@@ -27,6 +28,7 @@ export function AdminShell({ onExitAdmin }: AdminShellProps) {
   // baseline shell + Overview; Moderator adds Moderation; Admin adds Users.
   const navItems: NavItem[] = [
     { id: "overview", label: "Visão geral", icon: LayoutDashboard, minRole: "producer" },
+    { id: "cms", label: "Conteúdo", icon: FileText, minRole: "producer" },
     { id: "moderation", label: "Moderação", icon: ShieldAlert, minRole: "moderator" },
     { id: "users", label: "Usuários", icon: UsersIcon, minRole: "admin" },
   ];
@@ -45,28 +47,24 @@ export function AdminShell({ onExitAdmin }: AdminShellProps) {
     // Defensive: if the user's role no longer permits the current section
     // (e.g. demoted while on the page), fall back to the first visible one.
     const current = navItems.find((i) => i.id === section);
-    if (!current || !userHasRole(user, current.minRole)) {
-      const fallback = visibleItems[0]?.id ?? "overview";
-      switch (fallback) {
+    const renderById = (id: AdminSection) => {
+      switch (id) {
         case "users":
           return <AdminUsersPage />;
         case "moderation":
           return <AdminModerationPage />;
+        case "cms":
+          return <AdminCmsPage />;
         case "overview":
         default:
           return <AdminOverviewPage />;
       }
+    };
+    if (!current || !userHasRole(user, current.minRole)) {
+      const fallback = visibleItems[0]?.id ?? "overview";
+      return renderById(fallback);
     }
-    switch (section) {
-      case "overview":
-        return <AdminOverviewPage />;
-      case "users":
-        return <AdminUsersPage />;
-      case "moderation":
-        return <AdminModerationPage />;
-      default:
-        return <AdminOverviewPage />;
-    }
+    return renderById(section);
   };
 
   return (

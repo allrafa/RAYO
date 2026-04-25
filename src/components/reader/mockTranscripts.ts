@@ -25,9 +25,13 @@ export interface BookContent {
 
 // Mock: Áudio gratuito do YouTube Audio Library ou similar
 // Para produção, usar áudios reais do livro
+// Keyed by CMS slug (stable across environments) so the reader/audio layer
+// keeps working after Task #17 migrated the catalogue from `book-N` mock IDs
+// to numeric CMS IDs. The legacy `book-1` alias is still served for any old
+// callers that haven't migrated yet.
 export const mockBookContents: Record<string, BookContent> = {
-  'book-1': {
-    bookId: 'book-1',
+  'os-5-pilares-de-um-casamento-feliz': {
+    bookId: 'os-5-pilares-de-um-casamento-feliz',
     summary: 'Descubra os cinco pilares fundamentais que sustentam um casamento saudável e duradouro: comunicação, respeito, intimidade, compromisso e crescimento conjunto. Este livro oferece ferramentas práticas baseadas em décadas de pesquisa e experiência clínica para fortalecer seu relacionamento.',
     keyTakeaways: [
       '💬 Comunicação aberta e honesta é a base de qualquer relacionamento',
