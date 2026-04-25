@@ -490,7 +490,7 @@ export async function updateUserProfile(
 
   const result = await query(
     `UPDATE users SET ${setClauses.join(", ")} WHERE id = $${paramIndex}
-     RETURNING id, email, name, segments, interests, goals, content_preferences, level, xp, streak, is_premium, created_at`,
+     RETURNING id, email, name, segments, interests, goals, content_preferences, level, xp, streak, is_premium, role, created_at`,
     values
   );
 

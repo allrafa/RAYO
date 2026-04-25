@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { LayoutDashboard, Users as UsersIcon, ShieldAlert, ArrowLeft, LogOut } from "lucide-react";
+import { useState, useMemo } from "react";
+import { LayoutDashboard, Users as UsersIcon, ShieldAlert, ArrowLeft, LogOut, type LucideIcon } from "lucide-react";
 import { Button } from "../ui/button";
-import { useAuth } from "../AuthContext";
+import { useAuth, userHasRole } from "../AuthContext";
+import type { UserRole } from "../AuthContext";
 import { AdminOverviewPage } from "./AdminOverviewPage";
 import { AdminUsersPage } from "./AdminUsersPage";
 import { AdminModerationPage } from "./AdminModerationPage";
@@ -12,23 +13,50 @@ interface AdminShellProps {
   onExitAdmin: () => void;
 }
 
+type NavItem = {
+  id: AdminSection;
+  label: string;
+  icon: LucideIcon;
+  minRole: UserRole;
+};
+
 export function AdminShell({ onExitAdmin }: AdminShellProps) {
   const { user, logout } = useAuth();
-  const [section, setSection] = useState<AdminSection>("overview");
 
-  const navItems: Array<{ id: AdminSection; label: string; icon: typeof LayoutDashboard; minRole?: "moderator" | "admin" }> = [
-    { id: "overview", label: "Visão geral", icon: LayoutDashboard },
+  // Each section declares the minimum role required to see it. Producer gets
+  // baseline shell + Overview; Moderator adds Moderation; Admin adds Users.
+  const navItems: NavItem[] = [
+    { id: "overview", label: "Visão geral", icon: LayoutDashboard, minRole: "producer" },
+    { id: "moderation", label: "Moderação", icon: ShieldAlert, minRole: "moderator" },
     { id: "users", label: "Usuários", icon: UsersIcon, minRole: "admin" },
-    { id: "moderation", label: "Moderação", icon: ShieldAlert },
   ];
 
-  const visibleItems = navItems.filter((item) => {
-    if (!item.minRole) return true;
-    if (item.minRole === "admin") return user?.role === "admin";
-    return user?.role === "admin" || user?.role === "moderator";
-  });
+  const visibleItems = useMemo(
+    () => navItems.filter((item) => userHasRole(user, item.minRole)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user?.role],
+  );
+
+  const [section, setSection] = useState<AdminSection>(
+    () => visibleItems[0]?.id ?? "overview",
+  );
 
   const renderSection = () => {
+    // Defensive: if the user's role no longer permits the current section
+    // (e.g. demoted while on the page), fall back to the first visible one.
+    const current = navItems.find((i) => i.id === section);
+    if (!current || !userHasRole(user, current.minRole)) {
+      const fallback = visibleItems[0]?.id ?? "overview";
+      switch (fallback) {
+        case "users":
+          return <AdminUsersPage />;
+        case "moderation":
+          return <AdminModerationPage />;
+        case "overview":
+        default:
+          return <AdminOverviewPage />;
+      }
+    }
     switch (section) {
       case "overview":
         return <AdminOverviewPage />;
