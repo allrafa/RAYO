@@ -51,9 +51,16 @@ router.get("/users", requireRole("admin"), async (req, res, next) => {
   try {
     const { page, limit } = parsePagination(req);
     const search = (req.query.search as string) || undefined;
-    const role = (req.query.role as UserRole | "all" | undefined) || "all";
+    const roleParam = (req.query.role as string | undefined) || "all";
     const segment = (req.query.segment as string | undefined) || "all";
     const premium = (req.query.premium as "all" | "yes" | "no" | undefined) || "all";
+
+    const allowedRoles = ["all", "client", "producer", "moderator", "admin"] as const;
+    if (!(allowedRoles as readonly string[]).includes(roleParam)) {
+      sendError(res, "Filtro de papel inválido", "INVALID_ROLE_FILTER", 400);
+      return;
+    }
+    const role = roleParam as UserRole | "all";
 
     if (premium !== "all" && premium !== "yes" && premium !== "no") {
       sendError(res, "Filtro premium inválido", "INVALID_PREMIUM_FILTER", 400);

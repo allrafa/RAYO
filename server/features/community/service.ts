@@ -146,7 +146,10 @@ export async function getPostDetail(postId: number, userId?: number) {
 }
 
 export async function togglePostLike(postId: number, userId: number) {
-  const { rows: postCheck } = await query(`SELECT id FROM posts WHERE id = $1`, [postId]);
+  const { rows: postCheck } = await query(
+    `SELECT id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
+    [postId]
+  );
   if (postCheck.length === 0) {
     throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
   }
@@ -182,14 +185,17 @@ export async function addComment(postId: number, userId: number, content: string
     throw new AppError("Comentário excede o limite de 2000 caracteres", "COMMENT_TOO_LONG", 400);
   }
 
-  const { rows: postCheck } = await query(`SELECT id FROM posts WHERE id = $1`, [postId]);
+  const { rows: postCheck } = await query(
+    `SELECT id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
+    [postId]
+  );
   if (postCheck.length === 0) {
     throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
   }
 
   if (parentId) {
     const { rows: parentCheck } = await query(
-      `SELECT id FROM comments WHERE id = $1 AND post_id = $2`,
+      `SELECT id FROM comments WHERE id = $1 AND post_id = $2 AND is_hidden = FALSE`,
       [parentId, postId]
     );
     if (parentCheck.length === 0) {
@@ -218,7 +224,10 @@ export async function addComment(postId: number, userId: number, content: string
 }
 
 export async function toggleCommentLike(commentId: number, userId: number) {
-  const { rows: commentCheck } = await query(`SELECT id FROM comments WHERE id = $1`, [commentId]);
+  const { rows: commentCheck } = await query(
+    `SELECT id FROM comments WHERE id = $1 AND is_hidden = FALSE`,
+    [commentId]
+  );
   if (commentCheck.length === 0) {
     throw new AppError("Comentário não encontrado", "COMMENT_NOT_FOUND", 404);
   }

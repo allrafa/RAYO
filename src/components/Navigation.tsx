@@ -1,8 +1,9 @@
-import { Home, GraduationCap, Users, User, MessageCircle } from "lucide-react";
+import { Home, GraduationCap, Users, User, MessageCircle, ShieldAlert } from "lucide-react";
 import { useApp } from "./AppContext";
 import { useScrollDirection } from "./hooks/useScrollDirection";
 import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { useTheme } from "./ThemeProvider";
+import { useAuth, userHasRole } from "./AuthContext";
 import raioLogo from "figma:asset/827405fdf6d360d2a9ec31dfa3facf23fe3474fb.png";
 
 interface NavigationProps {
@@ -16,6 +17,7 @@ interface NavigationProps {
 
 export function Navigation({ currentTab, onTabChange }: NavigationProps) {
   const { userData } = useApp();
+  const { user } = useAuth();
   const { scrollDirection, isAtTop } = useScrollDirection({ threshold: 50 });
   const { theme } = useTheme();
   const { count: unreadMessages } = useUnreadMessages();
@@ -28,7 +30,7 @@ export function Navigation({ currentTab, onTabChange }: NavigationProps) {
    */
   const shouldHide = scrollDirection === 'down' && !isAtTop;
   
-  const tabs = [
+  const baseTabs: Array<{ id: string; icon: typeof Home | null }> = [
     { id: "home", icon: Home },
     { id: "academia", icon: GraduationCap },
     { id: "conselheiro", icon: null }, // Logo RAIO customizada
@@ -36,6 +38,11 @@ export function Navigation({ currentTab, onTabChange }: NavigationProps) {
     { id: "conversas", icon: MessageCircle },
     { id: "perfil", icon: User },
   ];
+
+  // Mobile parity with DesktopSidebar: producer+ get an "admin" shortcut.
+  const tabs = userHasRole(user, "producer")
+    ? [...baseTabs, { id: "admin", icon: ShieldAlert }]
+    : baseTabs;
 
   return (
     <nav 
