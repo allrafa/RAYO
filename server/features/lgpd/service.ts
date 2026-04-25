@@ -121,7 +121,7 @@ export async function exportUserData(userId: number): Promise<UserDataExport> {
 
   const profile = profileRows[0] as { email?: string; name?: string } | undefined;
   if (profile?.email) {
-    sendDataExportEmail(profile.email, profile.name || "Usuário").catch(() => {});
+    void sendDataExportEmail(profile.email, profile.name || "Usuário");
   }
 
   return {
@@ -164,6 +164,10 @@ export async function deleteUserData(userId: number): Promise<void> {
       [userId]
     );
     const deletionRequestId = reqRows[0].id;
+
+    if (originalEmail) {
+      await sendAccountDeletionEmail(originalEmail, originalName);
+    }
 
     await client.query("BEGIN");
 
@@ -234,10 +238,6 @@ export async function deleteUserData(userId: number): Promise<void> {
        WHERE id = $1`,
       [deletionRequestId]
     );
-
-    if (originalEmail) {
-      sendAccountDeletionEmail(originalEmail, originalName).catch(() => {});
-    }
   } catch (err) {
     await client.query("ROLLBACK");
     await query(

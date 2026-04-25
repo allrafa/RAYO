@@ -220,7 +220,7 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
 
   trackEvent(user.id, "user_registered", { method: "email" });
 
-  sendWelcomeEmail(user.email, user.name).catch(() => {});
+  void sendWelcomeEmail(user.email, user.name);
 
   return { user, token };
 }
