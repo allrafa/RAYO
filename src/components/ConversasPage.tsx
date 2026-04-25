@@ -40,8 +40,8 @@ interface UserSearchResult {
   name: string;
 }
 
-const CONVERSATION_POLL_MS = 15_000;
-const MESSAGES_POLL_MS = 5_000;
+const CONVERSATION_POLL_MS = 30_000;
+const MESSAGES_POLL_MS = 10_000;
 
 function getInitials(name: string): string {
   return (name || "?").trim().slice(0, 2).toUpperCase();
@@ -108,7 +108,7 @@ export function ConversasPage() {
     setConversationsLoading(false);
   }, []);
 
-  const loadMessages = useCallback(async (conversationId: number, silent = false) => {
+  const loadMessages = useCallback(async (conversationId: number, silent = false): Promise<{ hasNewIncoming: boolean }> => {
     if (!silent) {
       setMessagesLoading(true);
       setMessagesError(null);
@@ -116,11 +116,19 @@ export function ConversasPage() {
     const res = await api.get<{ messages: MessageItem[] }>(
       `/api/messages/conversations/${conversationId}/messages?limit=100`
     );
+    let hasNewIncoming = false;
     if (res.success && res.data) {
-      const newest = res.data.messages[res.data.messages.length - 1]?.id ?? null;
+      const newestMsg = res.data.messages[res.data.messages.length - 1];
+      const newest = newestMsg?.id ?? null;
       const prevNewest = lastMessageIdRef.current;
       setMessages(res.data.messages);
       lastMessageIdRef.current = newest;
+      // Only consider it "new incoming" if a newer message arrived AND it's from the other user.
+      hasNewIncoming =
+        newest !== null &&
+        newest !== prevNewest &&
+        !!newestMsg &&
+        newestMsg.sender_id !== currentUserId;
       if (!silent || (newest !== null && newest !== prevNewest)) {
         requestAnimationFrame(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: silent ? "smooth" : "auto" });
@@ -130,7 +138,8 @@ export function ConversasPage() {
       setMessagesError(res.error.message);
     }
     if (!silent) setMessagesLoading(false);
-  }, []);
+    return { hasNewIncoming };
+  }, [currentUserId]);
 
   const markRead = useCallback(async (conversationId: number) => {
     const res = await api.post<{ marked: number }>(`/api/messages/conversations/${conversationId}/read`);
@@ -157,11 +166,15 @@ export function ConversasPage() {
       lastMessageIdRef.current = null;
       return;
     }
+    // Mark as read once on open (the conversation may have unread messages from before).
     void loadMessages(activeId, false).then(() => void markRead(activeId));
+    // While the conversation is open, only mark-as-read when a new incoming
+    // message actually arrives. Avoids hammering POST /read on every poll tick.
     const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void loadMessages(activeId, true).then(() => void markRead(activeId));
-      }
+      if (document.visibilityState !== "visible") return;
+      void loadMessages(activeId, true).then(({ hasNewIncoming }) => {
+        if (hasNewIncoming) void markRead(activeId);
+      });
     }, MESSAGES_POLL_MS);
     return () => window.clearInterval(interval);
   }, [activeId, loadMessages, markRead]);

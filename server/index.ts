@@ -43,7 +43,10 @@ app.use("/api/courses", rateLimiter(60, 15 * 60 * 1000), academiaRoutes);
 app.use("/api/community", rateLimiter(60, 15 * 60 * 1000), optionalAuth, communityRoutes);
 app.use("/api/dashboard", rateLimiter(60, 15 * 60 * 1000), dashboardRoutes);
 app.use("/api/users", rateLimiter(10, 15 * 60 * 1000), lgpdRoutes);
-app.use("/api/messages", rateLimiter(120, 15 * 60 * 1000), messagesRoutes);
+// Higher cap because the DM UI polls (messages every 10s, conversations every 30s,
+// unread-count every 20s); each authenticated user must comfortably fit a 15-min
+// active session without hitting 429.
+app.use("/api/messages", rateLimiter(600, 15 * 60 * 1000), messagesRoutes);
 
 app.all("/api/{*path}", (req, res) => {
   sendError(res, `Route ${req.method} ${req.path} not found`, "NOT_FOUND", 404);
