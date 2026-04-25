@@ -212,6 +212,13 @@ export async function listPublicContent(opts: {
   segment?: string;
   interest?: string;
   /**
+   * If provided, the public feed is also filtered to items matching the
+   * caller's segments / interests. Used by the route to satisfy the spec
+   * "filtrado por segmento e interesses do usuário": the route passes
+   * `req.user.interests` and `req.user.segments` here when an authenticated
+   * user calls without explicit `segment` / `interest` query params.
+   * (Original docstring continues below.)
+   *
    * If provided, the public feed is also filtered to items whose `interests`
    * array overlaps with this list. Used to honour the requirement that the
    * public feed be "filtrado por segmento e interesses do usuário": the route
@@ -219,6 +226,7 @@ export async function listPublicContent(opts: {
    * endpoint without an explicit `interest` query param.
    */
   userInterests?: string[];
+  userSegments?: string[];
   search?: string;
   page?: number;
   limit?: number;
@@ -242,6 +250,12 @@ export async function listPublicContent(opts: {
     // Items with no segments are universal; otherwise must include the segment.
     where.push(`(cardinality(segments) = 0 OR $${idx} = ANY(segments))`);
     params.push(opts.segment);
+    idx++;
+  } else if (opts.userSegments && opts.userSegments.length > 0) {
+    // Auto-personalise for authenticated users: keep universal items + any
+    // item that matches at least one of the user's segments.
+    where.push(`(cardinality(segments) = 0 OR segments && $${idx}::text[])`);
+    params.push(opts.userSegments);
     idx++;
   }
   if (opts.interest && opts.interest !== "all") {

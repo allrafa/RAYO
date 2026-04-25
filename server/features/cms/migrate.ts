@@ -38,7 +38,7 @@ const VIDEO_SEEDS: VideoSeed[] = [
     long_description: "Identifique os sinais de alerta antes que seja tarde demais. Este vídeo pode salvar seu relacionamento.",
     cover_url: "https://images.unsplash.com/photo-1601573264251-9c8015828db2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080",
     duration_seconds: 23 * 60 + 15,
-    segments: ["casados", "namorando"], interests: ["Relacionamentos"], tags: ["alerta", "casamento"],
+    segments: ["casados", "namoro"], interests: ["Relacionamentos"], tags: ["alerta", "casamento"],
   },
   {
     slug: "educar-filhos-com-disciplina-positiva",

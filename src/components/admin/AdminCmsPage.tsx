@@ -185,12 +185,10 @@ export function AdminCmsPage() {
           }}
         >
           <option value="all">Todos segmentos</option>
-          <option value="solteiros">Solteiros</option>
-          <option value="namorando">Namorando</option>
+          <option value="solteiro">Solteiro</option>
+          <option value="namoro">Namoro</option>
           <option value="noivos">Noivos</option>
           <option value="casados">Casados</option>
-          <option value="separados">Separados</option>
-          <option value="recasados">Recasados</option>
           <option value="pais">Pais</option>
         </select>
         <input
