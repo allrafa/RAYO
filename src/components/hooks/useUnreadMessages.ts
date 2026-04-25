@@ -1,5 +1,6 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../../lib/api";
+import { useAuth } from "../AuthContext";
 
 const POLL_INTERVAL_MS = 20_000;
 
@@ -15,7 +16,8 @@ interface UnreadMessagesContextValue {
 
 const UnreadMessagesContext = createContext<UnreadMessagesContextValue | null>(null);
 
-export function UnreadMessagesProvider({ children, enabled = true }: { children: ReactNode; enabled?: boolean }) {
+export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [count, setCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const mountedRef = useRef(true);
@@ -31,7 +33,13 @@ export function UnreadMessagesProvider({ children, enabled = true }: { children:
 
   useEffect(() => {
     mountedRef.current = true;
-    if (!enabled) return;
+    // Only poll when authenticated. Avoids 401 noise and unnecessary
+    // traffic before login / after logout.
+    if (!user) {
+      setCount(0);
+      setLoaded(false);
+      return;
+    }
 
     void refresh();
     const interval = window.setInterval(refresh, POLL_INTERVAL_MS);
@@ -46,7 +54,7 @@ export function UnreadMessagesProvider({ children, enabled = true }: { children:
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [enabled, refresh]);
+  }, [user, refresh]);
 
   return createElement(UnreadMessagesContext.Provider, { value: { count, loaded, refresh } }, children);
 }
