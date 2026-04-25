@@ -30,13 +30,25 @@ interface OnboardingData {
   interests: string[];
 }
 
+function getResetTokenFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("reset_token");
+    return token && token.length >= 32 ? token : null;
+  } catch {
+    return null;
+  }
+}
+
 function AppContent() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const [currentTab, setCurrentTab] = useState("home");
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [preAuthStage, setPreAuthStage] = useState<PreAuthStage>("welcome");
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [showPrivacyOverlay, setShowPrivacyOverlay] = useState(false);
+  const [resetToken, setResetToken] = useState<string | null>(() => getResetTokenFromUrl());
 
   const appContext = useApp();
   const isInBookReader = appContext?.isInBookReader || false;
@@ -44,6 +56,31 @@ function AppContent() {
   useEffect(() => {
     analytics.trackAppOpened();
   }, []);
+
+  useEffect(() => {
+    if (resetToken && user) {
+      void logout();
+    }
+  }, [resetToken, user, logout]);
+
+  useEffect(() => {
+    if (resetToken) {
+      setPreAuthStage("auth");
+    }
+  }, [resetToken]);
+
+  const clearResetToken = () => {
+    setResetToken(null);
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("reset_token");
+        window.history.replaceState({}, "", url.toString());
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   if (isLoading) {
     return (
@@ -92,11 +129,13 @@ function AppContent() {
     } else {
       preAuthContent = (
         <AuthPage
-          defaultMode="register"
+          defaultMode={resetToken ? "reset" : "register"}
           prefillName={onboardingData?.name}
           prefillSegments={onboardingData?.segments}
           prefillInterests={onboardingData?.interests}
-          onGoBack={() => setPreAuthStage("welcome")}
+          onGoBack={resetToken ? undefined : () => setPreAuthStage("welcome")}
+          resetToken={resetToken || undefined}
+          onResetComplete={clearResetToken}
         />
       );
     }

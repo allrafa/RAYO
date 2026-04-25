@@ -28,6 +28,8 @@ interface AuthContextType {
   register: (email: string, password: string, name: string, options?: RegisterOptions) => Promise<{ success: boolean; error?: string }>;
   sendVerificationCode: (email: string) => Promise<{ success: boolean; error?: string }>;
   verifyEmailCode: (email: string, code: string) => Promise<{ success: boolean; error?: string }>;
+  requestPasswordReset: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
+  resetPassword: (token: string, password: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (updates: { segments?: string[]; interests?: string[]; goals?: string[]; content_preferences?: string[] }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
@@ -93,6 +95,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error: res.error?.message || "Erro ao criar conta" };
   }, []);
 
+  const requestPasswordReset = useCallback(async (email: string) => {
+    const res = await api.post<{ message: string }>("/api/auth/forgot-password", { email });
+    if (res.success) {
+      return { success: true, message: res.data?.message };
+    }
+    return { success: false, error: res.error?.message || "Erro ao solicitar redefinição de senha" };
+  }, []);
+
+  const resetPassword = useCallback(async (token: string, password: string) => {
+    const res = await api.post<{ message: string }>("/api/auth/reset-password", { token, password });
+    if (res.success) {
+      return { success: true };
+    }
+    return { success: false, error: res.error?.message || "Erro ao redefinir senha" };
+  }, []);
+
   const updateProfile = useCallback(async (updates: { segments?: string[]; interests?: string[]; goals?: string[]; content_preferences?: string[] }) => {
     const res = await api.patch<{ user: User }>("/api/users/profile", updates);
     if (res.success && res.data) {
@@ -108,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, sendVerificationCode, verifyEmailCode, updateProfile, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, sendVerificationCode, verifyEmailCode, requestPasswordReset, resetPassword, updateProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );

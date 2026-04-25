@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "./AuthContext";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { ArrowRight, ArrowLeft, Eye, EyeOff, Mail, ShieldCheck } from "lucide-react";
+import { ArrowRight, ArrowLeft, Eye, EyeOff, Mail, ShieldCheck, KeyRound, CheckCircle2 } from "lucide-react";
 import logoIcon from "figma:asset/827405fdf6d360d2a9ec31dfa3facf23fe3474fb.png";
 
-type AuthMode = "login" | "register";
+type AuthMode = "login" | "register" | "forgot" | "reset";
 type RegisterStep = "form" | "verify" | "password";
 
 interface AuthPageProps {
@@ -15,11 +15,13 @@ interface AuthPageProps {
   prefillSegments?: string[];
   prefillInterests?: string[];
   onGoBack?: () => void;
+  resetToken?: string;
+  onResetComplete?: () => void;
 }
 
-export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, prefillInterests, onGoBack }: AuthPageProps) {
-  const { login, register, sendVerificationCode, verifyEmailCode } = useAuth();
-  const [mode, setMode] = useState<AuthMode>(defaultMode);
+export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, prefillInterests, onGoBack, resetToken, onResetComplete }: AuthPageProps) {
+  const { login, register, sendVerificationCode, verifyEmailCode, requestPasswordReset, resetPassword } = useAuth();
+  const [mode, setMode] = useState<AuthMode>(resetToken ? "reset" : defaultMode);
   const [registerStep, setRegisterStep] = useState<RegisterStep>("form");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -30,6 +32,8 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
   const [password, setPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState(["", "", "", "", "", ""]);
   const [resendTimer, setResendTimer] = useState(0);
+  const [forgotMessage, setForgotMessage] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -121,6 +125,50 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setForgotMessage("");
+    setIsSubmitting(true);
+    try {
+      const result = await requestPasswordReset(email);
+      if (result.success) {
+        setForgotMessage(
+          result.message ||
+            "Se o e-mail informado estiver cadastrado, você receberá um link para redefinir a sua senha em instantes.",
+        );
+      } else {
+        setError(result.error || "Não foi possível processar a solicitação.");
+      }
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!resetToken) {
+      setError("Link de redefinição inválido.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const result = await resetPassword(resetToken, password);
+      if (result.success) {
+        setResetSuccess(true);
+      } else {
+        setError(result.error || "Não foi possível redefinir a senha.");
+      }
+    } catch {
+      setError("Erro de conexão. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -175,10 +223,25 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
     setMode(mode === "login" ? "register" : "login");
     setRegisterStep("form");
     setError("");
+    setForgotMessage("");
     setVerificationCode(["", "", "", "", "", ""]);
   };
 
+  const goToForgot = () => {
+    setMode("forgot");
+    setError("");
+    setForgotMessage("");
+  };
+
+  const backToLogin = () => {
+    setMode("login");
+    setError("");
+    setForgotMessage("");
+    setPassword("");
+  };
+
   const canSendCode = name.trim().length >= 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const canRequestReset = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const codeComplete = verificationCode.every((d) => d !== "");
 
   const renderContent = () => {
@@ -230,9 +293,234 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
               </div>
             </div>
 
+            <div className="text-right -mt-2">
+              <button
+                type="button"
+                onClick={goToForgot}
+                className="text-sm transition-colors hover:underline"
+                style={{ color: "#6B7280", fontWeight: 500 }}
+              >
+                Esqueci minha senha
+              </button>
+            </div>
+
             {error && <ErrorMessage message={error} />}
 
             <ActionButton label="Entrar" isSubmitting={isSubmitting} />
+          </form>
+        </motion.div>
+      );
+    }
+
+    if (mode === "forgot") {
+      return (
+        <motion.div
+          key="forgot"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="text-center mb-10">
+            <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#FEF3C7" }}>
+              <KeyRound className="w-7 h-7" style={{ color: "#D97706" }} />
+            </div>
+            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+              Esqueceu sua senha?
+            </h2>
+            <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+              Informe o e-mail da sua conta e enviaremos um link para criar uma nova senha.
+            </p>
+          </div>
+
+          {forgotMessage ? (
+            <div className="space-y-6">
+              <div
+                className="text-sm text-center py-4 px-4 rounded-lg"
+                style={{ color: "#065F46", background: "rgba(16, 185, 129, 0.08)" }}
+              >
+                <CheckCircle2 className="w-5 h-5 mx-auto mb-2" />
+                {forgotMessage}
+              </div>
+              <p className="text-xs text-center" style={{ color: "#9CA3AF" }}>
+                Verifique também a caixa de spam. O link é válido por 30 minutos.
+              </p>
+              <div className="text-center">
+                <button
+                  onClick={backToLogin}
+                  className="text-sm flex items-center justify-center gap-1 mx-auto transition-colors"
+                  style={{ color: "#1A1A1A", fontWeight: 500 }}
+                >
+                  <ArrowLeft size={14} />
+                  Voltar para login
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotPassword} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Email</Label>
+                <Input
+                  id="forgot-email" type="email" placeholder="seu@email.com" value={email}
+                  onChange={(e) => setEmail(e.target.value)} required autoComplete="email" autoFocus
+                  className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px]"
+                  style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
+                />
+              </div>
+
+              {error && <ErrorMessage message={error} />}
+
+              <div className="w-full max-w-[280px] mx-auto pt-2">
+                <motion.button
+                  type="submit"
+                  disabled={isSubmitting || !canRequestReset}
+                  className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background: "#1A1A1A", color: "#FFFFFF", border: "none", borderRadius: "12px",
+                    padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
+                    cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                  }}
+                  whileHover={canRequestReset && !isSubmitting ? { scale: 1.02, boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)" } : {}}
+                  whileTap={canRequestReset && !isSubmitting ? { scale: 0.98 } : {}}
+                >
+                  {isSubmitting ? <Spinner /> : (
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      Enviar link
+                      <Mail className="w-4 h-4" />
+                    </span>
+                  )}
+                </motion.button>
+              </div>
+            </form>
+          )}
+        </motion.div>
+      );
+    }
+
+    if (mode === "reset") {
+      if (resetSuccess) {
+        return (
+          <motion.div
+            key="reset-success"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="text-center mb-10">
+              <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#D1FAE5" }}>
+                <CheckCircle2 className="w-7 h-7" style={{ color: "#059669" }} />
+              </div>
+              <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+                Senha redefinida!
+              </h2>
+              <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+                Sua senha foi atualizada e todas as sessões anteriores foram encerradas. Faça login com a nova senha para continuar.
+              </p>
+            </div>
+
+            <div className="w-full max-w-[280px] mx-auto pt-2">
+              <motion.button
+                type="button"
+                onClick={() => {
+                  setResetSuccess(false);
+                  setPassword("");
+                  setMode("login");
+                  onResetComplete?.();
+                }}
+                className="relative w-full group overflow-hidden"
+                style={{
+                  background: "#1A1A1A", color: "#FFFFFF", border: "none", borderRadius: "12px",
+                  padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
+                  cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+                }}
+                whileHover={{ scale: 1.02, boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)" }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  Ir para login
+                  <ArrowRight className="w-4 h-4" />
+                </span>
+              </motion.button>
+            </div>
+          </motion.div>
+        );
+      }
+
+      return (
+        <motion.div
+          key="reset"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="text-center mb-10">
+            <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#FEF3C7" }}>
+              <KeyRound className="w-7 h-7" style={{ color: "#D97706" }} />
+            </div>
+            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+              Crie uma nova senha
+            </h2>
+            <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+              Escolha uma senha forte para proteger sua conta.
+            </p>
+          </div>
+
+          <form onSubmit={handleResetPassword} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="new-password" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Nova senha</Label>
+              <div className="relative">
+                <Input
+                  id="new-password" type={showPassword ? "text" : "password"} placeholder="Mínimo 8 caracteres"
+                  value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8}
+                  autoComplete="new-password" autoFocus
+                  className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px] pr-12"
+                  style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1" style={{ color: "#9CA3AF" }} tabIndex={-1}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            {error && <ErrorMessage message={error} />}
+
+            <ActionButton label="Redefinir senha" isSubmitting={isSubmitting} />
+
+            {error && (
+              <div className="pt-2 flex flex-col items-center gap-3 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onResetComplete?.();
+                    setPassword("");
+                    setError("");
+                    setForgotMessage("");
+                    setMode("forgot");
+                  }}
+                  className="text-sm transition-colors hover:underline"
+                  style={{ color: "#1A1A1A", fontWeight: 500 }}
+                >
+                  Solicitar um novo link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onResetComplete?.();
+                    setPassword("");
+                    setError("");
+                    setMode("login");
+                  }}
+                  className="text-xs transition-colors flex items-center justify-center gap-1"
+                  style={{ color: "#9CA3AF" }}
+                >
+                  <ArrowLeft size={12} />
+                  Voltar para login
+                </button>
+              </div>
+            )}
           </form>
         </motion.div>
       );
@@ -476,7 +764,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
         </AnimatePresence>
 
         <div className="mt-8 text-center space-y-3">
-          {(mode === "login" || registerStep === "form") && (
+          {(mode === "login" || (mode === "register" && registerStep === "form")) && (
             <button onClick={switchMode} className="text-sm transition-colors" style={{ color: "#6B7280", fontWeight: 400 }}>
               {mode === "login" ? (
                 <span>
@@ -492,7 +780,14 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
             </button>
           )}
 
-          {onGoBack && (mode === "login" || registerStep === "form") && (
+          {mode === "forgot" && !forgotMessage && (
+            <button onClick={backToLogin} className="text-sm transition-colors flex items-center justify-center gap-1 mx-auto" style={{ color: "#6B7280", fontWeight: 400 }}>
+              <ArrowLeft size={14} />
+              Voltar para login
+            </button>
+          )}
+
+          {onGoBack && (mode === "login" || (mode === "register" && registerStep === "form")) && (
             <button onClick={onGoBack} className="block mx-auto text-xs transition-colors" style={{ color: "#9CA3AF" }}>
               Voltar ao início
             </button>

@@ -60,6 +60,8 @@ vite.config.ts           # Vite + API proxy config
 - `POST /api/auth/register` — Create account (requires verified email; accepts segments, interests, goals, content_preferences)
 - `POST /api/auth/login` — Login (returns httpOnly session cookie)
 - `POST /api/auth/logout` — Logout (clears session)
+- `POST /api/auth/forgot-password` — Request password reset link by e-mail (always returns success to avoid e-mail enumeration)
+- `POST /api/auth/reset-password` — Redefine password using single-use token (invalidates all sessions on success)
 - `GET /api/auth/me` — Get current user (requires auth)
 - `PATCH /api/users/profile` — Update user profile fields (segments, interests, goals, content_preferences, name)
 - `GET /api/gamification/profile` — XP, level, streak, progress stats (requires auth)
@@ -84,13 +86,14 @@ vite.config.ts           # Vite + API proxy config
 
 ## Email Sending (Resend)
 - Provider: Resend (`resend` npm package)
-- Module: `server/lib/email.ts` exposes `sendVerificationCodeEmail`, `sendWelcomeEmail`, `sendDataExportEmail`, `sendAccountDeletionEmail`
+- Module: `server/lib/email.ts` exposes `sendVerificationCodeEmail`, `sendWelcomeEmail`, `sendPasswordResetEmail`, `sendDataExportEmail`, `sendAccountDeletionEmail`
 - Triggers:
   - Verification code → on `POST /api/auth/send-code`
   - Welcome → after successful `POST /api/auth/register`
+  - Password reset link → on `POST /api/auth/forgot-password` (link valid 30 minutes, single-use; resetting invalidates all sessions)
   - LGPD export confirmation → after successful `POST /api/users/data-export`
   - LGPD deletion confirmation → after successful `POST /api/users/data-deletion` (sent to original e-mail before anonymization completes downstream effects)
-- Failure handling: welcome / LGPD e-mails are best-effort (failures logged, never block the request). Verification e-mails block in production (`NODE_ENV=production`); in development, console fallback ensures the code is always reachable
+- Failure handling: welcome / LGPD e-mails are best-effort (failures logged, never block the request). Verification e-mails block in production (`NODE_ENV=production`); password reset and verification e-mails fall back to a console log in development so links/codes are always reachable. The `POST /api/auth/forgot-password` endpoint always returns a success message (even for unknown e-mails) to avoid e-mail enumeration.
 - Required env vars:
   - `resend_api_key` — Resend API key (already configured)
 - Optional env vars:

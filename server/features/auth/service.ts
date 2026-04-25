@@ -3,13 +3,23 @@ import crypto from "crypto";
 import { query } from "../../db/index.js";
 import type { RegisterInput, LoginInput } from "./validation.js";
 import { trackEvent } from "../analytics/service.js";
-import { sendVerificationCodeEmail, sendWelcomeEmail } from "../../lib/email.js";
+import { sendVerificationCodeEmail, sendWelcomeEmail, sendPasswordResetEmail } from "../../lib/email.js";
+import { logger } from "../../utils/logger.js";
 
 const SALT_ROUNDS = 12;
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 const VERIFICATION_CODE_EXPIRY_MS = 10 * 60 * 1000;
 const MAX_CODE_ATTEMPTS = 5;
 const RESEND_COOLDOWN_MS = 60 * 1000;
+const PASSWORD_RESET_EXPIRY_MS = 30 * 60 * 1000;
+const PASSWORD_RESET_REQUEST_COOLDOWN_MS = 60 * 1000;
+
+function getAppUrl(): string {
+  return (
+    process.env.APP_URL ||
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000")
+  );
+}
 
 function generateToken(): string {
   return crypto.randomBytes(32).toString("hex");
@@ -296,6 +306,148 @@ export async function logoutUser(token: string): Promise<void> {
 
 export async function logoutAllSessions(userId: number): Promise<void> {
   await query("DELETE FROM sessions WHERE user_id = $1", [userId]);
+}
+
+export async function requestPasswordReset(email: string, ip?: string): Promise<void> {
+  const userResult = await query(
+    "SELECT id, email, name FROM users WHERE email = $1",
+    [email],
+  );
+
+  if (userResult.rows.length === 0) {
+    logger.info("Auth", `Password reset requested for unknown email: ${email}`);
+    return;
+  }
+
+  const user = userResult.rows[0] as { id: number; email: string; name: string };
+
+  const recent = await query(
+    `SELECT created_at FROM password_reset_tokens
+     WHERE user_id = $1 AND used_at IS NULL
+     ORDER BY created_at DESC LIMIT 1`,
+    [user.id],
+  );
+
+  if (recent.rows.length > 0) {
+    const lastSent = new Date(recent.rows[0].created_at).getTime();
+    const elapsed = Date.now() - lastSent;
+    if (elapsed < PASSWORD_RESET_REQUEST_COOLDOWN_MS) {
+      logger.info(
+        "Auth",
+        `Password reset cooldown active for user ${user.id}; suppressing duplicate email.`,
+      );
+      return;
+    }
+  }
+
+  await query(
+    `UPDATE password_reset_tokens
+     SET used_at = NOW()
+     WHERE user_id = $1 AND used_at IS NULL`,
+    [user.id],
+  );
+
+  const token = generateToken();
+  const tokenHash = hashToken(token);
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS);
+
+  await query(
+    `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at, requested_ip)
+     VALUES ($1, $2, $3, $4)`,
+    [user.id, tokenHash, expiresAt, ip || null],
+  );
+
+  const resetUrl = `${getAppUrl()}/?reset_token=${token}`;
+  const isDev = process.env.NODE_ENV !== "production";
+
+  const sendResult = await sendPasswordResetEmail(user.email, user.name, resetUrl);
+
+  if (!sendResult.sent && isDev) {
+    console.log(`\n========================================`);
+    console.log(`🔐 LINK DE REDEFINIÇÃO DE SENHA (dev fallback)`);
+    console.log(`   Email: ${user.email}`);
+    console.log(`   Link: ${resetUrl}`);
+    console.log(`   Expira em: 30 minutos`);
+    console.log(`========================================\n`);
+  }
+
+  trackEvent(user.id, "password_reset_requested", {});
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  if (!token || typeof token !== "string" || token.length < 32) {
+    const err = new Error("Link de redefinição inválido.") as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "INVALID_RESET_TOKEN";
+    throw err;
+  }
+
+  if (!newPassword || typeof newPassword !== "string" || newPassword.length < 8) {
+    const err = new Error("A nova senha deve ter pelo menos 8 caracteres.") as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "WEAK_PASSWORD";
+    throw err;
+  }
+
+  const tokenHash = hashToken(token);
+
+  const lookup = await query(
+    `SELECT id, user_id, expires_at, used_at
+     FROM password_reset_tokens
+     WHERE token_hash = $1`,
+    [tokenHash],
+  );
+
+  if (lookup.rows.length === 0) {
+    const err = new Error("Link de redefinição inválido ou já utilizado.") as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "INVALID_RESET_TOKEN";
+    throw err;
+  }
+
+  const lookupRow = lookup.rows[0] as { used_at: string | null; expires_at: string };
+
+  if (lookupRow.used_at) {
+    const err = new Error("Este link de redefinição já foi utilizado. Solicite um novo.") as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "RESET_TOKEN_USED";
+    throw err;
+  }
+
+  if (new Date(lookupRow.expires_at) < new Date()) {
+    const err = new Error("Link de redefinição expirado. Solicite um novo.") as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "RESET_TOKEN_EXPIRED";
+    throw err;
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+  const claim = await query(
+    `UPDATE password_reset_tokens
+     SET used_at = NOW()
+     WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()
+     RETURNING id, user_id`,
+    [tokenHash],
+  );
+
+  if (claim.rows.length === 0) {
+    const err = new Error("Este link de redefinição já foi utilizado. Solicite um novo.") as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "RESET_TOKEN_USED";
+    throw err;
+  }
+
+  const userId = (claim.rows[0] as { user_id: number }).user_id;
+
+  await query(
+    "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
+    [passwordHash, userId],
+  );
+
+  await logoutAllSessions(userId);
+
+  trackEvent(userId, "password_reset_completed", {});
 }
 
 export async function updateUserProfile(

@@ -76,6 +76,30 @@ export async function initializeSchema() {
   `);
 
   await query(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash VARCHAR(255) UNIQUE NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      used_at TIMESTAMP,
+      requested_ip VARCHAR(45),
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_password_reset_token_hash ON password_reset_tokens(token_hash)
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_password_reset_user_id ON password_reset_tokens(user_id)
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_password_reset_expires ON password_reset_tokens(expires_at)
+  `);
+
+  await query(`
     CREATE TABLE IF NOT EXISTS badges (
       id SERIAL PRIMARY KEY,
       name VARCHAR(50) UNIQUE NOT NULL,

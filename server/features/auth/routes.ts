@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { validateRegister, validateLogin } from "./validation.js";
-import { registerUser, loginUser, logoutUser, sendVerificationCode, verifyCode } from "./service.js";
+import { registerUser, loginUser, logoutUser, sendVerificationCode, verifyCode, requestPasswordReset, resetPassword } from "./service.js";
 import { success, created, error } from "../../utils/response.js";
 import { requireAuth } from "../../middleware/auth.js";
 
@@ -73,6 +73,51 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
     const { user, token } = await registerUser(validation.data);
     setSessionCookie(res, token);
     created(res, { user });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/forgot-password", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = req.body || {};
+
+    if (!email || typeof email !== "string") {
+      error(res, "Email é obrigatório", "VALIDATION_ERROR", 400);
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      error(res, "Formato de email inválido", "VALIDATION_ERROR", 400);
+      return;
+    }
+
+    await requestPasswordReset(email.trim().toLowerCase(), req.ip);
+    success(res, {
+      message: "Se o e-mail informado estiver cadastrado, você receberá um link para redefinir a sua senha em instantes.",
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/reset-password", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { token, password } = req.body || {};
+
+    if (!token || typeof token !== "string") {
+      error(res, "Token é obrigatório", "VALIDATION_ERROR", 400);
+      return;
+    }
+
+    if (!password || typeof password !== "string" || password.length < 8) {
+      error(res, "A nova senha deve ter pelo menos 8 caracteres", "VALIDATION_ERROR", 400);
+      return;
+    }
+
+    await resetPassword(token, password);
+    success(res, { message: "Senha redefinida com sucesso. Faça login com sua nova senha." });
   } catch (err) {
     next(err);
   }

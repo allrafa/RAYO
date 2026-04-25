@@ -158,6 +158,31 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<Sen
   return sendEmail({ to: email, subject, html, text });
 }
 
+export async function sendPasswordResetEmail(
+  email: string,
+  name: string,
+  resetUrl: string,
+): Promise<SendResult> {
+  const subject = "Redefina sua senha RAIO";
+  const preheader = "Recebemos uma solicitação para redefinir a senha da sua conta RAIO.";
+  const html = layout(
+    `
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Redefinir senha</h1>
+      <p style="margin:0 0 16px 0;">Olá, ${escapeHtml(name)}.</p>
+      <p style="margin:0 0 16px 0;">Recebemos uma solicitação para redefinir a senha da sua conta RAIO. Clique no botão abaixo para escolher uma nova senha. O link é válido por <strong>30 minutos</strong> e pode ser usado uma única vez.</p>
+      <div style="text-align:center;margin:32px 0;">
+        <a href="${resetUrl}" style="display:inline-block;padding:14px 28px;background:${RAIO_ACCENT};color:${RAIO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Redefinir minha senha</a>
+      </div>
+      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Se o botão não funcionar, copie e cole este link no seu navegador:</p>
+      <p style="margin:0 0 24px 0;word-break:break-all;color:${RAIO_ACCENT};font-size:13px;">${resetUrl}</p>
+      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Se você não solicitou esta redefinição, pode ignorar este e-mail com segurança — sua senha atual continua válida.</p>
+    `,
+    preheader,
+  );
+  const text = `Olá, ${name}.\n\nRecebemos uma solicitação para redefinir a senha da sua conta RAIO.\n\nAcesse o link abaixo para escolher uma nova senha (válido por 30 minutos, uso único):\n${resetUrl}\n\nSe você não solicitou esta redefinição, ignore este e-mail.`;
+  return sendEmail({ to: email, subject, html, text });
+}
+
 export async function sendDataExportEmail(email: string, name: string): Promise<SendResult> {
   const subject = "Seus dados foram exportados (LGPD)";
   const preheader = "Sua solicitação de exportação de dados foi processada com sucesso.";
