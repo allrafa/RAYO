@@ -205,6 +205,21 @@ export async function initializeSchema() {
 
   await query(`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`);
 
+  // DB-level integrity guard: only the four documented roles are accepted.
+  // Idempotent — does nothing if the constraint already exists.
+  await query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'users_role_check'
+      ) THEN
+        ALTER TABLE users
+          ADD CONSTRAINT users_role_check
+          CHECK (role IN ('client', 'producer', 'moderator', 'admin'));
+      END IF;
+    END$$;
+  `);
+
   await query(`
     CREATE TABLE IF NOT EXISTS courses (
       id SERIAL PRIMARY KEY,

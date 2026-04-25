@@ -5,7 +5,7 @@ import { trackEvent } from "../analytics/service.js";
 export async function listForums() {
   const { rows } = await query(
     `SELECT f.id, f.name, f.description, f.icon, f.life_context, f.category,
-       (SELECT COUNT(*) FROM posts p WHERE p.forum_id = f.id) AS post_count
+       (SELECT COUNT(*) FROM posts p WHERE p.forum_id = f.id AND p.is_hidden = FALSE) AS post_count
      FROM forums f
      WHERE f.is_active = true
      ORDER BY f.sort_order`
