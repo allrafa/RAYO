@@ -32,3 +32,6 @@ Thumbs.db
 # Replit
 .cache/
 .config/
+
+# Uploaded media (managed by CMS, not source-controlled)
+uploads/

@@ -287,10 +287,16 @@ publicCmsRouter.use(optionalAuth);
 
 publicCmsRouter.get("/", async (req, res, next) => {
   try {
-    const { kind, segment, search, page, limit } = req.query;
+    const { kind, segment, interest, search, page, limit, mine } = req.query;
+    // Auto-personalise by user interests when authenticated and the caller
+    // didn't pass an explicit `interest` filter. `mine=0` opts out.
+    const wantsAuto = req.user && interest === undefined && mine !== "0";
+    const userInterests = wantsAuto ? (req.user!.interests ?? []) : undefined;
     const result = await listPublicContent({
       kind: kind as string | undefined,
       segment: segment as string | undefined,
+      interest: interest as string | undefined,
+      userInterests,
       search: search as string | undefined,
       page: page ? parseInt(page as string, 10) : undefined,
       limit: limit ? parseInt(limit as string, 10) : undefined,

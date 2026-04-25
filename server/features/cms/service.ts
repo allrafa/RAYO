@@ -203,6 +203,15 @@ export async function listAdminContent(filters: {
 export async function listPublicContent(opts: {
   kind?: string;
   segment?: string;
+  interest?: string;
+  /**
+   * If provided, the public feed is also filtered to items whose `interests`
+   * array overlaps with this list. Used to honour the requirement that the
+   * public feed be "filtrado por segmento e interesses do usuário": the route
+   * passes `req.user.interests` here when an authenticated user calls the
+   * endpoint without an explicit `interest` query param.
+   */
+  userInterests?: string[];
   search?: string;
   page?: number;
   limit?: number;
@@ -223,8 +232,21 @@ export async function listPublicContent(opts: {
     params.push(opts.kind);
   }
   if (opts.segment && opts.segment !== "all") {
+    // Items with no segments are universal; otherwise must include the segment.
     where.push(`(cardinality(segments) = 0 OR $${idx} = ANY(segments))`);
     params.push(opts.segment);
+    idx++;
+  }
+  if (opts.interest && opts.interest !== "all") {
+    // Explicit single-interest filter takes precedence over auto-personalisation.
+    where.push(`(cardinality(interests) = 0 OR $${idx} = ANY(interests))`);
+    params.push(opts.interest);
+    idx++;
+  } else if (opts.userInterests && opts.userInterests.length > 0) {
+    // Auto-personalise for authenticated users: keep universal items + any
+    // item that matches at least one of the user's interests.
+    where.push(`(cardinality(interests) = 0 OR interests && $${idx}::text[])`);
+    params.push(opts.userInterests);
     idx++;
   }
   if (opts.search) {

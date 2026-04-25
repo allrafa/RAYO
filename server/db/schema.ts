@@ -649,6 +649,13 @@ async function seedBadgesAndMissions() {
   console.log("[DB] Seeded badges and missions.");
 }
 
+// seedCourses is a one-shot bootstrap migration. After Task #17 the CMS
+// (`server/features/cms/*`) is the authoritative source for course authoring:
+// producers create/edit modules and lessons via /api/admin/cms/courses/*.
+// This function only runs when the `courses` table is completely empty (i.e.
+// the very first boot of a fresh database). Once any course exists — whether
+// from this seed or created in the CMS — it never re-seeds. Treat this as a
+// historical bootstrap, not as the runtime source of truth.
 async function seedCourses() {
   const { rows } = await query(`SELECT COUNT(*) as count FROM courses`);
   if (parseInt(rows[0].count) > 0) return;

@@ -79,6 +79,7 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
   const [interestInput, setInterestInput] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [courses, setCourses] = useState<Array<{ id: number; title: string; content_item_id: number | null }>>([]);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
@@ -136,31 +137,52 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
     }));
   }
 
+  // Use XHR (not fetch) so we get real upload progress events. Tracks
+  // per-target progress so the UI can render an inline progress bar for the
+  // file currently being uploaded — required for large media (videos can be
+  // 100+ MB on a slow connection).
   async function uploadFile(target: "media" | "cover", file: File) {
-    const fd = new FormData();
-    fd.append("file", file);
+    setUploadProgress((p) => ({ ...p, [target]: 0 }));
     try {
-      toast.loading(`Enviando ${file.name}...`, { id: `up-${target}` });
-      // We need raw fetch because api.post serializes JSON.
-      const res = await fetch("/api/admin/cms/media/upload", {
-        method: "POST", credentials: "include", body: fd,
+      const url: string = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/admin/cms/media/upload");
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) {
+            const pct = Math.round((ev.loaded / ev.total) * 100);
+            setUploadProgress((p) => ({ ...p, [target]: pct }));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Falha de rede ao enviar"));
+        xhr.onload = () => {
+          try {
+            const json = JSON.parse(xhr.responseText || "{}");
+            if (xhr.status >= 200 && xhr.status < 300 && json.success) {
+              resolve(json.data.asset.public_url as string);
+            } else {
+              reject(new Error(json.error?.message || `Upload falhou (HTTP ${xhr.status})`));
+            }
+          } catch {
+            reject(new Error("Resposta inválida do servidor"));
+          }
+        };
+        const fd = new FormData();
+        fd.append("file", file);
+        xhr.send(fd);
       });
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error?.message || "Upload falhou");
-      }
-      const url: string = json.data.asset.public_url;
-      const duration: number | null = null;
-      if (target === "media") {
-        set("media_url", url);
-        if (duration) set("duration_seconds", duration);
-      } else {
-        set("cover_url", url);
-      }
-      toast.success("Arquivo enviado", { id: `up-${target}` });
+      if (target === "media") set("media_url", url);
+      else set("cover_url", url);
+      toast.success(`${file.name} enviado`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro";
-      toast.error(msg, { id: `up-${target}` });
+      toast.error(msg);
+    } finally {
+      setUploadProgress((p) => {
+        const next = { ...p };
+        delete next[target];
+        return next;
+      });
     }
   }
 
@@ -398,6 +420,9 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
                     <input ref={fileInputRef} type="file" hidden
                       onChange={(e) => e.target.files?.[0] && uploadFile("media", e.target.files[0])} />
                   </div>
+                  {uploadProgress.media !== undefined && (
+                    <UploadProgressBar pct={uploadProgress.media} />
+                  )}
                 </Field>
               )}
               {(data.kind === "video" || data.kind === "reels") && (
@@ -458,6 +483,9 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
                 <input ref={coverInputRef} type="file" accept="image/*" hidden
                   onChange={(e) => e.target.files?.[0] && uploadFile("cover", e.target.files[0])} />
               </div>
+              {uploadProgress.cover !== undefined && (
+                <UploadProgressBar pct={uploadProgress.cover} />
+              )}
             </div>
           </Field>
 
@@ -550,6 +578,29 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+function UploadProgressBar({ pct }: { pct: number }) {
+  return (
+    <div className="mt-2">
+      <div
+        className="h-2 rounded-full overflow-hidden"
+        style={{ background: "var(--raio-bg-tertiary)" }}
+      >
+        <div
+          className="h-full transition-all"
+          style={{
+            width: `${pct}%`,
+            background: "var(--raio-accent-primary)",
+          }}
+        />
+      </div>
+      <p className="text-xs mt-1" style={{ color: "var(--raio-text-tertiary)" }}>
+        Enviando... {pct}%
+      </p>
     </div>
   );
 }
