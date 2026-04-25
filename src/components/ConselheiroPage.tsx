@@ -24,6 +24,7 @@ interface ActionButton {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   action: () => void;
+  disabled?: boolean;
 }
 
 export function ConselheiroPage() {
@@ -58,9 +59,10 @@ export function ConselheiroPage() {
         },
         {
           type: 'test',
-          label: 'Fazer avaliação',
+          label: 'Fazer avaliação (em breve)',
           icon: Target,
-          action: () => handleTakeTest()
+          action: () => handleTakeTest(),
+          disabled: true
         }
       ]
     };
@@ -122,9 +124,10 @@ export function ConselheiroPage() {
           },
           {
             type: 'test',
-            label: '📊 Teste: Avalie seu Relacionamento',
+            label: '📊 Teste: Avalie seu Relacionamento (em breve)',
             icon: Target,
-            action: () => handleTakeTest()
+            action: () => handleTakeTest(),
+            disabled: true
           },
           {
             type: 'course',
@@ -152,15 +155,17 @@ export function ConselheiroPage() {
           },
           {
             type: 'test',
-            label: '📊 Descubra seu Estilo Parental',
+            label: '📊 Descubra seu Estilo Parental (em breve)',
             icon: Target,
-            action: () => handleTakeTest()
+            action: () => handleTakeTest(),
+            disabled: true
           },
           {
             type: 'article',
-            label: '📖 Guia: Como Lidar com Birras',
+            label: '📖 Guia: Como Lidar com Birras (em breve)',
             icon: FileText,
-            action: () => enhancedToast.info({ title: 'Abrindo artigo...' })
+            action: () => enhancedToast.info({ title: 'Em breve!' }),
+            disabled: true
           }
         ]
       };
@@ -182,9 +187,10 @@ export function ConselheiroPage() {
           },
           {
             type: 'test',
-            label: '📊 Perfil Financeiro do Casal',
+            label: '📊 Perfil Financeiro do Casal (em breve)',
             icon: Target,
-            action: () => handleTakeTest()
+            action: () => handleTakeTest(),
+            disabled: true
           },
           {
             type: 'course',
@@ -212,9 +218,10 @@ export function ConselheiroPage() {
           },
           {
             type: 'exercise',
-            label: '✍️ Exercício: Escuta Ativa',
+            label: '✍️ Exercício: Escuta Ativa (em breve)',
             icon: Target,
-            action: () => enhancedToast.info({ title: 'Iniciando exercício...' })
+            action: () => enhancedToast.info({ title: 'Em breve!' }),
+            disabled: true
           },
           {
             type: 'course',
@@ -241,9 +248,10 @@ export function ConselheiroPage() {
         },
         {
           type: 'test',
-          label: '📊 Avaliação Completa de Relacionamento',
+          label: '📊 Avaliação Completa de Relacionamento (em breve)',
           icon: Target,
-          action: () => handleTakeTest()
+          action: () => handleTakeTest(),
+          disabled: true
         },
         {
           type: 'course',
@@ -303,9 +311,9 @@ export function ConselheiroPage() {
   };
 
   const handleTakeTest = () => {
-    enhancedToast.success({
-      title: "📊 Iniciando avaliação",
-      description: "Carregando seu teste personalizado...",
+    enhancedToast.info({
+      title: "📊 Avaliação em breve",
+      description: "Em breve você poderá fazer avaliações personalizadas aqui.",
       haptic: true
     });
   };
@@ -323,10 +331,9 @@ export function ConselheiroPage() {
   };
 
   const handleVoiceInput = () => {
-    setIsSpeaking(!isSpeaking);
     enhancedToast.info({
-      title: isSpeaking ? "🎤 Desligando microfone" : "🎤 Ouvindo...",
-      description: isSpeaking ? "Microfone desligado" : "Pode falar!",
+      title: "🎤 Entrada por voz em breve",
+      description: "Logo você poderá falar com o Conselheiro.",
       haptic: true
     });
   };
@@ -444,7 +451,7 @@ export function ConselheiroPage() {
                         <Button
                           key={idx}
                           variant="outline"
-                          className="w-full justify-start gap-2 transition-all hover:shadow-md"
+                          className="w-full justify-start gap-2 transition-all hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
                           style={{
                             background: colorScheme.bg,
                             color: colorScheme.text,
@@ -452,11 +459,16 @@ export function ConselheiroPage() {
                             borderWidth: '1.5px'
                           }}
                           onClick={action.action}
+                          disabled={action.disabled}
+                          aria-disabled={action.disabled || undefined}
+                          title={action.disabled ? 'Em breve' : undefined}
                           onMouseEnter={(e) => {
+                            if (action.disabled) return;
                             e.currentTarget.style.transform = 'translateX(4px)';
                             e.currentTarget.style.borderColor = 'var(--raio-accent-primary)';
                           }}
                           onMouseLeave={(e) => {
+                            if (action.disabled) return;
                             e.currentTarget.style.transform = 'translateX(0)';
                             e.currentTarget.style.borderColor = colorScheme.border;
                           }}
@@ -627,17 +639,21 @@ export function ConselheiroPage() {
               </Sheet>
             )}
 
-            {/* Botão Microfone */}
+            {/* Botão Microfone — em breve */}
             <Button
               variant="outline"
               size="icon"
-              className="flex-shrink-0 h-9 w-9"
+              className="flex-shrink-0 h-9 w-9 disabled:opacity-60"
               style={{
-                background: isSpeaking ? 'var(--raio-accent-light)' : 'var(--raio-bg-secondary)',
-                borderColor: isSpeaking ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)',
-                color: isSpeaking ? 'var(--raio-accent-primary)' : 'var(--raio-text-secondary)'
+                background: 'var(--raio-bg-secondary)',
+                borderColor: 'var(--raio-border-default)',
+                color: 'var(--raio-text-tertiary)'
               }}
               onClick={handleVoiceInput}
+              disabled
+              aria-disabled="true"
+              aria-label="Entrada por voz (em breve)"
+              title="Entrada por voz — em breve"
             >
               <Mic className="w-4 h-4" />
             </Button>

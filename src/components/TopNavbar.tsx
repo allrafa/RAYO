@@ -71,22 +71,28 @@ export function TopNavbar({ onTabChange }: TopNavbarProps) {
 
         {/* Quick Actions */}
         <div className="flex items-center gap-2">
-          {/* Criar Conteúdo */}
+          {/* Criar Conteúdo — em breve */}
           <Button
             variant="ghost"
             size="icon"
-            className="relative hover:bg-gray-100 dark:hover:bg-gray-800"
-            onClick={() => toast.info("Em breve!")}
+            className="relative hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+            disabled
+            aria-disabled="true"
+            aria-label="Criar conteúdo (em breve)"
+            title="Criar conteúdo — em breve"
           >
             <Plus className="w-5 h-5" />
           </Button>
 
-          {/* Favoritos */}
+          {/* Favoritos — em breve */}
           <Button
             variant="ghost"
             size="icon"
-            className="relative hover:bg-gray-100 dark:hover:bg-gray-800"
-            onClick={() => toast.info("Em breve!")}
+            className="relative hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+            disabled
+            aria-disabled="true"
+            aria-label="Favoritos (em breve)"
+            title="Favoritos — em breve"
           >
             <Heart className="w-5 h-5" />
           </Button>
@@ -109,22 +115,20 @@ export function TopNavbar({ onTabChange }: TopNavbarProps) {
             )}
           </Button>
 
-          {/* Notificações */}
+          {/* Notificações — em breve */}
           <Button
             variant="ghost"
             size="icon"
-            className="relative hover:bg-gray-100 dark:hover:bg-gray-800"
-            onClick={() => toast.info("Em breve!")}
+            className="relative hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
+            disabled
+            aria-disabled="true"
+            aria-label="Notificações (em breve)"
+            title="Notificações — em breve"
           >
             <Bell className="w-5 h-5" />
-            <Badge 
-              className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-[9px] bg-[#22C55E] text-white"
-            >
-              2
-            </Badge>
           </Button>
 
-          {/* CTA Premium (opcional) */}
+          {/* CTA Premium */}
           <Button
             className="ml-2 hover:opacity-90"
             style={{
@@ -132,6 +136,7 @@ export function TopNavbar({ onTabChange }: TopNavbarProps) {
               color: theme === 'dark' ? 'var(--raio-text-primary)' : 'var(--raio-text-inverse)',
             }}
             onClick={() => toast.success("Você já é Premium! 🎉")}
+            aria-label="Status Premium"
           >
             Premium
           </Button>

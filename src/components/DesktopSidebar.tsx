@@ -191,6 +191,8 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
                 }
               }}
               title={isMinimized ? item.label : undefined}
+              aria-label={isMinimized ? item.label : undefined}
+              aria-current={isActive ? "page" : undefined}
             >
               <div className={`relative ${isActive && isSpecial ? 'conselheiro-icon-glow' : ''}`}>
                 {Icon ? (
@@ -249,6 +251,7 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
             className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 mb-2`}
             onClick={onToggleMinimize}
             title={isMinimized ? "Expandir sidebar" : "Minimizar sidebar"}
+            aria-label={isMinimized ? "Expandir sidebar" : "Minimizar sidebar"}
           >
             {isMinimized ? (
               <ChevronRight className="w-5 h-5" />
@@ -267,6 +270,7 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
           className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800`}
           onClick={toggleTheme}
           title={isMinimized ? (theme === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro') : undefined}
+          aria-label={theme === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}
         >
           {theme === 'light' ? (
             <Moon className="w-5 h-5" />
@@ -278,9 +282,11 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
 
         <Button
           variant="ghost"
-          className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800`}
-          onClick={() => toast.info("Em breve!")}
-          title={isMinimized ? "Configurações" : undefined}
+          className={`w-full ${isMinimized ? 'justify-center px-2' : 'justify-start px-4'} gap-3 h-12 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50`}
+          disabled
+          aria-disabled="true"
+          aria-label="Configurações (em breve)"
+          title={isMinimized ? "Configurações — em breve" : "Em breve"}
         >
           <Settings className="w-5 h-5" />
           {!isMinimized && <span style={{ fontWeight: 500 }}>Configurações</span>}
@@ -294,6 +300,7 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
             await logout();
           }}
           title={isMinimized ? "Sair" : undefined}
+          aria-label="Sair"
         >
           <LogOut className="w-5 h-5" />
           {!isMinimized && <span style={{ fontWeight: 500 }}>Sair</span>}

@@ -218,3 +218,11 @@ vite.config.ts           # Vite + API proxy config
 4. Always consult `architecture.md` before starting work
 5. Break tasks into small, specific units
 6. Research existing code before implementing
+
+## Design System & UI/UX
+- Canonical tokens live in `src/design-tokens.ts` and are exposed as CSS vars `--raio-*` in `src/styles/globals.css`. Components consume `var(--raio-*)` (via inline `style`) or Shadcn semantic vars (`bg-card`, `text-foreground`).
+- Avoid literal colors (`#22C55E`, `bg-green-500`) in new code; use tokens. Neutral overlays (`black/30`, `white/90`) are fine.
+- Placeholder buttons must be `disabled` + `aria-disabled` + `title="Em breve"` — never a bare `toast.info("Em breve!")`.
+- Icon-only buttons require `aria-label`; active sidebar nav item uses `aria-current="page"`.
+- Full audit + inventory + open issues: `docs/ui-ux-audit.md` (delivered in Task #18).
+- Shadcn `--primary`/`--accent`/`--warning` semantic vars currently still map to legacy `--raio-sage/mint/gold/coral-*`. Removing the legacy palettes is a future migration (kept compatibility-only in `globals.css` and `design-tokens.ts`).
