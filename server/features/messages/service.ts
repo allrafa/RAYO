@@ -1,6 +1,7 @@
 import { query } from "../../db/index.js";
 import { AppError } from "../academia/service.js";
 import { trackEvent } from "../analytics/service.js";
+import { publishToUser } from "./events.js";
 
 const MAX_MESSAGE_LENGTH = 4000;
 const SEARCH_MIN_LENGTH = 2;
@@ -194,7 +195,8 @@ export async function sendMessage(conversationId: number, userId: number, conten
     throw new AppError(`Mensagem excede ${MAX_MESSAGE_LENGTH} caracteres`, "MESSAGE_TOO_LONG", 400);
   }
 
-  await assertConversationMember(conversationId, userId);
+  const conv = await assertConversationMember(conversationId, userId);
+  const recipientId = conv.user_a_id === userId ? conv.user_b_id : conv.user_a_id;
 
   const { rows } = await query<MessageRow>(
     `INSERT INTO messages (conversation_id, sender_id, content)
@@ -217,6 +219,21 @@ export async function sendMessage(conversationId: number, userId: number, conten
 
   trackEvent(userId, "message_sent", { conversation_id: conversationId, message_id: message.id });
 
+  // Real-time fan-out: notify both participants so the UI updates without polling.
+  // We publish AFTER the DB writes succeed; fire-and-forget for unread refresh.
+  const eventPayload = { conversation_id: conversationId, message };
+  publishToUser(userId, "message:new", eventPayload);
+  if (recipientId !== userId) {
+    publishToUser(recipientId, "message:new", eventPayload);
+    // The recipient's unread count may have changed (a new conversation may
+    // now contain unread messages). Compute & broadcast asynchronously.
+    void getUnreadConversationCount(recipientId)
+      .then((count) => publishToUser(recipientId, "unread:changed", { count }))
+      .catch(() => {
+        /* best-effort */
+      });
+  }
+
   return message;
 }
 
@@ -231,7 +248,18 @@ export async function markConversationRead(conversationId: number, userId: numbe
     [conversationId, userId]
   );
 
-  return { marked: rowCount || 0 };
+  const marked = rowCount || 0;
+  if (marked > 0) {
+    // Broadcast the new unread total so the navbar badge updates in real time
+    // without the user needing to wait for the next poll cycle.
+    void getUnreadConversationCount(userId)
+      .then((count) => publishToUser(userId, "unread:changed", { count }))
+      .catch(() => {
+        /* best-effort */
+      });
+  }
+
+  return { marked };
 }
 
 export async function getUnreadConversationCount(userId: number): Promise<number> {

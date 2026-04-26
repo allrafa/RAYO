@@ -12,6 +12,7 @@ import { toast } from "sonner@2.0.3";
 import { api } from "../lib/api";
 import { EmptyStateNoConversations, EmptyStateError } from "./EmptyState";
 import { SkeletonLoader } from "./SkeletonLoader";
+import { useUnreadMessages, type MessageStreamEvent } from "./hooks/useUnreadMessages";
 
 interface ConversationItem {
   id: number;
@@ -42,8 +43,10 @@ interface UserSearchResult {
   name: string;
 }
 
-const CONVERSATION_POLL_MS = 30_000;
-const MESSAGES_POLL_MS = 10_000;
+// Slow safety-net polls: only used when the realtime stream is not connected.
+// Realtime updates arrive via SSE, so these are now strictly a fallback.
+const CONVERSATION_FALLBACK_POLL_MS = 60_000;
+const MESSAGES_FALLBACK_POLL_MS = 30_000;
 
 function getInitials(name: string): string {
   return (name || "?").trim().slice(0, 2).toUpperCase();
@@ -71,6 +74,7 @@ function formatRelative(dateStr: string): string {
 export function ConversasPage() {
   const { user } = useAuth();
   const currentUserId = user?.id ?? 0;
+  const { subscribe: subscribeStream, streamConnected } = useUnreadMessages();
 
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(true);
@@ -93,6 +97,10 @@ export function ConversasPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<number | null>(null);
+  // Refs let our stable stream subscriber read fresh values without
+  // re-subscribing on every render.
+  const activeIdRef = useRef<number | null>(null);
+  const streamConnectedRef = useRef(false);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId) || null,
@@ -152,34 +160,100 @@ export function ConversasPage() {
     }
   }, []);
 
-  // Initial load + polling for conversation list
+  // Keep refs in sync with React state so the stable SSE subscriber can read them.
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+  useEffect(() => {
+    streamConnectedRef.current = streamConnected;
+  }, [streamConnected]);
+
+  // Initial load + slow safety-net poll for the conversation list. The poll
+  // only runs when the realtime stream is NOT connected.
   useEffect(() => {
     void loadConversations();
     const interval = window.setInterval(() => {
+      if (streamConnectedRef.current) return;
       if (document.visibilityState === "visible") void loadConversations();
-    }, CONVERSATION_POLL_MS);
+    }, CONVERSATION_FALLBACK_POLL_MS);
     return () => window.clearInterval(interval);
   }, [loadConversations]);
 
-  // Load messages and poll when conversation is active
+  // Load messages when a conversation is opened. Realtime updates (SSE) drive
+  // appends after that; the interval below is only a safety-net fallback.
   useEffect(() => {
     if (activeId == null) {
       setMessages([]);
       lastMessageIdRef.current = null;
       return;
     }
-    // Mark as read once on open (the conversation may have unread messages from before).
     void loadMessages(activeId, false).then(() => void markRead(activeId));
-    // While the conversation is open, only mark-as-read when a new incoming
-    // message actually arrives. Avoids hammering POST /read on every poll tick.
     const interval = window.setInterval(() => {
+      if (streamConnectedRef.current) return;
       if (document.visibilityState !== "visible") return;
       void loadMessages(activeId, true).then(({ hasNewIncoming }) => {
         if (hasNewIncoming) void markRead(activeId);
       });
-    }, MESSAGES_POLL_MS);
+    }, MESSAGES_FALLBACK_POLL_MS);
     return () => window.clearInterval(interval);
   }, [activeId, loadMessages, markRead]);
+
+  // Realtime: react to push events so the user sees new messages and updated
+  // conversation rows in <1s without polling.
+  useEffect(() => {
+    const unsubscribe = subscribeStream((event: MessageStreamEvent) => {
+      if (event.type === "connected") {
+        // (Re)connect signal — events that fired while the SSE was down were
+        // lost (the server does not replay). Force a full resync so we don't
+        // miss messages that arrived during a brief network drop.
+        void loadConversations();
+        const openId = activeIdRef.current;
+        if (openId != null) {
+          void loadMessages(openId, true).then(({ hasNewIncoming }) => {
+            if (hasNewIncoming) void markRead(openId);
+          });
+        }
+        return;
+      }
+      if (event.type === "message:new") {
+        const { conversation_id, message } = event.payload;
+        const openId = activeIdRef.current;
+        if (openId === conversation_id) {
+          // Append to the active conversation, dedupe by id (the sender will
+          // also have already added the message via the POST response).
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === message.id)) return prev;
+            return [
+              ...prev,
+              {
+                id: message.id,
+                conversation_id: message.conversation_id,
+                sender_id: message.sender_id,
+                sender_name: message.sender_name || "",
+                content: message.content,
+                read_at: message.read_at,
+                created_at: message.created_at,
+              },
+            ];
+          });
+          lastMessageIdRef.current = message.id;
+          // Auto-scroll only for incoming messages (outgoing already scrolled).
+          if (message.sender_id !== currentUserId) {
+            requestAnimationFrame(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            });
+            // Their message is being viewed right now → mark as read so the
+            // sidebar badge doesn't briefly tick up.
+            void markRead(conversation_id);
+          }
+        }
+        // Always refresh the conversation list so previews/timestamps and
+        // unread badges stay accurate.
+        void loadConversations();
+      }
+    });
+    return unsubscribe;
+  }, [subscribeStream, currentUserId, loadConversations, loadMessages, markRead]);
 
   // User search debounce
   useEffect(() => {

@@ -10,9 +10,55 @@ import {
   getUnreadConversationCount,
   searchUsers,
 } from "./service.js";
+import { subscribeUser } from "./events.js";
 import { AppError } from "../academia/service.js";
 
 const router = Router();
+
+// Real-time event stream (SSE). Replaces the legacy polling on the conversations
+// list and the unread-count badge. The connection is kept alive with periodic
+// comment heartbeats; EventSource auto-reconnects if the link drops.
+router.get("/stream", requireAuth, (req, res) => {
+  const userId = req.user!.id;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  // Disable proxy buffering (nginx/Replit) so events flush immediately.
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders?.();
+
+  // Initial handshake so the client knows the stream is live.
+  res.write(`event: connected\ndata: {}\n\n`);
+
+  const send = (event: string, payload: unknown) => {
+    try {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    } catch {
+      // If the socket is gone, cleanup will run via the 'close' handler.
+    }
+  };
+
+  const unsubscribe = subscribeUser(userId, send);
+
+  // Heartbeat (SSE comment) to keep proxies and the browser from idling out.
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(`: keepalive\n\n`);
+    } catch {
+      // Ignored; close handler will run.
+    }
+  }, 25_000);
+
+  const cleanup = () => {
+    clearInterval(heartbeat);
+    unsubscribe();
+  };
+
+  req.on("close", cleanup);
+  res.on("close", cleanup);
+});
 
 router.get("/conversations", requireAuth, async (req, res, next) => {
   try {

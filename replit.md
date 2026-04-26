@@ -210,6 +210,7 @@ vite.config.ts           # Vite + API proxy config
 - `POST /api/messages/conversations/:id/read` — Mark all incoming messages as read
 - `GET /api/messages/unread-count` — Count of conversations with at least one unread message (for nav badge)
 - `GET /api/messages/users/search?q=` — Search users by name (prefix) or exact email; excludes self
+- `GET /api/messages/stream` — Server-Sent Events channel (per authenticated user). Emits `connected` on open; `message:new` `{conversation_id, message}` to both participants when a message is sent; `unread:changed` `{count}` when the user's unread total changes (after a message arrives or is marked read). Heartbeat comments every 25s. Backed by an in-memory event bus in `server/features/messages/events.ts` (single-instance — see Future).
 
 ## Admin & Moderation
 - Roles (column `users.role`): `client` (default) < `producer` < `moderator` < `admin` (numeric hierarchy enforced by `requireRole(minRole)` middleware in `server/middleware/auth.ts`)
@@ -223,9 +224,9 @@ vite.config.ts           # Vite + API proxy config
 - `POST /api/admin/moderation/posts/:id/hide` and `/restore` — Toggle post visibility — moderator+
 - `POST /api/admin/moderation/comments/:id/hide` and `/restore` — Toggle comment visibility — moderator+
 - Frontend: dedicated `<AdminShell>` (full-screen takeover at `currentTab="admin"`, hides `Navigation`/`DesktopSidebar`/`TopNavbar`); sidebar entry only visible when `userHasRole(user, "moderator")`. Pages in `src/components/admin/`: `AdminOverviewPage`, `AdminUsersPage`, `AdminModerationPage`.
-- Frontend: `ConversasPage` (real DMs with polling: 15s convs, 5s messages, mark-read on open), `useUnreadMessages` hook (polls 20s + on visibility) feeding badge in `Navigation` and `TopNavbar`
+- Frontend: `ConversasPage` (real DMs, mark-read on open) and `useUnreadMessages` hook feed the badge in `Navigation` and `TopNavbar`. Both subscribe to the SSE `/api/messages/stream` channel via the `UnreadMessagesProvider` (`subscribe(handler)` + `streamConnected` flag). New messages and unread-count updates arrive in <1s without polling. A 60s/30s safety-net poll runs only while the SSE stream is disconnected.
 - LGPD: account deletion anonymizes message contents to `[mensagem removida por solicitação LGPD]` (preserves conversation history for the other party)
-- Feature files: `server/features/messages/service.ts`, `server/features/messages/routes.ts`, `src/components/ConversasPage.tsx`, `src/components/hooks/useUnreadMessages.ts`
+- Feature files: `server/features/messages/service.ts`, `server/features/messages/routes.ts`, `server/features/messages/events.ts`, `src/components/ConversasPage.tsx`, `src/components/hooks/useUnreadMessages.ts`
 
 ## Development Rules
 1. No business logic in frontend
