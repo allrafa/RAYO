@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { MessageCircle, UserPlus, Search, MoreVertical, Send, ArrowLeft, Loader2 } from "lucide-react";
+import { MessageCircle, UserPlus, Search, MoreVertical, Send, ArrowLeft, Loader2, Check, CheckCheck } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Avatar, AvatarFallback } from "./ui/avatar";
@@ -212,6 +212,20 @@ export function ConversasPage() {
           void loadMessages(openId, true).then(({ hasNewIncoming }) => {
             if (hasNewIncoming) void markRead(openId);
           });
+        }
+        return;
+      }
+      if (event.type === "message:read") {
+        const { conversation_id, message_ids, read_at } = event.payload;
+        if (activeIdRef.current === conversation_id) {
+          const idSet = new Set(message_ids);
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.sender_id === currentUserId && m.read_at == null && (idSet.size === 0 || idSet.has(m.id))
+                ? { ...m, read_at }
+                : m
+            )
+          );
         }
         return;
       }
@@ -523,11 +537,31 @@ export function ConversasPage() {
                         >
                           <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
                           <p
-                            className={`text-xs mt-1 ${
-                              mine ? "text-primary-foreground/70" : "text-muted-foreground"
+                            className={`text-xs mt-1 flex items-center gap-1 ${
+                              mine ? "text-primary-foreground/70 justify-end" : "text-muted-foreground"
                             }`}
                           >
-                            {formatTime(m.created_at)}
+                            <span>{formatTime(m.created_at)}</span>
+                            {mine && (
+                              m.read_at ? (
+                                <span
+                                  className="inline-flex items-center gap-0.5"
+                                  title={`Lido às ${formatTime(m.read_at)}`}
+                                  aria-label={`Lido às ${formatTime(m.read_at)}`}
+                                >
+                                  <CheckCheck className="w-3.5 h-3.5" />
+                                  <span>Lido</span>
+                                </span>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center gap-0.5"
+                                  title="Enviado"
+                                  aria-label="Enviado"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </span>
+                              )
+                            )}
                           </p>
                         </div>
                       </div>

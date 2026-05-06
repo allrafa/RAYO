@@ -12,6 +12,7 @@ interface UnreadCountResponse {
 
 export type MessageStreamEvent =
   | { type: "message:new"; payload: MessageNewPayload }
+  | { type: "message:read"; payload: MessageReadPayload }
   | { type: "unread:changed"; payload: UnreadChangedPayload }
   | { type: "connected"; payload: Record<string, never> };
 
@@ -30,6 +31,13 @@ export interface MessageNewPayload {
 
 export interface UnreadChangedPayload {
   count: number;
+}
+
+export interface MessageReadPayload {
+  conversation_id: number;
+  reader_id: number;
+  message_ids: number[];
+  read_at: string;
 }
 
 type StreamHandler = (event: MessageStreamEvent) => void;
@@ -126,6 +134,15 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
           /* ignore malformed payload */
         }
       };
+      const handleMessageRead = (e: MessageEvent) => {
+        if (!mountedRef.current) return;
+        try {
+          const data = JSON.parse(e.data) as MessageReadPayload;
+          broadcast({ type: "message:read", payload: data });
+        } catch {
+          /* ignore malformed payload */
+        }
+      };
       const handleUnreadChanged = (e: MessageEvent) => {
         if (!mountedRef.current) return;
         try {
@@ -148,6 +165,7 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
 
       es.addEventListener("connected", handleConnected);
       es.addEventListener("message:new", handleMessageNew);
+      es.addEventListener("message:read", handleMessageRead);
       es.addEventListener("unread:changed", handleUnreadChanged);
       es.addEventListener("error", handleError);
     }

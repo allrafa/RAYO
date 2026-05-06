@@ -238,13 +238,14 @@ export async function sendMessage(conversationId: number, userId: number, conten
 }
 
 export async function markConversationRead(conversationId: number, userId: number): Promise<{ marked: number }> {
-  await assertConversationMember(conversationId, userId);
+  const conv = await assertConversationMember(conversationId, userId);
 
-  const { rowCount } = await query(
+  const { rows: updated, rowCount } = await query<{ id: number; read_at: string }>(
     `UPDATE messages SET read_at = NOW()
      WHERE conversation_id = $1
        AND sender_id <> $2
-       AND read_at IS NULL`,
+       AND read_at IS NULL
+     RETURNING id, read_at`,
     [conversationId, userId]
   );
 
@@ -257,6 +258,21 @@ export async function markConversationRead(conversationId: number, userId: numbe
       .catch(() => {
         /* best-effort */
       });
+
+    // Notify the OTHER participant (the sender of the messages we just marked
+    // as read) so their UI can flip the "Enviado" indicator to "Lido" in real
+    // time without polling.
+    const otherUserId = conv.user_a_id === userId ? conv.user_b_id : conv.user_a_id;
+    if (otherUserId !== userId) {
+      const readAt = updated[0]?.read_at ?? new Date().toISOString();
+      const messageIds = updated.map((r) => r.id);
+      publishToUser(otherUserId, "message:read", {
+        conversation_id: conversationId,
+        reader_id: userId,
+        message_ids: messageIds,
+        read_at: readAt,
+      });
+    }
   }
 
   return { marked };
