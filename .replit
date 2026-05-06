@@ -85,3 +85,8 @@ outputType = "webview"
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 120000
+
+[userenv]
+
+[userenv.production]
+ADMIN_EMAILS = "allrafaimc@gmail.com"
