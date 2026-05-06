@@ -86,7 +86,7 @@ function StepHeader({
     return (
       <>
         {before}
-        <span style={{ fontStyle: "italic", color: "#B45309" }}>{italicWord}</span>
+        <span style={{ fontStyle: "italic", color: "var(--raio-accent-hover)" }}>{italicWord}</span>
         {after}
       </>
     );
@@ -107,7 +107,7 @@ function StepHeader({
           top: "-48px",
           fontSize: "180px",
           lineHeight: 1,
-          color: "#1A1A1A",
+          color: "var(--raio-text-primary)",
           opacity: 0.04,
           fontWeight: 400,
         }}
@@ -117,14 +117,14 @@ function StepHeader({
 
       {/* Eyebrow */}
       <div className="relative flex items-center justify-center gap-3 mb-5">
-        <span className="block w-8 h-px bg-[#1A1A1A]/15" />
+        <span className="block w-8 h-px bg-[var(--raio-text-primary)]/15" />
         <span
           className="text-[10px] tracking-[0.32em]"
-          style={{ color: "#6B7280", fontWeight: 500 }}
+          style={{ color: "var(--raio-text-secondary)", fontWeight: 500 }}
         >
           {meta.eyebrow}
         </span>
-        <span className="block w-8 h-px bg-[#1A1A1A]/15" />
+        <span className="block w-8 h-px bg-[var(--raio-text-primary)]/15" />
       </div>
 
       <h2
@@ -133,7 +133,7 @@ function StepHeader({
           fontSize: "clamp(34px, 5.5vw, 44px)",
           lineHeight: 1.05,
           letterSpacing: "-0.02em",
-          color: "#1A1A1A",
+          color: "var(--raio-text-primary)",
           fontWeight: 400,
           marginBottom: "12px",
         }}
@@ -143,7 +143,7 @@ function StepHeader({
 
       <p
         className="text-[15px] mx-auto max-w-[380px]"
-        style={{ color: "#4B5563", lineHeight: 1.6, fontWeight: 400 }}
+        style={{ color: "var(--raio-text-strong)", lineHeight: 1.6, fontWeight: 400 }}
       >
         {subtitle}
       </p>
@@ -166,8 +166,8 @@ function PrimaryButton({
       disabled={disabled}
       className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
       style={{
-        background: "#1A1A1A",
-        color: "#FAFAFA",
+        background: "var(--raio-text-primary)",
+        color: "var(--raio-text-inverse)",
         border: "none",
         borderRadius: "14px",
         padding: "18px 32px",
@@ -176,14 +176,14 @@ function PrimaryButton({
         letterSpacing: "0.02em",
         cursor: "pointer",
         boxShadow:
-          "0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px -10px rgba(180, 83, 9, 0.35)",
+          "0 1px 2px var(--raio-overlay-dark-medium), 0 8px 24px -10px var(--raio-accent-glow-medium)",
       }}
       whileHover={
         !disabled
           ? {
               scale: 1.015,
               boxShadow:
-                "0 4px 12px rgba(0, 0, 0, 0.1), 0 12px 32px -10px rgba(180, 83, 9, 0.55)",
+                "0 4px 12px var(--raio-overlay-dark-strong), 0 12px 32px -10px var(--raio-accent-glow-strong)",
             }
           : {}
       }
@@ -193,7 +193,7 @@ function PrimaryButton({
         className="absolute top-0 left-0 right-0 h-[1px]"
         style={{
           background:
-            "linear-gradient(90deg, transparent, #FCD34D 50%, transparent)",
+            "linear-gradient(90deg, transparent, var(--raio-accent-bright) 50%, transparent)",
         }}
       />
       <span className="relative z-10 flex items-center justify-center gap-2">
@@ -299,7 +299,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   <Label
                     htmlFor="name"
                     className="text-[10px] tracking-[0.24em] uppercase"
-                    style={{ color: "#6B7280", fontWeight: 600 }}
+                    style={{ color: "var(--raio-text-secondary)", fontWeight: 600 }}
                   >
                     Seu nome
                   </Label>
@@ -311,11 +311,11 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                     onChange={(e) =>
                       setUserData((prev) => ({ ...prev, name: e.target.value }))
                     }
-                    className="h-14 bg-white text-[#1A1A1A] placeholder:text-[#6B7280] rounded-xl text-[16px] px-4"
+                    className="h-14 bg-white text-[var(--raio-text-primary)] placeholder:text-[var(--raio-text-secondary)] rounded-xl text-[16px] px-4"
                     style={{
-                      border: "1px solid #D1D5DB",
+                      border: "1px solid var(--raio-border-hover)",
                       boxShadow:
-                        "inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(0,0,0,0.04)",
+                        "inset 0 1px 0 var(--raio-bg-overlay-medium), 0 1px 2px var(--raio-overlay-dark-soft)",
                     }}
                     autoFocus
                   />
@@ -370,15 +370,15 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                     >
                       <button
                         type="button"
-                        className="w-full text-left transition-all duration-200 rounded-2xl p-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B45309]/40"
+                        className="w-full text-left transition-all duration-200 rounded-2xl p-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-hover)]/40"
                         style={{
-                          background: "#FFFFFF",
+                          background: "var(--raio-bg-secondary)",
                           border: isSelected
-                            ? "1.5px solid #B45309"
-                            : "1px solid #E5E5E5",
+                            ? "1.5px solid var(--raio-accent-hover)"
+                            : "1px solid var(--raio-border-default)",
                           boxShadow: isSelected
-                            ? "0 6px 20px -8px rgba(180, 83, 9, 0.3), 0 0 0 4px rgba(252, 211, 77, 0.12)"
-                            : "0 1px 2px rgba(0, 0, 0, 0.04)",
+                            ? "0 6px 20px -8px var(--raio-accent-glow-medium), 0 0 0 4px var(--raio-accent-glow-amber-bright)"
+                            : "0 1px 2px var(--raio-overlay-dark-soft)",
                         }}
                         onClick={() => toggleSegment(segment.id)}
                         aria-pressed={isSelected}
@@ -387,10 +387,10 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                           <div
                             className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 transition-all"
                             style={{
-                              background: isSelected ? "#FCD34D" : "#F5F1EA",
+                              background: isSelected ? "var(--raio-accent-bright)" : "var(--raio-bg-warm-soft)",
                               boxShadow: isSelected
-                                ? "inset 0 1px 0 rgba(255,255,255,0.4)"
-                                : "inset 0 1px 0 rgba(255,255,255,0.6)",
+                                ? "inset 0 1px 0 var(--raio-bg-overlay-soft)"
+                                : "inset 0 1px 0 var(--raio-bg-overlay-medium)",
                             }}
                           >
                             {segment.emoji}
@@ -400,7 +400,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                               style={{
                                 fontSize: "16px",
                                 fontWeight: 600,
-                                color: "#1A1A1A",
+                                color: "var(--raio-text-primary)",
                                 marginBottom: "2px",
                               }}
                             >
@@ -409,7 +409,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                             <p
                               style={{
                                 fontSize: "13px",
-                                color: "#4B5563",
+                                color: "var(--raio-text-strong)",
                                 lineHeight: 1.45,
                               }}
                             >
@@ -419,16 +419,16 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                           <div
                             className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all"
                             style={{
-                              background: isSelected ? "#1A1A1A" : "#F5F1EA",
+                              background: isSelected ? "var(--raio-text-primary)" : "var(--raio-bg-warm-soft)",
                               border: isSelected
                                 ? "none"
-                                : "1px solid #E5E5E5",
+                                : "1px solid var(--raio-border-default)",
                             }}
                           >
                             {isSelected && (
                               <Check
                                 className="w-4 h-4"
-                                style={{ color: "#FCD34D" }}
+                                style={{ color: "var(--raio-accent-bright)" }}
                                 strokeWidth={2.5}
                               />
                             )}
@@ -485,19 +485,19 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.02 * index }}
                         whileTap={{ scale: 0.96 }}
-                        className="px-4 py-2.5 rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B45309]/40"
+                        className="px-4 py-2.5 rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-hover)]/40"
                         style={{
-                          background: isSelected ? "#1A1A1A" : "#FFFFFF",
-                          color: isSelected ? "#FCD34D" : "#374151",
+                          background: isSelected ? "var(--raio-text-primary)" : "var(--raio-bg-secondary)",
+                          color: isSelected ? "var(--raio-accent-bright)" : "var(--raio-text-deep)",
                           border: isSelected
-                            ? "1px solid #1A1A1A"
-                            : "1px solid #D1D5DB",
+                            ? "1px solid var(--raio-text-primary)"
+                            : "1px solid var(--raio-border-hover)",
                           fontSize: "14px",
                           fontWeight: 500,
                           letterSpacing: "0.005em",
                           boxShadow: isSelected
-                            ? "0 6px 16px -8px rgba(26, 26, 26, 0.5)"
-                            : "0 1px 2px rgba(0, 0, 0, 0.04)",
+                            ? "0 6px 16px -8px var(--raio-overlay-text-primary-soft)"
+                            : "0 1px 2px var(--raio-overlay-dark-soft)",
                         }}
                         onClick={() => toggleInterest(interest.id)}
                         aria-pressed={isSelected}
@@ -515,9 +515,9 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="text-center text-[13px] tracking-[0.04em]"
-                    style={{ color: "#6B7280" }}
+                    style={{ color: "var(--raio-text-secondary)" }}
                   >
-                    Faltam <strong style={{ color: "#B45309", fontWeight: 600 }}>{3 - userData.interests.length}</strong>{" "}
+                    Faltam <strong style={{ color: "var(--raio-accent-hover)", fontWeight: 600 }}>{3 - userData.interests.length}</strong>{" "}
                     para continuar
                   </motion.p>
                 )}
@@ -548,7 +548,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       className="min-h-screen relative overflow-hidden"
       style={{
         background:
-          "radial-gradient(ellipse 90% 60% at 50% 20%, #FFFFFF 0%, #FAFAFA 55%, #F3EFE7 100%)",
+          "radial-gradient(ellipse 90% 60% at 50% 20%, var(--raio-bg-secondary) 0%, var(--raio-text-inverse) 55%, var(--raio-bg-warm-cream) 100%)",
       }}
     >
       {/* Grain texture */}
@@ -566,7 +566,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
         className="fixed top-0 left-0 right-0 z-50 px-6 pt-6 pb-5"
         style={{
           background:
-            "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(250,250,250,0.85) 70%, rgba(250,250,250,0) 100%)",
+            "linear-gradient(180deg, var(--raio-bg-overlay-strong) 0%, var(--raio-bg-inverse-soft) 70%, var(--raio-bg-inverse-transparent) 100%)",
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
         }}
@@ -580,13 +580,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   className="p-2 -ml-2 hover:bg-black/5 rounded-lg transition-colors"
                   aria-label="Voltar"
                 >
-                  <ArrowLeft className="w-5 h-5" style={{ color: "#1A1A1A" }} />
+                  <ArrowLeft className="w-5 h-5" style={{ color: "var(--raio-text-primary)" }} />
                 </button>
               )}
             </div>
             <span
               className="text-[10px] tracking-[0.32em] uppercase"
-              style={{ color: "#6B7280", fontWeight: 600 }}
+              style={{ color: "var(--raio-text-secondary)", fontWeight: 600 }}
             >
               {String(step).padStart(2, "0")} / {String(totalSteps).padStart(2, "0")}
             </span>
@@ -599,14 +599,14 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               <div
                 key={s}
                 className="flex-1 h-[3px] rounded-full overflow-hidden"
-                style={{ background: "#E5E5E5" }}
+                style={{ background: "var(--raio-border-default)" }}
               >
                 <motion.div
                   className="h-full rounded-full"
                   style={{
                     background:
                       s <= step
-                        ? "linear-gradient(90deg, #B45309, #FCD34D)"
+                        ? "linear-gradient(90deg, var(--raio-accent-hover), var(--raio-accent-bright))"
                         : "transparent",
                   }}
                   initial={{ width: s < step ? "100%" : "0%" }}

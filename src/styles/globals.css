@@ -10,9 +10,18 @@
   --raio-bg-primary: #FAFAFA;
   --raio-bg-secondary: #FFFFFF;
   --raio-bg-tertiary: #F5F5F5;
+  --raio-bg-warm-cream: #F3EFE7;       /* Warm cream for editorial gradients (welcome/onboarding) */
+  --raio-bg-warm-soft: #F5F1EA;        /* Slightly cooler warm cream (numeral watermark) */
   --raio-bg-overlay: rgba(255, 255, 255, 0.7);
-  
+  --raio-bg-overlay-strong: rgba(255, 255, 255, 0.92);
+  --raio-bg-overlay-medium: rgba(255, 255, 255, 0.6);
+  --raio-bg-overlay-soft: rgba(255, 255, 255, 0.4);
+  --raio-bg-inverse-soft: rgba(250, 250, 250, 0.85);
+  --raio-bg-inverse-transparent: rgba(250, 250, 250, 0);
+
   --raio-text-primary: #1A1A1A;
+  --raio-text-deep: #374151;            /* Stronger than secondary, for emphasized body */
+  --raio-text-strong: #4B5563;          /* Body emphasis (editorial subtitles) */
   --raio-text-secondary: #6B7280;
   --raio-text-tertiary: #9CA3AF;
   --raio-text-inverse: #FAFAFA;
@@ -45,6 +54,22 @@
   --raio-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12);
   --raio-shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.16);
   --raio-shadow-glow: 0 0 20px rgba(252, 211, 77, 0.3);
+
+  /* Accent glows (amber/gold) — for editorial selected states & CTAs */
+  --raio-accent-glow-soft: rgba(180, 83, 9, 0.18);
+  --raio-accent-glow-medium: rgba(180, 83, 9, 0.35);
+  --raio-accent-glow-strong: rgba(180, 83, 9, 0.55);
+  --raio-accent-glow-amber-bright: rgba(252, 211, 77, 0.12);
+  --raio-accent-primary-rgb: 217, 119, 6;
+  --raio-accent-hover-rgb: 180, 83, 9;
+  --raio-accent-bright-rgb: 252, 211, 77;
+
+  /* Translucent overlays on dark/light surfaces (insets, micro-shadows) */
+  --raio-overlay-dark-soft: rgba(0, 0, 0, 0.04);
+  --raio-overlay-dark-medium: rgba(0, 0, 0, 0.06);
+  --raio-overlay-dark-strong: rgba(0, 0, 0, 0.1);
+  --raio-overlay-text-primary-soft: rgba(26, 26, 26, 0.5);
+  --raio-overlay-text-primary-faint: rgba(26, 26, 26, 0.2);
   
   /* RAIO DESIGN SYSTEM - Typography */
   --font-family-display: "Urbanist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;

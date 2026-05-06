@@ -28,12 +28,16 @@ export const colors = {
       primary: '#FAFAFA',      // Off-white principal (WelcomeScreen, Onboarding)
       secondary: '#FFFFFF',    // Branco puro para cards elevados
       tertiary: '#F5F5F5',     // Cinza clarinho para seções alternadas
+      warmCream: '#F3EFE7',    // Warm cream (editorial gradient stop)
+      warmSoft: '#F5F1EA',     // Warm cream suavizado (numeral watermark)
       overlay: 'rgba(255, 255, 255, 0.7)',  // Glassmorphism
     },
     
     // Textos
     text: {
       primary: '#1A1A1A',      // Preto quente principal
+      deep: '#374151',         // Cinza-escuro para ênfase em corpo (editorial)
+      strong: '#4B5563',       // Corpo de subtítulos editoriais
       secondary: '#6B7280',    // Cinza médio para texto secundário
       tertiary: '#9CA3AF',     // Cinza claro para labels/placeholders
       inverse: '#FAFAFA',      // Texto em backgrounds escuros
