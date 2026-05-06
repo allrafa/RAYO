@@ -53,6 +53,22 @@ RAIO is a digital platform designed to strengthen families through transformativ
   (`POST /api/home/today/complete`) is idempotent (UNIQUE on
   `home_today_completions(user_id, completed_date)`) and awards
   `+15 XP` plus a streak bump on first claim only.
+- **Stats clicáveis + Continue unificado + Busca mobile (Task #44)**:
+  Os 3 cards de stats da Home (Sequência, Nível, XP semanal) viraram
+  `<button>` reais e abrem modais informativos:
+  `StreakCalendarModal` (calendário de hábitos via
+  `GET /api/home/streak-calendar`), `BadgesModal`
+  (`GET /api/gamification/badges`) e `XPHistoryModal`
+  (`GET /api/home/xp-history?weeks=N`). As três rails antigas
+  ("continue", "youtube_continue", "recently_played") foram fundidas
+  em uma única rail "continue" alimentada por `GET /api/home/continue`
+  (cursos em progresso + CMS audio/video recentes), mesclada no cliente
+  com o progresso de YouTube (localStorage). Os ids legados continuam
+  resolvendo para `null` no frontend pra tolerar payloads antigos. Busca
+  mobile vive em `MobileSearchPage` (overlay full-screen aberto pelo
+  ícone de lupa do `MobileTopBar`); a busca desktop no `TopNavbar`
+  agora também consome `GET /api/search?q=...` (cursos + content_items
+  + posts + users, ILIKE, 5 por categoria) com debounce e dropdown.
 
 ## Product
 - **User Authentication**: Register, login, logout, password reset, and user profile management. Email verification is required for registration.
@@ -73,11 +89,13 @@ RAIO is a digital platform designed to strengthen families through transformativ
 - Do not make changes to the `docs/` folder without explicit instruction.
 - Do not make changes to the `replit.nix` file.
 
-- **Mobile navigation** (Task #41): bottom navbar has 4 fixed slots
-  (Home, Academia, Comunidade, Perfil) and is always visible. Mensagens
-  is a floating top-right icon (`MobileTopBar`, `lg:hidden`). Admin for
-  `producer+` lives inside `PerfilPage` (Conta → Painel Admin), not in
-  the bottom bar. Conselheiro is reached via the Home CTA.
+- **Mobile navigation** (Task #41 + #44): bottom navbar has 4 fixed
+  slots (Home, Academia, Comunidade, Perfil) and is always visible.
+  `MobileTopBar` (canto superior direito, `lg:hidden`) carrega dois
+  ícones flutuantes: lupa (abre `MobileSearchPage`) e envelope
+  (Mensagens). Admin para `producer+` vive dentro do `PerfilPage`
+  (Conta → Painel Admin), não no bottom bar. Conselheiro continua sendo
+  acessado via CTA do hero da Home.
 - **Home structure** (Task #42 — Faxina): hero is a single editorial
   layer (image + overlay + greeting + headline + CTA "Falar com o
   conselheiro" → opens `TrilhaTransformacaoChat`). The greeting lives

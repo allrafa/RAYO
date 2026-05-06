@@ -219,6 +219,7 @@ function AppContent() {
               userSegment={userSegment}
               userName={user.name}
               userLevel={user.level || 1}
+              onNavigate={setCurrentTab}
             />
           );
         case "academia":
@@ -251,6 +252,7 @@ function AppContent() {
               userSegment={userSegment}
               userName={user.name}
               userLevel={user.level || 1}
+              onNavigate={setCurrentTab}
             />
           );
       }
@@ -288,7 +290,10 @@ function AppContent() {
               bottom navbar in Task #41). Hidden on the conversas page
               itself to avoid a redundant icon over the chat header. */}
           {currentTab !== "conversas" && (
-            <MobileTopBar onOpenMessages={() => setCurrentTab("conversas")} />
+            <MobileTopBar
+              onOpenMessages={() => setCurrentTab("conversas")}
+              onTabChange={setCurrentTab}
+            />
           )}
         </>
       )}

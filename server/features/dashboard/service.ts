@@ -97,38 +97,36 @@ function getCurrentLevelXP(level: number): number {
 // rendered. Frontend resolves rail ids → components and silently skips
 // unknown ids, so this list is forward-compatible: adding a new rail id
 // here is enough to expose it as soon as the frontend knows about it.
+// Task #44 fundiu três rails distintas ("continue", "youtube_continue"
+// e "recently_played") em uma única "continue" alimentada pelo
+// /api/home/continue. Os ids antigos continuam aceitos como aliases no
+// frontend (renderizam null) por compatibilidade com sessões antigas.
 const RAIL_ORDER_BY_SEGMENT: Record<string, string[]> = {
   solteiro: [
     "quizzes", "recommended", "made_for_you", "podcasts", "trending",
-    "recently_played", "discussoes", "shorts", "youtube_continue",
-    "missions", "continue",
+    "continue", "discussoes", "shorts", "missions",
   ],
   namoro: [
     "recommended", "podcasts", "discussoes", "made_for_you", "quizzes",
-    "trending", "recently_played", "shorts", "youtube_continue",
-    "missions", "continue",
+    "trending", "continue", "shorts", "missions",
   ],
   noivos: [
     "recommended", "made_for_you", "discussoes", "podcasts", "trending",
-    "quizzes", "recently_played", "shorts", "youtube_continue",
-    "missions", "continue",
+    "quizzes", "continue", "shorts", "missions",
   ],
   casados: [
     "continue", "recommended", "discussoes", "made_for_you", "trending",
-    "podcasts", "recently_played", "shorts", "quizzes",
-    "youtube_continue", "missions",
+    "podcasts", "shorts", "quizzes", "missions",
   ],
   pais: [
     "recommended", "quizzes", "made_for_you", "discussoes", "trending",
-    "podcasts", "recently_played", "shorts", "youtube_continue",
-    "missions", "continue",
+    "podcasts", "continue", "shorts", "missions",
   ],
 };
 
 const DEFAULT_RAIL_ORDER = [
   "continue", "recommended", "missions", "discussoes",
-  "youtube_continue", "shorts", "recently_played", "made_for_you",
-  "trending", "quizzes", "podcasts",
+  "shorts", "made_for_you", "trending", "quizzes", "podcasts",
 ];
 
 function buildRailOrder(segments: string[]): string[] {

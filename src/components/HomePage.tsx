@@ -17,9 +17,14 @@ import { MusicPage } from "./MusicPage";
 import { PlaylistsExpandedPage } from "./PlaylistsExpandedPage";
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { HojeNoRaio } from "./home/HojeNoRaio";
+import { UnifiedContinue } from "./home/UnifiedContinue";
+import {
+  StreakCalendarModal,
+  BadgesModal,
+  XPHistoryModal,
+} from "./home/StatsModals";
 import raioLogoFull from "figma:asset/91df98d68db1bbd58de3db20caeed5acda1da6fc.png";
 import { useYouTubeData } from "./hooks/useYouTubeData";
-import { useVideoProgress } from "./hooks/useVideoProgress";
 import { YouTubeVideoCard } from "./youtube/YouTubeVideoCard";
 import { YouTubePlaylistCard } from "./youtube/YouTubePlaylistCard";
 import { YouTubeShortCard } from "./youtube/YouTubeShortCard";
@@ -109,6 +114,9 @@ interface DashboardData {
 
 interface HomePageProps {
   userSegment: string;
+  // Task #44 — usado pelo estado vazio do "Continue de onde parou"
+  // pra mandar o usuário para a Academia.
+  onNavigate?: (tab: string) => void;
   userName: string;
   userLevel: number;
 }
@@ -178,7 +186,7 @@ function mapRowToCard(row: HomeFeedRow): HomeCard {
   return card;
 }
 
-export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
+export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomePageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const [currentQuiz, setCurrentQuiz] = useState<'communication' | 'conflict' | null>(null);
@@ -194,6 +202,10 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   // Bumped on PullToRefresh and on "Hoje no RAIO" completion so the
   // HojeNoRaio child re-fetches its state alongside the dashboard.
   const [todayRefreshKey, setTodayRefreshKey] = useState(0);
+  // Task #44: stats da Home agora abrem modais informativos.
+  const [statsModal, setStatsModal] = useState<
+    "streak" | "badges" | "xp" | null
+  >(null);
   // Home rails (Tocados recentemente / Feito para você / Em alta / Podcasts)
   // are sourced from the CMS via /api/home-feed (Task #20). Producers manage
   // these cards in Admin → Home / Destaques.
@@ -202,7 +214,6 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   const { user: authUser } = useAuth();
   
   const { data: youtubeData, loading: youtubeLoading } = useYouTubeData();
-  const { getInProgressVideos } = useVideoProgress();
 
   const loadDashboard = useCallback(async () => {
     if (!authUser) {
@@ -563,61 +574,86 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
             {/* Stats com gradientes de marca RAIO (Task #42).
                 Os 3 ângulos da identidade: gold (sequência/calor),
                 gold-mais-escuro (nível/conquista) e coral (energia semanal). */}
+            {/* Task #44 — cada stat agora abre um modal com mais
+                detalhe (calendário de hábitos, conquistas, histórico
+                de XP). Os cards viram <button> reais para garantir
+                semântica e acessibilidade via teclado. */}
             <div className="grid grid-cols-3 gap-3">
-              <Card
-                className="p-3 text-center border-[var(--raio-border-default)]"
-                style={{
-                  background:
-                    'linear-gradient(135deg, var(--raio-gold-50), var(--raio-gold-100))',
-                }}
+              <button
+                type="button"
+                onClick={() => setStatsModal("streak")}
+                aria-label={`Sequência: ${dashboard.gamification.streak} dias. Toque para ver o calendário.`}
+                className="text-left rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-primary)]"
               >
-                <div className="flex flex-col items-center gap-1">
-                  <Flame className="w-5 h-5" style={{ color: 'var(--raio-gold-500)' }} />
-                  <span
-                    className="text-2xl font-bold"
-                    style={{ color: 'var(--raio-gold-700)' }}
-                  >
-                    {dashboard.gamification.streak}
-                  </span>
-                  <span className="text-xs text-muted-foreground">Sequência</span>
-                </div>
-              </Card>
-              <Card
-                className="p-3 text-center border-[var(--raio-border-default)]"
-                style={{
-                  background:
-                    'linear-gradient(135deg, var(--raio-gold-100), var(--raio-gold-200))',
-                }}
+                <Card
+                  className="p-3 text-center border-[var(--raio-border-default)]"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, var(--raio-gold-50), var(--raio-gold-100))',
+                  }}
+                >
+                  <div className="flex flex-col items-center gap-1">
+                    <Flame className="w-5 h-5" style={{ color: 'var(--raio-gold-500)' }} />
+                    <span
+                      className="text-2xl font-bold"
+                      style={{ color: 'var(--raio-gold-700)' }}
+                    >
+                      {dashboard.gamification.streak}
+                    </span>
+                    <span className="text-xs text-muted-foreground">Sequência</span>
+                  </div>
+                </Card>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatsModal("badges")}
+                aria-label={`Nível ${dashboard.gamification.level} — ${dashboard.gamification.levelTitle}. Toque para ver suas conquistas.`}
+                className="text-left rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-primary)]"
               >
-                <div className="flex flex-col items-center gap-1">
-                  <Trophy className="w-5 h-5" style={{ color: 'var(--raio-gold-600)' }} />
-                  <span
-                    className="text-2xl font-bold"
-                    style={{ color: 'var(--raio-gold-800)' }}
-                  >
-                    {dashboard.gamification.level}
-                  </span>
-                  <span className="text-xs text-muted-foreground">{dashboard.gamification.levelTitle}</span>
-                </div>
-              </Card>
-              <Card
-                className="p-3 text-center border-[var(--raio-border-default)]"
-                style={{
-                  background:
-                    'linear-gradient(135deg, var(--raio-coral-50), var(--raio-coral-100))',
-                }}
+                <Card
+                  className="p-3 text-center border-[var(--raio-border-default)]"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, var(--raio-gold-100), var(--raio-gold-200))',
+                  }}
+                >
+                  <div className="flex flex-col items-center gap-1">
+                    <Trophy className="w-5 h-5" style={{ color: 'var(--raio-gold-600)' }} />
+                    <span
+                      className="text-2xl font-bold"
+                      style={{ color: 'var(--raio-gold-800)' }}
+                    >
+                      {dashboard.gamification.level}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{dashboard.gamification.levelTitle}</span>
+                  </div>
+                </Card>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatsModal("xp")}
+                aria-label={`${dashboard.weeklyXP} XP nesta semana. Toque para ver o histórico.`}
+                className="text-left rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-primary)]"
               >
-                <div className="flex flex-col items-center gap-1">
-                  <Zap className="w-5 h-5" style={{ color: 'var(--raio-coral-500)' }} />
-                  <span
-                    className="text-2xl font-bold"
-                    style={{ color: 'var(--raio-coral-700)' }}
-                  >
-                    {dashboard.weeklyXP}
-                  </span>
-                  <span className="text-xs text-muted-foreground">XP semanal</span>
-                </div>
-              </Card>
+                <Card
+                  className="p-3 text-center border-[var(--raio-border-default)]"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, var(--raio-coral-50), var(--raio-coral-100))',
+                  }}
+                >
+                  <div className="flex flex-col items-center gap-1">
+                    <Zap className="w-5 h-5" style={{ color: 'var(--raio-coral-500)' }} />
+                    <span
+                      className="text-2xl font-bold"
+                      style={{ color: 'var(--raio-coral-700)' }}
+                    >
+                      {dashboard.weeklyXP}
+                    </span>
+                    <span className="text-xs text-muted-foreground">XP semanal</span>
+                  </div>
+                </Card>
+              </button>
             </div>
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
@@ -659,44 +695,18 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
             nomeado por id; ids desconhecidos são ignorados
             silenciosamente para tolerar deploys parciais. */}
         {(() => {
-          const renderContinue = (): ReactNode =>
-            dashboard && dashboard.coursesInProgress.length > 0 ? (
-              <div key="continue" className="px-4 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Continue de onde parou</h2>
-                </div>
-                <div className="overflow-x-auto scrollbar-hide">
-                  <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
-                    {dashboard.coursesInProgress.map((course) => (
-                      <Card
-                        key={course.id}
-                        className="w-64 shrink-0 cursor-pointer hover:shadow-lg transition-shadow overflow-hidden"
-                        onClick={() => {
-                          setCurrentCourseId(course.id);
-                          setIsInCourseDetail(true);
-                        }}
-                      >
-                        <div className="relative h-36 overflow-hidden">
-                          <ImageWithFallback
-                            src={course.thumbnail}
-                            alt={course.title}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/20">
-                            <div className="h-full bg-primary rounded-r-full" style={{ width: `${course.progress}%` }} />
-                          </div>
-                          <Badge className="absolute top-2 right-2 bg-black/70 text-white text-xs">{Math.round(course.progress)}%</Badge>
-                        </div>
-                        <CardContent className="p-3">
-                          <h3 className="font-medium text-sm line-clamp-1 mb-1">{course.title}</h3>
-                          <p className="text-xs text-muted-foreground">{course.completedLessons}/{course.totalLessons} aulas</p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : null;
+          // Task #44 — renderContinue/renderYouTubeContinue/
+          // renderRecentlyPlayed foram fundidos em um único rail
+          // alimentado por /api/home/continue + progresso local de YT.
+          // Mantemos os ids antigos (youtube_continue, recently_played)
+          // como aliases que retornam null para tolerar payloads
+          // antigos do recommendedSectionOrder.
+          const renderContinue = (): ReactNode => (
+            <UnifiedContinue
+              key="continue"
+              onOpenAcademia={() => onNavigate?.("academia")}
+            />
+          );
 
           const renderRecommended = (): ReactNode =>
             dashboard && dashboard.recommendedCourses.length > 0 ? (
@@ -802,52 +812,8 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
               </div>
             ) : null;
 
-          const renderYouTubeContinue = (): ReactNode => {
-            // Compute available content up-front so we can omit the
-            // entire rail when neither in-progress nor latest videos
-            // exist (Task #43 — no empty section shells).
-            const inProgressVideoIds = getInProgressVideos();
-            const inProgressVideos = youtubeData?.videos.filter(video =>
-              inProgressVideoIds.some(p => p.videoId === video.id)
-            ) || [];
-            const latestVideos = youtubeData?.videos.slice(0, 6) || [];
-            const videosToShow =
-              inProgressVideos.length > 0 ? inProgressVideos : latestVideos;
-            const showProgress = inProgressVideos.length > 0;
-            if (!youtubeLoading && videosToShow.length === 0) return null;
-
-            return (
-              <div key="youtube_continue" className="px-4 mb-8">
-                <div className="flex items-center justify-between mb-4 mt-8">
-                  <h2 className="font-display text-xl font-semibold">Continuar assistindo</h2>
-                </div>
-                {youtubeLoading ? (
-                  <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="w-[280px] lg:w-[320px] flex-shrink-0">
-                        <div className="aspect-video bg-muted rounded-lg animate-pulse mb-3" />
-                        <div className="h-4 bg-muted rounded w-3/4 mb-2 animate-pulse" />
-                        <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto scrollbar-hide">
-                    <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
-                      {videosToShow.map((video) => (
-                        <YouTubeVideoCard
-                          key={video.id}
-                          video={video}
-                          onClick={setSelectedVideo}
-                          showProgress={showProgress}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          };
+          // Task #44 — alias legado, fundido em "continue".
+          const renderYouTubeContinue = (): ReactNode => null;
 
           const renderShorts = (): ReactNode =>
             !youtubeLoading && youtubeData && youtubeData.shorts.length > 0 ? (
@@ -869,18 +835,11 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
               </div>
             ) : null;
 
-          // CMS-backed rails (recently_played / trending / podcasts /
-          // made_for_you fallback) return null when empty so the home
-          // doesn't show empty placeholders for end users (Task #43).
-          const renderRecentlyPlayed = (): ReactNode =>
-            homeCategories.recentlyPlayed.length > 0 ? (
-              <div key="recently_played" className="px-4 mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Tocados recentemente</h2>
-                </div>
-                <HomeFeedRail items={homeCategories.recentlyPlayed} size="medium" />
-              </div>
-            ) : null;
+          // Task #44 — alias legado, fundido em "continue".
+          const renderRecentlyPlayed = (): ReactNode => null;
+          // CMS-backed rails (trending / podcasts / made_for_you
+          // fallback) return null when empty so the home doesn't show
+          // empty placeholders (Task #43).
 
           const renderMadeForYou = (): ReactNode => {
             const hasPlaylists =
@@ -1150,6 +1109,20 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
 
       {/* YouTube Mock Banner - Informativo */}
       <YouTubeMockBanner />
+
+      {/* Task #44 — Modais ativados pelos cards de stats. */}
+      <StreakCalendarModal
+        open={statsModal === "streak"}
+        onOpenChange={(o) => setStatsModal(o ? "streak" : null)}
+      />
+      <BadgesModal
+        open={statsModal === "badges"}
+        onOpenChange={(o) => setStatsModal(o ? "badges" : null)}
+      />
+      <XPHistoryModal
+        open={statsModal === "xp"}
+        onOpenChange={(o) => setStatsModal(o ? "xp" : null)}
+      />
     </PullToRefresh>
   );
 }

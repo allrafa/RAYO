@@ -1,7 +1,13 @@
 import { Router } from "express";
 import { requireAuth } from "../../middleware/auth.js";
 import { success, error as sendError } from "../../utils/response.js";
-import { getTodayItem, completeTodayItem } from "./service.js";
+import {
+  getTodayItem,
+  completeTodayItem,
+  getContinueItems,
+  getXPHistory,
+  getStreakCalendar,
+} from "./service.js";
 
 const router = Router();
 
@@ -30,9 +36,6 @@ router.post("/today/complete", async (req, res, next) => {
         return;
       }
       if (result.error === "INVALID_TODAY_ITEM") {
-        // Frontend should refetch /api/home/today and retry — this
-        // typically happens when the user crosses midnight with the tab
-        // open and the deterministic pick has rotated.
         sendError(
           res,
           "Este não é o item de hoje. Atualize a tela.",
@@ -43,6 +46,38 @@ router.post("/today/complete", async (req, res, next) => {
       }
     }
     success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Task #44 — "Continue de onde parou" unificado.
+router.get("/continue", async (req, res, next) => {
+  try {
+    const items = await getContinueItems(req.user!.id);
+    success(res, { items });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Task #44 — Histórico de XP (modal que abre ao tocar no card XP semanal).
+router.get("/xp-history", async (req, res, next) => {
+  try {
+    const weeks = Math.max(1, Math.min(12, Number(req.query.weeks) || 6));
+    const data = await getXPHistory(req.user!.id, weeks);
+    success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Task #44 — Calendário de hábitos (modal que abre ao tocar em Sequência).
+router.get("/streak-calendar", async (req, res, next) => {
+  try {
+    const days = Math.max(7, Math.min(60, Number(req.query.days) || 30));
+    const data = await getStreakCalendar(req.user!.id, days);
+    success(res, data);
   } catch (err) {
     next(err);
   }
