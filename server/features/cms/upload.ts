@@ -1,33 +1,31 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
+import type { Request, Response, NextFunction } from "express";
+import {
+  putPublicObject,
+  publicObjectKeyToStored,
+  parsePublicUploadStoragePath,
+} from "../../lib/objectStorageBridge.js";
 
-// Local-FS upload backend. Files are written to ./uploads (project root) and
-// served back through a static route mounted at /uploads/*. Switching to
-// Replit Object Storage / S3 later is a 1-file swap (replace storage + URL).
+// Task #48 — Uploads now live in Replit Object Storage (public bucket).
+// We keep the multer-based contract (handlers still see `req.file` with
+// `.path`, `.filename`, `.publicUrl`) so route code stays untouched.
+//
+// `req.file.path` is no longer a filesystem path: it is the canonical
+// object-storage key prefixed with `objstore://` so every consumer that
+// stores `storage_path` in the DB or logs keeps working without
+// inventing a fake disk location.
+//
+// UPLOAD_ROOT remains exported for the legacy migration path and for the
+// boot-time backfill that uploads any pre-existing local files.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const UPLOAD_ROOT = path.resolve(__dirname, "..", "..", "..", "uploads");
 
 if (!fs.existsSync(UPLOAD_ROOT)) {
   fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
 }
-
-const storage = multer.diskStorage({
-  destination: (_req, file, cb) => {
-    // bucket per kind so /uploads/audio/, /uploads/video/, /uploads/image/...
-    const kind = inferKind(file.mimetype);
-    const dir = path.join(UPLOAD_ROOT, kind);
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname) || extensionForMime(file.mimetype);
-    const safe = `${Date.now()}-${randomUUID().slice(0, 8)}${ext}`;
-    cb(null, safe);
-  },
-});
 
 function inferKind(mime: string): string {
   if (mime.startsWith("audio/")) return "audio";
@@ -60,8 +58,8 @@ const ALLOWED = new Set([
   "application/pdf",
 ]);
 
-export const uploadMiddleware = multer({
-  storage,
+const memoryUpload = multer({
+  storage: multer.memoryStorage(),
   limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB cap per file
   fileFilter: (_req, file, cb) => {
     if (ALLOWED.has(file.mimetype)) return cb(null, true);
@@ -69,11 +67,56 @@ export const uploadMiddleware = multer({
   },
 }).single("file");
 
+// Wrapper that runs multer (memory) then pushes the buffer to object
+// storage. We mirror the previous on-disk filename scheme so existing
+// `media_assets.storage_path` rows that happen to share a name keep
+// pointing at the right object after a backfill.
+export function uploadMiddleware(
+  req: Request,
+  res: Response,
+  next: (err?: unknown) => void,
+): void {
+  memoryUpload(req, res, async (err) => {
+    if (err) return next(err);
+    const file = req.file;
+    if (!file) return next();
+    try {
+      const ext = path.extname(file.originalname) || extensionForMime(file.mimetype);
+      const safeName = `${Date.now()}-${randomShort()}${ext}`;
+      const kind = inferKind(file.mimetype);
+      const key = `${kind}/${safeName}`;
+      await putPublicObject(key, file.buffer, file.mimetype);
+      // Mutate req.file so route handlers see object-storage coordinates
+      // instead of a fake disk path.
+      file.path = `objstore://${key}`;
+      file.filename = safeName;
+      (file as Express.Multer.File & { publicUrl?: string }).publicUrl =
+        publicObjectKeyToStored(key);
+      next();
+    } catch (e) {
+      next(e);
+    }
+  });
+}
+
+function randomShort(): string {
+  // 8 hex chars, same shape as the previous randomUUID().slice(0, 8).
+  return Math.random().toString(16).slice(2, 10).padEnd(8, "0");
+}
+
+// publicUrlFor returns the canonical persisted reference (`objstore://<key>`)
+// from a storage path produced by `uploadMiddleware`. Frontend callers
+// see real fetchable URLs only after `resolveStoredMediaUrl` runs at
+// API serialization time.
+//
+// Legacy disk paths (any caller that still passes an absolute fs path
+// rooted under UPLOAD_ROOT) are mapped to the historical
+// `/uploads/<rel>` form so old rows keep working through the
+// `/uploads/*` shim in `server/index.ts`.
 export function publicUrlFor(storagePath: string): string {
-  // storagePath is absolute on disk; we expose anything under UPLOAD_ROOT
-  // through `/uploads/<relative path>`. Defensive guard: refuse paths that
-  // escape the upload root (path-traversal protection for any non-multer
-  // caller that might construct a storagePath manually).
+  const key = parsePublicUploadStoragePath(storagePath);
+  if (key) return publicObjectKeyToStored(key);
+
   const rel = path.relative(UPLOAD_ROOT, storagePath);
   if (rel.startsWith("..") || path.isAbsolute(rel)) {
     throw new Error("publicUrlFor: storagePath escapes upload root");
@@ -84,3 +127,5 @@ export function publicUrlFor(storagePath: string): string {
 export function inferAssetKindFromMime(mime: string): string {
   return inferKind(mime);
 }
+
+export { extensionForMime };

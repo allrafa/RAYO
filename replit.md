@@ -148,7 +148,26 @@ RAIO is a digital platform designed to strengthen families through transformativ
 - **Email Enumeration Prevention**: The `POST /api/auth/forgot-password` endpoint always returns a success message to prevent attackers from inferring valid email addresses.
 - **Object-Level Authorization**: Producers can only modify content they created, unless overridden by `moderator+` roles.
 - **Content Card Mapping**: `badge_text`, `meta_text`, `progress`, and `gradient` fields in Home Feed cards have specific contextual meanings depending on the section.
-- **Static Assets**: Uploaded media is served statically via `/uploads/*` and relies on `multer` disk storage; future plans include object storage.
+- **Static Assets (Task #48)**: Uploaded media (avatar + CMS) lives in
+  Replit Object Storage (public bucket via `PUBLIC_OBJECT_SEARCH_PATHS`).
+  The bucket enforces public-access prevention, so files are served via
+  **short-lived signed URLs** minted by `signPublicObjectUrl` (7-day TTL
+  cap). DB rows persist a sentinel **`objstore://<key>`** in
+  `users.avatar_url`, `media_assets.storage_path/public_url`, and
+  `content_items.cover_url/media_url`; never the proxied
+  `/uploads/...` path. API serializers turn the sentinel into a fresh
+  signed URL at read time: `auth/service.ts#toSafeUser` (every `/me`,
+  login, register, profile update payload), `users/routes.ts` for
+  `/users/:id/public`, and `cms/service.ts` (`listAdminContent`,
+  `listPublicContent`, `getAdminContentDetail`, `getPublicContentDetail`,
+  `listEpisodes`, `recordMediaAsset`, `listMediaAssets`) via the
+  `resolveStoredMediaUrl` / `resolveMediaFields` helpers in
+  `server/lib/objectStorageBridge.ts`. The `/uploads/*` express handler
+  in `server/index.ts` is now a backwards-compat shim only: it
+  **302-redirects** to a signed bucket URL when the key exists in
+  storage, and falls back to disk for un-migrated legacy files. Boot-time
+  `backfillLocalUploads` is idempotent and copies any pre-existing
+  on-disk file into the bucket.
 - **No fake discounts**: Course pricing displays `course.price` directly. Never reintroduce a hardcoded `* 0.5` "50% OFF" — there is no `original_price` field. Promotions must come from real backend data.
 - **Idempotent daily completions (Task #43)**: `POST /api/home/today/complete` uses `INSERT … ON CONFLICT (user_id, completed_date) DO NOTHING` and only awards XP/streak when the insert actually wrote a row (`rowCount === 1`). Never bypass that guard or duplicate completions will yield extra XP.
 

@@ -5,6 +5,7 @@ import type { RegisterInput, LoginInput } from "./validation.js";
 import { trackEvent } from "../analytics/service.js";
 import { sendVerificationCodeEmail, sendWelcomeEmail, sendPasswordResetEmail } from "../../lib/email.js";
 import { logger } from "../../utils/logger.js";
+import { resolveStoredMediaUrl } from "../../lib/objectStorageBridge.js";
 
 const SALT_ROUNDS = 12;
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -79,7 +80,10 @@ export interface SafeUser {
 export const USER_SAFE_COLUMNS =
   "id, email, name, bio, avatar_url, segments, interests, goals, content_preferences, notification_preferences, level, xp, streak, is_premium, role, created_at";
 
-function toSafeUser(row: Record<string, unknown>): SafeUser {
+// Task #48 — async because avatar_url is now persisted as an
+// `objstore://` reference and must be turned into a fresh signed
+// external URL before leaving the server.
+async function toSafeUser(row: Record<string, unknown>): Promise<SafeUser> {
   const createdAt = row.created_at instanceof Date
     ? row.created_at.toISOString()
     : String(row.created_at);
@@ -96,12 +100,16 @@ function toSafeUser(row: Record<string, unknown>): SafeUser {
       ? (rawPrefs as NotificationPreferences)
       : {};
 
+  const avatarUrl = await resolveStoredMediaUrl(
+    (row.avatar_url as string | null) ?? null,
+  );
+
   return {
     id: row.id as number,
     email: row.email as string,
     name: row.name as string,
     bio: (row.bio as string | null) ?? null,
-    avatar_url: (row.avatar_url as string | null) ?? null,
+    avatar_url: avatarUrl,
     segments: (row.segments as string[]) || [],
     interests: (row.interests as string[]) || [],
     goals: (row.goals as string[]) || [],
@@ -275,7 +283,7 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
 
   await query("DELETE FROM email_verification_codes WHERE email = $1", [input.email]);
 
-  const user = toSafeUser(result.rows[0]);
+  const user = await toSafeUser(result.rows[0]);
   const token = await createSession(user.id);
 
   trackEvent(user.id, "user_registered", { method: "email" });
@@ -308,7 +316,7 @@ export async function loginUser(input: LoginInput, ip?: string, userAgent?: stri
     throw err;
   }
 
-  const user = toSafeUser(row);
+  const user = await toSafeUser(row);
   const token = await createSession(user.id, ip, userAgent);
 
   await query("UPDATE users SET last_active_at = NOW(), updated_at = NOW() WHERE id = $1", [user.id]);
@@ -347,7 +355,7 @@ export async function validateSession(token: string): Promise<SafeUser | null> {
     return null;
   }
 
-  return toSafeUser(result.rows[0]);
+  return await toSafeUser(result.rows[0]);
 }
 
 export async function logoutUser(token: string): Promise<void> {
@@ -567,7 +575,7 @@ export async function updateUserProfile(
     throw err;
   }
 
-  return toSafeUser(result.rows[0]);
+  return await toSafeUser(result.rows[0]);
 }
 
 // Task #45 — troca de senha autenticada (usuário logado, sabe a senha atual).

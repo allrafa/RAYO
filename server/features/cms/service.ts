@@ -1,5 +1,17 @@
 import { query } from "../../db/index.js";
 import type { SafeUser, UserRole } from "../auth/service.js";
+import {
+  resolveStoredMediaUrl,
+  resolveMediaFields,
+  normalizeStorageRef,
+} from "../../lib/objectStorageBridge.js";
+
+// Task #48 — every public/admin read goes through these helpers so any
+// `objstore://` references stored in cover_url / media_url / public_url
+// are turned into fresh signed external URLs before leaving the server.
+const CONTENT_MEDIA_FIELDS = ["cover_url", "media_url"] as const;
+const EPISODE_MEDIA_FIELDS = ["media_url"] as const;
+const ASSET_MEDIA_FIELDS = ["public_url"] as const;
 
 export class CmsError extends Error {
   statusCode: number;
@@ -209,8 +221,11 @@ export async function listAdminContent(filters: {
     [...params, limit, offset]
   );
 
+  const items = await Promise.all(
+    rows.map((r) => resolveMediaFields(r, CONTENT_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof r>)),
+  );
   return {
-    items: rows,
+    items,
     pagination: { page, limit, total: countRows[0].total, totalPages: Math.ceil(countRows[0].total / limit) },
   };
 }
@@ -303,8 +318,11 @@ export async function listPublicContent(opts: {
     [...params, limit, offset]
   );
 
+  const items = await Promise.all(
+    rows.map((r) => resolveMediaFields(r, CONTENT_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof r>)),
+  );
   return {
-    items: rows,
+    items,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
   };
 }
@@ -321,7 +339,16 @@ export async function getAdminContentDetail(id: number) {
     [id]
   );
 
-  return { ...item, episodes };
+  const resolvedItem = await resolveMediaFields(
+    item as unknown as Record<string, unknown>,
+    CONTENT_MEDIA_FIELDS as unknown as ReadonlyArray<string>,
+  );
+  const resolvedEpisodes = await Promise.all(
+    episodes.map((e) =>
+      resolveMediaFields(e, EPISODE_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof e>),
+    ),
+  );
+  return { ...resolvedItem, episodes: resolvedEpisodes };
 }
 
 export async function getPublicContentDetail(id: number) {
@@ -345,7 +372,16 @@ export async function getPublicContentDetail(id: number) {
 
   await query(`UPDATE content_items SET view_count = view_count + 1 WHERE id = $1`, [id]);
 
-  return { ...item, episodes };
+  const resolvedItem = await resolveMediaFields(
+    item as Record<string, unknown>,
+    CONTENT_MEDIA_FIELDS as unknown as ReadonlyArray<string>,
+  );
+  const resolvedEpisodes = await Promise.all(
+    episodes.map((e) =>
+      resolveMediaFields(e, EPISODE_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof e>),
+    ),
+  );
+  return { ...resolvedItem, episodes: resolvedEpisodes };
 }
 
 function buildPayload(input: ContentInput) {
@@ -363,14 +399,14 @@ function buildPayload(input: ContentInput) {
     title: input.title.trim(),
     short_description: input.short_description ?? null,
     long_description: input.long_description ?? null,
-    cover_url: input.cover_url ?? null,
+    cover_url: normalizeStorageRef(input.cover_url ?? null),
     segments: normaliseStringArray(input.segments),
     interests: normaliseStringArray(input.interests),
     tags: normaliseStringArray(input.tags),
     status: input.status ?? "draft",
     is_premium: !!input.is_premium,
     price: toNumberOrNull(input.price) ?? 0,
-    media_url: input.media_url ?? null,
+    media_url: normalizeStorageRef(input.media_url ?? null),
     external_url: input.external_url ?? null,
     duration_seconds: toNumberOrNull(input.duration_seconds),
     transcript: input.transcript ?? null,
@@ -596,7 +632,11 @@ export async function listEpisodes(seriesId: number) {
     `SELECT * FROM content_episodes WHERE series_id = $1 ORDER BY sort_order, id`,
     [seriesId]
   );
-  return rows;
+  return Promise.all(
+    rows.map((r) =>
+      resolveMediaFields(r, EPISODE_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof r>),
+    ),
+  );
 }
 
 export async function createEpisode(user: SafeUser, seriesId: number, input: EpisodeInput) {
@@ -617,7 +657,7 @@ export async function createEpisode(user: SafeUser, seriesId: number, input: Epi
      RETURNING *`,
     [
       seriesId, input.title.trim(), input.description ?? null, epKind,
-      input.media_url ?? null, input.external_url ?? null,
+      normalizeStorageRef(input.media_url ?? null), input.external_url ?? null,
       toNumberOrNull(input.duration_seconds), input.transcript ?? null,
       toNumberOrNull(input.sort_order) ?? 0,
     ]
@@ -648,7 +688,7 @@ export async function updateEpisode(user: SafeUser, seriesId: number, episodeId:
       title,
       input.description ?? cur.description,
       epKind,
-      input.media_url ?? cur.media_url,
+      normalizeStorageRef(input.media_url ?? cur.media_url),
       input.external_url ?? cur.external_url,
       input.duration_seconds !== undefined ? toNumberOrNull(input.duration_seconds) : cur.duration_seconds,
       input.transcript ?? cur.transcript,
@@ -691,7 +731,11 @@ export async function recordMediaAsset(payload: {
       payload.sizeBytes, payload.storagePath, payload.publicUrl, payload.kind ?? null,
     ]
   );
-  return rows[0];
+  // Task #48 — return a fresh signed URL so the admin form can preview
+  // the asset immediately. On save, `buildPayload` runs cover_url /
+  // media_url through `normalizeStorageRef` to canonicalize the value
+  // back to `objstore://<key>` before it ever hits the DB.
+  return resolveMediaFields(rows[0], ASSET_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof rows[0]>);
 }
 
 export async function listMediaAssets(userId: number, page = 1, limit = 30) {
@@ -703,7 +747,11 @@ export async function listMediaAssets(userId: number, page = 1, limit = 30) {
        ORDER BY created_at DESC LIMIT $3 OFFSET $4`,
     [userId, false, limit, offset]
   );
-  return rows;
+  return Promise.all(
+    rows.map((r) =>
+      resolveMediaFields(r, ASSET_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof r>),
+    ),
+  );
 }
 
 // Surface existing courses (from the legacy seed) so the producer can

@@ -1,42 +1,33 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 import { randomUUID } from "crypto";
 import { validateProfileUpdate } from "../auth/validation.js";
 import { updateUserProfile } from "../auth/service.js";
 import { success, error } from "../../utils/response.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { query } from "../../db/index.js";
-import { UPLOAD_ROOT } from "../cms/upload.js";
+import {
+  putPublicObject,
+  publicObjectKeyToStored,
+  resolveStoredMediaUrl,
+} from "../../lib/objectStorageBridge.js";
 
 const router = Router();
 
-// Task #45 — upload de avatar. Multer dedicado: somente imagens, cap 2MB,
-// gravado em uploads/avatar/, exposto via /uploads/avatar/.
-const AVATAR_DIR = path.join(UPLOAD_ROOT, "avatar");
-if (!fs.existsSync(AVATAR_DIR)) {
-  fs.mkdirSync(AVATAR_DIR, { recursive: true });
-}
+// Task #45 — upload de avatar. Cap 2MB, somente imagens.
+// Task #48 — bytes vão para Replit Object Storage (bucket público).
+// A URL gravada em users.avatar_url continua sendo /uploads/avatar/...
+// (o handler estático em server/index.ts traduz para object storage,
+// com fallback para disco em arquivos legados).
 const AVATAR_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const EXT_BY_MIME: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+};
 const avatarUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, AVATAR_DIR),
-    filename: (_req, file, cb) => {
-      // Sempre derivamos a extensão do MIME validado (allowlist no
-      // fileFilter abaixo). Nunca confiamos em file.originalname pra
-      // evitar que um cliente salve `.html` sob /uploads/avatar/ e
-      // gere stored-XSS via static hosting same-origin.
-      const extByMime: Record<string, string> = {
-        "image/jpeg": ".jpg",
-        "image/png": ".png",
-        "image/webp": ".webp",
-      };
-      const ext = extByMime[file.mimetype] || ".bin";
-      cb(null, `${Date.now()}-${randomUUID().slice(0, 8)}${ext}`);
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 2 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (AVATAR_MIMES.has(file.mimetype)) return cb(null, true);
@@ -93,7 +84,7 @@ router.get(
           id: u.id,
           name: u.name,
           bio: u.bio,
-          avatar_url: u.avatar_url,
+          avatar_url: await resolveStoredMediaUrl(u.avatar_url),
           segments: u.segments ?? [],
           level: u.level,
           xp: u.xp,
@@ -219,9 +210,13 @@ router.post("/avatar", requireAuth, (req: Request, res: Response, next: NextFunc
         error(res, "Arquivo não enviado", "VALIDATION_ERROR", 400);
         return;
       }
-      const publicUrl = `/uploads/avatar/${path.basename(req.file.path)}`;
+      const ext = EXT_BY_MIME[req.file.mimetype] || ".bin";
+      const key = `avatar/${Date.now()}-${randomUUID().slice(0, 8)}${ext}`;
+      await putPublicObject(key, req.file.buffer, req.file.mimetype);
+      // Persist the storage reference. updateUserProfile → toSafeUser
+      // already turns it into a fresh signed URL before returning.
       const updatedUser = await updateUserProfile(req.user!.id, {
-        avatar_url: publicUrl,
+        avatar_url: publicObjectKeyToStored(key),
       });
       success(res, { user: updatedUser });
     } catch (err) {
