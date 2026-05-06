@@ -102,38 +102,38 @@ Você também pode registrar reclamações junto à Autoridade Nacional de Prote
   ];
 
   return (
-    <div className="min-h-screen pb-24 lg:pb-8" style={{ background: "var(--raio-bg-primary)" }}>
+    <div className="min-h-screen pb-24 lg:pb-8" style={{ background: "var(--rayo-sand-100)" }}>
       <div className="max-w-3xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
         <div className="flex items-center gap-3 mb-6">
           <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
-            <ArrowLeft className="w-5 h-5" style={{ color: "var(--raio-text-primary)" }} />
+            <ArrowLeft className="w-5 h-5" style={{ color: "var(--rayo-forest-900)" }} />
           </Button>
           <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5" style={{ color: "var(--raio-accent-primary)" }} />
-            <h1 className="text-xl lg:text-2xl" style={{ fontWeight: 700, color: "var(--raio-text-primary)" }}>
+            <Shield className="w-5 h-5" style={{ color: "var(--rayo-terra-500)" }} />
+            <h1 className="text-xl lg:text-2xl" style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }}>
               Política de Privacidade
             </h1>
           </div>
         </div>
 
-        <Card className="p-5 lg:p-8 border-0 shadow-md mb-6" style={{ background: "var(--raio-bg-secondary)" }}>
-          <p className="text-sm mb-4" style={{ color: "var(--raio-text-secondary)" }}>
+        <Card className="p-5 lg:p-8 border-0 shadow-md mb-6" style={{ background: "var(--rayo-sand-50)" }}>
+          <p className="text-sm mb-4" style={{ color: "var(--rayo-ink-700)" }}>
             A RAYO ("nós", "nosso") valoriza a privacidade dos seus usuários. Esta Política de Privacidade
             descreve como coletamos, usamos, armazenamos e protegemos seus dados pessoais, em conformidade
             com a Lei Geral de Proteção de Dados Pessoais (LGPD — Lei 13.709/2018).
           </p>
-          <p className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
+          <p className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
             Ao utilizar a plataforma RAYO, você concorda com as práticas descritas nesta política.
           </p>
         </Card>
 
         <div className="space-y-4">
           {sections.map((section, index) => (
-            <Card key={index} className="p-5 lg:p-6 border-0 shadow-sm" style={{ background: "var(--raio-bg-secondary)" }}>
-              <h2 className="text-base lg:text-lg mb-3" style={{ fontWeight: 600, color: "var(--raio-text-primary)" }}>
+            <Card key={index} className="p-5 lg:p-6 border-0 shadow-sm" style={{ background: "var(--rayo-sand-50)" }}>
+              <h2 className="text-base lg:text-lg mb-3" style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}>
                 {section.title}
               </h2>
-              <p className="text-sm whitespace-pre-line leading-relaxed" style={{ color: "var(--raio-text-secondary)" }}>
+              <p className="text-sm whitespace-pre-line leading-relaxed" style={{ color: "var(--rayo-ink-700)" }}>
                 {section.content}
               </p>
             </Card>

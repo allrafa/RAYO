@@ -109,7 +109,7 @@ export default function App() {
 
 // Linha ~112: Loading state atualizado
 style={{
-  background: 'var(--raio-bg-primary)',
+  background: 'var(--rayo-sand-100)',
 }}
 ```
 
@@ -230,9 +230,9 @@ function MyComponent() {
 ```tsx
 <div 
   style={{
-    background: 'var(--raio-bg-primary)',
-    color: 'var(--raio-text-primary)',
-    border: '1px solid var(--raio-border-default)',
+    background: 'var(--rayo-sand-100)',
+    color: 'var(--rayo-forest-900)',
+    border: '1px solid var(--rayo-sand-300)',
   }}
 >
   Conteúdo que respeita o tema

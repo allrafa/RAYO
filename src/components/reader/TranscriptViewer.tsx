@@ -43,10 +43,10 @@ export function TranscriptViewer() {
               className="text-[16px] lg:text-[18px] leading-relaxed"
               style={{
                 color: isActive 
-                  ? 'var(--raio-accent-primary)' 
+                  ? 'var(--rayo-terra-500)' 
                   : isPast 
-                    ? 'var(--raio-text-tertiary)'
-                    : 'var(--raio-text-primary)',
+                    ? 'var(--rayo-ink-400)'
+                    : 'var(--rayo-forest-900)',
                 fontWeight: isActive ? 600 : 400,
                 opacity: isPast && !isActive ? 0.5 : 1,
                 transition: 'all 0.3s ease',

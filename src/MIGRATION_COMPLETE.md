@@ -54,11 +54,11 @@ border-green-200
 text-gray-700 dark:text-gray-300
 
 /* ✅ DEPOIS (Design System) */
-var(--raio-accent-primary)
-var(--raio-accent-hover)
+var(--rayo-terra-500)
+var(--rayo-terra-700)
 var(--raio-accent-light)
-var(--raio-border-default)
-var(--raio-text-primary)
+var(--rayo-sand-300)
+var(--rayo-forest-900)
 ```
 
 ---
@@ -126,8 +126,8 @@ var(--raio-text-primary)
 
 ### 4. **Hover States Consistentes**
 - Todos os botões: inline `onMouseEnter/Leave`
-- Cards: `var(--raio-bg-tertiary)` on hover
-- Links: `var(--raio-accent-hover)`
+- Cards: `var(--rayo-sand-300)` on hover
+- Links: `var(--rayo-terra-700)`
 
 ---
 
@@ -146,7 +146,7 @@ var(--raio-text-primary)
 ```
 ✅ Amarelo visível em ambos os modos
 ✅ Contraste 7:1 (textos primários)
-✅ Borders sempre visíveis (var(--raio-border-default))
+✅ Borders sempre visíveis (var(--rayo-sand-300))
 ✅ Badges com background adaptável
 ✅ Experiência consistente em todas as páginas
 ```
@@ -275,28 +275,28 @@ var(--raio-text-primary)
 
 ```typescript
 // Backgrounds
-'var(--raio-bg-primary)'      // #FAFAFA (light) / #0A0A0A (dark)
-'var(--raio-bg-secondary)'    // #FFFFFF (light) / #1A1A1A (dark)
-'var(--raio-bg-tertiary)'     // #F5F5F5 (light) / #2A2A2A (dark)
+'var(--rayo-sand-100)'      // #FAFAFA (light) / #0A0A0A (dark)
+'var(--rayo-sand-50)'    // #FFFFFF (light) / #1A1A1A (dark)
+'var(--rayo-sand-300)'     // #F5F5F5 (light) / #2A2A2A (dark)
 
 // Textos
-'var(--raio-text-primary)'    // #1A1A1A (light) / #FAFAFA (dark)
-'var(--raio-text-secondary)'  // #6B7280 (light) / #9CA3AF (dark)
-'var(--raio-text-tertiary)'   // #9CA3AF (light) / #6B7280 (dark)
+'var(--rayo-forest-900)'    // #1A1A1A (light) / #FAFAFA (dark)
+'var(--rayo-ink-700)'  // #6B7280 (light) / #9CA3AF (dark)
+'var(--rayo-ink-400)'   // #9CA3AF (light) / #6B7280 (dark)
 
 // Acentos (Amarelo RAIO ⚡)
-'var(--raio-accent-primary)'  // #D97706 (light) / #FBBF24 (dark)
-'var(--raio-accent-hover)'    // #B45309 (light) / #FCD34D (dark)
+'var(--rayo-terra-500)'  // #D97706 (light) / #FBBF24 (dark)
+'var(--rayo-terra-700)'    // #B45309 (light) / #FCD34D (dark)
 'var(--raio-accent-light)'    // #FEF3C7 (light) / #422006 (dark)
 
 // Borders
-'var(--raio-border-default)'  // #E5E5E5 (light) / #2A2A2A (dark)
+'var(--rayo-sand-300)'  // #E5E5E5 (light) / #2A2A2A (dark)
 'var(--raio-border-hover)'    // #D1D5DB (light) / #3A3A3A (dark)
 
 // Estados
-'var(--raio-success)'         // #10B981
-'var(--raio-warning)'         // #F59E0B
-'var(--raio-error)'           // #EF4444
+'var(--rayo-sage-500)'         // #10B981
+'var(--rayo-ochre-500)'         // #F59E0B
+'var(--rayo-terra-700)'           // #EF4444
 ```
 
 ### Uso Recomendado:
@@ -305,14 +305,14 @@ var(--raio-text-primary)
 // ✅ Padrão de Botão Amarelo RAIO
 <Button
   style={{
-    background: 'var(--raio-accent-primary)',
+    background: 'var(--rayo-terra-500)',
     color: '#FFFFFF',
   }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.background = 'var(--raio-accent-hover)';
+    e.currentTarget.style.background = 'var(--rayo-terra-700)';
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.background = 'var(--raio-accent-primary)';
+    e.currentTarget.style.background = 'var(--rayo-terra-500)';
   }}
 >
   Ação Principal
@@ -321,19 +321,19 @@ var(--raio-text-primary)
 // ✅ Padrão de Card
 <Card
   style={{
-    background: 'var(--raio-bg-secondary)',
-    borderColor: 'var(--raio-border-default)',
+    background: 'var(--rayo-sand-50)',
+    borderColor: 'var(--rayo-sand-300)',
   }}
 >
-  <h3 style={{ color: 'var(--raio-text-primary)' }}>Título</h3>
-  <p style={{ color: 'var(--raio-text-secondary)' }}>Descrição</p>
+  <h3 style={{ color: 'var(--rayo-forest-900)' }}>Título</h3>
+  <p style={{ color: 'var(--rayo-ink-700)' }}>Descrição</p>
 </Card>
 
 // ✅ Padrão de Badge
 <Badge
   style={{
     background: 'var(--raio-accent-light)',
-    color: 'var(--raio-accent-primary)',
+    color: 'var(--rayo-terra-500)',
   }}
 >
   Premium

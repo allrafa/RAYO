@@ -57,14 +57,14 @@ export function AcademiaPage() {
   return (
     <div 
       className="min-h-screen"
-      style={{ background: 'var(--raio-bg-primary)' }}
+      style={{ background: 'var(--rayo-sand-100)' }}
     >
       {/* NAVIGATION TABS - Above Everything */}
       <div 
         className="sticky top-0 z-50"
         style={{ 
-          background: 'var(--raio-bg-primary)',
-          borderBottom: '1px solid var(--raio-border-default)',
+          background: 'var(--rayo-sand-100)',
+          borderBottom: '1px solid var(--rayo-sand-300)',
         }}
       >
         <div className="max-w-7xl mx-auto px-6">
@@ -75,17 +75,17 @@ export function AcademiaPage() {
               onClick={() => setCurrentView("minha-biblioteca")}
               style={{ 
                 fontWeight: currentView === "minha-biblioteca" ? 700 : 500,
-                borderColor: currentView === "minha-biblioteca" ? 'var(--raio-accent-primary)' : 'transparent',
-                color: currentView === "minha-biblioteca" ? 'var(--raio-accent-primary)' : 'var(--raio-text-tertiary)',
+                borderColor: currentView === "minha-biblioteca" ? 'var(--rayo-terra-500)' : 'transparent',
+                color: currentView === "minha-biblioteca" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
               }}
               onMouseEnter={(e) => {
                 if (currentView !== "minha-biblioteca") {
-                  e.currentTarget.style.color = 'var(--raio-text-primary)';
+                  e.currentTarget.style.color = 'var(--rayo-forest-900)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (currentView !== "minha-biblioteca") {
-                  e.currentTarget.style.color = 'var(--raio-text-tertiary)';
+                  e.currentTarget.style.color = 'var(--rayo-ink-400)';
                 }
               }}
             >
@@ -97,8 +97,8 @@ export function AcademiaPage() {
                   style={{ 
                     fontSize: '12px', 
                     fontWeight: 700,
-                    background: 'var(--raio-accent-primary)',
-                    color: theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF',
+                    background: 'var(--rayo-terra-500)',
+                    color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF',
                   }}
                 >
                   {libraryItems.length}
@@ -111,17 +111,17 @@ export function AcademiaPage() {
               onClick={() => setCurrentView("marketplace")}
               style={{ 
                 fontWeight: currentView === "marketplace" ? 700 : 500,
-                borderColor: currentView === "marketplace" ? 'var(--raio-accent-primary)' : 'transparent',
-                color: currentView === "marketplace" ? 'var(--raio-accent-primary)' : 'var(--raio-text-tertiary)',
+                borderColor: currentView === "marketplace" ? 'var(--rayo-terra-500)' : 'transparent',
+                color: currentView === "marketplace" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
               }}
               onMouseEnter={(e) => {
                 if (currentView !== "marketplace") {
-                  e.currentTarget.style.color = 'var(--raio-text-primary)';
+                  e.currentTarget.style.color = 'var(--rayo-forest-900)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (currentView !== "marketplace") {
-                  e.currentTarget.style.color = 'var(--raio-text-tertiary)';
+                  e.currentTarget.style.color = 'var(--rayo-ink-400)';
                 }
               }}
             >
@@ -198,11 +198,11 @@ function MinhaBlibiotecaView({
         <div className="text-center space-y-6">
           <div 
             className="w-24 h-24 rounded-full flex items-center justify-center mx-auto"
-            style={{ background: 'var(--raio-bg-tertiary)' }}
+            style={{ background: 'var(--rayo-sand-300)' }}
           >
             <BookOpen 
               className="w-12 h-12" 
-              style={{ color: 'var(--raio-text-tertiary)' }}
+              style={{ color: 'var(--rayo-ink-400)' }}
             />
           </div>
           <div>
@@ -210,14 +210,14 @@ function MinhaBlibiotecaView({
               className="text-[32px] mb-3" 
               style={{ 
                 fontWeight: 700, 
-                color: 'var(--raio-text-primary)' 
+                color: 'var(--rayo-forest-900)' 
               }}
             >
               Sua biblioteca está vazia
             </h2>
             <p 
               className="text-[18px] mb-8" 
-              style={{ color: 'var(--raio-text-secondary)' }}
+              style={{ color: 'var(--rayo-ink-700)' }}
             >
               Explore nosso marketplace e comece sua jornada de transformação
             </p>
@@ -240,11 +240,11 @@ function MinhaBlibiotecaView({
           onClick={() => setLibraryFilter('all')}
           className="gap-2"
           style={{
-            background: libraryFilter === 'all' ? 'var(--raio-accent-primary)' : 'transparent',
+            background: libraryFilter === 'all' ? 'var(--rayo-terra-500)' : 'transparent',
             color: libraryFilter === 'all' 
-              ? (theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF')
-              : 'var(--raio-text-secondary)',
-            borderColor: libraryFilter === 'all' ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)'
+              ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+              : 'var(--rayo-ink-700)',
+            borderColor: libraryFilter === 'all' ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)'
           }}
         >
           <BookOpen className="w-4 h-4" />
@@ -255,11 +255,11 @@ function MinhaBlibiotecaView({
           onClick={() => setLibraryFilter('courses')}
           className="gap-2"
           style={{
-            background: libraryFilter === 'courses' ? 'var(--raio-accent-primary)' : 'transparent',
+            background: libraryFilter === 'courses' ? 'var(--rayo-terra-500)' : 'transparent',
             color: libraryFilter === 'courses' 
-              ? (theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF')
-              : 'var(--raio-text-secondary)',
-            borderColor: libraryFilter === 'courses' ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)'
+              ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+              : 'var(--rayo-ink-700)',
+            borderColor: libraryFilter === 'courses' ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)'
           }}
         >
           🎓 Cursos ({totalCourses})
@@ -269,11 +269,11 @@ function MinhaBlibiotecaView({
           onClick={() => setLibraryFilter('books')}
           className="gap-2"
           style={{
-            background: libraryFilter === 'books' ? 'var(--raio-accent-primary)' : 'transparent',
+            background: libraryFilter === 'books' ? 'var(--rayo-terra-500)' : 'transparent',
             color: libraryFilter === 'books' 
-              ? (theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF')
-              : 'var(--raio-text-secondary)',
-            borderColor: libraryFilter === 'books' ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)'
+              ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+              : 'var(--rayo-ink-700)',
+            borderColor: libraryFilter === 'books' ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)'
           }}
         >
           📕 Livros ({totalBooks})
@@ -286,7 +286,7 @@ function MinhaBlibiotecaView({
           <div>
             <h2 
               className="text-[24px] mb-6" 
-              style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}
+              style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
             >
               🎓 Seus Cursos
             </h2>
@@ -306,7 +306,7 @@ function MinhaBlibiotecaView({
         <div className="space-y-6">
           <h2 
             className="text-[24px]" 
-            style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}
+            style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
           >
             📕 Seus Livros
           </h2>
@@ -333,8 +333,8 @@ function MinhaBlibiotecaView({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Card 
               style={{ 
-                background: 'var(--raio-bg-secondary)',
-                borderColor: 'var(--raio-border-default)',
+                background: 'var(--rayo-sand-50)',
+                borderColor: 'var(--rayo-sand-300)',
               }}
             >
               <CardContent className="p-4 text-center">
@@ -342,14 +342,14 @@ function MinhaBlibiotecaView({
                   className="text-[24px] mb-1" 
                   style={{ 
                     fontWeight: 700, 
-                    color: 'var(--raio-text-primary)' 
+                    color: 'var(--rayo-forest-900)' 
                   }}
                 >
                   {totalCourses + totalBooks}
                 </div>
                 <div 
                   className="text-[12px]" 
-                  style={{ color: 'var(--raio-text-secondary)' }}
+                  style={{ color: 'var(--rayo-ink-700)' }}
                 >
                   Itens na Biblioteca
                 </div>
@@ -357,8 +357,8 @@ function MinhaBlibiotecaView({
             </Card>
             <Card 
               style={{ 
-                background: 'var(--raio-bg-secondary)',
-                borderColor: 'var(--raio-border-default)',
+                background: 'var(--rayo-sand-50)',
+                borderColor: 'var(--rayo-sand-300)',
               }}
             >
               <CardContent className="p-4 text-center">
@@ -366,14 +366,14 @@ function MinhaBlibiotecaView({
                   className="text-[24px] mb-1" 
                   style={{ 
                     fontWeight: 700, 
-                    color: 'var(--raio-text-primary)' 
+                    color: 'var(--rayo-forest-900)' 
                   }}
                 >
                   {totalCourses}
                 </div>
                 <div 
                   className="text-[12px]" 
-                  style={{ color: 'var(--raio-text-secondary)' }}
+                  style={{ color: 'var(--rayo-ink-700)' }}
                 >
                   Cursos Ativos
                 </div>
@@ -381,8 +381,8 @@ function MinhaBlibiotecaView({
             </Card>
             <Card 
               style={{ 
-                background: 'var(--raio-bg-secondary)',
-                borderColor: 'var(--raio-border-default)',
+                background: 'var(--rayo-sand-50)',
+                borderColor: 'var(--rayo-sand-300)',
               }}
             >
               <CardContent className="p-4 text-center">
@@ -390,14 +390,14 @@ function MinhaBlibiotecaView({
                   className="text-[24px] mb-1" 
                   style={{ 
                     fontWeight: 700, 
-                    color: 'var(--raio-text-primary)' 
+                    color: 'var(--rayo-forest-900)' 
                   }}
                 >
                   {totalBooks}
                 </div>
                 <div 
                   className="text-[12px]" 
-                  style={{ color: 'var(--raio-text-secondary)' }}
+                  style={{ color: 'var(--rayo-ink-700)' }}
                 >
                   Livros
                 </div>
@@ -405,8 +405,8 @@ function MinhaBlibiotecaView({
             </Card>
             <Card 
               style={{ 
-                background: 'var(--raio-bg-secondary)',
-                borderColor: 'var(--raio-border-default)',
+                background: 'var(--rayo-sand-50)',
+                borderColor: 'var(--rayo-sand-300)',
               }}
             >
               <CardContent className="p-4 text-center">
@@ -414,14 +414,14 @@ function MinhaBlibiotecaView({
                   className="text-[24px] mb-1" 
                   style={{ 
                     fontWeight: 700, 
-                    color: 'var(--raio-text-primary)' 
+                    color: 'var(--rayo-forest-900)' 
                   }}
                 >
                   {books.filter(b => b.isCompleted).length + courses.filter(c => c.progress === 100).length}
                 </div>
                 <div 
                   className="text-[12px]" 
-                  style={{ color: 'var(--raio-text-secondary)' }}
+                  style={{ color: 'var(--rayo-ink-700)' }}
                 >
                   Itens Concluídos
                 </div>
@@ -537,7 +537,7 @@ function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
               className="text-[24px]" 
               style={{ 
                 fontWeight: 700, 
-                color: 'var(--raio-text-primary)' 
+                color: 'var(--rayo-forest-900)' 
               }}
             >
                 {course.title}
@@ -545,7 +545,7 @@ function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
               {course.progress === 100 && (
                 <Badge 
                   style={{ 
-                    background: 'var(--raio-success)',
+                    background: 'var(--rayo-sage-500)',
                     color: '#FFFFFF',
                   }}
                 >
@@ -556,13 +556,13 @@ function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
             </div>
             <p 
               className="text-[14px] mb-3" 
-              style={{ color: 'var(--raio-text-secondary)' }}
+              style={{ color: 'var(--rayo-ink-700)' }}
             >
               {course.description}
             </p>
             <div 
               className="flex items-center gap-4 text-[13px]" 
-              style={{ color: 'var(--raio-text-secondary)' }}
+              style={{ color: 'var(--rayo-ink-700)' }}
             >
               <div className="flex items-center gap-1">
                 <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
@@ -588,25 +588,25 @@ function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
         {course.progress > 0 && (
           <div className="mt-4 space-y-2">
             <div className="flex justify-between text-[13px]">
-              <span style={{ color: 'var(--raio-text-secondary)' }}>
+              <span style={{ color: 'var(--rayo-ink-700)' }}>
                 Progresso do curso
               </span>
               <span style={{ 
                 fontWeight: 600, 
-                color: 'var(--raio-text-primary)' 
+                color: 'var(--rayo-forest-900)' 
               }}>
                 {course.progress}%
               </span>
             </div>
             <div 
               className="h-2 rounded-full overflow-hidden"
-              style={{ background: 'var(--raio-bg-tertiary)' }}
+              style={{ background: 'var(--rayo-sand-300)' }}
             >
               <div
                 className="h-full transition-all duration-500"
                 style={{ 
                   width: `${course.progress}%`,
-                  background: 'linear-gradient(90deg, var(--raio-accent-primary) 0%, var(--raio-accent-hover) 100%)'
+                  background: 'linear-gradient(90deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)'
                 }}
               />
             </div>
@@ -616,11 +616,11 @@ function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
 
       {/* Lessons Carousel */}
       {lessonsError ? (
-        <div className="px-6 py-4 text-center" style={{ color: 'var(--raio-text-secondary)' }}>
+        <div className="px-6 py-4 text-center" style={{ color: 'var(--rayo-ink-700)' }}>
           <p className="text-[14px]">Não foi possível carregar as aulas. Tente novamente mais tarde.</p>
         </div>
       ) : lessons.length === 0 ? (
-        <div className="px-6 py-4 text-center" style={{ color: 'var(--raio-text-secondary)' }}>
+        <div className="px-6 py-4 text-center" style={{ color: 'var(--rayo-ink-700)' }}>
           <p className="text-[14px]">Carregando aulas...</p>
         </div>
       ) : (
@@ -664,7 +664,7 @@ function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
       <div className="px-6">
         <div 
           className="border-b" 
-          style={{ borderColor: 'var(--raio-border-default)' }}
+          style={{ borderColor: 'var(--rayo-sand-300)' }}
         ></div>
       </div>
     </div>
@@ -688,7 +688,7 @@ function LessonCard({ lesson, lessonNumber, onClick, isLocked }: LessonCardProps
     >
       <div 
         className={`relative aspect-video rounded-lg overflow-hidden transition-all duration-300 ${!isLocked && 'group-hover:scale-105 group-hover:shadow-xl'}`}
-        style={{ background: 'var(--raio-bg-tertiary)' }}
+        style={{ background: 'var(--rayo-sand-300)' }}
       >
         <ImageWithFallback
           src={lesson.thumbnail}
@@ -710,7 +710,7 @@ function LessonCard({ lesson, lessonNumber, onClick, isLocked }: LessonCardProps
             <div className="absolute top-2 right-2">
               <Badge 
                 style={{ 
-                  background: 'var(--raio-success)',
+                  background: 'var(--rayo-sage-500)',
                   color: '#FFFFFF',
                 }}
               >
@@ -732,7 +732,7 @@ function LessonCard({ lesson, lessonNumber, onClick, isLocked }: LessonCardProps
               ) : (
                 <Play 
                   className="w-7 h-7 ml-1" 
-                  style={{ color: 'var(--raio-accent-primary)' }}
+                  style={{ color: 'var(--rayo-terra-500)' }}
                 />
               )}
             </div>
@@ -1039,7 +1039,7 @@ function MarketplaceView({
       {/* HERO — Editorial RAYO */}
       <section
         className="relative overflow-hidden"
-        style={{ background: 'var(--raio-bg-warm-cream)' }}
+        style={{ background: 'var(--rayo-sand-50)' }}
       >
         <div className="max-w-7xl mx-auto px-6 py-10 md:py-16">
           <div className="grid md:grid-cols-2 gap-10 md:gap-12 items-center">
@@ -1048,7 +1048,7 @@ function MarketplaceView({
               <div>
                 <p
                   className="font-display-serif italic text-[14px] mb-3"
-                  style={{ color: 'var(--raio-accent-hover)', letterSpacing: '0.02em' }}
+                  style={{ color: 'var(--rayo-terra-700)', letterSpacing: '0.02em' }}
                 >
                   Conteúdo para a sua família
                 </p>
@@ -1057,20 +1057,20 @@ function MarketplaceView({
                   style={{
                     fontSize: 'clamp(40px, 6vw, 64px)',
                     lineHeight: 1.0,
-                    color: 'var(--raio-text-primary)',
+                    color: 'var(--rayo-forest-900)',
                     letterSpacing: '-0.02em',
                     fontWeight: 400,
                   }}
                 >
                   O que vocês{' '}
-                  <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>
+                  <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
                     vão construir
                   </span>{' '}
                   hoje?
                 </h1>
                 <p
                   className="text-[16px] md:text-[17px] mt-5 leading-relaxed max-w-[480px]"
-                  style={{ color: 'var(--raio-text-strong)', lineHeight: 1.65 }}
+                  style={{ color: 'var(--rayo-forest-900)', lineHeight: 1.65 }}
                 >
                   Cursos, livros, áudios e trilhas pensados para cada momento — do solteiro aos pais — tudo em um só lugar.
                 </p>
@@ -1090,17 +1090,17 @@ function MarketplaceView({
                     className="inline-flex items-center gap-2 h-[48px] px-5 rounded-full text-[15px] transition-all"
                     style={{
                       background: 'transparent',
-                      color: 'var(--raio-text-primary)',
-                      border: '1.5px solid var(--raio-text-primary)',
+                      color: 'var(--rayo-forest-900)',
+                      border: '1.5px solid var(--rayo-forest-900)',
                       fontWeight: 600,
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--raio-text-primary)';
-                      e.currentTarget.style.color = 'var(--raio-text-inverse)';
+                      e.currentTarget.style.background = 'var(--rayo-forest-900)';
+                      e.currentTarget.style.color = 'var(--rayo-sand-50)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = 'var(--raio-text-primary)';
+                      e.currentTarget.style.color = 'var(--rayo-forest-900)';
                     }}
                   >
                     {userSegments.length > 0
@@ -1111,11 +1111,11 @@ function MarketplaceView({
 
                   <div
                     className="flex items-center gap-2 text-[13px]"
-                    style={{ color: 'var(--raio-text-secondary)' }}
+                    style={{ color: 'var(--rayo-ink-700)' }}
                   >
                     <span
                       className="inline-block w-1.5 h-1.5 rounded-full"
-                      style={{ background: 'var(--raio-accent-hover)' }}
+                      style={{ background: 'var(--rayo-terra-700)' }}
                     />
                     <span>
                       Curadoria editorial · 5 fases da família · novos conteúdos toda semana
@@ -1133,17 +1133,17 @@ function MarketplaceView({
                   className="h-[56px] pl-6 pr-16 text-[16px] rounded-full border focus:ring-0"
                   style={{
                     fontSize: '16px',
-                    background: 'var(--raio-bg-primary)',
-                    borderColor: 'var(--raio-border-default)',
-                    color: 'var(--raio-text-primary)',
+                    background: 'var(--rayo-sand-100)',
+                    borderColor: 'var(--rayo-sand-300)',
+                    color: 'var(--rayo-forest-900)',
                   }}
                 />
                 <Button
                   size="icon"
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 h-[44px] w-[44px] rounded-full"
-                  style={{ background: 'var(--raio-accent-primary)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--raio-accent-hover)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--raio-accent-primary)'; }}
+                  style={{ background: 'var(--rayo-terra-500)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--rayo-terra-700)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--rayo-terra-500)'; }}
                   onClick={() => {
                     if (allCoursesRef.current) {
                       allCoursesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1176,7 +1176,7 @@ function MarketplaceView({
             <div className="flex items-center gap-2 mb-3">
               <span
                 className="text-[12px] uppercase tracking-wider"
-                style={{ color: 'var(--raio-text-secondary)', letterSpacing: '0.12em', fontWeight: 600 }}
+                style={{ color: 'var(--rayo-ink-700)', letterSpacing: '0.12em', fontWeight: 600 }}
               >
                 Para o seu momento
               </span>
@@ -1193,13 +1193,13 @@ function MarketplaceView({
                     className="px-4 py-2 rounded-full text-[14px] transition-all"
                     style={{
                       background: isActive
-                        ? 'var(--raio-text-primary)'
-                        : 'var(--raio-bg-primary)',
+                        ? 'var(--rayo-forest-900)'
+                        : 'var(--rayo-sand-100)',
                       color: isActive
-                        ? 'var(--raio-text-inverse)'
-                        : 'var(--raio-text-strong)',
+                        ? 'var(--rayo-sand-50)'
+                        : 'var(--rayo-forest-900)',
                       border: `1px solid ${
-                        isActive ? 'var(--raio-text-primary)' : 'var(--raio-border-default)'
+                        isActive ? 'var(--rayo-forest-900)' : 'var(--rayo-sand-300)'
                       }`,
                       fontWeight: isActive ? 600 : 500,
                     }}
@@ -1208,7 +1208,7 @@ function MarketplaceView({
                     {isUserSegment && !isActive && (
                       <span
                         className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full align-middle"
-                        style={{ background: 'var(--raio-accent-hover)' }}
+                        style={{ background: 'var(--rayo-terra-700)' }}
                         aria-label="Seu perfil"
                       />
                     )}
@@ -1231,11 +1231,11 @@ function MarketplaceView({
                 <div>
                   <h2
                     className="text-[24px] mb-2"
-                    style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}
+                    style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
                   >
                     {getSearchResultMessage(searchQuery, segmentFilteredCourses.length, courses)}
                   </h2>
-                  <p className="text-[16px]" style={{ color: 'var(--raio-text-secondary)' }}>
+                  <p className="text-[16px]" style={{ color: 'var(--rayo-ink-700)' }}>
                     {segmentFilteredCourses.length}{' '}
                     {segmentFilteredCourses.length === 1 ? 'curso encontrado' : 'cursos encontrados'}
                     {selectedSegment !== 'all' && segmentLabel ? ` em ${segmentLabel}` : ''}
@@ -1281,16 +1281,16 @@ function MarketplaceView({
                   style={{
                     fontSize: 'clamp(26px, 3vw, 32px)',
                     lineHeight: 1.1,
-                    color: 'var(--raio-text-primary)',
+                    color: 'var(--rayo-forest-900)',
                     fontWeight: 400,
                   }}
                 >
                   Explore por{' '}
-                  <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>
+                  <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
                     formato
                   </span>
                 </h2>
-                <p className="text-[15px] mt-2" style={{ color: 'var(--raio-text-secondary)' }}>
+                <p className="text-[15px] mt-2" style={{ color: 'var(--rayo-ink-700)' }}>
                   Escolha como você prefere consumir hoje.
                 </p>
               </div>
@@ -1320,32 +1320,32 @@ function MarketplaceView({
                       onClick={handleClick}
                       className="text-left rounded-2xl p-4 md:p-5 transition-all hover:-translate-y-0.5"
                       style={{
-                        background: 'var(--raio-bg-secondary)',
-                        border: `1px solid ${isActiveKind ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)'}`,
+                        background: 'var(--rayo-sand-50)',
+                        border: `1px solid ${isActiveKind ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)'}`,
                         boxShadow: isActiveKind ? '0 0 0 3px rgba(201,144,86,0.18)' : undefined,
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--raio-accent-primary)';
+                        e.currentTarget.style.borderColor = 'var(--rayo-terra-500)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.borderColor = isActiveKind
-                          ? 'var(--raio-accent-primary)'
-                          : 'var(--raio-border-default)';
+                          ? 'var(--rayo-terra-500)'
+                          : 'var(--rayo-sand-300)';
                       }}
                     >
                       <div
                         className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-                        style={{ background: 'var(--raio-bg-warm-cream)' }}
+                        style={{ background: 'var(--rayo-sand-50)' }}
                       >
                         <Icon className="w-5 h-5" />
                       </div>
-                      <div className="text-[15px]" style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}>
+                      <div className="text-[15px]" style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
                         {f.label}
                       </div>
-                      <div className="text-[12px] mt-0.5" style={{ color: 'var(--raio-text-secondary)' }}>
+                      <div className="text-[12px] mt-0.5" style={{ color: 'var(--rayo-ink-700)' }}>
                         {f.description}
                       </div>
-                      <div className="text-[12px] mt-2" style={{ color: 'var(--raio-text-tertiary)' }}>
+                      <div className="text-[12px] mt-2" style={{ color: 'var(--rayo-ink-400)' }}>
                         {formatCountsLoading ? '—' : `${count} ${count === 1 ? 'item' : 'itens'}`}
                       </div>
                     </button>
@@ -1360,14 +1360,14 @@ function MarketplaceView({
                     <div>
                       <h3
                         className="text-[20px] md:text-[22px]"
-                        style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}
+                        style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
                       >
                         {FORMAT_KINDS.find((k) => k.kind === selectedKind)?.label}
                         {selectedSegment !== 'all' && segmentLabel ? ` para ${segmentLabel}` : ''}
                       </h3>
                       <p
                         className="text-[13px] mt-1"
-                        style={{ color: 'var(--raio-text-secondary)' }}
+                        style={{ color: 'var(--rayo-ink-700)' }}
                       >
                         {kindLoading
                           ? 'Carregando…'
@@ -1380,7 +1380,7 @@ function MarketplaceView({
                       type="button"
                       onClick={() => setSelectedKind(null)}
                       className="text-[13px] underline"
-                      style={{ color: 'var(--raio-text-secondary)' }}
+                      style={{ color: 'var(--rayo-ink-700)' }}
                     >
                       Limpar filtro
                     </button>
@@ -1388,7 +1388,7 @@ function MarketplaceView({
 
                   {kindLoading ? (
                     <div className="flex items-center justify-center py-10">
-                      <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--raio-accent-primary)' }} />
+                      <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--rayo-terra-500)' }} />
                     </div>
                   ) : kindItems.length === 0 ? (
                     <EmptyMarketplaceState
@@ -1408,8 +1408,8 @@ function MarketplaceView({
                           key={it.id}
                           className="rounded-2xl overflow-hidden"
                           style={{
-                            background: 'var(--raio-bg-secondary)',
-                            border: '1px solid var(--raio-border-default)',
+                            background: 'var(--rayo-sand-50)',
+                            border: '1px solid var(--rayo-sand-300)',
                           }}
                         >
                           <div className="relative w-full" style={{ aspectRatio: '4 / 3' }}>
@@ -1422,14 +1422,14 @@ function MarketplaceView({
                           <div className="p-4">
                             <div
                               className="text-[14px] line-clamp-2"
-                              style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                              style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
                             >
                               {it.title}
                             </div>
                             {it.short_description && (
                               <div
                                 className="text-[12px] mt-1 line-clamp-2"
-                                style={{ color: 'var(--raio-text-secondary)' }}
+                                style={{ color: 'var(--rayo-ink-700)' }}
                               >
                                 {it.short_description}
                               </div>
@@ -1437,7 +1437,7 @@ function MarketplaceView({
                             {it.author && (
                               <div
                                 className="text-[11px] mt-2"
-                                style={{ color: 'var(--raio-text-tertiary)' }}
+                                style={{ color: 'var(--rayo-ink-400)' }}
                               >
                                 {it.author}
                               </div>
@@ -1460,16 +1460,16 @@ function MarketplaceView({
                     style={{
                       fontSize: 'clamp(26px, 3vw, 32px)',
                       lineHeight: 1.1,
-                      color: 'var(--raio-text-primary)',
+                      color: 'var(--rayo-forest-900)',
                       fontWeight: 400,
                     }}
                   >
                     Trilhas{' '}
-                    <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>
+                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
                       curadas
                     </span>
                   </h2>
-                  <p className="text-[15px] mt-2" style={{ color: 'var(--raio-text-secondary)' }}>
+                  <p className="text-[15px] mt-2" style={{ color: 'var(--rayo-ink-700)' }}>
                     {selectedSegment === 'all'
                       ? 'Combinações pensadas para cada momento da sua família.'
                       : `Selecionadas para ${segmentLabel}.`}
@@ -1479,7 +1479,7 @@ function MarketplaceView({
 
               {bundlesLoading ? (
                 <div className="flex items-center justify-center py-16">
-                  <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--raio-accent-primary)' }} />
+                  <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--rayo-terra-500)' }} />
                 </div>
               ) : bundlesError ? (
                 <EmptyMarketplaceState
@@ -1528,17 +1528,17 @@ function MarketplaceView({
                     style={{
                       fontSize: 'clamp(26px, 3vw, 32px)',
                       lineHeight: 1.1,
-                      color: 'var(--raio-text-primary)',
+                      color: 'var(--rayo-forest-900)',
                       fontWeight: 400,
                     }}
                   >
                     Mais{' '}
-                    <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>
+                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
                       populares
                     </span>
                   </h2>
                   {!showAllPopular && totalPopularCourses > 4 && (
-                    <p className="text-[14px] mt-1" style={{ color: 'var(--raio-text-secondary)' }}>
+                    <p className="text-[14px] mt-1" style={{ color: 'var(--rayo-ink-700)' }}>
                       {totalPopularCourses} cursos disponíveis
                     </p>
                   )}
@@ -1547,9 +1547,9 @@ function MarketplaceView({
                   <Button
                     variant="ghost"
                     className="gap-2 hover:bg-transparent transition-all shrink-0"
-                    style={{ color: 'var(--raio-accent-primary)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--raio-accent-hover)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--raio-accent-primary)'; }}
+                    style={{ color: 'var(--rayo-terra-500)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--rayo-terra-700)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--rayo-terra-500)'; }}
                     onClick={() => {
                       const newValue = !showAllPopular;
                       setShowAllPopular(newValue);
@@ -1607,12 +1607,12 @@ function MarketplaceView({
                     style={{
                       fontSize: 'clamp(26px, 3vw, 32px)',
                       lineHeight: 1.1,
-                      color: 'var(--raio-text-primary)',
+                      color: 'var(--rayo-forest-900)',
                       fontWeight: 400,
                     }}
                   >
                     Cursos com{' '}
-                    <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>
+                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
                       boas avaliações
                     </span>
                   </h2>
@@ -1642,17 +1642,17 @@ function MarketplaceView({
                     style={{
                       fontSize: 'clamp(26px, 3vw, 32px)',
                       lineHeight: 1.1,
-                      color: 'var(--raio-text-primary)',
+                      color: 'var(--rayo-forest-900)',
                       fontWeight: 400,
                     }}
                   >
                     {selectedSegment === 'all' ? (
-                      <>Todos os <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>cursos</span></>
+                      <>Todos os <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>cursos</span></>
                     ) : (
-                      <>Cursos para <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>{segmentLabel}</span></>
+                      <>Cursos para <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>{segmentLabel}</span></>
                     )}
                   </h2>
-                  <p className="text-[14px] mt-1" style={{ color: 'var(--raio-text-secondary)' }}>
+                  <p className="text-[14px] mt-1" style={{ color: 'var(--rayo-ink-700)' }}>
                     {segmentFilteredCourses.length}{' '}
                     {segmentFilteredCourses.length === 1 ? 'curso' : 'cursos'}
                   </p>
@@ -1662,7 +1662,7 @@ function MarketplaceView({
                     type="button"
                     onClick={() => setSelectedSegment('all')}
                     className="text-[14px] underline-offset-4 hover:underline"
-                    style={{ color: 'var(--raio-accent-primary)', fontWeight: 600 }}
+                    style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}
                   >
                     Ver todos os segmentos
                   </button>
@@ -1712,26 +1712,26 @@ function EmptyMarketplaceState({ title, description, actionLabel, onAction }: Em
     <div
       className="rounded-2xl py-12 px-6 text-center"
       style={{
-        background: 'var(--raio-bg-secondary)',
-        border: '1px dashed var(--raio-border-default)',
+        background: 'var(--rayo-sand-50)',
+        border: '1px dashed var(--rayo-sand-300)',
       }}
     >
       <div
         className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-        style={{ background: 'var(--raio-bg-warm-cream)' }}
+        style={{ background: 'var(--rayo-sand-50)' }}
       >
-        <Sparkles className="w-6 h-6" style={{ color: 'var(--raio-accent-hover)' }} />
+        <Sparkles className="w-6 h-6" style={{ color: 'var(--rayo-terra-700)' }} />
       </div>
       <h3
         className="text-[18px] mb-2"
-        style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+        style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
       >
         {title}
       </h3>
       {description && (
         <p
           className="text-[14px] max-w-[420px] mx-auto"
-          style={{ color: 'var(--raio-text-secondary)', lineHeight: 1.55 }}
+          style={{ color: 'var(--rayo-ink-700)', lineHeight: 1.55 }}
         >
           {description}
         </p>
@@ -1741,7 +1741,7 @@ function EmptyMarketplaceState({ title, description, actionLabel, onAction }: Em
           type="button"
           onClick={onAction}
           className="mt-5 text-[14px]"
-          style={{ color: 'var(--raio-accent-primary)', fontWeight: 600 }}
+          style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}
         >
           {actionLabel} →
         </button>
@@ -1766,7 +1766,7 @@ function BundleCard({
   onOpenCourse,
   onSeeAllInSegment,
 }: BundleCardProps) {
-  const accent = bundle.accent_color || 'var(--raio-accent-primary)';
+  const accent = bundle.accent_color || 'var(--rayo-terra-500)';
   const segLabel = SEGMENTS.find((s) => s.value === bundle.segment)?.label || bundle.segment;
   const items = bundle.items || [];
 
@@ -1774,8 +1774,8 @@ function BundleCard({
     <div
       className="text-left rounded-2xl overflow-hidden transition-all"
       style={{
-        background: 'var(--raio-bg-secondary)',
-        border: `1px solid ${isExpanded ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)'}`,
+        background: 'var(--rayo-sand-50)',
+        border: `1px solid ${isExpanded ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)'}`,
         boxShadow: isExpanded ? '0 0 0 3px rgba(201,144,86,0.18)' : undefined,
       }}
     >
@@ -1788,7 +1788,7 @@ function BundleCard({
       <div
         className="relative h-[120px] flex items-end p-5"
         style={{
-          background: `linear-gradient(135deg, ${accent}, var(--raio-text-primary))`,
+          background: `linear-gradient(135deg, ${accent}, var(--rayo-forest-900))`,
         }}
       >
         <div
@@ -1816,7 +1816,7 @@ function BundleCard({
           style={{
             fontSize: '22px',
             lineHeight: 1.15,
-            color: 'var(--raio-text-primary)',
+            color: 'var(--rayo-forest-900)',
             fontWeight: 400,
           }}
         >
@@ -1825,7 +1825,7 @@ function BundleCard({
         {bundle.subtitle && (
           <p
             className="text-[13px]"
-            style={{ color: 'var(--raio-accent-hover)', fontStyle: 'italic' }}
+            style={{ color: 'var(--rayo-terra-700)', fontStyle: 'italic' }}
           >
             {bundle.subtitle}
           </p>
@@ -1833,14 +1833,14 @@ function BundleCard({
         {bundle.description && (
           <p
             className="text-[14px] line-clamp-2"
-            style={{ color: 'var(--raio-text-secondary)', lineHeight: 1.55 }}
+            style={{ color: 'var(--rayo-ink-700)', lineHeight: 1.55 }}
           >
             {bundle.description}
           </p>
         )}
         <div
           className="text-[13px] pt-2 inline-flex items-center gap-1.5"
-          style={{ color: 'var(--raio-accent-primary)', fontWeight: 600 }}
+          style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}
         >
           {isExpanded ? 'Ocultar trilha' : 'Ver trilha'}{' '}
           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
@@ -1851,10 +1851,10 @@ function BundleCard({
     {isExpanded && (
       <div
         className="border-t px-5 py-4"
-        style={{ borderColor: 'var(--raio-border-default)' }}
+        style={{ borderColor: 'var(--rayo-sand-300)' }}
       >
         {items.length === 0 ? (
-          <div className="text-[13px]" style={{ color: 'var(--raio-text-secondary)' }}>
+          <div className="text-[13px]" style={{ color: 'var(--rayo-ink-700)' }}>
             Itens desta trilha serão publicados em breve.
           </div>
         ) : (
@@ -1867,7 +1867,7 @@ function BundleCard({
                   className="w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors"
                   style={{ background: 'transparent' }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--raio-bg-warm-cream)';
+                    e.currentTarget.style.background = 'var(--rayo-sand-50)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';
@@ -1886,18 +1886,18 @@ function BundleCard({
                   <div className="min-w-0 flex-1">
                     <div
                       className="text-[14px] truncate"
-                      style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                      style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
                     >
                       {it.title}
                     </div>
                     <div
                       className="text-[12px] truncate"
-                      style={{ color: 'var(--raio-text-secondary)' }}
+                      style={{ color: 'var(--rayo-ink-700)' }}
                     >
                       {[it.instructor, it.duration, it.level].filter(Boolean).join(' · ')}
                     </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 shrink-0" style={{ color: 'var(--raio-text-tertiary)' }} />
+                  <ArrowRight className="w-4 h-4 shrink-0" style={{ color: 'var(--rayo-ink-400)' }} />
                 </button>
               </li>
             ))}
@@ -1908,8 +1908,8 @@ function BundleCard({
           onClick={onSeeAllInSegment}
           className="mt-3 w-full text-[13px] py-2 rounded-lg transition-colors"
           style={{
-            background: 'var(--raio-bg-warm-cream)',
-            color: 'var(--raio-accent-hover)',
+            background: 'var(--rayo-sand-50)',
+            color: 'var(--rayo-terra-700)',
             fontWeight: 600,
           }}
         >
@@ -1944,7 +1944,7 @@ function PopularCard({ course, onClick }: PopularCardProps) {
           className="text-white text-[20px] transition-colors duration-300" 
           style={{ fontWeight: 700 }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--raio-accent-bright)';
+            e.currentTarget.style.color = 'var(--rayo-terra-500)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.color = '#FFFFFF';
@@ -1978,13 +1978,13 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
   return (
     <Card
       className="group border-0 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden"
-      style={{ background: 'var(--raio-bg-secondary)' }}
+      style={{ background: 'var(--rayo-sand-50)' }}
     >
       {/* Thumbnail */}
       <div 
         onClick={onClick}
         className="relative aspect-[16/9] overflow-hidden cursor-pointer"
-        style={{ background: 'var(--raio-bg-tertiary)' }}
+        style={{ background: 'var(--rayo-sand-300)' }}
       >
         <ImageWithFallback
           src={course.thumbnail}
@@ -2002,7 +2002,7 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
               style={{ 
                 fontSize: '12px', 
                 fontWeight: 600,
-                background: 'var(--raio-success)',
+                background: 'var(--rayo-sage-500)',
                 color: '#FFFFFF',
               }}
             >
@@ -2023,14 +2023,14 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
               className="text-[14px]" 
               style={{ 
                 fontWeight: 700, 
-                color: 'var(--raio-text-primary)' 
+                color: 'var(--rayo-forest-900)' 
               }}
             >
               {course.rating}
             </span>
             <span 
               className="text-[14px]" 
-              style={{ color: 'var(--raio-text-secondary)' }}
+              style={{ color: 'var(--rayo-ink-700)' }}
             >
               ({course.students})
             </span>
@@ -2041,13 +2041,13 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
             className="text-[16px] line-clamp-2 leading-snug transition-colors mt-2" 
             style={{ 
               fontWeight: 600, 
-              color: 'var(--raio-text-primary)' 
+              color: 'var(--rayo-forest-900)' 
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--raio-accent-primary)';
+              e.currentTarget.style.color = 'var(--rayo-terra-500)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--raio-text-primary)';
+              e.currentTarget.style.color = 'var(--rayo-forest-900)';
             }}
           >
             {course.title}
@@ -2056,7 +2056,7 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
           {/* Instructor */}
           <p 
             className="text-[14px] mt-2" 
-            style={{ color: 'var(--raio-text-secondary)' }}
+            style={{ color: 'var(--rayo-ink-700)' }}
           >
             {course.instructor}
           </p>
@@ -2068,7 +2068,7 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
                 className="text-[20px]"
                 style={{
                   fontWeight: 700,
-                  color: 'var(--raio-text-primary)'
+                  color: 'var(--rayo-forest-900)'
                 }}
               >
                 R$ {Number(course.price).toFixed(2).replace('.', ',')}
@@ -2078,7 +2078,7 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
                 className="text-[20px]" 
                 style={{ 
                   fontWeight: 700, 
-                  color: 'var(--raio-success)' 
+                  color: 'var(--rayo-sage-500)' 
                 }}
               >
                 Gratuito
@@ -2094,14 +2094,14 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
             className="w-full mt-3"
             style={{ 
               fontWeight: 600,
-              background: 'var(--raio-accent-primary)',
+              background: 'var(--rayo-terra-500)',
               color: '#FFFFFF',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--raio-accent-hover)';
+              e.currentTarget.style.background = 'var(--rayo-terra-700)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'var(--raio-accent-primary)';
+              e.currentTarget.style.background = 'var(--rayo-terra-500)';
             }}
           >
             <ShoppingCart className="w-4 h-4 mr-2" />
@@ -2116,7 +2116,7 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
             className="w-full mt-3"
             style={{ 
               fontWeight: 600,
-              background: 'var(--raio-success)',
+              background: 'var(--rayo-sage-500)',
               color: '#FFFFFF',
             }}
             onMouseEnter={(e) => {

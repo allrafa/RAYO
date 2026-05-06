@@ -55,7 +55,7 @@ export function StreakCalendarModal({ open, onOpenChange }: ModalProps) {
           <DialogTitle className="flex items-center gap-2">
             <Flame
               className="w-5 h-5"
-              style={{ color: "var(--raio-gold-500)" }}
+              style={{ color: "var(--rayo-ochre-500)" }}
             />
             Sua sequência
           </DialogTitle>
@@ -91,9 +91,9 @@ export function StreakCalendarModal({ open, onOpenChange }: ModalProps) {
                     className="aspect-square rounded-md"
                     style={{
                       background: d.active
-                        ? "var(--raio-gold-500)"
-                        : "var(--raio-bg-tertiary)",
-                      border: "1px solid var(--raio-border-default)",
+                        ? "var(--rayo-ochre-500)"
+                        : "var(--rayo-sand-300)",
+                      border: "1px solid var(--rayo-sand-300)",
                       opacity: d.active ? 1 : 0.6,
                     }}
                   />
@@ -149,7 +149,7 @@ export function BadgesModal({ open, onOpenChange }: ModalProps) {
           <DialogTitle className="flex items-center gap-2">
             <Trophy
               className="w-5 h-5"
-              style={{ color: "var(--raio-gold-600)" }}
+              style={{ color: "var(--rayo-ochre-700)" }}
             />
             Suas conquistas
           </DialogTitle>
@@ -184,9 +184,9 @@ export function BadgesModal({ open, onOpenChange }: ModalProps) {
                     <>
                       <CheckCircle2
                         className="w-3 h-3"
-                        style={{ color: "var(--raio-success)" }}
+                        style={{ color: "var(--rayo-sage-500)" }}
                       />
-                      <span style={{ color: "var(--raio-success)" }}>
+                      <span style={{ color: "var(--rayo-sage-500)" }}>
                         Desbloqueada
                       </span>
                     </>
@@ -258,7 +258,7 @@ export function XPHistoryModal({ open, onOpenChange }: ModalProps) {
           <DialogTitle className="flex items-center gap-2">
             <Zap
               className="w-5 h-5"
-              style={{ color: "var(--raio-coral-500)" }}
+              style={{ color: "var(--rayo-terra-500)" }}
             />
             Seu XP
           </DialogTitle>
@@ -293,7 +293,7 @@ export function XPHistoryModal({ open, onOpenChange }: ModalProps) {
                           height: `${(w.total / max) * 100}%`,
                           minHeight: w.total > 0 ? "4px" : "2px",
                           background:
-                            "linear-gradient(180deg, var(--raio-coral-400), var(--raio-coral-600))",
+                            "linear-gradient(180deg, var(--rayo-terra-500), var(--rayo-terra-700))",
                           opacity: w.total > 0 ? 1 : 0.3,
                         }}
                       />

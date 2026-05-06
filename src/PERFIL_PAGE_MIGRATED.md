@@ -28,7 +28,7 @@ className="text-sm text-gray-500 dark:text-gray-400 mb-3 px-2"
 className="text-sm mb-3 px-2" 
 style={{ 
   fontWeight: 600,
-  color: 'var(--raio-text-secondary)'
+  color: 'var(--rayo-ink-700)'
 }}
 ```
 
@@ -41,7 +41,7 @@ className="bg-white dark:bg-gray-800 border-0 shadow-md overflow-hidden"
 **Depois:**
 ```tsx
 className="border-0 shadow-md overflow-hidden"
-style={{ background: 'var(--raio-bg-secondary)' }}
+style={{ background: 'var(--rayo-sand-50)' }}
 ```
 
 #### 1.3 Menu Items - Hover States
@@ -55,7 +55,7 @@ className={`hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer`}
 style={{ background: 'transparent' }}
 onMouseEnter={(e) => {
   if (!hasSwitch) {
-    e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+    e.currentTarget.style.background = 'var(--rayo-sand-300)';
   }
 }}
 onMouseLeave={(e) => {
@@ -75,10 +75,10 @@ className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700"
 **Depois:**
 ```tsx
 className="w-10 h-10 rounded-lg flex items-center justify-center"
-style={{ background: 'var(--raio-bg-tertiary)' }}
+style={{ background: 'var(--rayo-sand-300)' }}
 <Icon 
   className="w-5 h-5" 
-  style={{ color: 'var(--raio-text-secondary)' }}
+  style={{ color: 'var(--rayo-ink-700)' }}
 />
 ```
 
@@ -92,7 +92,7 @@ className="text-gray-900 dark:text-white"
 ```tsx
 style={{ 
   fontWeight: 500,
-  color: 'var(--raio-text-primary)'
+  color: 'var(--rayo-forest-900)'
 }}
 ```
 
@@ -106,10 +106,10 @@ className="text-sm text-gray-500 dark:text-gray-400"
 **Depois:**
 ```tsx
 className="text-sm" 
-style={{ color: 'var(--raio-text-secondary)' }}
+style={{ color: 'var(--rayo-ink-700)' }}
 <ChevronRight 
   className="w-4 h-4" 
-  style={{ color: 'var(--raio-text-tertiary)' }}
+  style={{ color: 'var(--rayo-ink-400)' }}
 />
 ```
 
@@ -122,7 +122,7 @@ className="border-b border-gray-100 dark:border-gray-700 mx-4"
 **Depois:**
 ```tsx
 className="border-b mx-4" 
-style={{ borderColor: 'var(--raio-border-default)' }}
+style={{ borderColor: 'var(--rayo-sand-300)' }}
 ```
 
 ---
@@ -167,7 +167,7 @@ onMouseLeave={(e) => {
 ```tsx
 <p 
   className="text-xs" 
-  style={{ color: 'var(--raio-text-tertiary)' }}
+  style={{ color: 'var(--rayo-ink-400)' }}
 >
   RAIO Ecossistema v1.0.0
 </p>
@@ -182,7 +182,7 @@ onMouseLeave={(e) => {
 - ✅ **6 backgrounds** → Variáveis adaptativas
 - ✅ **8 textos** → Hierarquia correta
 - ✅ **4 ícones** → Cores do Design System
-- ✅ **3 borders** → `var(--raio-border-default)`
+- ✅ **3 borders** → `var(--rayo-sand-300)`
 - ✅ **2 botões de logout** → Estados consistentes
 - ✅ **2 footers** → Cores adaptativas
 - ✅ **Hover states** → Usando Design System
@@ -216,12 +216,12 @@ onMouseLeave={(e) => {
 
 ### Desktop Sidebar - DEPOIS:
 ```
-✅ var(--raio-text-secondary)
-✅ var(--raio-bg-secondary)
-✅ var(--raio-bg-tertiary) (hover)
-✅ var(--raio-text-primary)
-✅ var(--raio-text-tertiary)
-✅ var(--raio-border-default)
+✅ var(--rayo-ink-700)
+✅ var(--rayo-sand-50)
+✅ var(--rayo-sand-300) (hover)
+✅ var(--rayo-forest-900)
+✅ var(--rayo-ink-400)
+✅ var(--rayo-sand-300)
 ```
 
 ---
@@ -298,7 +298,7 @@ onMouseLeave={(e) => {
   style={{ background: 'transparent' }}
   onMouseEnter={(e) => {
     if (!hasSwitch) {
-      e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+      e.currentTarget.style.background = 'var(--rayo-sand-300)';
     }
   }}
   onMouseLeave={(e) => {
@@ -310,17 +310,17 @@ onMouseLeave={(e) => {
   <div className="flex items-center gap-3">
     <div 
       className="w-10 h-10 rounded-lg flex items-center justify-center"
-      style={{ background: 'var(--raio-bg-tertiary)' }}
+      style={{ background: 'var(--rayo-sand-300)' }}
     >
       <Icon 
         className="w-5 h-5" 
-        style={{ color: 'var(--raio-text-secondary)' }}
+        style={{ color: 'var(--rayo-ink-700)' }}
       />
     </div>
     <span 
       style={{ 
         fontWeight: 500,
-        color: 'var(--raio-text-primary)'
+        color: 'var(--rayo-forest-900)'
       }}
     >
       {item.label}
@@ -329,7 +329,7 @@ onMouseLeave={(e) => {
   
   <ChevronRight 
     className="w-4 h-4" 
-    style={{ color: 'var(--raio-text-tertiary)' }}
+    style={{ color: 'var(--rayo-ink-400)' }}
   />
 </WrapperElement>
 ```
@@ -401,25 +401,25 @@ onMouseLeave={(e) => {
 ### Desktop Sidebar:
 ```
 ANTES: bg-white dark:bg-gray-800
-DEPOIS: var(--raio-bg-secondary) 🎨
+DEPOIS: var(--rayo-sand-50) 🎨
 ```
 
 ### Menu Items Hover:
 ```
 ANTES: hover:bg-gray-50 dark:hover:bg-gray-700
-DEPOIS: var(--raio-bg-tertiary) on hover ✨
+DEPOIS: var(--rayo-sand-300) on hover ✨
 ```
 
 ### Section Headers:
 ```
 ANTES: text-gray-500 dark:text-gray-400
-DEPOIS: var(--raio-text-secondary) 🌗
+DEPOIS: var(--rayo-ink-700) 🌗
 ```
 
 ### Footer:
 ```
 ANTES: text-gray-400
-DEPOIS: var(--raio-text-tertiary) 📝
+DEPOIS: var(--rayo-ink-400) 📝
 ```
 
 ---

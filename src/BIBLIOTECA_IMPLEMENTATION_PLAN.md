@@ -595,11 +595,11 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
   const filteredBooks = filter === 'all' || filter === 'books' ? enrolledBooks : [];
   
   return (
-    <div className="min-h-screen pb-24" style={{ background: 'var(--raio-bg-primary)' }}>
+    <div className="min-h-screen pb-24" style={{ background: 'var(--rayo-sand-100)' }}>
       {/* Header */}
       <div className="sticky top-0 z-10 border-b" style={{ 
-        background: 'var(--raio-bg-primary)',
-        borderColor: 'var(--raio-border-default)'
+        background: 'var(--rayo-sand-100)',
+        borderColor: 'var(--rayo-sand-300)'
       }}>
         <div className="max-w-7xl mx-auto px-6 py-4">
           <Button variant="ghost" onClick={onBack} className="mb-4">

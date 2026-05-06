@@ -40,9 +40,9 @@ Esta é a página mais crítica pois é onde os usuários interagem mais. Recome
 - Mensagens
 
 // Usar cores:
-- Ativa: var(--raio-accent-primary)
-- Inativa: var(--raio-text-tertiary)
-- Hover: var(--raio-text-primary)
+- Ativa: var(--rayo-terra-500)
+- Inativa: var(--rayo-ink-400)
+- Hover: var(--rayo-forest-900)
 ```
 
 #### Passo 2: Migrar Hero Section (30 min)

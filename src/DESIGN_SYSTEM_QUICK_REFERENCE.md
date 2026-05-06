@@ -31,7 +31,7 @@ const MyComponent = () => (
 ### 2️⃣ Usar CSS Variables (Recomendado)
 
 ```tsx
-<div className="bg-[var(--raio-bg-primary)] text-[var(--raio-text-primary)]">
+<div className="bg-[var(--rayo-sand-100)] text-[var(--rayo-forest-900)]">
   Conteúdo
 </div>
 ```

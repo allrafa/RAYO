@@ -41,27 +41,27 @@ function StatCard({
     <div
       className="rounded-xl p-5 border"
       style={{
-        background: "var(--raio-bg-secondary)",
-        borderColor: "var(--raio-border-default)",
+        background: "var(--rayo-sand-50)",
+        borderColor: "var(--rayo-sand-300)",
       }}
     >
       <div className="flex items-center justify-between mb-2">
         <span
           className="text-xs uppercase tracking-wider"
-          style={{ color: "var(--raio-text-tertiary)", fontWeight: 600 }}
+          style={{ color: "var(--rayo-ink-400)", fontWeight: 600 }}
         >
           {title}
         </span>
-        <Icon className="w-4 h-4" style={{ color: "var(--raio-text-tertiary)" }} />
+        <Icon className="w-4 h-4" style={{ color: "var(--rayo-ink-400)" }} />
       </div>
       <div
         className="text-3xl mb-1"
-        style={{ color: "var(--raio-text-primary)", fontWeight: 700 }}
+        style={{ color: "var(--rayo-forest-900)", fontWeight: 700 }}
       >
         {value}
       </div>
       {subtitle && (
-        <div className="text-xs" style={{ color: "var(--raio-text-secondary)" }}>
+        <div className="text-xs" style={{ color: "var(--rayo-ink-700)" }}>
           {subtitle}
         </div>
       )}
@@ -100,11 +100,11 @@ export function AdminOverviewPage() {
         <div>
           <h2
             className="text-2xl mb-1"
-            style={{ color: "var(--raio-text-primary)", fontWeight: 700 }}
+            style={{ color: "var(--rayo-forest-900)", fontWeight: 700 }}
           >
             Visão geral
           </h2>
-          <p className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
+          <p className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
             Carregando métricas...
           </p>
         </div>
@@ -117,13 +117,13 @@ export function AdminOverviewPage() {
       <div className="space-y-6">
         <h2
           className="text-2xl"
-          style={{ color: "var(--raio-text-primary)", fontWeight: 700 }}
+          style={{ color: "var(--rayo-forest-900)", fontWeight: 700 }}
         >
           Visão geral
         </h2>
         <div
           className="p-4 rounded-lg"
-          style={{ background: "var(--raio-error-subtle)", color: "var(--raio-error)" }}
+          style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-700)" }}
         >
           {errorMsg || "Não foi possível carregar os dados."}
         </div>
@@ -136,11 +136,11 @@ export function AdminOverviewPage() {
       <div>
         <h2
           className="text-2xl mb-1"
-          style={{ color: "var(--raio-text-primary)", fontWeight: 700 }}
+          style={{ color: "var(--rayo-forest-900)", fontWeight: 700 }}
         >
           Visão geral
         </h2>
-        <p className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
+        <p className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
           Atualizado em {new Date(stats.generated_at).toLocaleString("pt-BR")}
         </p>
       </div>
@@ -148,7 +148,7 @@ export function AdminOverviewPage() {
       <section>
         <h3
           className="text-sm mb-3 uppercase tracking-wider"
-          style={{ color: "var(--raio-text-tertiary)", fontWeight: 600 }}
+          style={{ color: "var(--rayo-ink-400)", fontWeight: 600 }}
         >
           Usuários
         </h3>
@@ -201,7 +201,7 @@ export function AdminOverviewPage() {
       <section>
         <h3
           className="text-sm mb-3 uppercase tracking-wider"
-          style={{ color: "var(--raio-text-tertiary)", fontWeight: 600 }}
+          style={{ color: "var(--rayo-ink-400)", fontWeight: 600 }}
         >
           Conteúdo
         </h3>
@@ -222,7 +222,7 @@ export function AdminOverviewPage() {
       <section>
         <h3
           className="text-sm mb-3 uppercase tracking-wider"
-          style={{ color: "var(--raio-text-tertiary)", fontWeight: 600 }}
+          style={{ color: "var(--rayo-ink-400)", fontWeight: 600 }}
         >
           Comunidade
         </h3>
@@ -254,7 +254,7 @@ export function AdminOverviewPage() {
           />
         </div>
         {stats.community.posts_hidden + stats.community.comments_hidden > 0 && (
-          <div className="mt-3 flex items-center gap-2 text-sm" style={{ color: "var(--raio-text-secondary)" }}>
+          <div className="mt-3 flex items-center gap-2 text-sm" style={{ color: "var(--rayo-ink-700)" }}>
             <EyeOff className="w-4 h-4" />
             <span>
               {stats.community.posts_hidden + stats.community.comments_hidden} itens

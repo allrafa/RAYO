@@ -233,10 +233,10 @@ export function AdminCmsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl mb-1" style={{ fontWeight: 700, color: "var(--raio-text-primary)" }}>
+          <h1 className="text-2xl mb-1" style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }}>
             Conteúdo (CMS)
           </h1>
-          <p className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
+          <p className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
             {counts.total} item{counts.total === 1 ? "" : "s"} · {counts.published} publicado{counts.published === 1 ? "" : "s"} · {counts.draft} rascunho{counts.draft === 1 ? "" : "s"} · {counts.archived} arquivado{counts.archived === 1 ? "" : "s"}
           </p>
         </div>
@@ -247,7 +247,7 @@ export function AdminCmsPage() {
           <Button
             size="sm"
             onClick={() => setEditing({ open: true, id: null, defaultKind: kindFilter === "all" ? "audio" : (kindFilter as Kind) })}
-            style={{ background: "var(--raio-accent-primary)", color: "#fff" }}
+            style={{ background: "var(--rayo-terra-500)", color: "#fff" }}
           >
             <Plus className="w-4 h-4 mr-2" /> Novo conteúdo
           </Button>
@@ -261,24 +261,24 @@ export function AdminCmsPage() {
             onClick={() => setKindFilter(f.value)}
             className="px-3 py-1.5 text-sm rounded-full border transition-colors"
             style={{
-              background: kindFilter === f.value ? "var(--raio-accent-primary)" : "transparent",
-              color: kindFilter === f.value ? "#fff" : "var(--raio-text-secondary)",
-              borderColor: kindFilter === f.value ? "var(--raio-accent-primary)" : "var(--raio-border-default)",
+              background: kindFilter === f.value ? "var(--rayo-terra-500)" : "transparent",
+              color: kindFilter === f.value ? "#fff" : "var(--rayo-ink-700)",
+              borderColor: kindFilter === f.value ? "var(--rayo-terra-500)" : "var(--rayo-sand-300)",
             }}
           >
             {f.label}
           </button>
         ))}
-        <div className="h-5 w-px mx-1" style={{ background: "var(--raio-border-default)" }} />
+        <div className="h-5 w-px mx-1" style={{ background: "var(--rayo-sand-300)" }} />
         {(["all", "draft", "published", "archived"] as const).map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
             className="px-3 py-1.5 text-sm rounded-full border transition-colors"
             style={{
-              background: statusFilter === s ? "var(--raio-text-primary)" : "transparent",
-              color: statusFilter === s ? "var(--raio-bg-primary)" : "var(--raio-text-secondary)",
-              borderColor: "var(--raio-border-default)",
+              background: statusFilter === s ? "var(--rayo-forest-900)" : "transparent",
+              color: statusFilter === s ? "var(--rayo-sand-100)" : "var(--rayo-ink-700)",
+              borderColor: "var(--rayo-sand-300)",
             }}
           >
             {s === "all"
@@ -295,9 +295,9 @@ export function AdminCmsPage() {
           onChange={(e) => setSegmentFilter(e.target.value)}
           className="px-3 py-1.5 text-sm rounded-md border outline-none"
           style={{
-            background: "var(--raio-bg-secondary)",
-            color: "var(--raio-text-primary)",
-            borderColor: "var(--raio-border-default)",
+            background: "var(--rayo-sand-50)",
+            color: "var(--rayo-forest-900)",
+            borderColor: "var(--rayo-sand-300)",
           }}
         >
           <option value="all">Todos segmentos</option>
@@ -315,9 +315,9 @@ export function AdminCmsPage() {
           placeholder="Buscar por título..."
           className="ml-auto px-3 py-1.5 text-sm rounded-md border outline-none"
           style={{
-            background: "var(--raio-bg-secondary)",
-            color: "var(--raio-text-primary)",
-            borderColor: "var(--raio-border-default)",
+            background: "var(--rayo-sand-50)",
+            color: "var(--rayo-forest-900)",
+            borderColor: "var(--rayo-sand-300)",
             minWidth: 220,
           }}
         />
@@ -325,23 +325,23 @@ export function AdminCmsPage() {
 
       <div
         className="rounded-lg border overflow-hidden"
-        style={{ background: "var(--raio-bg-secondary)", borderColor: "var(--raio-border-default)" }}
+        style={{ background: "var(--rayo-sand-50)", borderColor: "var(--rayo-sand-300)" }}
       >
         {loading ? (
-          <div className="p-12 text-center text-sm" style={{ color: "var(--raio-text-tertiary)" }}>
+          <div className="p-12 text-center text-sm" style={{ color: "var(--rayo-ink-400)" }}>
             Carregando...
           </div>
         ) : items.length === 0 ? (
-          <div className="p-12 text-center text-sm" style={{ color: "var(--raio-text-tertiary)" }}>
+          <div className="p-12 text-center text-sm" style={{ color: "var(--rayo-ink-400)" }}>
             Nenhum conteúdo encontrado.
           </div>
         ) : (
-          <div className="divide-y" style={{ borderColor: "var(--raio-border-default)" }}>
+          <div className="divide-y" style={{ borderColor: "var(--rayo-sand-300)" }}>
             {items.map((item) => (
               <div key={item.id} className="p-4 flex items-center gap-4 hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                 <div
                   className="w-16 h-16 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center text-xl"
-                  style={{ background: "var(--raio-bg-tertiary)" }}
+                  style={{ background: "var(--rayo-sand-300)" }}
                 >
                   {item.cover_url ? (
                     // eslint-disable-next-line jsx-a11y/img-redundant-alt
@@ -355,8 +355,8 @@ export function AdminCmsPage() {
                     <span
                       className="text-xs px-2 py-0.5 rounded-full"
                       style={{
-                        background: "var(--raio-bg-tertiary)",
-                        color: "var(--raio-text-secondary)",
+                        background: "var(--rayo-sand-300)",
+                        color: "var(--rayo-ink-700)",
                       }}
                     >
                       {KIND_LABELS[item.kind]}
@@ -388,20 +388,20 @@ export function AdminCmsPage() {
                   </div>
                   <h3
                     className="truncate"
-                    style={{ color: "var(--raio-text-primary)", fontWeight: 600 }}
+                    style={{ color: "var(--rayo-forest-900)", fontWeight: 600 }}
                   >
                     {item.title}
                   </h3>
                   {item.short_description && (
                     <p
                       className="text-sm truncate"
-                      style={{ color: "var(--raio-text-tertiary)" }}
+                      style={{ color: "var(--rayo-ink-400)" }}
                     >
                       {item.short_description}
                     </p>
                   )}
                 </div>
-                <div className="text-xs hidden md:block text-right" style={{ color: "var(--raio-text-tertiary)" }}>
+                <div className="text-xs hidden md:block text-right" style={{ color: "var(--rayo-ink-400)" }}>
                   {item.view_count} views<br />
                   {new Date(item.updated_at).toLocaleDateString("pt-BR")}
                 </div>
@@ -471,15 +471,15 @@ export function AdminCmsPage() {
           {unpublishConfirm.cards.length > 0 && (
             <div
               className="rounded-md border max-h-56 overflow-y-auto"
-              style={{ borderColor: "var(--raio-border-default)" }}
+              style={{ borderColor: "var(--rayo-sand-300)" }}
             >
-              <ul className="divide-y" style={{ borderColor: "var(--raio-border-default)" }}>
+              <ul className="divide-y" style={{ borderColor: "var(--rayo-sand-300)" }}>
                 {unpublishConfirm.cards.map((card) => (
                   <li key={card.id} className="px-3 py-2 text-sm">
-                    <div style={{ color: "var(--raio-text-primary)", fontWeight: 500 }}>
+                    <div style={{ color: "var(--rayo-forest-900)", fontWeight: 500 }}>
                       {card.title}
                     </div>
-                    <div className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+                    <div className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
                       {sectionLabel(card.section)}
                     </div>
                   </li>

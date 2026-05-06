@@ -341,7 +341,7 @@ export function ConselheiroPage() {
   return (
     <div 
       className="flex flex-col h-screen"
-      style={{ background: 'var(--raio-bg-primary)' }}
+      style={{ background: 'var(--rayo-sand-100)' }}
     >
       {/* Header Fixo com Auto-hide */}
       <div 
@@ -349,20 +349,20 @@ export function ConselheiroPage() {
           scrollDirection === 'down' && !isAtTop ? '-translate-y-full' : 'translate-y-0'
         }`}
         style={{ 
-          background: 'var(--raio-bg-primary)',
-          borderColor: 'var(--raio-border-default)'
+          background: 'var(--rayo-sand-100)',
+          borderColor: 'var(--rayo-sand-300)'
         }}
       >
         <div className="flex items-center gap-3 max-w-4xl mx-auto">
           <Sparkles 
             className="w-5 h-5 flex-shrink-0" 
-            style={{ color: 'var(--raio-accent-primary)' }}
+            style={{ color: 'var(--rayo-terra-500)' }}
           />
           <h1 
             className="text-lg truncate transition-all duration-300" 
             style={{ 
               fontWeight: 600,
-              color: 'var(--raio-text-primary)' 
+              color: 'var(--rayo-forest-900)' 
             }}
           >
             {conversationTopic}
@@ -384,7 +384,7 @@ export function ConselheiroPage() {
                   <div 
                     className="w-12 h-12 rounded-full overflow-hidden shadow-lg"
                     style={{
-                      background: 'linear-gradient(135deg, var(--raio-accent-primary) 0%, var(--raio-accent-hover) 100%)',
+                      background: 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)',
                     }}
                   >
                     <ImageWithFallback
@@ -407,13 +407,13 @@ export function ConselheiroPage() {
                   }`}
                   style={{
                     background: message.type === 'user' 
-                      ? 'var(--raio-accent-primary)'
-                      : 'var(--raio-bg-secondary)',
+                      ? 'var(--rayo-terra-500)'
+                      : 'var(--rayo-sand-50)',
                     color: message.type === 'user'
                       ? '#FFFFFF'
-                      : 'var(--raio-text-primary)',
+                      : 'var(--rayo-forest-900)',
                     borderWidth: message.type === 'agent' ? '1px' : '0',
-                    borderColor: 'var(--raio-border-default)'
+                    borderColor: 'var(--rayo-sand-300)'
                   }}
                 >
                   <p className="leading-relaxed whitespace-pre-wrap">
@@ -424,7 +424,7 @@ export function ConselheiroPage() {
                 {/* Timestamp */}
                 <span 
                   className="text-xs mt-1 px-2" 
-                  style={{ color: 'var(--raio-text-tertiary)' }}
+                  style={{ color: 'var(--rayo-ink-400)' }}
                 >
                   {message.timestamp.toLocaleTimeString('pt-BR', { 
                     hour: '2-digit', 
@@ -438,11 +438,11 @@ export function ConselheiroPage() {
                     {message.actions.map((action, idx) => {
                       const Icon = action.icon;
                       const colors = {
-                        video: { bg: 'var(--raio-accent-light)', text: 'var(--raio-accent-primary)', border: 'var(--raio-accent-primary)' },
-                        test: { bg: 'var(--raio-bg-tertiary)', text: 'var(--raio-text-primary)', border: 'var(--raio-border-hover)' },
-                        course: { bg: 'var(--raio-bg-tertiary)', text: 'var(--raio-text-primary)', border: 'var(--raio-border-hover)' },
-                        article: { bg: 'var(--raio-bg-tertiary)', text: 'var(--raio-text-primary)', border: 'var(--raio-border-hover)' },
-                        exercise: { bg: 'var(--raio-bg-tertiary)', text: 'var(--raio-text-primary)', border: 'var(--raio-border-hover)' }
+                        video: { bg: 'var(--rayo-terra-100)', text: 'var(--rayo-terra-500)', border: 'var(--rayo-terra-500)' },
+                        test: { bg: 'var(--rayo-sand-300)', text: 'var(--rayo-forest-900)', border: 'var(--rayo-forest-900)' },
+                        course: { bg: 'var(--rayo-sand-300)', text: 'var(--rayo-forest-900)', border: 'var(--rayo-forest-900)' },
+                        article: { bg: 'var(--rayo-sand-300)', text: 'var(--rayo-forest-900)', border: 'var(--rayo-forest-900)' },
+                        exercise: { bg: 'var(--rayo-sand-300)', text: 'var(--rayo-forest-900)', border: 'var(--rayo-forest-900)' }
                       };
 
                       const colorScheme = colors[action.type];
@@ -465,7 +465,7 @@ export function ConselheiroPage() {
                           onMouseEnter={(e) => {
                             if (action.disabled) return;
                             e.currentTarget.style.transform = 'translateX(4px)';
-                            e.currentTarget.style.borderColor = 'var(--raio-accent-primary)';
+                            e.currentTarget.style.borderColor = 'var(--rayo-terra-500)';
                           }}
                           onMouseLeave={(e) => {
                             if (action.disabled) return;
@@ -507,7 +507,7 @@ export function ConselheiroPage() {
                 <div 
                   className="w-12 h-12 rounded-full overflow-hidden shadow-lg"
                   style={{
-                    background: 'linear-gradient(135deg, var(--raio-accent-primary) 0%, var(--raio-accent-hover) 100%)',
+                    background: 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)',
                   }}
                 >
                   <ImageWithFallback
@@ -521,30 +521,30 @@ export function ConselheiroPage() {
               <div
                 className="rounded-2xl rounded-tl-none px-4 py-3 shadow-sm"
                 style={{
-                  background: 'var(--raio-bg-secondary)',
+                  background: 'var(--rayo-sand-50)',
                   borderWidth: '1px',
-                  borderColor: 'var(--raio-border-default)'
+                  borderColor: 'var(--rayo-sand-300)'
                 }}
               >
                 <div className="flex gap-1">
                   <div 
                     className="w-2 h-2 rounded-full animate-bounce"
                     style={{ 
-                      background: 'var(--raio-accent-primary)',
+                      background: 'var(--rayo-terra-500)',
                       animationDelay: '0ms'
                     }}
                   ></div>
                   <div 
                     className="w-2 h-2 rounded-full animate-bounce"
                     style={{ 
-                      background: 'var(--raio-accent-primary)',
+                      background: 'var(--rayo-terra-500)',
                       animationDelay: '150ms'
                     }}
                   ></div>
                   <div 
                     className="w-2 h-2 rounded-full animate-bounce"
                     style={{ 
-                      background: 'var(--raio-accent-primary)',
+                      background: 'var(--rayo-terra-500)',
                       animationDelay: '300ms'
                     }}
                   ></div>
@@ -561,8 +561,8 @@ export function ConselheiroPage() {
       <div 
         className="sticky bottom-0 px-3 py-2 border-t backdrop-blur-sm"
         style={{ 
-          background: 'var(--raio-bg-primary)',
-          borderColor: 'var(--raio-border-default)'
+          background: 'var(--rayo-sand-100)',
+          borderColor: 'var(--rayo-sand-300)'
         }}
       >
         <div className="max-w-4xl mx-auto">
@@ -576,9 +576,9 @@ export function ConselheiroPage() {
                   size="sm"
                   className="flex-shrink-0 h-8"
                   style={{
-                    background: 'var(--raio-bg-secondary)',
-                    borderColor: 'var(--raio-border-default)',
-                    color: 'var(--raio-text-secondary)',
+                    background: 'var(--rayo-sand-50)',
+                    borderColor: 'var(--rayo-sand-300)',
+                    color: 'var(--rayo-ink-700)',
                     fontSize: '13px'
                   }}
                   onClick={() => {
@@ -586,12 +586,12 @@ export function ConselheiroPage() {
                     setTimeout(() => handleSendMessage(), 100);
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--raio-accent-primary)';
-                    e.currentTarget.style.color = 'var(--raio-accent-primary)';
+                    e.currentTarget.style.borderColor = 'var(--rayo-terra-500)';
+                    e.currentTarget.style.color = 'var(--rayo-terra-500)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--raio-border-default)';
-                    e.currentTarget.style.color = 'var(--raio-text-secondary)';
+                    e.currentTarget.style.borderColor = 'var(--rayo-sand-300)';
+                    e.currentTarget.style.color = 'var(--rayo-ink-700)';
                   }}
                 >
                   {suggestion}
@@ -604,9 +604,9 @@ export function ConselheiroPage() {
                     size="sm"
                     className="flex-shrink-0 h-8"
                     style={{
-                      background: 'var(--raio-accent-light)',
-                      borderColor: 'var(--raio-accent-primary)',
-                      color: 'var(--raio-accent-primary)',
+                      background: 'var(--rayo-terra-100)',
+                      borderColor: 'var(--rayo-terra-500)',
+                      color: 'var(--rayo-terra-500)',
                       fontSize: '13px'
                     }}
                   >
@@ -628,9 +628,9 @@ export function ConselheiroPage() {
                     size="icon"
                     className="flex-shrink-0 h-9 w-9"
                     style={{
-                      background: 'var(--raio-bg-secondary)',
-                      borderColor: 'var(--raio-border-default)',
-                      color: 'var(--raio-text-secondary)'
+                      background: 'var(--rayo-sand-50)',
+                      borderColor: 'var(--rayo-sand-300)',
+                      color: 'var(--rayo-ink-700)'
                     }}
                   >
                     <Lightbulb className="w-4 h-4" />
@@ -645,9 +645,9 @@ export function ConselheiroPage() {
               size="icon"
               className="flex-shrink-0 h-9 w-9 disabled:opacity-60"
               style={{
-                background: 'var(--raio-bg-secondary)',
-                borderColor: 'var(--raio-border-default)',
-                color: 'var(--raio-text-tertiary)'
+                background: 'var(--rayo-sand-50)',
+                borderColor: 'var(--rayo-sand-300)',
+                color: 'var(--rayo-ink-400)'
               }}
               onClick={handleVoiceInput}
               disabled
@@ -666,9 +666,9 @@ export function ConselheiroPage() {
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
               className="flex-1 h-9"
               style={{
-                background: 'var(--raio-bg-secondary)',
-                borderColor: 'var(--raio-border-default)',
-                color: 'var(--raio-text-primary)',
+                background: 'var(--rayo-sand-50)',
+                borderColor: 'var(--rayo-sand-300)',
+                color: 'var(--rayo-forest-900)',
                 fontSize: '14px',
                 padding: '8px 12px'
               }}
@@ -680,19 +680,19 @@ export function ConselheiroPage() {
               className="flex-shrink-0 h-9 w-9"
               disabled={!inputValue.trim()}
               style={{
-                background: inputValue.trim() ? 'var(--raio-accent-primary)' : 'var(--raio-bg-tertiary)',
-                color: inputValue.trim() ? '#FFFFFF' : 'var(--raio-text-tertiary)',
+                background: inputValue.trim() ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)',
+                color: inputValue.trim() ? '#FFFFFF' : 'var(--rayo-ink-400)',
                 opacity: inputValue.trim() ? 1 : 0.5
               }}
               onClick={handleSendMessage}
               onMouseEnter={(e) => {
                 if (inputValue.trim()) {
-                  e.currentTarget.style.background = 'var(--raio-accent-hover)';
+                  e.currentTarget.style.background = 'var(--rayo-terra-700)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (inputValue.trim()) {
-                  e.currentTarget.style.background = 'var(--raio-accent-primary)';
+                  e.currentTarget.style.background = 'var(--rayo-terra-500)';
                 }
               }}
             >
@@ -706,7 +706,7 @@ export function ConselheiroPage() {
                 size="icon"
                 className="flex-shrink-0 h-9 w-9"
                 style={{
-                  color: 'var(--raio-text-tertiary)'
+                  color: 'var(--rayo-ink-400)'
                 }}
                 onMouseEnter={() => setShowDisclaimer(true)}
                 onMouseLeave={() => setShowDisclaimer(false)}
@@ -719,10 +719,10 @@ export function ConselheiroPage() {
                 <div 
                   className="absolute bottom-full right-0 mb-2 px-3 py-2 rounded-lg shadow-lg whitespace-nowrap text-xs z-50"
                   style={{
-                    background: 'var(--raio-bg-elevated)',
-                    color: 'var(--raio-text-secondary)',
+                    background: 'var(--rayo-sand-50)',
+                    color: 'var(--rayo-ink-700)',
                     borderWidth: '1px',
-                    borderColor: 'var(--raio-border-default)',
+                    borderColor: 'var(--rayo-sand-300)',
                     maxWidth: '250px',
                     whiteSpace: 'normal'
                   }}
@@ -741,15 +741,15 @@ export function ConselheiroPage() {
           side="bottom" 
           className="h-[70vh]"
           style={{
-            background: 'var(--raio-bg-primary)',
-            borderColor: 'var(--raio-border-default)'
+            background: 'var(--rayo-sand-100)',
+            borderColor: 'var(--rayo-sand-300)'
           }}
         >
           <SheetHeader>
-            <SheetTitle style={{ color: 'var(--raio-text-primary)' }}>
+            <SheetTitle style={{ color: 'var(--rayo-forest-900)' }}>
               💡 Tópicos de Conversa
             </SheetTitle>
-            <SheetDescription style={{ color: 'var(--raio-text-secondary)' }}>
+            <SheetDescription style={{ color: 'var(--rayo-ink-700)' }}>
               Escolha um tópico para começar uma conversa com o Conselheiro
             </SheetDescription>
           </SheetHeader>
@@ -772,9 +772,9 @@ export function ConselheiroPage() {
                 variant="outline"
                 className="w-full justify-start gap-3 h-12"
                 style={{
-                  background: 'var(--raio-bg-secondary)',
-                  borderColor: 'var(--raio-border-default)',
-                  color: 'var(--raio-text-primary)'
+                  background: 'var(--rayo-sand-50)',
+                  borderColor: 'var(--rayo-sand-300)',
+                  color: 'var(--rayo-forest-900)'
                 }}
                 onClick={() => {
                   setInputValue(topic.text);
@@ -782,12 +782,12 @@ export function ConselheiroPage() {
                   setTimeout(() => handleSendMessage(), 100);
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--raio-accent-primary)';
-                  e.currentTarget.style.background = 'var(--raio-accent-light)';
+                  e.currentTarget.style.borderColor = 'var(--rayo-terra-500)';
+                  e.currentTarget.style.background = 'var(--rayo-terra-100)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--raio-border-default)';
-                  e.currentTarget.style.background = 'var(--raio-bg-secondary)';
+                  e.currentTarget.style.borderColor = 'var(--rayo-sand-300)';
+                  e.currentTarget.style.background = 'var(--rayo-sand-50)';
                 }}
               >
                 <span className="text-xl">{topic.emoji}</span>

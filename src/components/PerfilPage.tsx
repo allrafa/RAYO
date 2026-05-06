@@ -350,7 +350,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       icon: Trophy, 
       label: "Nível", 
       value: `${currentLevel} - ${gamProfile?.levelTitle || "Iniciante"}`,
-      colorVar: "var(--raio-accent-primary)",
+      colorVar: "var(--rayo-terra-500)",
       bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
       trend: `${currentXP} XP total`
     },
@@ -358,7 +358,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       icon: Zap, 
       label: "XP", 
       value: currentXP,
-      colorVar: "var(--raio-accent-primary)",
+      colorVar: "var(--rayo-terra-500)",
       bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
       trend: gamProfile ? `${gamProfile.xpForNextLevel - currentXP} para próximo nível` : ""
     },
@@ -366,7 +366,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       icon: Target, 
       label: "Sequência", 
       value: `${currentStreak} dias`,
-      colorVar: "var(--raio-accent-primary)",
+      colorVar: "var(--rayo-terra-500)",
       bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
       trend: `Recorde: ${gamProfile?.longestStreak || currentStreak} dias`
     },
@@ -374,7 +374,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       icon: Award, 
       label: "Conquistas", 
       value: earnedBadges.length,
-      colorVar: "var(--raio-accent-primary)",
+      colorVar: "var(--rayo-terra-500)",
       bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
       trend: `${badges.length} disponíveis`
     },
@@ -503,7 +503,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   return (
     <div 
       className="min-h-screen pb-24 lg:pb-8"
-      style={{ background: 'var(--raio-bg-primary)' }}
+      style={{ background: 'var(--rayo-sand-100)' }}
     >
       {(otherProfile || otherProfileLoading || otherProfileError) && (
         <div className="mx-auto max-w-md lg:max-w-7xl px-4 lg:px-8 pt-3">
@@ -512,8 +512,8 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
             aria-label="Perfil público"
             className="rounded-xl p-4 mb-3"
             style={{
-              background: "var(--raio-bg-secondary)",
-              border: "1px solid var(--raio-border-default)",
+              background: "var(--rayo-sand-50)",
+              border: "1px solid var(--rayo-sand-300)",
             }}
           >
             <div className="flex items-start justify-between gap-3 mb-2">
@@ -561,7 +561,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                     <div
                       key={s.label}
                       className="rounded-lg p-2"
-                      style={{ background: "var(--raio-bg-tertiary)" }}
+                      style={{ background: "var(--rayo-sand-300)" }}
                     >
                       <p className="text-base font-semibold">{s.value}</p>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -586,8 +586,8 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
               className="relative lg:rounded-2xl overflow-hidden"
               style={{ 
                 background: theme === 'dark' 
-                  ? 'linear-gradient(135deg, var(--raio-accent-hover) 0%, var(--raio-accent-primary) 100%)'
-                  : 'linear-gradient(135deg, var(--raio-accent-primary) 0%, var(--raio-accent-hover) 100%)'
+                  ? 'linear-gradient(135deg, var(--rayo-terra-700) 0%, var(--rayo-terra-500) 100%)'
+                  : 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)'
               }}
             >
               <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItaDJoLTJ2LTJ6bTAtNHYyaC0ydi0yaDF2LTFoMXptMC00djJoLTJ2LTJoMnptLTQgMHYyaC0ydi0yaDJ6bS00IDB2MmgtMnYtMmgyem0tNCAwdjJoLTJ2LTJoMnptLTQgMHYyaC0ydi0yaDJ6bTAgNHYyaC0ydi0yaDJ6bTAgNHYyaC0ydi0yaDJ6bTQgMHYyaC0ydi0yaDJ6bTQgMHYyaC0ydi0yaDJ6bTQgMHYyaC0ydi0yaDJ6bTQtOHYyaC0ydi0yaDJ6bTAtNHYyaC0ydi0yaDJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30"></div>
@@ -600,7 +600,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                     <div className="relative inline-block mx-auto lg:mx-0 mb-4 lg:mb-0">
                       <Avatar
                         className="w-24 h-24 lg:w-32 lg:h-32 ring-4 shadow-xl"
-                        style={{ ringColor: 'var(--raio-bg-primary)' }}
+                        style={{ ringColor: 'var(--rayo-sand-100)' }}
                       >
                         {(pendingAvatarPreview || user?.avatar_url) && (
                           <AvatarImage
@@ -611,8 +611,8 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                         <AvatarFallback
                           className="text-2xl lg:text-4xl"
                           style={{
-                            background: 'var(--raio-bg-primary)',
-                            color: 'var(--raio-accent-primary)'
+                            background: 'var(--rayo-sand-100)',
+                            color: 'var(--rayo-terra-500)'
                           }}
                         >
                           {(user?.name || userData.name)?.[0] || 'U'}
@@ -625,9 +625,9 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                         aria-label="Alterar foto de perfil"
                         className="absolute bottom-0 right-0 w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 disabled:opacity-60"
                         style={{
-                          background: 'var(--raio-accent-primary)',
+                          background: 'var(--rayo-terra-500)',
                           color: '#fff',
-                          border: '2px solid var(--raio-bg-primary)',
+                          border: '2px solid var(--rayo-sand-100)',
                         }}
                       >
                         <Camera className="w-4 h-4" />
@@ -702,7 +702,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                     <Card 
                       key={index} 
                       className="p-4 lg:p-5 shadow-lg border-0 desktop-card-hover"
-                      style={{ background: 'var(--raio-bg-secondary)' }}
+                      style={{ background: 'var(--rayo-sand-50)' }}
                     >
                       <div className="flex flex-col lg:gap-3">
                         <div className="flex items-center gap-3 mb-2">
@@ -718,7 +718,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                           <div className="lg:hidden">
                             <p 
                               className="text-xs" 
-                              style={{ color: 'var(--raio-text-secondary)' }}
+                              style={{ color: 'var(--rayo-ink-700)' }}
                             >
                               {stat.label}
                             </p>
@@ -726,7 +726,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                               className="text-lg" 
                               style={{ 
                                 fontWeight: 700,
-                                color: 'var(--raio-text-primary)'
+                                color: 'var(--rayo-forest-900)'
                               }}
                             >
                               {stat.value}
@@ -736,7 +736,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                         <div className="hidden lg:block">
                           <p 
                             className="text-sm mb-1" 
-                            style={{ color: 'var(--raio-text-secondary)' }}
+                            style={{ color: 'var(--rayo-ink-700)' }}
                           >
                             {stat.label}
                           </p>
@@ -744,14 +744,14 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                             className="text-2xl mb-1" 
                             style={{ 
                               fontWeight: 700,
-                              color: 'var(--raio-text-primary)'
+                              color: 'var(--rayo-forest-900)'
                             }}
                           >
                             {stat.value}
                           </p>
                           <p 
                             className="text-xs" 
-                            style={{ color: 'var(--raio-text-tertiary)' }}
+                            style={{ color: 'var(--rayo-ink-400)' }}
                           >
                             {stat.trend}</p>
                         </div>
@@ -767,18 +767,18 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
               <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
                 <Card
                   className="p-4 lg:p-6 border-0 shadow-md"
-                  style={{ background: 'var(--raio-bg-secondary)' }}
+                  style={{ background: 'var(--rayo-sand-50)' }}
                 >
                   <h3
                     className="text-lg mb-4"
-                    style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                    style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
                   >
                     Conquistas Obtidas
                   </h3>
                   <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
                     {earnedBadges.map((badge) => {
                       const tierColors: Record<string, string> = {
-                        bronze: 'var(--raio-accent-primary)',
+                        bronze: 'var(--rayo-terra-500)',
                         silver: '#94a3b8',
                         gold: '#eab308',
                         platinum: '#8b5cf6',
@@ -801,7 +801,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                           </div>
                           <span
                             className="text-[10px] lg:text-xs leading-tight"
-                            style={{ color: 'var(--raio-text-secondary)', fontWeight: 500 }}
+                            style={{ color: 'var(--rayo-ink-700)', fontWeight: 500 }}
                           >
                             {badge.title}
                           </span>
@@ -817,17 +817,17 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
             <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
               <Card
                 className="p-4 lg:p-6 border-0 shadow-md"
-                style={{ background: 'var(--raio-bg-secondary)' }}
+                style={{ background: 'var(--rayo-sand-50)' }}
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3
                     className="text-lg"
-                    style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                    style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
                   >
                     Missões da semana
                   </h3>
                   {missions.length > 0 && (
-                    <span className="text-xs" style={{ color: 'var(--raio-text-tertiary)' }}>
+                    <span className="text-xs" style={{ color: 'var(--rayo-ink-400)' }}>
                       {missions.filter((m) => m.completed).length}/{missions.length} concluídas
                     </span>
                   )}
@@ -836,21 +836,21 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                   <div
                     className="text-center py-6 rounded-lg"
                     style={{
-                      background: 'var(--raio-bg-tertiary)',
-                      border: '1px dashed var(--raio-border-default)',
+                      background: 'var(--rayo-sand-300)',
+                      border: '1px dashed var(--rayo-sand-300)',
                     }}
                   >
                     <Target
                       className="w-8 h-8 mx-auto mb-2"
-                      style={{ color: 'var(--raio-text-tertiary)' }}
+                      style={{ color: 'var(--rayo-ink-400)' }}
                     />
                     <p
                       className="text-sm mb-1"
-                      style={{ color: 'var(--raio-text-primary)', fontWeight: 600 }}
+                      style={{ color: 'var(--rayo-forest-900)', fontWeight: 600 }}
                     >
                       Nenhuma missão por aqui ainda
                     </p>
-                    <p className="text-xs" style={{ color: 'var(--raio-text-tertiary)' }}>
+                    <p className="text-xs" style={{ color: 'var(--rayo-ink-400)' }}>
                       Volte em breve — novas missões aparecem toda semana.
                     </p>
                   </div>
@@ -867,8 +867,8 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                           key={mission.id}
                           className="p-3 lg:p-4 rounded-lg"
                           style={{
-                            background: 'var(--raio-bg-tertiary)',
-                            border: '1px solid var(--raio-border-default)',
+                            background: 'var(--rayo-sand-300)',
+                            border: '1px solid var(--rayo-sand-300)',
                           }}
                         >
                           <div className="flex items-start justify-between gap-3 mb-2">
@@ -877,26 +877,26 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                                 {mission.rewardClaimed && (
                                   <CheckCircle2
                                     className="w-4 h-4 flex-shrink-0"
-                                    style={{ color: 'var(--raio-accent-primary)' }}
+                                    style={{ color: 'var(--rayo-terra-500)' }}
                                   />
                                 )}
                                 <p
                                   className="text-sm"
-                                  style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                                  style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
                                 >
                                   {mission.title}
                                 </p>
                               </div>
-                              <p className="text-xs" style={{ color: 'var(--raio-text-secondary)' }}>
+                              <p className="text-xs" style={{ color: 'var(--rayo-ink-700)' }}>
                                 {mission.description}
                               </p>
                             </div>
                             <Badge
                               className="flex-shrink-0"
                               style={{
-                                background: 'var(--raio-bg-secondary)',
-                                color: 'var(--raio-accent-primary)',
-                                border: '1px solid var(--raio-border-default)',
+                                background: 'var(--rayo-sand-50)',
+                                color: 'var(--rayo-terra-500)',
+                                border: '1px solid var(--rayo-sand-300)',
                               }}
                             >
                               +{mission.xpReward} XP
@@ -906,7 +906,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                           <div className="flex items-center justify-between gap-3">
                             <span
                               className="text-xs"
-                              style={{ color: 'var(--raio-text-tertiary)' }}
+                              style={{ color: 'var(--rayo-ink-400)' }}
                             >
                               {mission.currentProgress}/{mission.targetProgress}
                             </span>
@@ -921,7 +921,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                             ) : mission.rewardClaimed ? (
                               <span
                                 className="text-xs"
-                                style={{ color: 'var(--raio-text-tertiary)' }}
+                                style={{ color: 'var(--rayo-ink-400)' }}
                               >
                                 Resgatada
                               </span>
@@ -940,18 +940,18 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
               <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
                 <Card
                   className="p-4 lg:p-6 border-0 shadow-md"
-                  style={{ background: 'var(--raio-bg-secondary)' }}
+                  style={{ background: 'var(--rayo-sand-50)' }}
                 >
                   <h3
                     className="text-lg mb-4"
-                    style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                    style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
                   >
                     Todas as Conquistas
                   </h3>
                   <div className="grid grid-cols-4 lg:grid-cols-6 gap-3">
                     {badges.map((badge) => {
                       const tierColors: Record<string, string> = {
-                        bronze: 'var(--raio-accent-primary)',
+                        bronze: 'var(--rayo-terra-500)',
                         silver: '#94a3b8',
                         gold: '#eab308',
                         platinum: '#8b5cf6',
@@ -970,14 +970,14 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                               background: badge.earned
                                 ? (theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)')
                                 : (theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
-                              border: `2px solid ${badge.earned ? (tierColors[badge.tier] || tierColors.bronze) : 'var(--raio-border-default)'}`,
+                              border: `2px solid ${badge.earned ? (tierColors[badge.tier] || tierColors.bronze) : 'var(--rayo-sand-300)'}`,
                             }}
                           >
                             {badge.icon}
                           </div>
                           <span
                             className="text-[10px] leading-tight"
-                            style={{ color: 'var(--raio-text-tertiary)', fontWeight: 500 }}
+                            style={{ color: 'var(--rayo-ink-400)', fontWeight: 500 }}
                           >
                             {badge.title}
                           </span>
@@ -993,13 +993,13 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
             <div className="hidden lg:block px-0 mb-8">
               <Card 
                 className="p-6 border-0 shadow-md"
-                style={{ background: 'var(--raio-bg-secondary)' }}
+                style={{ background: 'var(--rayo-sand-50)' }}
               >
                 <h3 
                   className="text-lg mb-4" 
                   style={{ 
                     fontWeight: 600,
-                    color: 'var(--raio-text-primary)'
+                    color: 'var(--rayo-forest-900)'
                   }}
                 >
                   Atividade Recente
@@ -1016,20 +1016,20 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                       >
                         <Icon 
                           className="w-8 h-8 mx-auto mb-2" 
-                          style={{ color: 'var(--raio-accent-primary)' }}
+                          style={{ color: 'var(--rayo-terra-500)' }}
                         />
                         <p 
                           className="text-2xl mb-1" 
                           style={{ 
                             fontWeight: 700,
-                            color: 'var(--raio-text-primary)'
+                            color: 'var(--rayo-forest-900)'
                           }}
                         >
                           {item.value}
                         </p>
                         <p 
                           className="text-xs" 
-                          style={{ color: 'var(--raio-text-secondary)' }}
+                          style={{ color: 'var(--rayo-ink-700)' }}
                         >
                           {item.label}
                         </p>
@@ -1048,14 +1048,14 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                     className="text-sm mb-3 px-2" 
                     style={{ 
                       fontWeight: 600,
-                      color: 'var(--raio-text-secondary)'
+                      color: 'var(--rayo-ink-700)'
                     }}
                   >
                     {section.title}
                   </h3>
                   <Card 
                     className="border-0 shadow-md overflow-hidden"
-                    style={{ background: 'var(--raio-bg-secondary)' }}
+                    style={{ background: 'var(--rayo-sand-50)' }}
                   >
                     {section.items.map((item, itemIndex) => {
                       const Icon = item.icon;
@@ -1072,12 +1072,12 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                             }`}
                             style={{
                               ...(!hasSwitch && {
-                                ':hover': { background: 'var(--raio-bg-tertiary)' }
+                                ':hover': { background: 'var(--rayo-sand-300)' }
                               })
                             }}
                             onMouseEnter={(e) => {
                               if (!hasSwitch) {
-                                e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+                                e.currentTarget.style.background = 'var(--rayo-sand-300)';
                               }
                             }}
                             onMouseLeave={(e) => {
@@ -1089,17 +1089,17 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                             <div className="flex items-center gap-3">
                               <div 
                                 className="w-10 h-10 rounded-lg flex items-center justify-center"
-                                style={{ background: 'var(--raio-bg-tertiary)' }}
+                                style={{ background: 'var(--rayo-sand-300)' }}
                               >
                                 <Icon 
                                   className="w-5 h-5" 
-                                  style={{ color: 'var(--raio-text-secondary)' }}
+                                  style={{ color: 'var(--rayo-ink-700)' }}
                                 />
                               </div>
                               <span 
                                 style={{ 
                                   fontWeight: 500,
-                                  color: 'var(--raio-text-primary)'
+                                  color: 'var(--rayo-forest-900)'
                                 }}
                               >
                                 {item.label}
@@ -1121,26 +1121,26 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                               <div className="flex items-center gap-2">
                                 <span 
                                   className="text-sm" 
-                                  style={{ color: 'var(--raio-text-secondary)' }}
+                                  style={{ color: 'var(--rayo-ink-700)' }}
                                 >
                                   {item.value}
                                 </span>
                                 <ChevronRight 
                                   className="w-4 h-4" 
-                                  style={{ color: 'var(--raio-text-tertiary)' }}
+                                  style={{ color: 'var(--rayo-ink-400)' }}
                                 />
                               </div>
                             ) : (
                               <ChevronRight 
                                 className="w-4 h-4" 
-                                style={{ color: 'var(--raio-text-tertiary)' }}
+                                style={{ color: 'var(--rayo-ink-400)' }}
                               />
                             )}
                           </WrapperElement>
                           {itemIndex < section.items.length - 1 && (
                             <div 
                               className="border-b mx-4" 
-                              style={{ borderColor: 'var(--raio-border-default)' }}
+                              style={{ borderColor: 'var(--rayo-sand-300)' }}
                             />
                           )}
                         </div>
@@ -1154,13 +1154,13 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
               <div>
                 <h3
                   className="text-sm mb-3 px-2"
-                  style={{ fontWeight: 600, color: 'var(--raio-text-secondary)' }}
+                  style={{ fontWeight: 600, color: 'var(--rayo-ink-700)' }}
                 >
                   Privacidade e Dados (LGPD)
                 </h3>
                 <Card
                   className="border-0 shadow-md overflow-hidden"
-                  style={{ background: 'var(--raio-bg-secondary)' }}
+                  style={{ background: 'var(--rayo-sand-50)' }}
                 >
                   <button
                     onClick={handleExportData}
@@ -1169,16 +1169,16 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                     style={{ background: 'transparent' }}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--raio-bg-tertiary)' }}>
-                        <Download className="w-5 h-5" style={{ color: 'var(--raio-text-secondary)' }} />
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--rayo-sand-300)' }}>
+                        <Download className="w-5 h-5" style={{ color: 'var(--rayo-ink-700)' }} />
                       </div>
-                      <span style={{ fontWeight: 500, color: 'var(--raio-text-primary)' }}>
+                      <span style={{ fontWeight: 500, color: 'var(--rayo-forest-900)' }}>
                         {exportingData ? "Exportando..." : "Exportar meus dados"}
                       </span>
                     </div>
-                    <ChevronRight className="w-4 h-4" style={{ color: 'var(--raio-text-tertiary)' }} />
+                    <ChevronRight className="w-4 h-4" style={{ color: 'var(--rayo-ink-400)' }} />
                   </button>
-                  <div className="border-b mx-4" style={{ borderColor: 'var(--raio-border-default)' }} />
+                  <div className="border-b mx-4" style={{ borderColor: 'var(--rayo-sand-300)' }} />
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
                     className="w-full flex items-center justify-between p-4 transition-colors cursor-pointer"
@@ -1192,7 +1192,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                         Excluir minha conta
                       </span>
                     </div>
-                    <ChevronRight className="w-4 h-4" style={{ color: 'var(--raio-text-tertiary)' }} />
+                    <ChevronRight className="w-4 h-4" style={{ color: 'var(--rayo-ink-400)' }} />
                   </button>
                 </Card>
               </div>
@@ -1227,13 +1227,13 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
               <div className="text-center py-6 space-y-1">
                 <p 
                   className="text-xs" 
-                  style={{ color: 'var(--raio-text-tertiary)' }}
+                  style={{ color: 'var(--rayo-ink-400)' }}
                 >
                   RAYO Ecossistema v1.0.0
                 </p>
                 <p 
                   className="text-xs" 
-                  style={{ color: 'var(--raio-text-tertiary)' }}
+                  style={{ color: 'var(--rayo-ink-400)' }}
                 >
                   © 2025 RAYO. Todos os direitos reservados.
                 </p>
@@ -1250,14 +1250,14 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                   className="text-sm mb-3 px-2" 
                   style={{ 
                     fontWeight: 600,
-                    color: 'var(--raio-text-secondary)'
+                    color: 'var(--rayo-ink-700)'
                   }}
                 >
                   {section.title}
                 </h3>
                 <Card 
                   className="border-0 shadow-md overflow-hidden"
-                  style={{ background: 'var(--raio-bg-secondary)' }}
+                  style={{ background: 'var(--rayo-sand-50)' }}
                 >
                   {section.items.map((item, itemIndex) => {
                     const Icon = item.icon;
@@ -1277,7 +1277,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                           }}
                           onMouseEnter={(e) => {
                             if (!hasSwitch) {
-                              e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+                              e.currentTarget.style.background = 'var(--rayo-sand-300)';
                             }
                           }}
                           onMouseLeave={(e) => {
@@ -1289,17 +1289,17 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                           <div className="flex items-center gap-3">
                             <div 
                               className="w-10 h-10 rounded-lg flex items-center justify-center"
-                              style={{ background: 'var(--raio-bg-tertiary)' }}
+                              style={{ background: 'var(--rayo-sand-300)' }}
                             >
                               <Icon 
                                 className="w-5 h-5" 
-                                style={{ color: 'var(--raio-text-secondary)' }}
+                                style={{ color: 'var(--rayo-ink-700)' }}
                               />
                             </div>
                             <span 
                               style={{ 
                                 fontWeight: 500,
-                                color: 'var(--raio-text-primary)'
+                                color: 'var(--rayo-forest-900)'
                               }}
                             >
                               {item.label}
@@ -1321,26 +1321,26 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                             <div className="flex items-center gap-2">
                               <span 
                                 className="text-sm" 
-                                style={{ color: 'var(--raio-text-secondary)' }}
+                                style={{ color: 'var(--rayo-ink-700)' }}
                               >
                                 {item.value}
                               </span>
                               <ChevronRight 
                                 className="w-4 h-4" 
-                                style={{ color: 'var(--raio-text-tertiary)' }}
+                                style={{ color: 'var(--rayo-ink-400)' }}
                               />
                             </div>
                           ) : (
                             <ChevronRight 
                               className="w-4 h-4" 
-                              style={{ color: 'var(--raio-text-tertiary)' }}
+                              style={{ color: 'var(--rayo-ink-400)' }}
                             />
                           )}
                         </WrapperElement>
                         {itemIndex < section.items.length - 1 && (
                           <div 
                             className="border-b mx-4" 
-                            style={{ borderColor: 'var(--raio-border-default)' }}
+                            style={{ borderColor: 'var(--rayo-sand-300)' }}
                           />
                         )}
                       </div>
@@ -1354,38 +1354,38 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
             <div>
               <h3
                 className="text-sm mb-3 px-2"
-                style={{ fontWeight: 600, color: 'var(--raio-text-secondary)' }}
+                style={{ fontWeight: 600, color: 'var(--rayo-ink-700)' }}
               >
                 Privacidade e Dados (LGPD)
               </h3>
               <Card
                 className="border-0 shadow-md overflow-hidden"
-                style={{ background: 'var(--raio-bg-secondary)' }}
+                style={{ background: 'var(--rayo-sand-50)' }}
               >
                 <button
                   onClick={handleExportData}
                   disabled={exportingData}
                   className="w-full flex items-center justify-between p-4 transition-colors cursor-pointer"
                   style={{ background: 'transparent' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--raio-bg-tertiary)'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--rayo-sand-300)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--raio-bg-tertiary)' }}>
-                      <Download className="w-5 h-5" style={{ color: 'var(--raio-text-secondary)' }} />
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--rayo-sand-300)' }}>
+                      <Download className="w-5 h-5" style={{ color: 'var(--rayo-ink-700)' }} />
                     </div>
-                    <span style={{ fontWeight: 500, color: 'var(--raio-text-primary)' }}>
+                    <span style={{ fontWeight: 500, color: 'var(--rayo-forest-900)' }}>
                       {exportingData ? "Exportando..." : "Exportar meus dados"}
                     </span>
                   </div>
-                  <ChevronRight className="w-4 h-4" style={{ color: 'var(--raio-text-tertiary)' }} />
+                  <ChevronRight className="w-4 h-4" style={{ color: 'var(--rayo-ink-400)' }} />
                 </button>
-                <div className="border-b mx-4" style={{ borderColor: 'var(--raio-border-default)' }} />
+                <div className="border-b mx-4" style={{ borderColor: 'var(--rayo-sand-300)' }} />
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   className="w-full flex items-center justify-between p-4 transition-colors cursor-pointer"
                   style={{ background: 'transparent' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--raio-bg-tertiary)'; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--rayo-sand-300)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 >
                   <div className="flex items-center gap-3">
@@ -1396,7 +1396,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                       Excluir minha conta
                     </span>
                   </div>
-                  <ChevronRight className="w-4 h-4" style={{ color: 'var(--raio-text-tertiary)' }} />
+                  <ChevronRight className="w-4 h-4" style={{ color: 'var(--rayo-ink-400)' }} />
                 </button>
               </Card>
             </div>
@@ -1431,13 +1431,13 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
             <div className="text-center py-4 space-y-1">
               <p 
                 className="text-xs" 
-                style={{ color: 'var(--raio-text-tertiary)' }}
+                style={{ color: 'var(--rayo-ink-400)' }}
               >
                 RAYO Ecossistema v1.0.0
               </p>
               <p 
                 className="text-xs" 
-                style={{ color: 'var(--raio-text-tertiary)' }}
+                style={{ color: 'var(--rayo-ink-400)' }}
               >
                 © 2025 RAYO. Todos os direitos reservados.
               </p>
@@ -1454,7 +1454,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
         >
           <Card
             className="max-w-md w-full p-6 border-0 shadow-2xl"
-            style={{ background: 'var(--raio-bg-secondary)' }}
+            style={{ background: 'var(--rayo-sand-50)' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center mb-4">
@@ -1466,13 +1466,13 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
               </div>
               <h3
                 className="text-lg mb-2"
-                style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}
+                style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
               >
                 Excluir sua conta?
               </h3>
               <p
                 className="text-sm"
-                style={{ color: 'var(--raio-text-secondary)' }}
+                style={{ color: 'var(--rayo-ink-700)' }}
               >
                 Esta ação é irreversível. Todos os seus dados pessoais serão anonimizados conforme a LGPD.
                 Seu progresso, conquistas e posts serão removidos permanentemente.
@@ -1483,7 +1483,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                 variant="outline"
                 className="flex-1"
                 onClick={() => setShowDeleteConfirm(false)}
-                style={{ borderColor: 'var(--raio-border-default)', color: 'var(--raio-text-secondary)' }}
+                style={{ borderColor: 'var(--rayo-sand-300)', color: 'var(--rayo-ink-700)' }}
               >
                 Cancelar
               </Button>

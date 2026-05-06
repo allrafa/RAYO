@@ -118,7 +118,7 @@ APÓS PRIMEIRA MENSAGEM:
 /* Input Compacto */
 .chat-input-container {
   padding: 12px;           /* Reduzido de 16px */
-  background: var(--raio-bg-primary);
+  background: var(--rayo-sand-100);
   backdrop-filter: blur(10px); /* Efeito flutuante */
 }
 
@@ -398,7 +398,7 @@ useEffect(() => {
 /* INPUT CONTAINER */
 .chat-input-container {
   padding: 8px 12px;           /* Antes: 16px */
-  background: rgba(var(--raio-bg-primary), 0.95);
+  background: rgba(var(--rayo-sand-100), 0.95);
   backdrop-filter: blur(10px); /* Flutuante */
   border-top: 1px solid var(--raio-border-subtle);
 }

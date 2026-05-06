@@ -169,7 +169,7 @@ export function UnifiedContinue({ onOpenAcademia, onOpenHoje }: Props) {
         <Card className="p-6 text-center border-dashed">
           <Sparkles
             className="w-8 h-8 mx-auto mb-3"
-            style={{ color: "var(--raio-accent-primary)" }}
+            style={{ color: "var(--rayo-terra-500)" }}
           />
           <p className="text-sm mb-1 font-medium">Comece pelo que importa hoje</p>
           <p className="text-xs text-muted-foreground mb-4">
@@ -222,12 +222,12 @@ export function UnifiedContinue({ onOpenAcademia, onOpenHoje }: Props) {
               className="px-3 py-1.5 rounded-full text-xs font-medium shrink-0 transition-colors"
               style={{
                 background: active
-                  ? "var(--raio-accent-primary)"
-                  : "var(--raio-bg-tertiary)",
+                  ? "var(--rayo-terra-500)"
+                  : "var(--rayo-sand-300)",
                 color: active
-                  ? "var(--raio-text-inverse)"
-                  : "var(--raio-text-secondary)",
-                border: "1px solid var(--raio-border-default)",
+                  ? "var(--rayo-sand-50)"
+                  : "var(--rayo-ink-700)",
+                border: "1px solid var(--rayo-sand-300)",
               }}
             >
               {chip.label}

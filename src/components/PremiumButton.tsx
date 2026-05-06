@@ -31,7 +31,7 @@ export function PremiumButton({
       <Button
         onClick={onClick}
         className={cn(
-          "bg-[var(--raio-accent-primary)] hover:bg-[var(--raio-accent-hover)] text-[var(--raio-text-inverse)] shadow-md",
+          "bg-[var(--rayo-terra-500)] hover:bg-[var(--rayo-terra-700)] text-[var(--rayo-sand-50)] shadow-md",
           className
         )}
       >
@@ -48,7 +48,7 @@ export function PremiumButton({
         size="sm"
         onClick={onClick}
         className={cn(
-          "bg-[var(--raio-accent-primary)] hover:bg-[var(--raio-accent-hover)] text-[var(--raio-text-inverse)] h-8 px-3",
+          "bg-[var(--rayo-terra-500)] hover:bg-[var(--rayo-terra-700)] text-[var(--rayo-sand-50)] h-8 px-3",
           className
         )}
       >
@@ -64,7 +64,7 @@ export function PremiumButton({
       <Badge
         onClick={onClick}
         className={cn(
-          "bg-[var(--raio-accent-primary)] hover:bg-[var(--raio-accent-hover)] text-[var(--raio-text-inverse)] cursor-pointer",
+          "bg-[var(--rayo-terra-500)] hover:bg-[var(--rayo-terra-700)] text-[var(--rayo-sand-50)] cursor-pointer",
           className
         )}
       >
@@ -80,25 +80,25 @@ export function PremiumButton({
       <button
         onClick={onClick}
         className={cn(
-          "w-full p-4 rounded-xl bg-gradient-to-r from-[var(--raio-accent-light)] to-[var(--raio-accent-subtle)] border border-[var(--raio-accent-primary)] hover:shadow-[var(--raio-shadow-lg)] transition-all",
+          "w-full p-4 rounded-xl bg-gradient-to-r from-[var(--rayo-terra-100)] to-[var(--rayo-terra-100)] border border-[var(--rayo-terra-500)] hover:shadow-[0 10px 24px rgba(12,59,46,0.10)] transition-all",
           className
         )}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[var(--raio-accent-primary)] flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-[var(--raio-text-inverse)]" />
+            <div className="w-10 h-10 rounded-full bg-[var(--rayo-terra-500)] flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-[var(--rayo-sand-50)]" />
             </div>
             <div className="text-left">
-              <div className="text-[var(--raio-text-primary)] mb-0.5">
+              <div className="text-[var(--rayo-forest-900)] mb-0.5">
                 Desbloqueie Premium
               </div>
-              <div className="text-[var(--raio-text-secondary)] text-sm">
+              <div className="text-[var(--rayo-ink-700)] text-sm">
                 Acesso ilimitado por R$ 49/mês
               </div>
             </div>
           </div>
-          <Zap className="w-5 h-5 text-[var(--raio-accent-primary)] flex-shrink-0" />
+          <Zap className="w-5 h-5 text-[var(--rayo-terra-500)] flex-shrink-0" />
         </div>
       </button>
     );
@@ -126,23 +126,23 @@ export function PaywallOverlay({
   description = "Faça upgrade para acessar este e todo o conteúdo exclusivo"
 }: PaywallOverlayProps) {
   return (
-    <div className="fixed inset-0 bg-[var(--raio-bg-overlay)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[var(--raio-bg-secondary)] rounded-2xl shadow-[var(--raio-shadow-xl)] p-6 max-w-md w-full border border-[var(--raio-border-default)]">
+    <div className="fixed inset-0 bg-[rgba(12,59,46,0.5)] backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-[var(--rayo-sand-50)] rounded-2xl shadow-[0 18px 40px rgba(12,59,46,0.12)] p-6 max-w-md w-full border border-[var(--rayo-sand-300)]">
         {/* Icon */}
-        <div className="w-16 h-16 rounded-full bg-[var(--raio-accent-light)] flex items-center justify-center mx-auto mb-4">
-          <Crown className="w-8 h-8 text-[var(--raio-accent-primary)]" />
+        <div className="w-16 h-16 rounded-full bg-[var(--rayo-terra-100)] flex items-center justify-center mx-auto mb-4">
+          <Crown className="w-8 h-8 text-[var(--rayo-terra-500)]" />
         </div>
 
         {/* Content */}
-        <h3 className="text-[var(--raio-text-primary)] text-center mb-2">
+        <h3 className="text-[var(--rayo-forest-900)] text-center mb-2">
           {title}
         </h3>
-        <p className="text-[var(--raio-text-secondary)] text-center mb-6 text-sm">
+        <p className="text-[var(--rayo-ink-700)] text-center mb-6 text-sm">
           {description}
         </p>
 
         {/* Benefits */}
-        <div className="bg-[var(--raio-bg-tertiary)] rounded-lg p-4 mb-6">
+        <div className="bg-[var(--rayo-sand-300)] rounded-lg p-4 mb-6">
           <div className="space-y-2">
             {[
               'Acesso a todos os cursos',
@@ -151,8 +151,8 @@ export function PaywallOverlay({
               'Certificados profissionais'
             ].map((benefit) => (
               <div key={benefit} className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[var(--raio-accent-primary)] flex-shrink-0" />
-                <span className="text-[var(--raio-text-secondary)] text-sm">{benefit}</span>
+                <Zap className="w-4 h-4 text-[var(--rayo-terra-500)] flex-shrink-0" />
+                <span className="text-[var(--rayo-ink-700)] text-sm">{benefit}</span>
               </div>
             ))}
           </div>
@@ -162,7 +162,7 @@ export function PaywallOverlay({
         <div className="space-y-3">
           <Button
             onClick={onUpgrade}
-            className="w-full bg-[var(--raio-accent-primary)] hover:bg-[var(--raio-accent-hover)] text-[var(--raio-text-inverse)]"
+            className="w-full bg-[var(--rayo-terra-500)] hover:bg-[var(--rayo-terra-700)] text-[var(--rayo-sand-50)]"
           >
             <Crown className="w-4 h-4 mr-2" />
             Fazer Upgrade - R$ 49/mês
@@ -178,7 +178,7 @@ export function PaywallOverlay({
           )}
         </div>
 
-        <p className="text-[var(--raio-text-tertiary)] text-center mt-4 text-xs">
+        <p className="text-[var(--rayo-ink-400)] text-center mt-4 text-xs">
           7 dias grátis • Cancele quando quiser
         </p>
       </div>

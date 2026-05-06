@@ -110,7 +110,7 @@ export function NativeShare({
           variant="outline"
           className="gap-2"
           style={{
-            borderColor: 'var(--raio-border-default)',
+            borderColor: 'var(--rayo-sand-300)',
           }}
         >
           <Share2 className="w-4 h-4" />
@@ -125,15 +125,15 @@ export function NativeShare({
         onClick={handleShare}
         className="p-2 rounded-lg transition-colors"
         style={{
-          color: 'var(--raio-text-secondary)',
+          color: 'var(--rayo-ink-700)',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
-          e.currentTarget.style.color = 'var(--raio-text-primary)';
+          e.currentTarget.style.background = 'var(--rayo-sand-300)';
+          e.currentTarget.style.color = 'var(--rayo-forest-900)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = 'transparent';
-          e.currentTarget.style.color = 'var(--raio-text-secondary)';
+          e.currentTarget.style.color = 'var(--rayo-ink-700)';
         }}
         aria-label="Compartilhar"
       >
@@ -174,7 +174,7 @@ function ShareFallbackSheet({ data, copied, onCopy, onClose }: ShareFallbackShee
     {
       name: 'Copiar Link',
       icon: copied ? Check : Copy,
-      color: 'var(--raio-accent-primary)',
+      color: 'var(--rayo-terra-500)',
       onClick: onCopy,
     },
     {
@@ -237,7 +237,7 @@ function ShareFallbackSheet({ data, copied, onCopy, onClose }: ShareFallbackShee
         exit={{ opacity: 0, y: 100 }}
         className="relative w-full max-w-md rounded-t-3xl md:rounded-3xl overflow-hidden"
         style={{
-          background: 'var(--raio-bg-primary)',
+          background: 'var(--rayo-sand-100)',
           maxHeight: '80vh',
         }}
       >
@@ -246,7 +246,7 @@ function ShareFallbackSheet({ data, copied, onCopy, onClose }: ShareFallbackShee
           <div
             className="w-10 h-1 rounded-full"
             style={{
-              background: 'var(--raio-border-default)',
+              background: 'var(--rayo-sand-300)',
             }}
           />
         </div>
@@ -257,7 +257,7 @@ function ShareFallbackSheet({ data, copied, onCopy, onClose }: ShareFallbackShee
             className="text-center text-[20px] mb-2"
             style={{
               fontWeight: 700,
-              color: 'var(--raio-text-primary)',
+              color: 'var(--rayo-forest-900)',
             }}
           >
             Compartilhar
@@ -267,15 +267,15 @@ function ShareFallbackSheet({ data, copied, onCopy, onClose }: ShareFallbackShee
           <div
             className="mb-6 p-4 rounded-xl"
             style={{
-              background: 'var(--raio-bg-secondary)',
-              border: '1px solid var(--raio-border-default)',
+              background: 'var(--rayo-sand-50)',
+              border: '1px solid var(--rayo-sand-300)',
             }}
           >
             <h4
               className="text-[15px] mb-1"
               style={{
                 fontWeight: 600,
-                color: 'var(--raio-text-primary)',
+                color: 'var(--rayo-forest-900)',
               }}
             >
               {data.title}
@@ -283,7 +283,7 @@ function ShareFallbackSheet({ data, copied, onCopy, onClose }: ShareFallbackShee
             <p
               className="text-[13px] mb-2"
               style={{
-                color: 'var(--raio-text-secondary)',
+                color: 'var(--rayo-ink-700)',
               }}
             >
               {data.text}
@@ -291,7 +291,7 @@ function ShareFallbackSheet({ data, copied, onCopy, onClose }: ShareFallbackShee
             <p
               className="text-[12px] truncate"
               style={{
-                color: 'var(--raio-accent-primary)',
+                color: 'var(--rayo-terra-500)',
               }}
             >
               {data.url}
@@ -308,14 +308,14 @@ function ShareFallbackSheet({ data, copied, onCopy, onClose }: ShareFallbackShee
                   onClick={option.onClick}
                   className="flex flex-col items-center gap-2 p-3 rounded-xl transition-all"
                   style={{
-                    background: 'var(--raio-bg-secondary)',
+                    background: 'var(--rayo-sand-50)',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+                    e.currentTarget.style.background = 'var(--rayo-sand-300)';
                     e.currentTarget.style.transform = 'scale(1.05)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--raio-bg-secondary)';
+                    e.currentTarget.style.background = 'var(--rayo-sand-50)';
                     e.currentTarget.style.transform = 'scale(1)';
                   }}
                 >
@@ -330,7 +330,7 @@ function ShareFallbackSheet({ data, copied, onCopy, onClose }: ShareFallbackShee
                   <span
                     className="text-[11px] text-center"
                     style={{
-                      color: 'var(--raio-text-secondary)',
+                      color: 'var(--rayo-ink-700)',
                       fontWeight: 500,
                     }}
                   >

@@ -78,10 +78,10 @@ export function PersonalDashboard({ onBack }: PersonalDashboardProps) {
 
   // Chart colors matching our design system
   const chartColors = {
-    primary: "hsl(var(--raio-forest-600))",
-    secondary: "hsl(var(--raio-lime-500))",
-    accent: "hsl(var(--raio-gold-500))",
-    coral: "hsl(var(--raio-coral-500))",
+    primary: "var(--rayo-forest-700)",
+    secondary: "var(--rayo-sage-500)",
+    accent: "hsl(var(--rayo-ochre-500))",
+    coral: "hsl(var(--rayo-terra-500))",
     muted: "hsl(var(--muted-foreground))"
   };
 

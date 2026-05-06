@@ -166,21 +166,21 @@ Agent: "💰 Finanças saudáveis trazem paz para a família..."
 
 ```css
 /* Mensagens do usuário */
-background: var(--raio-accent-primary)    /* Amarelo RAIO */
+background: var(--rayo-terra-500)    /* Amarelo RAIO */
 color: #FFFFFF
 
 /* Mensagens do agente */
-background: var(--raio-bg-secondary)      /* Branco/Preto */
-border: var(--raio-border-default)
+background: var(--rayo-sand-50)      /* Branco/Preto */
+border: var(--rayo-sand-300)
 
 /* Botões de ação - Vídeo */
 background: var(--raio-accent-light)
-color: var(--raio-accent-primary)
-border: var(--raio-accent-primary)
+color: var(--rayo-terra-500)
+border: var(--rayo-terra-500)
 
 /* Botões de ação - Outros */
-background: var(--raio-bg-tertiary)
-color: var(--raio-text-primary)
+background: var(--rayo-sand-300)
+color: var(--rayo-forest-900)
 border: var(--raio-border-hover)
 ```
 

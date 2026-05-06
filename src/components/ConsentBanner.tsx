@@ -66,8 +66,8 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
       <Card 
         className="w-full max-w-4xl m-4 mb-4 lg:mb-6 pointer-events-auto shadow-2xl"
         style={{
-          background: 'var(--raio-bg-secondary)',
-          borderColor: 'var(--raio-border-default)',
+          background: 'var(--rayo-sand-50)',
+          borderColor: 'var(--rayo-sand-300)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -78,11 +78,11 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
               <div className="flex items-start gap-3">
                 <div 
                   className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'var(--raio-accent-subtle)' }}
+                  style={{ background: 'var(--rayo-terra-100)' }}
                 >
                   <Cookie 
                     className="w-6 h-6" 
-                    style={{ color: 'var(--raio-accent-primary)' }}
+                    style={{ color: 'var(--rayo-terra-500)' }}
                   />
                 </div>
                 
@@ -91,14 +91,14 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                     className="text-[18px] mb-2"
                     style={{ 
                       fontWeight: 600,
-                      color: 'var(--raio-text-primary)' 
+                      color: 'var(--rayo-forest-900)' 
                     }}
                   >
                     Sua privacidade importa 🔒
                   </h3>
                   <p 
                     className="text-[14px] leading-relaxed"
-                    style={{ color: 'var(--raio-text-secondary)' }}
+                    style={{ color: 'var(--rayo-ink-700)' }}
                   >
                     Usamos cookies e tecnologias similares para melhorar sua experiência, 
                     analisar o uso da plataforma e personalizar conteúdo. Você tem controle 
@@ -113,8 +113,8 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                   onClick={handleRejectAll}
                   className="flex-1 sm:flex-none"
                   style={{
-                    borderColor: 'var(--raio-border-default)',
-                    color: 'var(--raio-text-secondary)',
+                    borderColor: 'var(--rayo-sand-300)',
+                    color: 'var(--rayo-ink-700)',
                   }}
                 >
                   Rejeitar Todos
@@ -125,8 +125,8 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                   onClick={() => setShowDetails(true)}
                   className="flex-1 sm:flex-none"
                   style={{
-                    borderColor: 'var(--raio-accent-primary)',
-                    color: 'var(--raio-accent-primary)',
+                    borderColor: 'var(--rayo-terra-500)',
+                    color: 'var(--rayo-terra-500)',
                   }}
                 >
                   <Shield className="w-4 h-4 mr-2" />
@@ -137,8 +137,8 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                   onClick={handleAcceptAll}
                   className="flex-1"
                   style={{
-                    background: 'var(--raio-accent-primary)',
-                    color: theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF',
+                    background: 'var(--rayo-terra-500)',
+                    color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF',
                   }}
                 >
                   Aceitar Todos
@@ -147,13 +147,13 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
               
               <p 
                 className="text-[12px] text-center"
-                style={{ color: 'var(--raio-text-tertiary)' }}
+                style={{ color: 'var(--rayo-ink-400)' }}
               >
                 Ao continuar, você concorda com nossa{' '}
                 <button 
                   onClick={onOpenPrivacyPolicy}
                   className="underline hover:no-underline"
-                  style={{ color: 'var(--raio-accent-primary)' }}
+                  style={{ color: 'var(--rayo-terra-500)' }}
                 >
                   Política de Privacidade
                 </button>
@@ -161,7 +161,7 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                 <button 
                   onClick={onOpenPrivacyPolicy}
                   className="underline hover:no-underline"
-                  style={{ color: 'var(--raio-accent-primary)' }}
+                  style={{ color: 'var(--rayo-terra-500)' }}
                 >
                   Termos de Uso
                 </button>
@@ -174,13 +174,13 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                 <div className="flex items-center gap-3">
                   <Shield 
                     className="w-6 h-6" 
-                    style={{ color: 'var(--raio-accent-primary)' }}
+                    style={{ color: 'var(--rayo-terra-500)' }}
                   />
                   <h3 
                     className="text-[18px]"
                     style={{ 
                       fontWeight: 600,
-                      color: 'var(--raio-text-primary)' 
+                      color: 'var(--rayo-forest-900)' 
                     }}
                   >
                     Suas Preferências de Privacidade
@@ -190,7 +190,7 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowDetails(false)}
-                  style={{ color: 'var(--raio-text-secondary)' }}
+                  style={{ color: 'var(--rayo-ink-700)' }}
                 >
                   <X className="w-5 h-5" />
                 </Button>
@@ -200,7 +200,7 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                 {/* Essencial */}
                 <div 
                   className="flex items-start gap-4 p-4 rounded-lg"
-                  style={{ background: 'var(--raio-bg-tertiary)' }}
+                  style={{ background: 'var(--rayo-sand-300)' }}
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
@@ -208,7 +208,7 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                         className="text-[15px]"
                         style={{ 
                           fontWeight: 600,
-                          color: 'var(--raio-text-primary)' 
+                          color: 'var(--rayo-forest-900)' 
                         }}
                       >
                         Cookies Essenciais
@@ -216,8 +216,8 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                       <span 
                         className="text-[12px] px-2 py-0.5 rounded"
                         style={{ 
-                          background: 'var(--raio-accent-subtle)',
-                          color: 'var(--raio-accent-primary)',
+                          background: 'var(--rayo-terra-100)',
+                          color: 'var(--rayo-terra-500)',
                         }}
                       >
                         Obrigatório
@@ -225,7 +225,7 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                     </div>
                     <p 
                       className="text-[13px]"
-                      style={{ color: 'var(--raio-text-secondary)' }}
+                      style={{ color: 'var(--rayo-ink-700)' }}
                     >
                       Necessários para o funcionamento básico da plataforma (login, navegação, preferências).
                     </p>
@@ -236,21 +236,21 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                 {/* Analytics */}
                 <div 
                   className="flex items-start gap-4 p-4 rounded-lg border"
-                  style={{ borderColor: 'var(--raio-border-default)' }}
+                  style={{ borderColor: 'var(--rayo-sand-300)' }}
                 >
                   <div className="flex-1">
                     <h4 
                       className="text-[15px] mb-1"
                       style={{ 
                         fontWeight: 600,
-                        color: 'var(--raio-text-primary)' 
+                        color: 'var(--rayo-forest-900)' 
                       }}
                     >
                       Analytics e Performance
                     </h4>
                     <p 
                       className="text-[13px]"
-                      style={{ color: 'var(--raio-text-secondary)' }}
+                      style={{ color: 'var(--rayo-ink-700)' }}
                     >
                       Nos ajudam a entender como você usa a plataforma para melhorar a experiência.
                       Dados anônimos e agregados.
@@ -265,21 +265,21 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                 {/* Marketing */}
                 <div 
                   className="flex items-start gap-4 p-4 rounded-lg border"
-                  style={{ borderColor: 'var(--raio-border-default)' }}
+                  style={{ borderColor: 'var(--rayo-sand-300)' }}
                 >
                   <div className="flex-1">
                     <h4 
                       className="text-[15px] mb-1"
                       style={{ 
                         fontWeight: 600,
-                        color: 'var(--raio-text-primary)' 
+                        color: 'var(--rayo-forest-900)' 
                       }}
                     >
                       Marketing e Comunicação
                     </h4>
                     <p 
                       className="text-[13px]"
-                      style={{ color: 'var(--raio-text-secondary)' }}
+                      style={{ color: 'var(--rayo-ink-700)' }}
                     >
                       Emails sobre novos conteúdos, cursos e ofertas especiais. Você pode cancelar a qualquer momento.
                     </p>
@@ -293,21 +293,21 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                 {/* Personalização */}
                 <div 
                   className="flex items-start gap-4 p-4 rounded-lg border"
-                  style={{ borderColor: 'var(--raio-border-default)' }}
+                  style={{ borderColor: 'var(--rayo-sand-300)' }}
                 >
                   <div className="flex-1">
                     <h4 
                       className="text-[15px] mb-1"
                       style={{ 
                         fontWeight: 600,
-                        color: 'var(--raio-text-primary)' 
+                        color: 'var(--rayo-forest-900)' 
                       }}
                     >
                       Personalização de Conteúdo
                     </h4>
                     <p 
                       className="text-[13px]"
-                      style={{ color: 'var(--raio-text-secondary)' }}
+                      style={{ color: 'var(--rayo-ink-700)' }}
                     >
                       Recomendações de cursos e livros baseadas no seu perfil e atividade. 
                       Torna a experiência mais relevante para você.
@@ -322,13 +322,13 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
               
               <div 
                 className="p-4 rounded-lg"
-                style={{ background: 'var(--raio-accent-subtle)' }}
+                style={{ background: 'var(--rayo-terra-100)' }}
               >
                 <p 
                   className="text-[13px]"
-                  style={{ color: 'var(--raio-text-secondary)' }}
+                  style={{ color: 'var(--rayo-ink-700)' }}
                 >
-                  <strong style={{ color: 'var(--raio-text-primary)' }}>
+                  <strong style={{ color: 'var(--rayo-forest-900)' }}>
                     Seus direitos LGPD:
                   </strong>{' '}
                   Você pode acessar, corrigir, exportar ou deletar seus dados a qualquer momento 
@@ -336,7 +336,7 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                   <button 
                     onClick={onOpenPrivacyPolicy}
                     className="underline"
-                    style={{ color: 'var(--raio-accent-primary)' }}
+                    style={{ color: 'var(--rayo-terra-500)' }}
                   >
                     Política de Privacidade
                   </button>.
@@ -349,8 +349,8 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                   onClick={() => setShowDetails(false)}
                   className="flex-1"
                   style={{
-                    borderColor: 'var(--raio-border-default)',
-                    color: 'var(--raio-text-secondary)',
+                    borderColor: 'var(--rayo-sand-300)',
+                    color: 'var(--rayo-ink-700)',
                   }}
                 >
                   Voltar
@@ -359,8 +359,8 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                   onClick={handleSavePreferences}
                   className="flex-1"
                   style={{
-                    background: 'var(--raio-accent-primary)',
-                    color: theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF',
+                    background: 'var(--rayo-terra-500)',
+                    color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF',
                   }}
                 >
                   Salvar Preferências

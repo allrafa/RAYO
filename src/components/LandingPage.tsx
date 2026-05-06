@@ -66,15 +66,15 @@ export function LandingPage({
   };
 
   return (
-    <div className="min-h-screen bg-[var(--raio-bg-primary)]">
+    <div className="min-h-screen bg-[var(--rayo-sand-100)]">
       {/* Close Button - se necessário */}
       {showCloseButton && onClose && (
         <button
           onClick={onClose}
-          className="fixed top-4 right-4 z-50 p-2 rounded-full bg-[var(--raio-bg-secondary)] border border-[var(--raio-border-default)] shadow-lg hover:bg-[var(--raio-bg-tertiary)] transition-colors"
+          className="fixed top-4 right-4 z-50 p-2 rounded-full bg-[var(--rayo-sand-50)] border border-[var(--rayo-sand-300)] shadow-lg hover:bg-[var(--rayo-sand-300)] transition-colors"
           aria-label="Fechar"
         >
-          <X className="w-5 h-5 text-[var(--raio-text-secondary)]" />
+          <X className="w-5 h-5 text-[var(--rayo-ink-700)]" />
         </button>
       )}
 
@@ -95,7 +95,7 @@ export function LandingPage({
           >
             <Badge 
               variant="outline" 
-              className="bg-[var(--raio-accent-subtle)] border-[var(--raio-accent-primary)] text-[var(--raio-accent-primary)] px-4 py-1.5"
+              className="bg-[var(--rayo-terra-100)] border-[var(--rayo-terra-500)] text-[var(--rayo-terra-500)] px-4 py-1.5"
             >
               <Sparkles className="w-3.5 h-3.5 mr-1.5" />
               Junte-se a 10.000+ famílias
@@ -109,10 +109,10 @@ export function LandingPage({
             transition={{ delay: 0.3 }}
             className="text-center mb-6"
           >
-            <h1 className="text-[var(--raio-text-primary)] mb-4 max-w-3xl mx-auto">
+            <h1 className="text-[var(--rayo-forest-900)] mb-4 max-w-3xl mx-auto">
               Fortaleça sua família com conteúdo transformador
             </h1>
-            <p className="text-[var(--raio-text-secondary)] max-w-2xl mx-auto">
+            <p className="text-[var(--rayo-ink-700)] max-w-2xl mx-auto">
               Aprenda, conecte-se e cresça com uma plataforma feita para sua jornada familiar. 
               Cursos especializados, comunidade engajada e suporte contínuo.
             </p>
@@ -123,7 +123,7 @@ export function LandingPage({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.4 }}
-            className="relative rounded-2xl overflow-hidden shadow-[var(--raio-shadow-xl)] mb-8 max-w-4xl mx-auto"
+            className="relative rounded-2xl overflow-hidden shadow-[0 18px 40px rgba(12,59,46,0.12)] mb-8 max-w-4xl mx-auto"
           >
             <div className="aspect-[16/10] lg:aspect-[16/9]">
               <ImageWithFallback
@@ -133,7 +133,7 @@ export function LandingPage({
               />
             </div>
             {/* Gradient overlay para melhor legibilidade */}
-            <div className="absolute inset-0 bg-gradient-to-t from-[var(--raio-bg-primary)] via-transparent to-transparent opacity-60" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--rayo-sand-100)] via-transparent to-transparent opacity-60" />
           </motion.div>
 
           {/* CTAs */}
@@ -146,7 +146,7 @@ export function LandingPage({
             <Button
               size="lg"
               onClick={handleStartPremium}
-              className="w-full sm:w-auto bg-[var(--raio-accent-primary)] hover:bg-[var(--raio-accent-hover)] text-[var(--raio-text-inverse)] shadow-[var(--raio-shadow-md)] min-w-[200px]"
+              className="w-full sm:w-auto bg-[var(--rayo-terra-500)] hover:bg-[var(--rayo-terra-700)] text-[var(--rayo-sand-50)] shadow-[0 4px 10px rgba(12,59,46,0.08)] min-w-[200px]"
             >
               <Zap className="w-5 h-5 mr-2" />
               Começar Premium
@@ -166,7 +166,7 @@ export function LandingPage({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
-            className="text-center text-[var(--raio-text-tertiary)] mt-4 text-sm"
+            className="text-center text-[var(--rayo-ink-400)] mt-4 text-sm"
           >
             7 dias grátis • Cancele quando quiser • Sem compromisso
           </motion.p>
@@ -179,12 +179,12 @@ export function LandingPage({
           transition={{ delay: 0.8 }}
           className="flex justify-center mt-8"
         >
-          <ChevronDown className="w-6 h-6 text-[var(--raio-text-tertiary)] animate-bounce" />
+          <ChevronDown className="w-6 h-6 text-[var(--rayo-ink-400)] animate-bounce" />
         </motion.div>
       </section>
 
       {/* Social Proof */}
-      <section className="py-8 px-4 bg-[var(--raio-bg-secondary)] border-y border-[var(--raio-border-default)]">
+      <section className="py-8 px-4 bg-[var(--rayo-sand-50)] border-y border-[var(--rayo-sand-300)]">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
             {[
@@ -201,8 +201,8 @@ export function LandingPage({
                 transition={{ delay: idx * 0.1 }}
                 className="text-center"
               >
-                <div className="text-[var(--raio-accent-primary)] mb-1">{stat.value}</div>
-                <div className="text-[var(--raio-text-tertiary)] text-sm">{stat.label}</div>
+                <div className="text-[var(--rayo-terra-500)] mb-1">{stat.value}</div>
+                <div className="text-[var(--rayo-ink-400)] text-sm">{stat.label}</div>
               </motion.div>
             ))}
           </div>
@@ -218,10 +218,10 @@ export function LandingPage({
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-[var(--raio-text-primary)] mb-4">
+            <h2 className="text-[var(--rayo-forest-900)] mb-4">
               Você se identifica?
             </h2>
-            <p className="text-[var(--raio-text-secondary)] max-w-2xl mx-auto">
+            <p className="text-[var(--rayo-ink-700)] max-w-2xl mx-auto">
               Sabemos que a jornada familiar tem seus desafios. O RAYO está aqui para apoiar você.
             </p>
           </motion.div>
@@ -251,15 +251,15 @@ export function LandingPage({
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1 }}
               >
-                <Card className="h-full hover:shadow-[var(--raio-shadow-lg)] transition-shadow">
+                <Card className="h-full hover:shadow-[0 10px 24px rgba(12,59,46,0.10)] transition-shadow">
                   <CardContent className="p-6">
-                    <div className="w-12 h-12 rounded-xl bg-[var(--raio-accent-light)] flex items-center justify-center mb-4">
-                      <problem.icon className="w-6 h-6 text-[var(--raio-accent-primary)]" />
+                    <div className="w-12 h-12 rounded-xl bg-[var(--rayo-terra-100)] flex items-center justify-center mb-4">
+                      <problem.icon className="w-6 h-6 text-[var(--rayo-terra-500)]" />
                     </div>
-                    <h3 className="text-[var(--raio-text-primary)] mb-2">
+                    <h3 className="text-[var(--rayo-forest-900)] mb-2">
                       {problem.title}
                     </h3>
-                    <p className="text-[var(--raio-text-secondary)] text-sm">
+                    <p className="text-[var(--rayo-ink-700)] text-sm">
                       {problem.description}
                     </p>
                   </CardContent>
@@ -273,15 +273,15 @@ export function LandingPage({
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="text-center bg-[var(--raio-accent-subtle)] border border-[var(--raio-accent-primary)] rounded-2xl p-8 lg:p-12"
+            className="text-center bg-[var(--rayo-terra-100)] border border-[var(--rayo-terra-500)] rounded-2xl p-8 lg:p-12"
           >
-            <div className="w-16 h-16 rounded-full bg-[var(--raio-accent-primary)] flex items-center justify-center mx-auto mb-4">
-              <Zap className="w-8 h-8 text-[var(--raio-text-inverse)]" />
+            <div className="w-16 h-16 rounded-full bg-[var(--rayo-terra-500)] flex items-center justify-center mx-auto mb-4">
+              <Zap className="w-8 h-8 text-[var(--rayo-sand-50)]" />
             </div>
-            <h2 className="text-[var(--raio-text-primary)] mb-4">
+            <h2 className="text-[var(--rayo-forest-900)] mb-4">
               RAYO é a solução completa
             </h2>
-            <p className="text-[var(--raio-text-secondary)] max-w-2xl mx-auto">
+            <p className="text-[var(--rayo-ink-700)] max-w-2xl mx-auto">
               Uma plataforma que reúne tudo que você precisa: conteúdo transformador, 
               comunidade engajada, orientação personalizada e gamificação que motiva.
             </p>
@@ -290,7 +290,7 @@ export function LandingPage({
       </section>
 
       {/* Features - 4 Pilares */}
-      <section className="py-16 px-4 bg-[var(--raio-bg-secondary)] lg:py-24">
+      <section className="py-16 px-4 bg-[var(--rayo-sand-50)] lg:py-24">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -298,10 +298,10 @@ export function LandingPage({
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-[var(--raio-text-primary)] mb-4">
+            <h2 className="text-[var(--rayo-forest-900)] mb-4">
               Como funciona
             </h2>
-            <p className="text-[var(--raio-text-secondary)] max-w-2xl mx-auto">
+            <p className="text-[var(--rayo-ink-700)] max-w-2xl mx-auto">
               Tudo que você precisa para transformar sua família, em uma só plataforma
             </p>
           </motion.div>
@@ -313,28 +313,28 @@ export function LandingPage({
                 title: 'Academia de Conteúdo',
                 description: '100+ cursos e livros especializados em relacionamentos, parentalidade e crescimento pessoal',
                 features: ['Cursos com certificação', 'Livros em áudio + texto', 'Trilhas personalizadas'],
-                color: 'var(--raio-gold-500)'
+                color: 'var(--rayo-ochre-500)'
               },
               {
                 icon: MessageCircle,
                 title: 'Conselheiro IA 24/7',
                 description: 'Orientação personalizada sempre que você precisar, com empatia e sabedoria',
                 features: ['Conversas ilimitadas', 'Respostas personalizadas', 'Planos de ação práticos'],
-                color: 'var(--raio-mint-500)'
+                color: 'var(--rayo-sage-500)'
               },
               {
                 icon: Users,
                 title: 'Comunidade Ativa',
                 description: 'Conecte-se com milhares de pessoas na mesma jornada que você',
                 features: ['Grupos por segmento', 'Eventos e desafios', 'Mentoria entre pares'],
-                color: 'var(--raio-coral-500)'
+                color: 'var(--rayo-terra-500)'
               },
               {
                 icon: Trophy,
                 title: 'Gamificação Motivadora',
                 description: 'Sistema de recompensas que celebra seu progresso e mantém você engajado',
                 features: ['Badges e conquistas', 'Streaks diários', 'Níveis de progresso'],
-                color: 'var(--raio-accent-primary)'
+                color: 'var(--rayo-terra-500)'
               }
             ].map((feature, idx) => (
               <motion.div
@@ -344,7 +344,7 @@ export function LandingPage({
                 viewport={{ once: true }}
                 transition={{ delay: idx * 0.1 }}
               >
-                <Card className="h-full hover:shadow-[var(--raio-shadow-lg)] transition-shadow border-2 border-transparent hover:border-[var(--raio-border-hover)]">
+                <Card className="h-full hover:shadow-[0 10px 24px rgba(12,59,46,0.10)] transition-shadow border-2 border-transparent hover:border-[var(--rayo-forest-900)]">
                   <CardContent className="p-6 lg:p-8">
                     <div 
                       className="w-14 h-14 rounded-xl flex items-center justify-center mb-4"
@@ -355,19 +355,19 @@ export function LandingPage({
                         style={{ color: feature.color }}
                       />
                     </div>
-                    <h3 className="text-[var(--raio-text-primary)] mb-2">
+                    <h3 className="text-[var(--rayo-forest-900)] mb-2">
                       {feature.title}
                     </h3>
-                    <p className="text-[var(--raio-text-secondary)] mb-4 text-sm">
+                    <p className="text-[var(--rayo-ink-700)] mb-4 text-sm">
                       {feature.description}
                     </p>
                     <ul className="space-y-2">
                       {feature.features.map((item) => (
                         <li 
                           key={item}
-                          className="flex items-start text-[var(--raio-text-secondary)] text-sm"
+                          className="flex items-start text-[var(--rayo-ink-700)] text-sm"
                         >
-                          <Check className="w-4 h-4 mr-2 mt-0.5 text-[var(--raio-success)] flex-shrink-0" />
+                          <Check className="w-4 h-4 mr-2 mt-0.5 text-[var(--rayo-sage-500)] flex-shrink-0" />
                           <span>{item}</span>
                         </li>
                       ))}
@@ -389,10 +389,10 @@ export function LandingPage({
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-[var(--raio-text-primary)] mb-4">
+            <h2 className="text-[var(--rayo-forest-900)] mb-4">
               Escolha seu plano
             </h2>
-            <p className="text-[var(--raio-text-secondary)] max-w-2xl mx-auto">
+            <p className="text-[var(--rayo-ink-700)] max-w-2xl mx-auto">
               Comece grátis e faça upgrade quando quiser. Sem compromisso.
             </p>
           </motion.div>
@@ -407,14 +407,14 @@ export function LandingPage({
               <Card className="h-full relative overflow-hidden">
                 <CardContent className="p-6 lg:p-8">
                   <div className="mb-6">
-                    <h3 className="text-[var(--raio-text-primary)] mb-2">
+                    <h3 className="text-[var(--rayo-forest-900)] mb-2">
                       Gratuito
                     </h3>
                     <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-[var(--raio-text-primary)]">R$ 0</span>
-                      <span className="text-[var(--raio-text-tertiary)] text-sm">/mês</span>
+                      <span className="text-[var(--rayo-forest-900)]">R$ 0</span>
+                      <span className="text-[var(--rayo-ink-400)] text-sm">/mês</span>
                     </div>
-                    <p className="text-[var(--raio-text-secondary)] text-sm">
+                    <p className="text-[var(--rayo-ink-700)] text-sm">
                       Para explorar a plataforma
                     </p>
                   </div>
@@ -427,8 +427,8 @@ export function LandingPage({
                       'Gamificação básica'
                     ].map((feature) => (
                       <li key={feature} className="flex items-start text-sm">
-                        <Check className="w-4 h-4 mr-2 mt-0.5 text-[var(--raio-success)] flex-shrink-0" />
-                        <span className="text-[var(--raio-text-secondary)]">{feature}</span>
+                        <Check className="w-4 h-4 mr-2 mt-0.5 text-[var(--rayo-sage-500)] flex-shrink-0" />
+                        <span className="text-[var(--rayo-ink-700)]">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -450,10 +450,10 @@ export function LandingPage({
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <Card className="h-full relative overflow-hidden border-2 border-[var(--raio-accent-primary)] shadow-[var(--raio-shadow-lg)]">
+              <Card className="h-full relative overflow-hidden border-2 border-[var(--rayo-terra-500)] shadow-[0 10px 24px rgba(12,59,46,0.10)]">
                 {/* Badge "Mais popular" */}
                 <div className="absolute top-4 right-4">
-                  <Badge className="bg-[var(--raio-accent-primary)] text-[var(--raio-text-inverse)]">
+                  <Badge className="bg-[var(--rayo-terra-500)] text-[var(--rayo-sand-50)]">
                     <Star className="w-3 h-3 mr-1" />
                     Mais popular
                   </Badge>
@@ -461,14 +461,14 @@ export function LandingPage({
 
                 <CardContent className="p-6 lg:p-8">
                   <div className="mb-6">
-                    <h3 className="text-[var(--raio-text-primary)] mb-2">
+                    <h3 className="text-[var(--rayo-forest-900)] mb-2">
                       Premium
                     </h3>
                     <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-[var(--raio-text-primary)]">R$ 49</span>
-                      <span className="text-[var(--raio-text-tertiary)] text-sm">/mês</span>
+                      <span className="text-[var(--rayo-forest-900)]">R$ 49</span>
+                      <span className="text-[var(--rayo-ink-400)] text-sm">/mês</span>
                     </div>
-                    <p className="text-[var(--raio-text-secondary)] text-sm">
+                    <p className="text-[var(--rayo-ink-700)] text-sm">
                       Acesso completo e ilimitado
                     </p>
                   </div>
@@ -485,21 +485,21 @@ export function LandingPage({
                       '7 dias grátis'
                     ].map((feature) => (
                       <li key={feature} className="flex items-start text-sm">
-                        <Check className="w-4 h-4 mr-2 mt-0.5 text-[var(--raio-accent-primary)] flex-shrink-0" />
-                        <span className="text-[var(--raio-text-secondary)]">{feature}</span>
+                        <Check className="w-4 h-4 mr-2 mt-0.5 text-[var(--rayo-terra-500)] flex-shrink-0" />
+                        <span className="text-[var(--rayo-ink-700)]">{feature}</span>
                       </li>
                     ))}
                   </ul>
 
                   <Button
-                    className="w-full bg-[var(--raio-accent-primary)] hover:bg-[var(--raio-accent-hover)] text-[var(--raio-text-inverse)]"
+                    className="w-full bg-[var(--rayo-terra-500)] hover:bg-[var(--rayo-terra-700)] text-[var(--rayo-sand-50)]"
                     onClick={handleStartPremium}
                   >
                     <Zap className="w-4 h-4 mr-2" />
                     Começar Premium
                   </Button>
 
-                  <p className="text-center text-[var(--raio-text-tertiary)] text-xs mt-4">
+                  <p className="text-center text-[var(--rayo-ink-400)] text-xs mt-4">
                     Cancele quando quiser • Sem compromisso
                   </p>
                 </CardContent>
@@ -514,9 +514,9 @@ export function LandingPage({
             viewport={{ once: true }}
             className="mt-8 text-center"
           >
-            <div className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--raio-success-light)] border border-[var(--raio-success)] rounded-full">
-              <Shield className="w-5 h-5 text-[var(--raio-success)]" />
-              <span className="text-[var(--raio-text-primary)] text-sm">
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--rayo-sage-100)] border border-[var(--rayo-sage-500)] rounded-full">
+              <Shield className="w-5 h-5 text-[var(--rayo-sage-500)]" />
+              <span className="text-[var(--rayo-forest-900)] text-sm">
                 Garantia de 7 dias • Teste sem riscos
               </span>
             </div>
@@ -525,7 +525,7 @@ export function LandingPage({
       </section>
 
       {/* FAQ */}
-      <section className="py-16 px-4 bg-[var(--raio-bg-secondary)] lg:py-24">
+      <section className="py-16 px-4 bg-[var(--rayo-sand-50)] lg:py-24">
         <div className="max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -533,10 +533,10 @@ export function LandingPage({
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h2 className="text-[var(--raio-text-primary)] mb-4">
+            <h2 className="text-[var(--rayo-forest-900)] mb-4">
               Perguntas frequentes
             </h2>
-            <p className="text-[var(--raio-text-secondary)]">
+            <p className="text-[var(--rayo-ink-700)]">
               Tudo que você precisa saber sobre o RAYO
             </p>
           </motion.div>
@@ -584,12 +584,12 @@ export function LandingPage({
                 <AccordionItem 
                   key={idx} 
                   value={`item-${idx}`}
-                  className="bg-[var(--raio-bg-primary)] border border-[var(--raio-border-default)] rounded-lg px-6"
+                  className="bg-[var(--rayo-sand-100)] border border-[var(--rayo-sand-300)] rounded-lg px-6"
                 >
-                  <AccordionTrigger className="text-[var(--raio-text-primary)] hover:no-underline">
+                  <AccordionTrigger className="text-[var(--rayo-forest-900)] hover:no-underline">
                     {faq.q}
                   </AccordionTrigger>
-                  <AccordionContent className="text-[var(--raio-text-secondary)]">
+                  <AccordionContent className="text-[var(--rayo-ink-700)]">
                     {faq.a}
                   </AccordionContent>
                 </AccordionItem>
@@ -607,16 +607,16 @@ export function LandingPage({
           viewport={{ once: true }}
           className="max-w-4xl mx-auto text-center"
         >
-          <div className="bg-gradient-to-br from-[var(--raio-accent-light)] to-[var(--raio-accent-subtle)] border border-[var(--raio-accent-primary)] rounded-2xl p-8 lg:p-12 shadow-[var(--raio-shadow-xl)]">
-            <div className="w-16 h-16 rounded-full bg-[var(--raio-accent-primary)] flex items-center justify-center mx-auto mb-6">
-              <Zap className="w-8 h-8 text-[var(--raio-text-inverse)]" />
+          <div className="bg-gradient-to-br from-[var(--rayo-terra-100)] to-[var(--rayo-terra-100)] border border-[var(--rayo-terra-500)] rounded-2xl p-8 lg:p-12 shadow-[0 18px 40px rgba(12,59,46,0.12)]">
+            <div className="w-16 h-16 rounded-full bg-[var(--rayo-terra-500)] flex items-center justify-center mx-auto mb-6">
+              <Zap className="w-8 h-8 text-[var(--rayo-sand-50)]" />
             </div>
             
-            <h2 className="text-[var(--raio-text-primary)] mb-4">
+            <h2 className="text-[var(--rayo-forest-900)] mb-4">
               Pronto para transformar sua família?
             </h2>
             
-            <p className="text-[var(--raio-text-secondary)] mb-8 max-w-2xl mx-auto">
+            <p className="text-[var(--rayo-ink-700)] mb-8 max-w-2xl mx-auto">
               Junte-se a milhares de pessoas que estão fortalecendo seus relacionamentos 
               e crescendo juntas. Comece hoje mesmo.
             </p>
@@ -628,7 +628,7 @@ export function LandingPage({
                   trackCTAClick('final', 'premium');
                   onStartPremium?.();
                 }}
-                className="bg-[var(--raio-accent-primary)] hover:bg-[var(--raio-accent-hover)] text-[var(--raio-text-inverse)] shadow-lg min-w-[200px]"
+                className="bg-[var(--rayo-terra-500)] hover:bg-[var(--rayo-terra-700)] text-[var(--rayo-sand-50)] shadow-lg min-w-[200px]"
               >
                 <Zap className="w-5 h-5 mr-2" />
                 Começar Premium
@@ -640,13 +640,13 @@ export function LandingPage({
                   trackCTAClick('final', 'free');
                   onStartFree?.();
                 }}
-                className="min-w-[200px] bg-[var(--raio-bg-secondary)]"
+                className="min-w-[200px] bg-[var(--rayo-sand-50)]"
               >
                 Experimentar Grátis
               </Button>
             </div>
 
-            <p className="text-[var(--raio-text-tertiary)] mt-6 text-sm">
+            <p className="text-[var(--rayo-ink-400)] mt-6 text-sm">
               7 dias grátis • Cancele quando quiser • Sem cartão de crédito
             </p>
           </div>
@@ -654,30 +654,30 @@ export function LandingPage({
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-4 bg-[var(--raio-bg-secondary)] border-t border-[var(--raio-border-default)]">
+      <footer className="py-8 px-4 bg-[var(--rayo-sand-50)] border-t border-[var(--rayo-sand-300)]">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-[var(--raio-accent-primary)]" />
-              <span className="text-[var(--raio-text-primary)]">RAYO</span>
+              <Zap className="w-5 h-5 text-[var(--rayo-terra-500)]" />
+              <span className="text-[var(--rayo-forest-900)]">RAYO</span>
             </div>
 
             <div className="flex flex-wrap justify-center gap-6 text-sm">
-              <a href="#" className="text-[var(--raio-text-secondary)] hover:text-[var(--raio-text-primary)] transition-colors">
+              <a href="#" className="text-[var(--rayo-ink-700)] hover:text-[var(--rayo-forest-900)] transition-colors">
                 Sobre
               </a>
-              <button onClick={onOpenPrivacyPolicy} className="text-[var(--raio-text-secondary)] hover:text-[var(--raio-text-primary)] transition-colors">
+              <button onClick={onOpenPrivacyPolicy} className="text-[var(--rayo-ink-700)] hover:text-[var(--rayo-forest-900)] transition-colors">
                 Política de Privacidade
               </button>
-              <button onClick={onOpenPrivacyPolicy} className="text-[var(--raio-text-secondary)] hover:text-[var(--raio-text-primary)] transition-colors">
+              <button onClick={onOpenPrivacyPolicy} className="text-[var(--rayo-ink-700)] hover:text-[var(--rayo-forest-900)] transition-colors">
                 Termos de Uso
               </button>
-              <a href="#" className="text-[var(--raio-text-secondary)] hover:text-[var(--raio-text-primary)] transition-colors">
+              <a href="#" className="text-[var(--rayo-ink-700)] hover:text-[var(--rayo-forest-900)] transition-colors">
                 Ajuda
               </a>
             </div>
 
-            <p className="text-[var(--raio-text-tertiary)] text-sm">
+            <p className="text-[var(--rayo-ink-400)] text-sm">
               © 2025 RAYO. Todos os direitos reservados.
             </p>
           </div>

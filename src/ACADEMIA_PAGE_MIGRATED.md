@@ -37,14 +37,14 @@
 
 #### Depois:
 ```tsx
-<h2 style={{ color: 'var(--raio-text-primary)' }}>
-<p style={{ color: 'var(--raio-text-secondary)' }}>
-<Badge style={{ background: 'var(--raio-success)' }}>
-<div style={{ background: 'var(--raio-bg-tertiary)' }}>
+<h2 style={{ color: 'var(--rayo-forest-900)' }}>
+<p style={{ color: 'var(--rayo-ink-700)' }}>
+<Badge style={{ background: 'var(--rayo-sage-500)' }}>
+<div style={{ background: 'var(--rayo-sand-300)' }}>
   <div style={{ 
-    background: 'linear-gradient(90deg, var(--raio-accent-primary), var(--raio-accent-hover))'
+    background: 'linear-gradient(90deg, var(--rayo-terra-500), var(--rayo-terra-700))'
   }}>
-<div style={{ borderColor: 'var(--raio-border-default)' }}>
+<div style={{ borderColor: 'var(--rayo-sand-300)' }}>
 ```
 
 **Resultado:**
@@ -66,9 +66,9 @@
 
 #### Depois:
 ```tsx
-<div style={{ background: 'var(--raio-bg-tertiary)' }}>
-<Badge style={{ background: 'var(--raio-success)' }}>
-<Play style={{ color: 'var(--raio-accent-primary)' }} />
+<div style={{ background: 'var(--rayo-sand-300)' }}>
+<Badge style={{ background: 'var(--rayo-sage-500)' }}>
+<Play style={{ color: 'var(--rayo-terra-500)' }} />
 ```
 
 **Resultado:**
@@ -93,16 +93,16 @@
 
 #### Depois:
 ```tsx
-<section style={{ background: 'var(--raio-bg-secondary)' }}>
-  <h1 style={{ color: 'var(--raio-text-primary)' }}>
-    O que você quer <span style={{ color: 'var(--raio-accent-primary)' }}>aprender</span>
+<section style={{ background: 'var(--rayo-sand-50)' }}>
+  <h1 style={{ color: 'var(--rayo-forest-900)' }}>
+    O que você quer <span style={{ color: 'var(--rayo-terra-500)' }}>aprender</span>
   </h1>
-  <p style={{ color: 'var(--raio-text-secondary)' }}>
+  <p style={{ color: 'var(--rayo-ink-700)' }}>
   <Input style={{ 
-    background: 'var(--raio-bg-primary)',
-    borderColor: 'var(--raio-border-default)',
+    background: 'var(--rayo-sand-100)',
+    borderColor: 'var(--rayo-sand-300)',
   }}>
-  <Button style={{ background: 'var(--raio-accent-primary)' }}>
+  <Button style={{ background: 'var(--rayo-terra-500)' }}>
 ```
 
 **Resultado:**
@@ -125,15 +125,15 @@
 
 #### Depois:
 ```tsx
-<h2 style={{ color: 'var(--raio-text-primary)' }}>Mais populares</h2>
-<p style={{ color: 'var(--raio-text-secondary)' }}>
+<h2 style={{ color: 'var(--rayo-forest-900)' }}>Mais populares</h2>
+<p style={{ color: 'var(--rayo-ink-700)' }}>
 <Button 
-  style={{ color: 'var(--raio-accent-primary)' }}
+  style={{ color: 'var(--rayo-terra-500)' }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.color = 'var(--raio-accent-hover)';
+    e.currentTarget.style.color = 'var(--rayo-terra-700)';
   }}
 >
-<p style={{ color: 'var(--raio-text-secondary)' }}>Mostrando X cursos</p>
+<p style={{ color: 'var(--rayo-ink-700)' }}>Mostrando X cursos</p>
 ```
 
 **Resultado:**
@@ -191,25 +191,25 @@
 
 #### Depois:
 ```tsx
-<Card style={{ background: 'var(--raio-bg-secondary)' }}>
-  <div style={{ background: 'var(--raio-bg-tertiary)' }}>
-  <Badge style={{ background: 'var(--raio-success)' }}>
-  <span style={{ color: 'var(--raio-text-primary)' }}>{course.rating}</span>
-  <span style={{ color: 'var(--raio-text-secondary)' }}>
+<Card style={{ background: 'var(--rayo-sand-50)' }}>
+  <div style={{ background: 'var(--rayo-sand-300)' }}>
+  <Badge style={{ background: 'var(--rayo-sage-500)' }}>
+  <span style={{ color: 'var(--rayo-forest-900)' }}>{course.rating}</span>
+  <span style={{ color: 'var(--rayo-ink-700)' }}>
   <h3 
-    style={{ color: 'var(--raio-text-primary)' }}
+    style={{ color: 'var(--rayo-forest-900)' }}
     onMouseEnter={(e) => {
-      e.currentTarget.style.color = 'var(--raio-accent-primary)';
+      e.currentTarget.style.color = 'var(--rayo-terra-500)';
     }}
   >
-  <p style={{ color: 'var(--raio-text-secondary)' }}>
-  <span style={{ color: 'var(--raio-success)' }}>Gratuito</span>
+  <p style={{ color: 'var(--rayo-ink-700)' }}>
+  <span style={{ color: 'var(--rayo-sage-500)' }}>Gratuito</span>
   <Button style={{ 
-    background: 'var(--raio-accent-primary)',
+    background: 'var(--rayo-terra-500)',
     color: '#FFFFFF' 
   }}>
   <Button style={{ 
-    background: 'var(--raio-success)',
+    background: 'var(--rayo-sage-500)',
     color: '#FFFFFF' 
   }}>
 ```
@@ -244,17 +244,17 @@
 
 ### Substituídas por:
 ```css
-✅ var(--raio-bg-primary)         → Background principal
-✅ var(--raio-bg-secondary)        → Cards e seções
-✅ var(--raio-bg-tertiary)         → Elementos terciários
-✅ var(--raio-text-primary)        → Títulos principais
-✅ var(--raio-text-secondary)      → Descrições
-✅ var(--raio-text-tertiary)       → Labels e placeholders
-✅ var(--raio-border-default)      → Todas as borders
-✅ var(--raio-accent-primary)      → Amarelo principal (texto/botões)
-✅ var(--raio-accent-hover)        → Amarelo hover
+✅ var(--rayo-sand-100)         → Background principal
+✅ var(--rayo-sand-50)        → Cards e seções
+✅ var(--rayo-sand-300)         → Elementos terciários
+✅ var(--rayo-forest-900)        → Títulos principais
+✅ var(--rayo-ink-700)      → Descrições
+✅ var(--rayo-ink-400)       → Labels e placeholders
+✅ var(--rayo-sand-300)      → Todas as borders
+✅ var(--rayo-terra-500)      → Amarelo principal (texto/botões)
+✅ var(--rayo-terra-700)        → Amarelo hover
 ✅ var(--raio-accent-bright)       → Amarelo brilhante (badges/destaque)
-✅ var(--raio-success)             → Verde para success states
+✅ var(--rayo-sage-500)             → Verde para success states
 ```
 
 ---
@@ -357,46 +357,46 @@ Seguir o mesmo padrão aplicado na AcademiaPage:
 
 ### Para Títulos:
 ```tsx
-<h2 style={{ color: 'var(--raio-text-primary)' }}>
+<h2 style={{ color: 'var(--rayo-forest-900)' }}>
 ```
 
 ### Para Descrições:
 ```tsx
-<p style={{ color: 'var(--raio-text-secondary)' }}>
+<p style={{ color: 'var(--rayo-ink-700)' }}>
 ```
 
 ### Para Labels/Metadata:
 ```tsx
-<span style={{ color: 'var(--raio-text-tertiary)' }}>
+<span style={{ color: 'var(--rayo-ink-400)' }}>
 ```
 
 ### Para Cards:
 ```tsx
-<Card style={{ background: 'var(--raio-bg-secondary)' }}>
+<Card style={{ background: 'var(--rayo-sand-50)' }}>
 ```
 
 ### Para Backgrounds Terciários:
 ```tsx
-<div style={{ background: 'var(--raio-bg-tertiary)' }}>
+<div style={{ background: 'var(--rayo-sand-300)' }}>
 ```
 
 ### Para Borders:
 ```tsx
-<div style={{ borderColor: 'var(--raio-border-default)' }}>
+<div style={{ borderColor: 'var(--rayo-sand-300)' }}>
 ```
 
 ### Para Botões Principais:
 ```tsx
 <Button
   style={{ 
-    background: 'var(--raio-accent-primary)',
+    background: 'var(--rayo-terra-500)',
     color: '#FFFFFF',
   }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.background = 'var(--raio-accent-hover)';
+    e.currentTarget.style.background = 'var(--rayo-terra-700)';
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.background = 'var(--raio-accent-primary)';
+    e.currentTarget.style.background = 'var(--rayo-terra-500)';
   }}
 >
 ```
@@ -404,7 +404,7 @@ Seguir o mesmo padrão aplicado na AcademiaPage:
 ### Para Badges de Success:
 ```tsx
 <Badge style={{ 
-  background: 'var(--raio-success)',
+  background: 'var(--rayo-sage-500)',
   color: '#FFFFFF',
 }}>
 ```
@@ -412,12 +412,12 @@ Seguir o mesmo padrão aplicado na AcademiaPage:
 ### Para Hover em Textos:
 ```tsx
 <h3
-  style={{ color: 'var(--raio-text-primary)' }}
+  style={{ color: 'var(--rayo-forest-900)' }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.color = 'var(--raio-accent-primary)';
+    e.currentTarget.style.color = 'var(--rayo-terra-500)';
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.color = 'var(--raio-text-primary)';
+    e.currentTarget.style.color = 'var(--rayo-forest-900)';
   }}
 >
 ```

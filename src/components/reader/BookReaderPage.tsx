@@ -43,7 +43,7 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
   return (
     <div 
       className="min-h-screen flex flex-col pb-20"
-      style={{ background: 'var(--raio-bg-primary)' }}
+      style={{ background: 'var(--rayo-sand-100)' }}
     >
       {/* Header Minimalista */}
       <div 
@@ -52,7 +52,7 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
           background: theme === 'dark' 
             ? 'rgba(17, 24, 39, 0.8)' 
             : 'rgba(255, 255, 255, 0.8)',
-          borderColor: 'var(--raio-border-default)'
+          borderColor: 'var(--rayo-sand-300)'
         }}
       >
         <div className="max-w-4xl mx-auto px-4 py-3">
@@ -62,14 +62,14 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
               variant="ghost" 
               size="icon"
               onClick={onBack}
-              style={{ color: 'var(--raio-text-secondary)' }}
+              style={{ color: 'var(--rayo-ink-700)' }}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             
             {/* Center: Mode Tabs */}
             <div className="flex items-center gap-1 bg-opacity-50 rounded-full p-1"
-              style={{ background: 'var(--raio-bg-tertiary)' }}
+              style={{ background: 'var(--rayo-sand-300)' }}
             >
               <Button
                 variant="ghost"
@@ -78,11 +78,11 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
                 className="rounded-full px-3"
                 style={{
                   background: state.mode === 'read' 
-                    ? 'var(--raio-bg-secondary)' 
+                    ? 'var(--rayo-sand-50)' 
                     : 'transparent',
                   color: state.mode === 'read' 
-                    ? 'var(--raio-text-primary)'
-                    : 'var(--raio-text-tertiary)',
+                    ? 'var(--rayo-forest-900)'
+                    : 'var(--rayo-ink-400)',
                 }}
               >
                 Read
@@ -95,11 +95,11 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
                 className="rounded-full px-3"
                 style={{
                   background: state.mode === 'listen' 
-                    ? 'var(--raio-bg-secondary)' 
+                    ? 'var(--rayo-sand-50)' 
                     : 'transparent',
                   color: state.mode === 'listen' 
-                    ? 'var(--raio-text-primary)'
-                    : 'var(--raio-text-tertiary)',
+                    ? 'var(--rayo-forest-900)'
+                    : 'var(--rayo-ink-400)',
                 }}
               >
                 Listen
@@ -112,11 +112,11 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
                 className="rounded-full px-3"
                 style={{
                   background: state.mode === 'read-listen' 
-                    ? 'var(--raio-bg-secondary)' 
+                    ? 'var(--rayo-sand-50)' 
                     : 'transparent',
                   color: state.mode === 'read-listen' 
-                    ? 'var(--raio-text-primary)'
-                    : 'var(--raio-text-tertiary)',
+                    ? 'var(--rayo-forest-900)'
+                    : 'var(--rayo-ink-400)',
                 }}
               >
                 Read + Listen
@@ -129,7 +129,7 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  style={{ color: 'var(--raio-text-secondary)' }}
+                  style={{ color: 'var(--rayo-ink-700)' }}
                 >
                   <Settings2 className="w-5 h-5" />
                 </Button>
@@ -137,15 +137,15 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
               <SheetContent 
                 side="right"
                 style={{ 
-                  background: 'var(--raio-bg-secondary)',
-                  borderColor: 'var(--raio-border-default)'
+                  background: 'var(--rayo-sand-50)',
+                  borderColor: 'var(--rayo-sand-300)'
                 }}
               >
                 <SheetHeader>
-                  <SheetTitle style={{ color: 'var(--raio-text-primary)' }}>
+                  <SheetTitle style={{ color: 'var(--rayo-forest-900)' }}>
                     Configurações
                   </SheetTitle>
-                  <SheetDescription style={{ color: 'var(--raio-text-tertiary)' }}>
+                  <SheetDescription style={{ color: 'var(--rayo-ink-400)' }}>
                     Personalize sua experiência de leitura
                   </SheetDescription>
                 </SheetHeader>
@@ -157,7 +157,7 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
                       className="text-sm mb-3 flex items-center gap-2"
                       style={{ 
                         fontWeight: 600,
-                        color: 'var(--raio-text-primary)' 
+                        color: 'var(--rayo-forest-900)' 
                       }}
                     >
                       <User className="w-4 h-4" />
@@ -173,14 +173,14 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
                         }}
                         style={{
                           background: state.narratorVoice === 'female' 
-                            ? 'var(--raio-accent-primary)' 
+                            ? 'var(--rayo-terra-500)' 
                             : 'transparent',
                           color: state.narratorVoice === 'female' 
-                            ? (theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF')
-                            : 'var(--raio-text-secondary)',
+                            ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+                            : 'var(--rayo-ink-700)',
                           borderColor: state.narratorVoice === 'female' 
-                            ? 'var(--raio-accent-primary)' 
-                            : 'var(--raio-border-default)'
+                            ? 'var(--rayo-terra-500)' 
+                            : 'var(--rayo-sand-300)'
                         }}
                       >
                         👩 Voz Feminina
@@ -194,14 +194,14 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
                         }}
                         style={{
                           background: state.narratorVoice === 'male' 
-                            ? 'var(--raio-accent-primary)' 
+                            ? 'var(--rayo-terra-500)' 
                             : 'transparent',
                           color: state.narratorVoice === 'male' 
-                            ? (theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF')
-                            : 'var(--raio-text-secondary)',
+                            ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+                            : 'var(--rayo-ink-700)',
                           borderColor: state.narratorVoice === 'male' 
-                            ? 'var(--raio-accent-primary)' 
-                            : 'var(--raio-border-default)'
+                            ? 'var(--rayo-terra-500)' 
+                            : 'var(--rayo-sand-300)'
                         }}
                       >
                         👨 Voz Masculina
@@ -215,21 +215,21 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
                       className="text-sm mb-3"
                       style={{ 
                         fontWeight: 600,
-                        color: 'var(--raio-text-primary)' 
+                        color: 'var(--rayo-forest-900)' 
                       }}
                     >
                       Progresso
                     </h3>
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
-                        <span style={{ color: 'var(--raio-text-tertiary)' }}>Página atual</span>
-                        <span style={{ color: 'var(--raio-text-primary)', fontWeight: 600 }}>
+                        <span style={{ color: 'var(--rayo-ink-400)' }}>Página atual</span>
+                        <span style={{ color: 'var(--rayo-forest-900)', fontWeight: 600 }}>
                           {state.currentPage} de {book.pages}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span style={{ color: 'var(--raio-text-tertiary)' }}>Progresso</span>
-                        <span style={{ color: 'var(--raio-accent-primary)', fontWeight: 600 }}>
+                        <span style={{ color: 'var(--rayo-ink-400)' }}>Progresso</span>
+                        <span style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}>
                           {Math.round((state.currentPage / book.pages) * 100)}%
                         </span>
                       </div>
@@ -249,7 +249,7 @@ function BookReaderContent({ book, onBack }: BookReaderPageProps) {
           className="text-2xl lg:text-3xl mb-6 lg:mb-8 leading-tight"
           style={{ 
             fontWeight: 700,
-            color: 'var(--raio-text-primary)',
+            color: 'var(--rayo-forest-900)',
           }}
         >
           {currentChapter}

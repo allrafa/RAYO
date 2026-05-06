@@ -515,13 +515,13 @@ Se você está começando **AGORA**, leia nesta ordem:
 --raio-accent-primary: #D97706 (light) / #FBBF24 (dark)
 
 # Background principal
-background: var(--raio-bg-primary)
+background: var(--rayo-sand-100)
 
 # Texto principal
-color: var(--raio-text-primary)
+color: var(--rayo-forest-900)
 
 # Botão amarelo RAIO
-<Button style={{ background: 'var(--raio-accent-primary)', color: '#FFFFFF' }}>
+<Button style={{ background: 'var(--rayo-terra-500)', color: '#FFFFFF' }}>
 ```
 
 ### Comandos Úteis

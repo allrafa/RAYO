@@ -26,26 +26,26 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
 ```tsx
 // ✅ CSS Variables do Design System
 <div style={{ 
-  background: 'var(--raio-bg-secondary)',
-  color: 'var(--raio-text-primary)'
+  background: 'var(--rayo-sand-50)',
+  color: 'var(--rayo-forest-900)'
 }}>
 
 <Button
   style={{
-    background: 'var(--raio-accent-primary)',
+    background: 'var(--rayo-terra-500)',
     color: '#FFFFFF',
   }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.background = 'var(--raio-accent-hover)';
+    e.currentTarget.style.background = 'var(--rayo-terra-700)';
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.background = 'var(--raio-accent-primary)';
+    e.currentTarget.style.background = 'var(--rayo-terra-500)';
   }}
 >
   Ação
 </Button>
 
-<p style={{ color: 'var(--raio-text-primary)' }}>
+<p style={{ color: 'var(--rayo-forest-900)' }}>
 ```
 
 ---
@@ -57,14 +57,14 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
 ```tsx
 <Button
   style={{
-    background: 'var(--raio-accent-primary)',
+    background: 'var(--rayo-terra-500)',
     color: '#FFFFFF',
   }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.background = 'var(--raio-accent-hover)';
+    e.currentTarget.style.background = 'var(--rayo-terra-700)';
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.background = 'var(--raio-accent-primary)';
+    e.currentTarget.style.background = 'var(--rayo-terra-500)';
   }}
 >
   <Icon className="w-4 h-4 mr-2" />
@@ -78,16 +78,16 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
 <Button
   variant="outline"
   style={{
-    borderColor: 'var(--raio-border-default)',
-    color: 'var(--raio-text-primary)',
+    borderColor: 'var(--rayo-sand-300)',
+    color: 'var(--rayo-forest-900)',
   }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.borderColor = 'var(--raio-accent-primary)';
-    e.currentTarget.style.color = 'var(--raio-accent-primary)';
+    e.currentTarget.style.borderColor = 'var(--rayo-terra-500)';
+    e.currentTarget.style.color = 'var(--rayo-terra-500)';
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.borderColor = 'var(--raio-border-default)';
-    e.currentTarget.style.color = 'var(--raio-text-primary)';
+    e.currentTarget.style.borderColor = 'var(--rayo-sand-300)';
+    e.currentTarget.style.color = 'var(--rayo-forest-900)';
   }}
 >
   Ação Secundária
@@ -99,24 +99,24 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
 ```tsx
 <Card
   style={{
-    background: 'var(--raio-bg-secondary)',
-    borderColor: 'var(--raio-border-default)',
+    background: 'var(--rayo-sand-50)',
+    borderColor: 'var(--rayo-sand-300)',
   }}
 >
   <CardHeader>
-    <CardTitle style={{ color: 'var(--raio-text-primary)' }}>
+    <CardTitle style={{ color: 'var(--rayo-forest-900)' }}>
       Título do Card
     </CardTitle>
-    <CardDescription style={{ color: 'var(--raio-text-secondary)' }}>
+    <CardDescription style={{ color: 'var(--rayo-ink-700)' }}>
       Descrição do card
     </CardDescription>
   </CardHeader>
   
   <CardContent>
-    <p style={{ color: 'var(--raio-text-primary)' }}>
+    <p style={{ color: 'var(--rayo-forest-900)' }}>
       Conteúdo principal
     </p>
-    <p style={{ color: 'var(--raio-text-tertiary)' }}>
+    <p style={{ color: 'var(--rayo-ink-400)' }}>
       Texto secundário
     </p>
   </CardContent>
@@ -129,7 +129,7 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
 <Badge
   style={{
     background: 'var(--raio-accent-light)',
-    color: 'var(--raio-accent-primary)',
+    color: 'var(--rayo-terra-500)',
   }}
 >
   Premium
@@ -142,8 +142,8 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
 <Badge
   variant="secondary"
   style={{
-    background: 'var(--raio-bg-tertiary)',
-    color: 'var(--raio-text-secondary)',
+    background: 'var(--rayo-sand-300)',
+    color: 'var(--rayo-ink-700)',
   }}
 >
   Tag
@@ -157,15 +157,15 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
   placeholder="Digite algo..."
   className="transition-all"
   style={{
-    background: 'var(--raio-bg-secondary)',
-    borderColor: 'var(--raio-border-default)',
-    color: 'var(--raio-text-primary)',
+    background: 'var(--rayo-sand-50)',
+    borderColor: 'var(--rayo-sand-300)',
+    color: 'var(--rayo-forest-900)',
   }}
   onFocus={(e) => {
-    e.currentTarget.style.borderColor = 'var(--raio-accent-primary)';
+    e.currentTarget.style.borderColor = 'var(--rayo-terra-500)';
   }}
   onBlur={(e) => {
-    e.currentTarget.style.borderColor = 'var(--raio-border-default)';
+    e.currentTarget.style.borderColor = 'var(--rayo-sand-300)';
   }}
 />
 ```
@@ -179,17 +179,17 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
   onClick={() => setView("tab")}
   style={{ 
     fontWeight: currentView === "tab" ? 700 : 500,
-    borderColor: currentView === "tab" ? 'var(--raio-accent-primary)' : 'transparent',
-    color: currentView === "tab" ? 'var(--raio-accent-primary)' : 'var(--raio-text-tertiary)',
+    borderColor: currentView === "tab" ? 'var(--rayo-terra-500)' : 'transparent',
+    color: currentView === "tab" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
   }}
   onMouseEnter={(e) => {
     if (currentView !== "tab") {
-      e.currentTarget.style.color = 'var(--raio-text-primary)';
+      e.currentTarget.style.color = 'var(--rayo-forest-900)';
     }
   }}
   onMouseLeave={(e) => {
     if (currentView !== "tab") {
-      e.currentTarget.style.color = 'var(--raio-text-tertiary)';
+      e.currentTarget.style.color = 'var(--rayo-ink-400)';
     }
   }}
 >
@@ -203,7 +203,7 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
 <Avatar 
   className="w-16 h-16"
   style={{
-    background: 'linear-gradient(135deg, var(--raio-accent-primary) 0%, var(--raio-accent-hover) 100%)',
+    background: 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)',
   }}
 >
   <AvatarFallback className="bg-transparent text-white">
@@ -217,7 +217,7 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
 ```tsx
 <div 
   className="min-h-screen"
-  style={{ background: 'var(--raio-bg-primary)' }}
+  style={{ background: 'var(--rayo-sand-100)' }}
 >
   {/* Conteúdo da página */}
 </div>
@@ -228,8 +228,8 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
 ```tsx
 <div 
   style={{ 
-    background: 'var(--raio-bg-secondary)',
-    borderBottom: '1px solid var(--raio-border-default)'
+    background: 'var(--rayo-sand-50)',
+    borderBottom: '1px solid var(--rayo-sand-300)'
   }}
 >
   <div className="max-w-7xl mx-auto px-6 py-6">
@@ -237,12 +237,12 @@ Este guia ensina como usar o Design System RAIO para criar novos componentes e p
       className="text-3xl mb-2" 
       style={{ 
         fontWeight: 800,
-        color: 'var(--raio-text-primary)' 
+        color: 'var(--rayo-forest-900)' 
       }}
     >
       Título da Seção
     </h1>
-    <p style={{ color: 'var(--raio-text-secondary)' }}>
+    <p style={{ color: 'var(--rayo-ink-700)' }}>
       Descrição da seção
     </p>
   </div>
@@ -314,7 +314,7 @@ Antes de criar um novo componente, certifique-se de:
 ### ❌ Erro 4: Não adicionar hover states
 ```tsx
 // ❌ NÃO
-<Button style={{ background: 'var(--raio-accent-primary)' }}>
+<Button style={{ background: 'var(--rayo-terra-500)' }}>
   // Sem onMouseEnter/Leave
 </Button>
 ```
@@ -348,7 +348,7 @@ function MyComponent() {
 ```tsx
 // Melhor performance e controle preciso
 onMouseEnter={(e) => {
-  e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+  e.currentTarget.style.background = 'var(--rayo-sand-300)';
 }}
 onMouseLeave={(e) => {
   e.currentTarget.style.background = 'transparent';

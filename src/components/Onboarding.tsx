@@ -86,7 +86,7 @@ function StepHeader({
     return (
       <>
         {before}
-        <span style={{ fontStyle: "italic", color: "var(--raio-accent-hover)" }}>{italicWord}</span>
+        <span style={{ fontStyle: "italic", color: "var(--rayo-terra-700)" }}>{italicWord}</span>
         {after}
       </>
     );
@@ -107,7 +107,7 @@ function StepHeader({
           top: "-48px",
           fontSize: "180px",
           lineHeight: 1,
-          color: "var(--raio-text-primary)",
+          color: "var(--rayo-forest-900)",
           opacity: 0.04,
           fontWeight: 400,
         }}
@@ -117,14 +117,14 @@ function StepHeader({
 
       {/* Eyebrow */}
       <div className="relative flex items-center justify-center gap-3 mb-5">
-        <span className="block w-8 h-px bg-[var(--raio-text-primary)]/15" />
+        <span className="block w-8 h-px bg-[var(--rayo-forest-900)]/15" />
         <span
           className="text-[10px] tracking-[0.32em]"
-          style={{ color: "var(--raio-text-secondary)", fontWeight: 500 }}
+          style={{ color: "var(--rayo-ink-700)", fontWeight: 500 }}
         >
           {meta.eyebrow}
         </span>
-        <span className="block w-8 h-px bg-[var(--raio-text-primary)]/15" />
+        <span className="block w-8 h-px bg-[var(--rayo-forest-900)]/15" />
       </div>
 
       <h2
@@ -133,7 +133,7 @@ function StepHeader({
           fontSize: "clamp(34px, 5.5vw, 44px)",
           lineHeight: 1.05,
           letterSpacing: "-0.02em",
-          color: "var(--raio-text-primary)",
+          color: "var(--rayo-forest-900)",
           fontWeight: 400,
           marginBottom: "12px",
         }}
@@ -143,7 +143,7 @@ function StepHeader({
 
       <p
         className="text-[15px] mx-auto max-w-[380px]"
-        style={{ color: "var(--raio-text-strong)", lineHeight: 1.6, fontWeight: 400 }}
+        style={{ color: "var(--rayo-forest-900)", lineHeight: 1.6, fontWeight: 400 }}
       >
         {subtitle}
       </p>
@@ -166,8 +166,8 @@ function PrimaryButton({
       disabled={disabled}
       className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
       style={{
-        background: "var(--raio-text-primary)",
-        color: "var(--raio-text-inverse)",
+        background: "var(--rayo-forest-900)",
+        color: "var(--rayo-sand-50)",
         border: "none",
         borderRadius: "14px",
         padding: "18px 32px",
@@ -176,14 +176,14 @@ function PrimaryButton({
         letterSpacing: "0.02em",
         cursor: "pointer",
         boxShadow:
-          "0 1px 2px var(--raio-overlay-dark-medium), 0 8px 24px -10px var(--raio-accent-glow-medium)",
+          "0 1px 2px rgba(12,59,46,0.40), 0 8px 24px -10px rgba(200,85,61,0.30)",
       }}
       whileHover={
         !disabled
           ? {
               scale: 1.015,
               boxShadow:
-                "0 4px 12px var(--raio-overlay-dark-strong), 0 12px 32px -10px var(--raio-accent-glow-strong)",
+                "0 4px 12px rgba(12,59,46,0.65), 0 12px 32px -10px var(--raio-accent-glow-strong)",
             }
           : {}
       }
@@ -299,7 +299,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   <Label
                     htmlFor="name"
                     className="text-[10px] tracking-[0.24em] uppercase"
-                    style={{ color: "var(--raio-text-secondary)", fontWeight: 600 }}
+                    style={{ color: "var(--rayo-ink-700)", fontWeight: 600 }}
                   >
                     Seu nome
                   </Label>
@@ -311,9 +311,9 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                     onChange={(e) =>
                       setUserData((prev) => ({ ...prev, name: e.target.value }))
                     }
-                    className="h-14 bg-white text-[var(--raio-text-primary)] placeholder:text-[var(--raio-text-secondary)] rounded-xl text-[16px] px-4"
+                    className="h-14 bg-white text-[var(--rayo-forest-900)] placeholder:text-[var(--rayo-ink-700)] rounded-xl text-[16px] px-4"
                     style={{
-                      border: "1px solid var(--raio-border-hover)",
+                      border: "1px solid var(--rayo-forest-900)",
                       boxShadow:
                         "inset 0 1px 0 var(--raio-bg-overlay-medium), 0 1px 2px var(--raio-overlay-dark-soft)",
                     }}
@@ -370,14 +370,14 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                     >
                       <button
                         type="button"
-                        className="w-full text-left transition-all duration-200 rounded-2xl p-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-hover)]/40"
+                        className="w-full text-left transition-all duration-200 rounded-2xl p-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-700)]/40"
                         style={{
-                          background: "var(--raio-bg-secondary)",
+                          background: "var(--rayo-sand-50)",
                           border: isSelected
-                            ? "1.5px solid var(--raio-accent-hover)"
-                            : "1px solid var(--raio-border-default)",
+                            ? "1.5px solid var(--rayo-terra-700)"
+                            : "1px solid var(--rayo-sand-300)",
                           boxShadow: isSelected
-                            ? "0 6px 20px -8px var(--raio-accent-glow-medium), 0 0 0 4px var(--raio-accent-glow-amber-bright)"
+                            ? "0 6px 20px -8px rgba(200,85,61,0.30), 0 0 0 4px var(--raio-accent-glow-amber-bright)"
                             : "0 1px 2px var(--raio-overlay-dark-soft)",
                         }}
                         onClick={() => toggleSegment(segment.id)}
@@ -400,7 +400,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                               style={{
                                 fontSize: "16px",
                                 fontWeight: 600,
-                                color: "var(--raio-text-primary)",
+                                color: "var(--rayo-forest-900)",
                                 marginBottom: "2px",
                               }}
                             >
@@ -409,7 +409,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                             <p
                               style={{
                                 fontSize: "13px",
-                                color: "var(--raio-text-strong)",
+                                color: "var(--rayo-forest-900)",
                                 lineHeight: 1.45,
                               }}
                             >
@@ -419,10 +419,10 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                           <div
                             className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all"
                             style={{
-                              background: isSelected ? "var(--raio-text-primary)" : "var(--raio-bg-warm-soft)",
+                              background: isSelected ? "var(--rayo-forest-900)" : "var(--raio-bg-warm-soft)",
                               border: isSelected
                                 ? "none"
-                                : "1px solid var(--raio-border-default)",
+                                : "1px solid var(--rayo-sand-300)",
                             }}
                           >
                             {isSelected && (
@@ -485,13 +485,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.02 * index }}
                         whileTap={{ scale: 0.96 }}
-                        className="px-4 py-2.5 rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-hover)]/40"
+                        className="px-4 py-2.5 rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-700)]/40"
                         style={{
-                          background: isSelected ? "var(--raio-text-primary)" : "var(--raio-bg-secondary)",
+                          background: isSelected ? "var(--rayo-forest-900)" : "var(--rayo-sand-50)",
                           color: isSelected ? "var(--raio-accent-bright)" : "var(--raio-text-deep)",
                           border: isSelected
-                            ? "1px solid var(--raio-text-primary)"
-                            : "1px solid var(--raio-border-hover)",
+                            ? "1px solid var(--rayo-forest-900)"
+                            : "1px solid var(--rayo-forest-900)",
                           fontSize: "14px",
                           fontWeight: 500,
                           letterSpacing: "0.005em",
@@ -515,9 +515,9 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="text-center text-[13px] tracking-[0.04em]"
-                    style={{ color: "var(--raio-text-secondary)" }}
+                    style={{ color: "var(--rayo-ink-700)" }}
                   >
-                    Faltam <strong style={{ color: "var(--raio-accent-hover)", fontWeight: 600 }}>{3 - userData.interests.length}</strong>{" "}
+                    Faltam <strong style={{ color: "var(--rayo-terra-700)", fontWeight: 600 }}>{3 - userData.interests.length}</strong>{" "}
                     para continuar
                   </motion.p>
                 )}
@@ -548,7 +548,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       className="min-h-screen relative overflow-hidden"
       style={{
         background:
-          "radial-gradient(ellipse 90% 60% at 50% 20%, var(--raio-bg-secondary) 0%, var(--raio-bg-primary) 55%, var(--raio-bg-warm-cream) 100%)",
+          "radial-gradient(ellipse 90% 60% at 50% 20%, var(--rayo-sand-50) 0%, var(--rayo-sand-100) 55%, var(--raio-bg-warm-cream) 100%)",
       }}
     >
       {/* Grain texture */}
@@ -580,13 +580,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   className="p-2 -ml-2 hover:bg-[var(--raio-overlay-dark-soft)] rounded-lg transition-colors"
                   aria-label="Voltar"
                 >
-                  <ArrowLeft className="w-5 h-5" style={{ color: "var(--raio-text-primary)" }} />
+                  <ArrowLeft className="w-5 h-5" style={{ color: "var(--rayo-forest-900)" }} />
                 </button>
               )}
             </div>
             <span
               className="text-[10px] tracking-[0.32em] uppercase"
-              style={{ color: "var(--raio-text-secondary)", fontWeight: 600 }}
+              style={{ color: "var(--rayo-ink-700)", fontWeight: 600 }}
             >
               {String(step).padStart(2, "0")} / {String(totalSteps).padStart(2, "0")}
             </span>
@@ -599,14 +599,14 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               <div
                 key={s}
                 className="flex-1 h-[3px] rounded-full overflow-hidden"
-                style={{ background: "var(--raio-border-default)" }}
+                style={{ background: "var(--rayo-sand-300)" }}
               >
                 <motion.div
                   className="h-full rounded-full"
                   style={{
                     background:
                       s <= step
-                        ? "linear-gradient(90deg, var(--raio-accent-hover), var(--raio-accent-bright))"
+                        ? "linear-gradient(90deg, var(--rayo-terra-700), var(--raio-accent-bright))"
                         : "transparent",
                   }}
                   initial={{ width: s < step ? "100%" : "0%" }}

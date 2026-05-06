@@ -138,11 +138,11 @@ export function AdminUsersPage() {
       <div>
         <h2
           className="text-2xl mb-1"
-          style={{ color: "var(--raio-text-primary)", fontWeight: 700 }}
+          style={{ color: "var(--rayo-forest-900)", fontWeight: 700 }}
         >
           Usuários
         </h2>
-        <p className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
+        <p className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
           Gerencie contas, papéis e permissões.
         </p>
       </div>
@@ -151,7 +151,7 @@ export function AdminUsersPage() {
         <div className="relative flex-1">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-            style={{ color: "var(--raio-text-tertiary)" }}
+            style={{ color: "var(--rayo-ink-400)" }}
           />
           <Input
             type="text"
@@ -202,7 +202,7 @@ export function AdminUsersPage() {
       {errorMsg && (
         <div
           className="p-4 rounded-lg"
-          style={{ background: "var(--raio-error-subtle)", color: "var(--raio-error)" }}
+          style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-700)" }}
         >
           {errorMsg}
         </div>
@@ -211,8 +211,8 @@ export function AdminUsersPage() {
       <div
         className="rounded-xl border overflow-hidden"
         style={{
-          background: "var(--raio-bg-secondary)",
-          borderColor: "var(--raio-border-default)",
+          background: "var(--rayo-sand-50)",
+          borderColor: "var(--rayo-sand-300)",
         }}
       >
         <div className="overflow-x-auto">
@@ -221,8 +221,8 @@ export function AdminUsersPage() {
               <tr
                 className="text-left"
                 style={{
-                  color: "var(--raio-text-tertiary)",
-                  borderBottom: "1px solid var(--raio-border-default)",
+                  color: "var(--rayo-ink-400)",
+                  borderBottom: "1px solid var(--rayo-sand-300)",
                 }}
               >
                 <th className="px-4 py-3 uppercase text-xs tracking-wider">Usuário</th>
@@ -239,7 +239,7 @@ export function AdminUsersPage() {
                   <td
                     colSpan={6}
                     className="px-4 py-8 text-center"
-                    style={{ color: "var(--raio-text-tertiary)" }}
+                    style={{ color: "var(--rayo-ink-400)" }}
                   >
                     Carregando...
                   </td>
@@ -250,7 +250,7 @@ export function AdminUsersPage() {
                   <td
                     colSpan={6}
                     className="px-4 py-8 text-center"
-                    style={{ color: "var(--raio-text-tertiary)" }}
+                    style={{ color: "var(--rayo-ink-400)" }}
                   >
                     Nenhum usuário encontrado.
                   </td>
@@ -260,13 +260,13 @@ export function AdminUsersPage() {
                 data?.users.map((u) => (
                   <tr
                     key={u.id}
-                    style={{ borderBottom: "1px solid var(--raio-border-default)" }}
+                    style={{ borderBottom: "1px solid var(--rayo-sand-300)" }}
                   >
                     <td className="px-4 py-3">
-                      <div style={{ color: "var(--raio-text-primary)", fontWeight: 600 }}>
+                      <div style={{ color: "var(--rayo-forest-900)", fontWeight: 600 }}>
                         {u.name}
                       </div>
-                      <div style={{ color: "var(--raio-text-tertiary)" }} className="text-xs">
+                      <div style={{ color: "var(--rayo-ink-400)" }} className="text-xs">
                         {u.email}
                       </div>
                     </td>
@@ -278,15 +278,15 @@ export function AdminUsersPage() {
                     </td>
                     <td className="px-4 py-3">
                       {u.is_premium ? (
-                        <Crown className="w-4 h-4 inline" style={{ color: "var(--raio-accent-primary)" }} />
+                        <Crown className="w-4 h-4 inline" style={{ color: "var(--rayo-terra-500)" }} />
                       ) : (
-                        <span style={{ color: "var(--raio-text-tertiary)" }}>—</span>
+                        <span style={{ color: "var(--rayo-ink-400)" }}>—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3" style={{ color: "var(--raio-text-secondary)" }}>
+                    <td className="px-4 py-3" style={{ color: "var(--rayo-ink-700)" }}>
                       {formatDate(u.created_at)}
                     </td>
-                    <td className="px-4 py-3" style={{ color: "var(--raio-text-secondary)" }}>
+                    <td className="px-4 py-3" style={{ color: "var(--rayo-ink-700)" }}>
                       {formatDate(u.last_active_at)}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -315,7 +315,7 @@ export function AdminUsersPage() {
 
       {data && data.totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
+          <p className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
             Página {data.page} de {data.totalPages} · {data.total} usuários
           </p>
           <div className="flex gap-2">

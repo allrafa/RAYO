@@ -94,7 +94,7 @@ export function NotificationPermissionsModal({
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           className="relative w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
           style={{
-            background: 'var(--raio-bg-primary)',
+            background: 'var(--rayo-sand-100)',
           }}
         >
           {/* Close button */}
@@ -102,14 +102,14 @@ export function NotificationPermissionsModal({
             onClick={handleSkip}
             className="absolute top-4 right-4 z-10 p-2 rounded-full transition-colors"
             style={{
-              background: 'var(--raio-bg-tertiary)',
-              color: 'var(--raio-text-secondary)',
+              background: 'var(--rayo-sand-300)',
+              color: 'var(--rayo-ink-700)',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--raio-bg-secondary)';
+              e.currentTarget.style.background = 'var(--rayo-sand-50)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+              e.currentTarget.style.background = 'var(--rayo-sand-300)';
             }}
           >
             <X className="w-5 h-5" />
@@ -123,8 +123,8 @@ export function NotificationPermissionsModal({
                   <motion.div
                     className="w-20 h-20 rounded-full flex items-center justify-center"
                     style={{
-                      background: 'linear-gradient(135deg, var(--raio-accent-primary) 0%, var(--raio-accent-hover) 100%)',
-                      boxShadow: 'var(--raio-shadow-glow)',
+                      background: 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)',
+                      boxShadow: '0 0 0 3px rgba(200,85,61,0.18)',
                     }}
                     animate={{
                       scale: [1, 1.1, 1],
@@ -144,7 +144,7 @@ export function NotificationPermissionsModal({
                   className="text-center text-[28px] mb-3"
                   style={{
                     fontWeight: 700,
-                    color: 'var(--raio-text-primary)',
+                    color: 'var(--rayo-forest-900)',
                   }}
                 >
                   Fique por dentro!
@@ -154,7 +154,7 @@ export function NotificationPermissionsModal({
                 <p
                   className="text-center text-[16px] mb-8"
                   style={{
-                    color: 'var(--raio-text-secondary)',
+                    color: 'var(--rayo-ink-700)',
                     lineHeight: 1.6,
                   }}
                 >
@@ -194,18 +194,18 @@ export function NotificationPermissionsModal({
                     style={{
                       fontWeight: 600,
                       background: isRequesting
-                        ? 'var(--raio-bg-tertiary)'
-                        : 'var(--raio-accent-primary)',
+                        ? 'var(--rayo-sand-300)'
+                        : 'var(--rayo-terra-500)',
                       color: '#FFFFFF',
                     }}
                     onMouseEnter={(e) => {
                       if (!isRequesting) {
-                        e.currentTarget.style.background = 'var(--raio-accent-hover)';
+                        e.currentTarget.style.background = 'var(--rayo-terra-700)';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!isRequesting) {
-                        e.currentTarget.style.background = 'var(--raio-accent-primary)';
+                        e.currentTarget.style.background = 'var(--rayo-terra-500)';
                       }
                     }}
                   >
@@ -217,11 +217,11 @@ export function NotificationPermissionsModal({
                     className="w-full h-12 rounded-xl text-[15px] transition-colors"
                     style={{
                       fontWeight: 500,
-                      color: 'var(--raio-text-secondary)',
+                      color: 'var(--rayo-ink-700)',
                       background: 'transparent',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+                      e.currentTarget.style.background = 'var(--rayo-sand-300)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
@@ -235,7 +235,7 @@ export function NotificationPermissionsModal({
                 <p
                   className="text-center text-[12px] mt-6"
                   style={{
-                    color: 'var(--raio-text-tertiary)',
+                    color: 'var(--rayo-ink-400)',
                     lineHeight: 1.5,
                   }}
                 >
@@ -259,7 +259,7 @@ export function NotificationPermissionsModal({
                   }}
                   className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
                   style={{
-                    background: 'var(--raio-success)',
+                    background: 'var(--rayo-sage-500)',
                   }}
                 >
                   <CheckCircle className="w-10 h-10 text-white" />
@@ -269,7 +269,7 @@ export function NotificationPermissionsModal({
                   className="text-[24px] mb-2"
                   style={{
                     fontWeight: 700,
-                    color: 'var(--raio-text-primary)',
+                    color: 'var(--rayo-forest-900)',
                   }}
                 >
                   Tudo certo!
@@ -278,7 +278,7 @@ export function NotificationPermissionsModal({
                 <p
                   className="text-[16px]"
                   style={{
-                    color: 'var(--raio-text-secondary)',
+                    color: 'var(--rayo-ink-700)',
                   }}
                 >
                   Agora você receberá notificações importantes
@@ -305,8 +305,8 @@ function BenefitItem({ icon, title, description }: BenefitItemProps) {
       <div
         className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
         style={{
-          background: 'var(--raio-accent-light)',
-          color: 'var(--raio-accent-primary)',
+          background: 'var(--rayo-terra-100)',
+          color: 'var(--rayo-terra-500)',
         }}
       >
         {icon}
@@ -316,7 +316,7 @@ function BenefitItem({ icon, title, description }: BenefitItemProps) {
           className="text-[15px] mb-1"
           style={{
             fontWeight: 600,
-            color: 'var(--raio-text-primary)',
+            color: 'var(--rayo-forest-900)',
           }}
         >
           {title}
@@ -324,7 +324,7 @@ function BenefitItem({ icon, title, description }: BenefitItemProps) {
         <p
           className="text-[13px]"
           style={{
-            color: 'var(--raio-text-secondary)',
+            color: 'var(--rayo-ink-700)',
             lineHeight: 1.4,
           }}
         >

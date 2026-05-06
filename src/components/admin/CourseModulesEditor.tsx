@@ -28,9 +28,9 @@ interface Module {
 
 const cls = "w-full px-3 py-2 text-sm rounded-md border outline-none";
 const inputStyle = {
-  background: "var(--raio-bg-primary)",
-  borderColor: "var(--raio-border-default)",
-  color: "var(--raio-text-primary)",
+  background: "var(--rayo-sand-100)",
+  borderColor: "var(--rayo-sand-300)",
+  color: "var(--rayo-forest-900)",
 } as const;
 
 export function CourseModulesEditor({ courseId }: { courseId: number }) {
@@ -130,10 +130,10 @@ export function CourseModulesEditor({ courseId }: { courseId: number }) {
   return (
     <div
       className="rounded-md border p-4 space-y-3"
-      style={{ background: "var(--raio-bg-secondary)", borderColor: "var(--raio-border-default)" }}
+      style={{ background: "var(--rayo-sand-50)", borderColor: "var(--rayo-sand-300)" }}
     >
       <div className="flex items-center justify-between">
-        <h3 style={{ fontWeight: 600, color: "var(--raio-text-primary)" }}>Módulos &amp; Lições</h3>
+        <h3 style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}>Módulos &amp; Lições</h3>
         <Button size="sm" variant="outline" onClick={addModule}>
           <Plus className="w-4 h-4 mr-1" /> Módulo
         </Button>
@@ -142,7 +142,7 @@ export function CourseModulesEditor({ courseId }: { courseId: number }) {
       {loading && <Loader2 className="w-4 h-4 animate-spin" />}
 
       {!loading && modules.length === 0 && (
-        <p className="text-sm" style={{ color: "var(--raio-text-tertiary)" }}>
+        <p className="text-sm" style={{ color: "var(--rayo-ink-400)" }}>
           Nenhum módulo ainda. Adicione o primeiro para estruturar o curso.
         </p>
       )}
@@ -150,12 +150,12 @@ export function CourseModulesEditor({ courseId }: { courseId: number }) {
       <div className="space-y-3">
         {modules.map((mod) => (
           <div key={mod.id} className="p-3 rounded-md border space-y-2"
-            style={{ borderColor: "var(--raio-border-default)" }}>
+            style={{ borderColor: "var(--rayo-sand-300)" }}>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 className="text-left flex-1 text-sm"
-                style={{ fontWeight: 600, color: "var(--raio-text-primary)" }}
+                style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}
                 onClick={() => renameModule(mod)}
                 title="Clique para renomear"
               >
@@ -170,7 +170,7 @@ export function CourseModulesEditor({ courseId }: { courseId: number }) {
             </div>
 
             {mod.lessons.length === 0 ? (
-              <p className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+              <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
                 Sem lições.
               </p>
             ) : (

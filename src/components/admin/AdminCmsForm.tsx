@@ -262,7 +262,7 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
 
   if (loading) {
     return (
-      <div className="p-12 text-center" style={{ color: "var(--raio-text-tertiary)" }}>
+      <div className="p-12 text-center" style={{ color: "var(--rayo-ink-400)" }}>
         <Loader2 className="w-6 h-6 animate-spin mx-auto" />
       </div>
     );
@@ -270,16 +270,16 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
 
   const Field = ({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) => (
     <div className="space-y-1">
-      <label className="text-sm" style={{ color: "var(--raio-text-secondary)", fontWeight: 600 }}>{label}</label>
+      <label className="text-sm" style={{ color: "var(--rayo-ink-700)", fontWeight: 600 }}>{label}</label>
       {children}
-      {hint && <p className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>{hint}</p>}
+      {hint && <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>{hint}</p>}
     </div>
   );
 
   const inputStyle: React.CSSProperties = {
-    background: "var(--raio-bg-secondary)",
-    color: "var(--raio-text-primary)",
-    borderColor: "var(--raio-border-default)",
+    background: "var(--rayo-sand-50)",
+    color: "var(--rayo-forest-900)",
+    borderColor: "var(--rayo-sand-300)",
   };
   const cls = "w-full px-3 py-2 text-sm rounded-md border outline-none";
 
@@ -296,13 +296,13 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
           <Button variant="outline" size="sm" disabled={saving} onClick={() => save(false)}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Salvar rascunho"}
           </Button>
-          <Button size="sm" disabled={saving} onClick={() => save(true)} style={{ background: "var(--raio-accent-primary)", color: "#fff" }}>
+          <Button size="sm" disabled={saving} onClick={() => save(true)} style={{ background: "var(--rayo-terra-500)", color: "#fff" }}>
             Publicar
           </Button>
         </div>
       </div>
 
-      <h1 className="text-2xl" style={{ fontWeight: 700, color: "var(--raio-text-primary)" }}>
+      <h1 className="text-2xl" style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }}>
         {data.id ? "Editar conteúdo" : "Novo conteúdo"}
       </h1>
 
@@ -316,9 +316,9 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
                   onClick={() => set("kind", k.value)}
                   className="px-3 py-2 text-sm rounded-md border transition-colors"
                   style={{
-                    background: data.kind === k.value ? "var(--raio-accent-primary)" : "var(--raio-bg-secondary)",
-                    color: data.kind === k.value ? "#fff" : "var(--raio-text-secondary)",
-                    borderColor: data.kind === k.value ? "var(--raio-accent-primary)" : "var(--raio-border-default)",
+                    background: data.kind === k.value ? "var(--rayo-terra-500)" : "var(--rayo-sand-50)",
+                    color: data.kind === k.value ? "#fff" : "var(--rayo-ink-700)",
+                    borderColor: data.kind === k.value ? "var(--rayo-terra-500)" : "var(--rayo-sand-300)",
                   }}
                 >
                   {k.label}
@@ -388,7 +388,7 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
               {data.course_id ? (
                 <CourseModulesEditor courseId={data.course_id} />
               ) : (
-                <p className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+                <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
                   Selecione (ou crie) um curso para gerenciar seus módulos e lições.
                 </p>
               )}
@@ -396,28 +396,28 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
           ) : data.kind === "serie" ? (
             <div
               className="rounded-md border p-4 space-y-3"
-              style={{ background: "var(--raio-bg-secondary)", borderColor: "var(--raio-border-default)" }}
+              style={{ background: "var(--rayo-sand-50)", borderColor: "var(--rayo-sand-300)" }}
             >
               <div className="flex items-center justify-between">
-                <h3 style={{ fontWeight: 600, color: "var(--raio-text-primary)" }}>Episódios</h3>
+                <h3 style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}>Episódios</h3>
                 <Button size="sm" variant="outline" onClick={addEpisode} disabled={!data.id}>
                   <Plus className="w-4 h-4 mr-1" /> Adicionar
                 </Button>
               </div>
               {!data.id && (
-                <p className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+                <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
                   Salve a série antes de adicionar episódios.
                 </p>
               )}
               {(data.episodes ?? []).length === 0 ? (
-                <p className="text-sm" style={{ color: "var(--raio-text-tertiary)" }}>
+                <p className="text-sm" style={{ color: "var(--rayo-ink-400)" }}>
                   Nenhum episódio ainda.
                 </p>
               ) : (
                 <div className="space-y-3">
                   {(data.episodes ?? []).map((ep) => (
                     <div key={ep.id} className="p-3 rounded-md border space-y-2"
-                      style={{ borderColor: "var(--raio-border-default)" }}>
+                      style={{ borderColor: "var(--rayo-sand-300)" }}>
                       <div className="flex gap-2 items-center">
                         <input className={cls} style={inputStyle} value={ep.title}
                           onChange={(e) => updateEp(ep, { title: e.target.value })} />
@@ -503,7 +503,7 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
             <div className="space-y-2">
               {data.cover_url && (
                 // eslint-disable-next-line jsx-a11y/img-redundant-alt
-                <img src={data.cover_url} alt="Capa" className="w-full rounded-md border" style={{ borderColor: "var(--raio-border-default)" }} />
+                <img src={data.cover_url} alt="Capa" className="w-full rounded-md border" style={{ borderColor: "var(--rayo-sand-300)" }} />
               )}
               <div className="flex gap-2">
                 <input className={cls} style={inputStyle} placeholder="URL da capa"
@@ -526,9 +526,9 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
                 <button key={seg} onClick={() => toggleSegment(seg)}
                   className="px-2 py-1 text-xs rounded-full border"
                   style={{
-                    background: data.segments.includes(seg) ? "var(--raio-accent-primary)" : "transparent",
-                    color: data.segments.includes(seg) ? "#fff" : "var(--raio-text-secondary)",
-                    borderColor: "var(--raio-border-default)",
+                    background: data.segments.includes(seg) ? "var(--rayo-terra-500)" : "transparent",
+                    color: data.segments.includes(seg) ? "#fff" : "var(--rayo-ink-700)",
+                    borderColor: "var(--rayo-sand-300)",
                   }}>
                   {seg}
                 </button>
@@ -540,7 +540,7 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
             <div className="flex flex-wrap gap-1.5 mb-2">
               {data.interests.map((t) => (
                 <span key={t} className="text-xs px-2 py-1 rounded-full border flex items-center gap-1"
-                  style={{ borderColor: "var(--raio-border-default)", color: "var(--raio-text-secondary)" }}>
+                  style={{ borderColor: "var(--rayo-sand-300)", color: "var(--rayo-ink-700)" }}>
                   {t}
                   <button onClick={() => removeTag(t, "interests")} className="text-red-500">×</button>
                 </span>
@@ -556,7 +556,7 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
             <div className="flex flex-wrap gap-1.5 mb-2">
               {data.tags.map((t) => (
                 <span key={t} className="text-xs px-2 py-1 rounded-full border flex items-center gap-1"
-                  style={{ borderColor: "var(--raio-border-default)", color: "var(--raio-text-secondary)" }}>
+                  style={{ borderColor: "var(--rayo-sand-300)", color: "var(--rayo-ink-700)" }}>
                   {t}
                   <button onClick={() => removeTag(t, "tags")} className="text-red-500">×</button>
                 </span>
@@ -571,7 +571,7 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
           <div className="flex items-center gap-2">
             <input id="premium-cb" type="checkbox" checked={data.is_premium}
               onChange={(e) => set("is_premium", e.target.checked)} />
-            <label htmlFor="premium-cb" className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
+            <label htmlFor="premium-cb" className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
               Conteúdo premium
             </label>
           </div>
@@ -587,21 +587,21 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
 
       {showPreview && (
         <div className="rounded-lg border p-6 mt-4"
-          style={{ background: "var(--raio-bg-secondary)", borderColor: "var(--raio-border-default)" }}>
-          <p className="text-xs mb-2" style={{ color: "var(--raio-text-tertiary)" }}>Prévia (cliente):</p>
+          style={{ background: "var(--rayo-sand-50)", borderColor: "var(--rayo-sand-300)" }}>
+          <p className="text-xs mb-2" style={{ color: "var(--rayo-ink-400)" }}>Prévia (cliente):</p>
           <div className="flex gap-4">
             {data.cover_url && (
               <img src={data.cover_url} alt={data.title}
                 className="w-32 h-32 object-cover rounded-md" />
             )}
             <div className="flex-1">
-              <p className="text-xs uppercase mb-1" style={{ color: "var(--raio-accent-primary)" }}>{data.kind}</p>
-              <h2 className="text-xl mb-1" style={{ fontWeight: 700, color: "var(--raio-text-primary)" }}>
+              <p className="text-xs uppercase mb-1" style={{ color: "var(--rayo-terra-500)" }}>{data.kind}</p>
+              <h2 className="text-xl mb-1" style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }}>
                 {data.title || "(sem título)"}
               </h2>
-              <p style={{ color: "var(--raio-text-secondary)" }}>{data.short_description}</p>
+              <p style={{ color: "var(--rayo-ink-700)" }}>{data.short_description}</p>
               {data.media_url && (
-                <p className="text-xs mt-2" style={{ color: "var(--raio-text-tertiary)" }}>
+                <p className="text-xs mt-2" style={{ color: "var(--rayo-ink-400)" }}>
                   Mídia: {data.media_url}
                 </p>
               )}
@@ -619,17 +619,17 @@ function UploadProgressBar({ pct }: { pct: number }) {
     <div className="mt-2">
       <div
         className="h-2 rounded-full overflow-hidden"
-        style={{ background: "var(--raio-bg-tertiary)" }}
+        style={{ background: "var(--rayo-sand-300)" }}
       >
         <div
           className="h-full transition-all"
           style={{
             width: `${pct}%`,
-            background: "var(--raio-accent-primary)",
+            background: "var(--rayo-terra-500)",
           }}
         />
       </div>
-      <p className="text-xs mt-1" style={{ color: "var(--raio-text-tertiary)" }}>
+      <p className="text-xs mt-1" style={{ color: "var(--rayo-ink-400)" }}>
         Enviando... {pct}%
       </p>
     </div>

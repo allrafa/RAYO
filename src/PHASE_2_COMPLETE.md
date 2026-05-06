@@ -12,12 +12,12 @@ A **Fase 2** do Design System RAIO está completa! Todos os componentes de naveg
 
 #### Mudanças Implementadas:
 - ✅ Importado `useTheme` do ThemeProvider
-- ✅ Botão central do Conselheiro usa `var(--raio-accent-primary)`
-- ✅ Ícones ativos usam `var(--raio-accent-primary)`
-- ✅ Ícones inativos usam `var(--raio-text-tertiary)`
-- ✅ Badge de notificações usa `var(--raio-error)`
-- ✅ Indicador de aba ativa usa `var(--raio-accent-primary)`
-- ✅ Background do badge usa `var(--raio-bg-primary)` para border
+- ✅ Botão central do Conselheiro usa `var(--rayo-terra-500)`
+- ✅ Ícones ativos usam `var(--rayo-terra-500)`
+- ✅ Ícones inativos usam `var(--rayo-ink-400)`
+- ✅ Badge de notificações usa `var(--rayo-terra-700)`
+- ✅ Indicador de aba ativa usa `var(--rayo-terra-500)`
+- ✅ Background do badge usa `var(--rayo-sand-100)` para border
 
 #### Antes vs Depois:
 
@@ -29,8 +29,8 @@ className="bg-[#EF4444]"    // ❌ Hardcoded
 
 **Depois:**
 ```tsx
-style={{ color: 'var(--raio-accent-primary)' }}  // ✅ Token
-style={{ background: 'var(--raio-error)' }}      // ✅ Token
+style={{ color: 'var(--rayo-terra-500)' }}  // ✅ Token
+style={{ background: 'var(--rayo-terra-700)' }}      // ✅ Token
 ```
 
 ---
@@ -39,8 +39,8 @@ style={{ background: 'var(--raio-error)' }}      // ✅ Token
 
 #### Mudanças Implementadas:
 - ✅ Background usa `var(--raio-bg-overlay)` (glassmorphism)
-- ✅ Border usa `var(--raio-border-default)`
-- ✅ Input de busca usa `var(--raio-bg-tertiary)` e `var(--raio-text-primary)`
+- ✅ Border usa `var(--rayo-sand-300)`
+- ✅ Input de busca usa `var(--rayo-sand-300)` e `var(--rayo-forest-900)`
 - ✅ Botão Premium usa gradiente com tokens do acento amarelo
 - ✅ Cor do texto Premium adaptativa (dark/light)
 - ✅ Toggle de tema já implementado na Fase 1 ✅
@@ -56,7 +56,7 @@ className="border-gray-200 dark:border-gray-800" // ❌ Hardcoded
 **Depois:**
 ```tsx
 style={{ background: 'var(--raio-bg-overlay)' }}       // ✅ Token
-style={{ borderBottom: '1px solid var(--raio-border-default)' }} // ✅ Token
+style={{ borderBottom: '1px solid var(--rayo-sand-300)' }} // ✅ Token
 ```
 
 ---
@@ -64,21 +64,21 @@ style={{ borderBottom: '1px solid var(--raio-border-default)' }} // ✅ Token
 ### 3. **DesktopSidebar.tsx** (Desktop Side Menu) ✅
 
 #### Mudanças Implementadas:
-- ✅ Background sidebar usa `var(--raio-bg-secondary)`
-- ✅ Border usa `var(--raio-border-default)`
+- ✅ Background sidebar usa `var(--rayo-sand-50)`
+- ✅ Border usa `var(--rayo-sand-300)`
 - ✅ Logo box usa gradiente amarelo (`--raio-accent-primary/hover`)
-- ✅ Texto "RAIO" usa `var(--raio-text-primary)`
-- ✅ Texto "Ecossistema" usa `var(--raio-text-tertiary)`
-- ✅ Avatar background usa `var(--raio-accent-primary)`
+- ✅ Texto "RAIO" usa `var(--rayo-forest-900)`
+- ✅ Texto "Ecossistema" usa `var(--rayo-ink-400)`
+- ✅ Avatar background usa `var(--rayo-terra-500)`
 - ✅ Avatar ring usa `var(--raio-accent-subtle)`
-- ✅ Nome do usuário usa `var(--raio-text-primary)`
-- ✅ "Nível X" usa `var(--raio-text-tertiary)`
+- ✅ Nome do usuário usa `var(--rayo-forest-900)`
+- ✅ "Nível X" usa `var(--rayo-ink-400)`
 - ✅ Botões de menu ativos usam `var(--raio-accent-subtle)` background
-- ✅ Botões de menu ativos usam `var(--raio-accent-primary)` texto
-- ✅ Botões inativos usam `var(--raio-text-secondary)`
-- ✅ Hover em botões usa `var(--raio-bg-tertiary)`
-- ✅ Badge de notificações usa `var(--raio-error)`
-- ✅ Borders usam `var(--raio-border-default)`
+- ✅ Botões de menu ativos usam `var(--rayo-terra-500)` texto
+- ✅ Botões inativos usam `var(--rayo-ink-700)`
+- ✅ Hover em botões usa `var(--rayo-sand-300)`
+- ✅ Badge de notificações usa `var(--rayo-terra-700)`
+- ✅ Borders usam `var(--rayo-sand-300)`
 - ✅ Toggle de tema já implementado na Fase 1 ✅
 
 #### Antes vs Depois:
@@ -93,10 +93,10 @@ className="bg-[#22C55E]"                            // ❌ Hardcoded
 
 **Depois:**
 ```tsx
-style={{ background: 'var(--raio-bg-secondary)' }}           // ✅ Token
-style={{ borderRight: '1px solid var(--raio-border-default)' }} // ✅ Token
-style={{ color: 'var(--raio-text-primary)' }}               // ✅ Token
-style={{ background: 'var(--raio-accent-primary)' }}        // ✅ Token
+style={{ background: 'var(--rayo-sand-50)' }}           // ✅ Token
+style={{ borderRight: '1px solid var(--rayo-sand-300)' }} // ✅ Token
+style={{ color: 'var(--rayo-forest-900)' }}               // ✅ Token
+style={{ background: 'var(--rayo-terra-500)' }}        // ✅ Token
 ```
 
 ---
@@ -155,7 +155,7 @@ style={{
 // DesktopSidebar - Botões de menu
 onMouseEnter={(e) => {
   if (!isActive) {
-    e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+    e.currentTarget.style.background = 'var(--rayo-sand-300)';
   }
 }}
 onMouseLeave={(e) => {
@@ -169,8 +169,8 @@ onMouseLeave={(e) => {
 ```tsx
 // Avatar no DesktopSidebar
 style={{
-  background: 'var(--raio-accent-primary)',
-  color: theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF',
+  background: 'var(--rayo-terra-500)',
+  color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF',
 }}
 ```
 

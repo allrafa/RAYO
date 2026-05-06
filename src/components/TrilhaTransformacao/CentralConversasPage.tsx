@@ -107,65 +107,76 @@ export function CentralConversasPage({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="ra-page">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="rounded-full"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <h1 className="font-display font-semibold">Trilha da Transformação</h1>
-              <p className="font-body text-sm text-gray-600">{sessions.length} conversas</p>
-            </div>
-          </div>
-          
-          <Button
-            onClick={onStartNewConversation}
-            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-full"
-            size="sm"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Nova Conversa
-          </Button>
-        </div>
-
-        {/* Search and Filter */}
-        <div className="px-4 pb-4 space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Buscar insights, planos ou temas..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <div className="flex gap-2 overflow-x-auto">
-            {[
-              { key: 'all', label: 'Todas' },
-              { key: 'active', label: 'Ativas' },
-              { key: 'completed', label: 'Concluídas' },
-              { key: 'jessica', label: 'Jessica' },
-              { key: 'rafa', label: 'Rafa' }
-            ].map(filter => (
+      <div className="ra-page-header">
+        <div className="ra-page-header-inner">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
               <Button
-                key={filter.key}
-                variant={filterBy === filter.key ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilterBy(filter.key as any)}
-                className="whitespace-nowrap"
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="rounded-full"
+                aria-label="Voltar"
               >
-                {filter.label}
+                <ArrowLeft className="w-5 h-5" />
               </Button>
-            ))}
+              <div>
+                <p className="ra-eyebrow">Trilha · Histórico</p>
+                <h1 className="ra-title" style={{ fontSize: 22 }}>
+                  Trilha da <span className="ra-title-light">Transformação</span>
+                </h1>
+                <p className="ra-subtitle" style={{ fontSize: 12, marginTop: 2 }}>
+                  {sessions.length} conversa{sessions.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="ra-pill-primary"
+              onClick={onStartNewConversation}
+            >
+              <Plus className="w-4 h-4" />
+              Nova conversa
+            </button>
+          </div>
+
+          {/* Search and Filter */}
+          <div className="pb-4 pt-4 space-y-3">
+            <div className="ra-search-wrap">
+              <Search className="ra-search-icon w-4 h-4" aria-hidden="true" />
+              <input
+                type="search"
+                placeholder="Buscar insights, planos ou temas…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="ra-search"
+                aria-label="Buscar conversas"
+              />
+            </div>
+
+            <div className="ra-tabs" role="tablist" aria-label="Filtros">
+              {[
+                { key: 'all', label: 'Todas' },
+                { key: 'active', label: 'Ativas' },
+                { key: 'completed', label: 'Concluídas' },
+                { key: 'jessica', label: 'Jessica' },
+                { key: 'rafa', label: 'Rafa' }
+              ].map(filter => (
+                <button
+                  key={filter.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={filterBy === filter.key}
+                  className={`ra-tab ${filterBy === filter.key ? 'active' : ''}`}
+                  onClick={() => setFilterBy(filter.key as any)}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

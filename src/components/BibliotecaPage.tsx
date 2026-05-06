@@ -31,14 +31,14 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
   return (
     <div 
       className="min-h-screen pb-24 lg:pb-8" 
-      style={{ background: 'var(--raio-bg-primary)' }}
+      style={{ background: 'var(--rayo-sand-100)' }}
     >
       {/* Header */}
       <div 
         className="sticky top-0 z-10 border-b" 
         style={{ 
-          background: 'var(--raio-bg-primary)',
-          borderColor: 'var(--raio-border-default)'
+          background: 'var(--rayo-sand-100)',
+          borderColor: 'var(--rayo-sand-300)'
         }}
       >
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -46,7 +46,7 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
             variant="ghost" 
             onClick={onBack} 
             className="mb-4 -ml-2"
-            style={{ color: 'var(--raio-text-secondary)' }}
+            style={{ color: 'var(--rayo-ink-700)' }}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
@@ -55,13 +55,13 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
           <div className="flex items-center gap-3 mb-4">
             <BookOpen 
               className="w-8 h-8" 
-              style={{ color: 'var(--raio-accent-primary)' }}
+              style={{ color: 'var(--rayo-terra-500)' }}
             />
             <h1 
               className="text-[32px]" 
               style={{ 
                 fontWeight: 700, 
-                color: 'var(--raio-text-primary)' 
+                color: 'var(--rayo-forest-900)' 
               }}
             >
               Minha Biblioteca
@@ -75,11 +75,11 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
               size="sm"
               onClick={() => setFilter('all')}
               style={{
-                background: filter === 'all' ? 'var(--raio-accent-primary)' : 'transparent',
+                background: filter === 'all' ? 'var(--rayo-terra-500)' : 'transparent',
                 color: filter === 'all' 
-                  ? (theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF')
-                  : 'var(--raio-text-secondary)',
-                borderColor: filter === 'all' ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)'
+                  ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+                  : 'var(--rayo-ink-700)',
+                borderColor: filter === 'all' ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)'
               }}
             >
               📖 Todos ({totalItems})
@@ -89,11 +89,11 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
               size="sm"
               onClick={() => setFilter('courses')}
               style={{
-                background: filter === 'courses' ? 'var(--raio-accent-primary)' : 'transparent',
+                background: filter === 'courses' ? 'var(--rayo-terra-500)' : 'transparent',
                 color: filter === 'courses' 
-                  ? (theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF')
-                  : 'var(--raio-text-secondary)',
-                borderColor: filter === 'courses' ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)'
+                  ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+                  : 'var(--rayo-ink-700)',
+                borderColor: filter === 'courses' ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)'
               }}
             >
               🎓 Cursos ({enrolledCourses.length})
@@ -103,11 +103,11 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
               size="sm"
               onClick={() => setFilter('books')}
               style={{
-                background: filter === 'books' ? 'var(--raio-accent-primary)' : 'transparent',
+                background: filter === 'books' ? 'var(--rayo-terra-500)' : 'transparent',
                 color: filter === 'books' 
-                  ? (theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF')
-                  : 'var(--raio-text-secondary)',
-                borderColor: filter === 'books' ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)'
+                  ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+                  : 'var(--rayo-ink-700)',
+                borderColor: filter === 'books' ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)'
               }}
             >
               📕 Livros ({enrolledBooks.length})
@@ -125,7 +125,7 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
               className="text-[24px] mb-4" 
               style={{ 
                 fontWeight: 700, 
-                color: 'var(--raio-text-primary)' 
+                color: 'var(--rayo-forest-900)' 
               }}
             >
               🎓 Cursos ({filteredCourses.length})
@@ -136,8 +136,8 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
                   key={course.id}
                   className="p-4 rounded-lg border cursor-pointer hover:shadow-md transition-all"
                   style={{
-                    background: 'var(--raio-bg-secondary)',
-                    borderColor: 'var(--raio-border-default)'
+                    background: 'var(--rayo-sand-50)',
+                    borderColor: 'var(--rayo-sand-300)'
                   }}
                   onClick={() => {
                     startCourse(course.id);
@@ -153,7 +153,7 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
                   </div>
                   <h3 
                     className="font-semibold mb-2"
-                    style={{ color: 'var(--raio-text-primary)' }}
+                    style={{ color: 'var(--rayo-forest-900)' }}
                   >
                     {course.title}
                   </h3>
@@ -161,19 +161,19 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
                     <div className="mb-2">
                       <div 
                         className="h-2 rounded-full overflow-hidden mb-1"
-                        style={{ background: 'var(--raio-bg-tertiary)' }}
+                        style={{ background: 'var(--rayo-sand-300)' }}
                       >
                         <div 
                           className="h-full transition-all"
                           style={{ 
                             width: `${course.progress}%`,
-                            background: 'var(--raio-accent-primary)'
+                            background: 'var(--rayo-terra-500)'
                           }}
                         />
                       </div>
                       <p 
                         className="text-xs"
-                        style={{ color: 'var(--raio-text-tertiary)' }}
+                        style={{ color: 'var(--rayo-ink-400)' }}
                       >
                         {course.progress}% concluído
                       </p>
@@ -183,8 +183,8 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
                     size="sm" 
                     className="w-full"
                     style={{
-                      background: 'var(--raio-accent-primary)',
-                      color: theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF'
+                      background: 'var(--rayo-terra-500)',
+                      color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF'
                     }}
                   >
                     {course.progress > 0 ? 'Continuar' : 'Começar'}
@@ -202,7 +202,7 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
               className="text-[24px] mb-4" 
               style={{ 
                 fontWeight: 700, 
-                color: 'var(--raio-text-primary)' 
+                color: 'var(--rayo-forest-900)' 
               }}
             >
               📕 Livros ({filteredBooks.length})
@@ -229,13 +229,13 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
           <div className="text-center py-20">
             <BookOpen 
               className="w-16 h-16 mx-auto mb-4" 
-              style={{ color: 'var(--raio-text-tertiary)', opacity: 0.3 }}
+              style={{ color: 'var(--rayo-ink-400)', opacity: 0.3 }}
             />
             <h3 
               className="text-[24px] mb-2" 
               style={{ 
                 fontWeight: 700, 
-                color: 'var(--raio-text-primary)' 
+                color: 'var(--rayo-forest-900)' 
               }}
             >
               {filter === 'courses' && 'Nenhum curso encontrado'}
@@ -244,7 +244,7 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
             </h3>
             <p 
               className="text-[16px] mb-6" 
-              style={{ color: 'var(--raio-text-secondary)' }}
+              style={{ color: 'var(--rayo-ink-700)' }}
             >
               Explore a Academia RAYO e adicione conteúdos à sua biblioteca
             </p>

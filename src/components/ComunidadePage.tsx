@@ -246,14 +246,14 @@ export function ComunidadePage() {
     <PullToRefresh onRefresh={handleRefresh}>
       <div 
         className="min-h-screen"
-        style={{ background: 'var(--raio-bg-primary)' }}
+        style={{ background: 'var(--rayo-sand-100)' }}
       >
         {/* NAVIGATION TABS - Sticky */}
         <div 
           className="sticky top-0 z-40"
           style={{ 
-            background: 'var(--raio-bg-primary)',
-            borderBottom: '1px solid var(--raio-border-default)',
+            background: 'var(--rayo-sand-100)',
+            borderBottom: '1px solid var(--rayo-sand-300)',
           }}
         >
           <div className="max-w-7xl mx-auto px-6">
@@ -264,17 +264,17 @@ export function ComunidadePage() {
                 onClick={() => setCurrentView("feed")}
                 style={{ 
                   fontWeight: currentView === "feed" ? 700 : 500,
-                  borderColor: currentView === "feed" ? 'var(--raio-accent-primary)' : 'transparent',
-                  color: currentView === "feed" ? 'var(--raio-accent-primary)' : 'var(--raio-text-tertiary)',
+                  borderColor: currentView === "feed" ? 'var(--rayo-terra-500)' : 'transparent',
+                  color: currentView === "feed" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
                 }}
                 onMouseEnter={(e) => {
                   if (currentView !== "feed") {
-                    e.currentTarget.style.color = 'var(--raio-text-primary)';
+                    e.currentTarget.style.color = 'var(--rayo-forest-900)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (currentView !== "feed") {
-                    e.currentTarget.style.color = 'var(--raio-text-tertiary)';
+                    e.currentTarget.style.color = 'var(--rayo-ink-400)';
                   }
                 }}
               >
@@ -286,17 +286,17 @@ export function ComunidadePage() {
                 onClick={() => setCurrentView("grupos")}
                 style={{ 
                   fontWeight: currentView === "grupos" ? 700 : 500,
-                  borderColor: currentView === "grupos" ? 'var(--raio-accent-primary)' : 'transparent',
-                  color: currentView === "grupos" ? 'var(--raio-accent-primary)' : 'var(--raio-text-tertiary)',
+                  borderColor: currentView === "grupos" ? 'var(--rayo-terra-500)' : 'transparent',
+                  color: currentView === "grupos" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
                 }}
                 onMouseEnter={(e) => {
                   if (currentView !== "grupos") {
-                    e.currentTarget.style.color = 'var(--raio-text-primary)';
+                    e.currentTarget.style.color = 'var(--rayo-forest-900)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (currentView !== "grupos") {
-                    e.currentTarget.style.color = 'var(--raio-text-tertiary)';
+                    e.currentTarget.style.color = 'var(--rayo-ink-400)';
                   }
                 }}
               >
@@ -308,17 +308,17 @@ export function ComunidadePage() {
                 onClick={() => setCurrentView("trending")}
                 style={{ 
                   fontWeight: currentView === "trending" ? 700 : 500,
-                  borderColor: currentView === "trending" ? 'var(--raio-accent-primary)' : 'transparent',
-                  color: currentView === "trending" ? 'var(--raio-accent-primary)' : 'var(--raio-text-tertiary)',
+                  borderColor: currentView === "trending" ? 'var(--rayo-terra-500)' : 'transparent',
+                  color: currentView === "trending" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
                 }}
                 onMouseEnter={(e) => {
                   if (currentView !== "trending") {
-                    e.currentTarget.style.color = 'var(--raio-text-primary)';
+                    e.currentTarget.style.color = 'var(--rayo-forest-900)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (currentView !== "trending") {
-                    e.currentTarget.style.color = 'var(--raio-text-tertiary)';
+                    e.currentTarget.style.color = 'var(--rayo-ink-400)';
                   }
                 }}
               >
@@ -331,17 +331,17 @@ export function ComunidadePage() {
                 onClick={() => setCurrentView("conversas")}
                 style={{ 
                   fontWeight: currentView === "conversas" ? 700 : 500,
-                  borderColor: currentView === "conversas" ? 'var(--raio-accent-primary)' : 'transparent',
-                  color: currentView === "conversas" ? 'var(--raio-accent-primary)' : 'var(--raio-text-tertiary)',
+                  borderColor: currentView === "conversas" ? 'var(--rayo-terra-500)' : 'transparent',
+                  color: currentView === "conversas" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
                 }}
                 onMouseEnter={(e) => {
                   if (currentView !== "conversas") {
-                    e.currentTarget.style.color = 'var(--raio-text-primary)';
+                    e.currentTarget.style.color = 'var(--rayo-forest-900)';
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (currentView !== "conversas") {
-                    e.currentTarget.style.color = 'var(--raio-text-tertiary)';
+                    e.currentTarget.style.color = 'var(--rayo-ink-400)';
                   }
                 }}
               >
@@ -355,8 +355,8 @@ export function ComunidadePage() {
         {/* HERO SECTION - Minimal */}
         <section 
           style={{ 
-            background: 'var(--raio-bg-secondary)',
-            borderBottom: '1px solid var(--raio-border-default)'
+            background: 'var(--rayo-sand-50)',
+            borderBottom: '1px solid var(--rayo-sand-300)'
           }}
         >
           <div className="max-w-7xl mx-auto px-6 py-6">
@@ -370,29 +370,29 @@ export function ComunidadePage() {
                   className="h-[56px] pl-6 pr-16 rounded-full border-2 transition-colors"
                   style={{ 
                     fontSize: '16px',
-                    background: 'var(--raio-bg-primary)',
-                    borderColor: 'var(--raio-border-default)',
-                    color: 'var(--raio-text-primary)',
+                    background: 'var(--rayo-sand-100)',
+                    borderColor: 'var(--rayo-sand-300)',
+                    color: 'var(--rayo-forest-900)',
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--raio-accent-primary)';
+                    e.currentTarget.style.borderColor = 'var(--rayo-terra-500)';
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--raio-border-default)';
+                    e.currentTarget.style.borderColor = 'var(--rayo-sand-300)';
                   }}
                 />
                 <Button
                   size="icon"
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 h-[44px] w-[44px] rounded-full transition-all"
                   style={{
-                    background: 'var(--raio-accent-primary)',
+                    background: 'var(--rayo-terra-500)',
                     color: '#FFFFFF',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--raio-accent-hover)';
+                    e.currentTarget.style.background = 'var(--rayo-terra-700)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--raio-accent-primary)';
+                    e.currentTarget.style.background = 'var(--rayo-terra-500)';
                   }}
                 >
                   <Search className="w-5 h-5" />
@@ -405,14 +405,14 @@ export function ComunidadePage() {
                 className="w-full h-[56px] rounded-full shadow-sm hover:shadow-md transition-all"
                 style={{ 
                   fontWeight: 600,
-                  background: 'var(--raio-accent-primary)',
+                  background: 'var(--rayo-terra-500)',
                   color: '#FFFFFF',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--raio-accent-hover)';
+                  e.currentTarget.style.background = 'var(--rayo-terra-700)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'var(--raio-accent-primary)';
+                  e.currentTarget.style.background = 'var(--rayo-terra-500)';
                 }}
               >
                 <Plus className="w-5 h-5 mr-2" />
@@ -518,7 +518,7 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
             className="text-[24px]" 
             style={{ 
               fontWeight: 700, 
-              color: 'var(--raio-text-primary)' 
+              color: 'var(--rayo-forest-900)' 
             }}
           >
             Feed da Comunidade
@@ -527,8 +527,8 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
             style={{ 
               fontSize: '12px', 
               fontWeight: 600,
-              background: 'var(--raio-accent-light)',
-              color: 'var(--raio-accent-primary)',
+              background: 'var(--rayo-terra-100)',
+              color: 'var(--rayo-terra-500)',
             }}
           >
             {posts.length} posts
@@ -552,21 +552,21 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
         {/* Trending Topics */}
         <Card 
           style={{
-            borderColor: 'var(--raio-border-default)',
-            background: 'var(--raio-bg-secondary)',
+            borderColor: 'var(--rayo-sand-300)',
+            background: 'var(--rayo-sand-50)',
           }}
         >
           <div className="p-6">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp 
                 className="w-5 h-5" 
-                style={{ color: 'var(--raio-accent-primary)' }} 
+                style={{ color: 'var(--rayo-terra-500)' }} 
               />
               <h3 
                 className="text-[18px]" 
                 style={{ 
                   fontWeight: 700, 
-                  color: 'var(--raio-text-primary)' 
+                  color: 'var(--rayo-forest-900)' 
                 }}
               >
                 Tópicos em Alta
@@ -579,7 +579,7 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
                   className="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors"
                   style={{ background: 'transparent' }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+                    e.currentTarget.style.background = 'var(--rayo-sand-300)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';
@@ -590,14 +590,14 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
                       className="text-[14px]" 
                       style={{ 
                         fontWeight: 600,
-                        color: 'var(--raio-accent-primary)' 
+                        color: 'var(--rayo-terra-500)' 
                       }}
                     >
                       {topic.topic}
                     </div>
                     <div 
                       className="text-[12px]" 
-                      style={{ color: 'var(--raio-text-tertiary)' }}
+                      style={{ color: 'var(--rayo-ink-400)' }}
                     >
                       {topic.posts} posts
                     </div>
@@ -606,8 +606,8 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
                     style={{ 
                       fontSize: '11px', 
                       fontWeight: 600,
-                      background: 'var(--raio-accent-light)',
-                      color: 'var(--raio-accent-primary)',
+                      background: 'var(--rayo-terra-100)',
+                      color: 'var(--rayo-terra-500)',
                     }}
                   >
                     {topic.trend}
@@ -621,8 +621,8 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
         {/* Quick Stats */}
         <Card 
           style={{
-            background: 'var(--raio-accent-light)',
-            borderColor: 'var(--raio-accent-primary)',
+            background: 'var(--rayo-terra-100)',
+            borderColor: 'var(--rayo-terra-500)',
             borderWidth: '1px',
           }}
         >
@@ -630,13 +630,13 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
             <div className="flex items-center gap-2 mb-4">
               <Sparkles 
                 className="w-5 h-5" 
-                style={{ color: 'var(--raio-accent-primary)' }} 
+                style={{ color: 'var(--rayo-terra-500)' }} 
               />
               <h3 
                 className="text-[18px]" 
                 style={{ 
                   fontWeight: 700, 
-                  color: 'var(--raio-text-primary)' 
+                  color: 'var(--rayo-forest-900)' 
                 }}
               >
                 Você esta semana
@@ -646,7 +646,7 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
               <div 
                 className="rounded-lg p-3 text-center"
                 style={{
-                  background: 'var(--raio-bg-secondary)',
+                  background: 'var(--rayo-sand-50)',
                   backdropFilter: 'blur(8px)',
                 }}
               >
@@ -654,14 +654,14 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
                   className="text-[20px] mb-1" 
                   style={{ 
                     fontWeight: 700, 
-                    color: 'var(--raio-text-primary)' 
+                    color: 'var(--rayo-forest-900)' 
                   }}
                 >
                   5
                 </div>
                 <div 
                   className="text-[11px]" 
-                  style={{ color: 'var(--raio-text-tertiary)' }}
+                  style={{ color: 'var(--rayo-ink-400)' }}
                 >
                   Posts criados
                 </div>
@@ -669,7 +669,7 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
               <div 
                 className="rounded-lg p-3 text-center"
                 style={{
-                  background: 'var(--raio-bg-secondary)',
+                  background: 'var(--rayo-sand-50)',
                   backdropFilter: 'blur(8px)',
                 }}
               >
@@ -677,14 +677,14 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
                   className="text-[20px] mb-1" 
                   style={{ 
                     fontWeight: 700, 
-                    color: 'var(--raio-text-primary)' 
+                    color: 'var(--rayo-forest-900)' 
                   }}
                 >
                   28
                 </div>
                 <div 
                   className="text-[11px]" 
-                  style={{ color: 'var(--raio-text-tertiary)' }}
+                  style={{ color: 'var(--rayo-ink-400)' }}
                 >
                   Comentários
                 </div>
@@ -692,7 +692,7 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
               <div 
                 className="rounded-lg p-3 text-center"
                 style={{
-                  background: 'var(--raio-bg-secondary)',
+                  background: 'var(--rayo-sand-50)',
                   backdropFilter: 'blur(8px)',
                 }}
               >
@@ -700,14 +700,14 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
                   className="text-[20px] mb-1" 
                   style={{ 
                     fontWeight: 700, 
-                    color: 'var(--raio-text-primary)' 
+                    color: 'var(--rayo-forest-900)' 
                   }}
                 >
                   142
                 </div>
                 <div 
                   className="text-[11px]" 
-                  style={{ color: 'var(--raio-text-tertiary)' }}
+                  style={{ color: 'var(--rayo-ink-400)' }}
                 >
                   Curtidas
                 </div>
@@ -715,7 +715,7 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
               <div 
                 className="rounded-lg p-3 text-center"
                 style={{
-                  background: 'var(--raio-bg-secondary)',
+                  background: 'var(--rayo-sand-50)',
                   backdropFilter: 'blur(8px)',
                 }}
               >
@@ -723,14 +723,14 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
                   className="text-[20px] mb-1" 
                   style={{ 
                     fontWeight: 700, 
-                    color: 'var(--raio-text-primary)' 
+                    color: 'var(--rayo-forest-900)' 
                   }}
                 >
                   3
                 </div>
                 <div 
                   className="text-[11px]" 
-                  style={{ color: 'var(--raio-text-tertiary)' }}
+                  style={{ color: 'var(--rayo-ink-400)' }}
                 >
                   Grupos ativos
                 </div>
@@ -784,7 +784,7 @@ function GruposView({ groups, categories, loading, error, onRetry }: GruposViewP
             className="text-[24px]" 
             style={{ 
               fontWeight: 700, 
-              color: 'var(--raio-text-primary)' 
+              color: 'var(--rayo-forest-900)' 
             }}
           >
             Categorias
@@ -793,8 +793,8 @@ function GruposView({ groups, categories, loading, error, onRetry }: GruposViewP
             style={{ 
               fontSize: '12px', 
               fontWeight: 600,
-              background: 'var(--raio-accent-light)',
-              color: 'var(--raio-accent-primary)',
+              background: 'var(--rayo-terra-100)',
+              color: 'var(--rayo-terra-500)',
             }}
           >
             {filteredGroups.length} grupos
@@ -810,11 +810,11 @@ function GruposView({ groups, categories, loading, error, onRetry }: GruposViewP
                 className="w-48 cursor-pointer border-0 overflow-hidden transition-all"
                 style={{
                   background: !selectedCategory 
-                    ? 'linear-gradient(135deg, var(--raio-accent-primary) 0%, var(--raio-accent-hover) 100%)'
-                    : 'var(--raio-bg-tertiary)',
-                  color: !selectedCategory ? '#FFFFFF' : 'var(--raio-text-primary)',
+                    ? 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)'
+                    : 'var(--rayo-sand-300)',
+                  color: !selectedCategory ? '#FFFFFF' : 'var(--rayo-forest-900)',
                   transform: !selectedCategory ? 'scale(1.05)' : 'scale(1)',
-                  boxShadow: !selectedCategory ? 'var(--raio-shadow-lg)' : 'none',
+                  boxShadow: !selectedCategory ? '0 10px 24px rgba(12,59,46,0.10)' : 'none',
                 }}
                 onClick={() => setSelectedCategory(null)}
                 onMouseEnter={(e) => {
@@ -872,7 +872,7 @@ function GruposView({ groups, categories, loading, error, onRetry }: GruposViewP
                   className={`w-48 cursor-pointer border-0 bg-gradient-to-br ${category.gradient} text-white overflow-hidden transition-all`}
                   style={{
                     transform: selectedCategory === category.name ? 'scale(1.05)' : 'scale(1)',
-                    boxShadow: selectedCategory === category.name ? 'var(--raio-shadow-lg)' : 'none',
+                    boxShadow: selectedCategory === category.name ? '0 10px 24px rgba(12,59,46,0.10)' : 'none',
                   }}
                   onClick={() => setSelectedCategory(category.name)}
                   onMouseEnter={(e) => {
@@ -931,7 +931,7 @@ function GruposView({ groups, categories, loading, error, onRetry }: GruposViewP
             className="text-[24px]" 
             style={{ 
               fontWeight: 700, 
-              color: 'var(--raio-text-primary)' 
+              color: 'var(--rayo-forest-900)' 
             }}
           >
             Meus Grupos
@@ -940,7 +940,7 @@ function GruposView({ groups, categories, loading, error, onRetry }: GruposViewP
             style={{ 
               fontSize: '12px', 
               fontWeight: 600,
-              background: 'var(--raio-accent-primary)',
+              background: 'var(--rayo-terra-500)',
               color: '#FFFFFF',
             }}
           >
@@ -960,7 +960,7 @@ function GruposView({ groups, categories, loading, error, onRetry }: GruposViewP
           className="text-[24px] mb-4" 
           style={{ 
             fontWeight: 700, 
-            color: 'var(--raio-text-primary)' 
+            color: 'var(--rayo-forest-900)' 
           }}
         >
           Descubra Novos Grupos
@@ -991,8 +991,8 @@ function TrendingView({ posts, reactions, onReact, onComment, onShare, trendingT
       <div 
         className="rounded-2xl p-6 text-white"
         style={{
-          background: 'linear-gradient(135deg, var(--raio-accent-primary) 0%, var(--raio-accent-hover) 100%)',
-          boxShadow: 'var(--raio-shadow-glow)',
+          background: 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)',
+          boxShadow: '0 0 0 3px rgba(200,85,61,0.18)',
         }}
       >
         <div className="flex items-center gap-3 mb-3">
@@ -1023,8 +1023,8 @@ function TrendingView({ posts, reactions, onReact, onComment, onShare, trendingT
         <div className="space-y-4">
           <Card 
             style={{
-              borderColor: 'var(--raio-border-default)',
-              background: 'var(--raio-bg-secondary)',
+              borderColor: 'var(--rayo-sand-300)',
+              background: 'var(--rayo-sand-50)',
             }}
           >
             <div className="p-6">
@@ -1032,7 +1032,7 @@ function TrendingView({ posts, reactions, onReact, onComment, onShare, trendingT
                 className="text-[18px] mb-4" 
                 style={{ 
                   fontWeight: 700, 
-                  color: 'var(--raio-text-primary)' 
+                  color: 'var(--rayo-forest-900)' 
                 }}
               >
                 Hashtags em Alta
@@ -1044,7 +1044,7 @@ function TrendingView({ posts, reactions, onReact, onComment, onShare, trendingT
                     className="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors"
                     style={{ background: 'transparent' }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+                      e.currentTarget.style.background = 'var(--rayo-sand-300)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
@@ -1054,7 +1054,7 @@ function TrendingView({ posts, reactions, onReact, onComment, onShare, trendingT
                       className="text-[14px]" 
                       style={{ 
                         fontWeight: 600,
-                        color: 'var(--raio-accent-primary)' 
+                        color: 'var(--rayo-terra-500)' 
                       }}
                     >
                       {topic.topic}
@@ -1063,8 +1063,8 @@ function TrendingView({ posts, reactions, onReact, onComment, onShare, trendingT
                       style={{ 
                         fontSize: '11px', 
                         fontWeight: 600,
-                        background: 'var(--raio-accent-light)',
-                        color: 'var(--raio-accent-primary)',
+                        background: 'var(--rayo-terra-100)',
+                        color: 'var(--rayo-terra-500)',
                       }}
                     >
                       {topic.trend}
@@ -1096,8 +1096,8 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
     <Card 
       className="hover:shadow-md transition-shadow"
       style={{
-        borderColor: 'var(--raio-border-default)',
-        background: 'var(--raio-bg-secondary)',
+        borderColor: 'var(--rayo-sand-300)',
+        background: 'var(--rayo-sand-50)',
       }}
     >
       <CardContent className="p-6">
@@ -1114,7 +1114,7 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
                   className="text-[14px]" 
                   style={{ 
                     fontWeight: 600, 
-                    color: 'var(--raio-text-primary)' 
+                    color: 'var(--rayo-forest-900)' 
                   }}
                 >
                   {post.author}
@@ -1122,13 +1122,13 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
                 {post.isPinned && (
                   <Pin 
                     className="w-3 h-3" 
-                    style={{ color: 'var(--raio-accent-primary)' }} 
+                    style={{ color: 'var(--rayo-terra-500)' }} 
                   />
                 )}
               </div>
               <div 
                 className="flex items-center gap-2 text-[12px]"
-                style={{ color: 'var(--raio-text-tertiary)' }}
+                style={{ color: 'var(--rayo-ink-400)' }}
               >
                 <Clock className="w-3 h-3" />
                 <span>{post.time}</span>
@@ -1137,8 +1137,8 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
                   style={{ 
                     fontSize: '10px', 
                     fontWeight: 600,
-                    background: 'var(--raio-accent-light)',
-                    color: 'var(--raio-accent-primary)',
+                    background: 'var(--rayo-terra-100)',
+                    color: 'var(--rayo-terra-500)',
                   }}
                 >
                   {post.category}
@@ -1150,7 +1150,7 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
             variant="ghost" 
             size="icon" 
             className="h-8 w-8"
-            style={{ color: 'var(--raio-text-tertiary)' }}
+            style={{ color: 'var(--rayo-ink-400)' }}
           >
             <MoreHorizontal className="w-4 h-4" />
           </Button>
@@ -1159,7 +1159,7 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
         {/* Content */}
         <p 
           className="text-[15px] mb-4 leading-relaxed" 
-          style={{ color: 'var(--raio-text-primary)' }}
+          style={{ color: 'var(--rayo-forest-900)' }}
         >
           {post.content}
         </p>
@@ -1178,7 +1178,7 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
         {/* Actions */}
         <div 
           className="flex items-center gap-6 pt-3"
-          style={{ borderTop: '1px solid var(--raio-border-default)' }}
+          style={{ borderTop: '1px solid var(--rayo-sand-300)' }}
         >
           <Button
             variant="ghost"
@@ -1186,7 +1186,7 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
             onClick={() => likePost(post.id)}
             className="gap-2"
             style={{
-              color: post.userReacted ? '#FF5A5F' : 'var(--raio-text-tertiary)',
+              color: post.userReacted ? '#FF5A5F' : 'var(--rayo-ink-400)',
             }}
           >
             <Heart className={`w-4 h-4 ${post.userReacted ? 'fill-[#FF5A5F]' : ''}`} />
@@ -1199,12 +1199,12 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
             size="sm"
             onClick={onComment}
             className="gap-2"
-            style={{ color: 'var(--raio-text-tertiary)' }}
+            style={{ color: 'var(--rayo-ink-400)' }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--raio-text-primary)';
+              e.currentTarget.style.color = 'var(--rayo-forest-900)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--raio-text-tertiary)';
+              e.currentTarget.style.color = 'var(--rayo-ink-400)';
             }}
           >
             <MessageCircle className="w-4 h-4" />
@@ -1217,12 +1217,12 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
             size="sm"
             onClick={onShare}
             className="gap-2"
-            style={{ color: 'var(--raio-text-tertiary)' }}
+            style={{ color: 'var(--rayo-ink-400)' }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = 'var(--raio-text-primary)';
+              e.currentTarget.style.color = 'var(--rayo-forest-900)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--raio-text-tertiary)';
+              e.currentTarget.style.color = 'var(--rayo-ink-400)';
             }}
           >
             <Share2 className="w-4 h-4" />
@@ -1260,15 +1260,15 @@ function GroupCard({ group }: GroupCardProps) {
     <Card 
       className="hover:shadow-lg transition-all overflow-hidden group"
       style={{
-        borderColor: 'var(--raio-border-default)',
-        background: 'var(--raio-bg-secondary)',
+        borderColor: 'var(--rayo-sand-300)',
+        background: 'var(--rayo-sand-50)',
       }}
     >
       {/* Group Image */}
       <div 
         className="relative h-32 overflow-hidden"
         style={{
-          background: 'linear-gradient(135deg, var(--raio-accent-primary) 0%, var(--raio-accent-hover) 100%)',
+          background: 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)',
         }}
       >
         <ImageWithFallback
@@ -1283,7 +1283,7 @@ function GroupCard({ group }: GroupCardProps) {
             style={{ 
               fontSize: '11px', 
               fontWeight: 600,
-              background: 'var(--raio-accent-primary)',
+              background: 'var(--rayo-terra-500)',
               color: '#FFFFFF',
             }}
           >
@@ -1299,7 +1299,7 @@ function GroupCard({ group }: GroupCardProps) {
             className="text-[16px] mb-1 line-clamp-1" 
             style={{ 
               fontWeight: 600, 
-              color: 'var(--raio-text-primary)' 
+              color: 'var(--rayo-forest-900)' 
             }}
           >
             {group.name}
@@ -1308,8 +1308,8 @@ function GroupCard({ group }: GroupCardProps) {
             style={{ 
               fontSize: '11px', 
               fontWeight: 600,
-              background: 'var(--raio-accent-light)',
-              color: 'var(--raio-accent-primary)',
+              background: 'var(--rayo-terra-100)',
+              color: 'var(--rayo-terra-500)',
             }}
           >
             {group.category}
@@ -1318,7 +1318,7 @@ function GroupCard({ group }: GroupCardProps) {
 
         <div 
           className="flex items-center justify-between mb-4 text-[12px]"
-          style={{ color: 'var(--raio-text-tertiary)' }}
+          style={{ color: 'var(--rayo-ink-400)' }}
         >
           <div className="flex items-center gap-1">
             <Users className="w-3 h-3" />
@@ -1327,7 +1327,7 @@ function GroupCard({ group }: GroupCardProps) {
           <div className="flex items-center gap-1">
             <div 
               className="w-2 h-2 rounded-full animate-pulse"
-              style={{ background: 'var(--raio-success)' }}
+              style={{ background: 'var(--rayo-sage-500)' }}
             ></div>
             <span>{group.activeNow} online</span>
           </div>
@@ -1338,21 +1338,21 @@ function GroupCard({ group }: GroupCardProps) {
           className="w-full"
           style={{ 
             fontWeight: 600,
-            background: isJoined ? 'var(--raio-bg-tertiary)' : 'var(--raio-accent-primary)',
-            color: isJoined ? 'var(--raio-text-secondary)' : '#FFFFFF',
+            background: isJoined ? 'var(--rayo-sand-300)' : 'var(--rayo-terra-500)',
+            color: isJoined ? 'var(--rayo-ink-700)' : '#FFFFFF',
           }}
           onMouseEnter={(e) => {
             if (isJoined) {
-              e.currentTarget.style.background = 'var(--raio-bg-primary)';
+              e.currentTarget.style.background = 'var(--rayo-sand-100)';
             } else {
-              e.currentTarget.style.background = 'var(--raio-accent-hover)';
+              e.currentTarget.style.background = 'var(--rayo-terra-700)';
             }
           }}
           onMouseLeave={(e) => {
             if (isJoined) {
-              e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+              e.currentTarget.style.background = 'var(--rayo-sand-300)';
             } else {
-              e.currentTarget.style.background = 'var(--raio-accent-primary)';
+              e.currentTarget.style.background = 'var(--rayo-terra-500)';
             }
           }}
         >
@@ -1409,48 +1409,48 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
     <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
       <div
         className="w-full max-w-lg rounded-t-2xl max-h-[80vh] flex flex-col"
-        style={{ background: 'var(--raio-bg-primary)' }}
+        style={{ background: 'var(--rayo-sand-100)' }}
       >
-        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--raio-border-default)' }}>
-          <h3 className="text-[16px]" style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}>
+        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--rayo-sand-300)' }}>
+          <h3 className="text-[16px]" style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}>
             Comentários ({post.comments})
           </h3>
           <Button variant="ghost" size="icon" onClick={onClose}>
-            <MoreHorizontal className="w-5 h-5" style={{ color: 'var(--raio-text-tertiary)' }} />
+            <MoreHorizontal className="w-5 h-5" style={{ color: 'var(--rayo-ink-400)' }} />
           </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {loadingComments ? (
-            <div className="text-center py-8" style={{ color: 'var(--raio-text-tertiary)' }}>Carregando...</div>
+            <div className="text-center py-8" style={{ color: 'var(--rayo-ink-400)' }}>Carregando...</div>
           ) : comments.length === 0 ? (
-            <div className="text-center py-8" style={{ color: 'var(--raio-text-tertiary)' }}>
+            <div className="text-center py-8" style={{ color: 'var(--rayo-ink-400)' }}>
               Nenhum comentário ainda. Seja o primeiro!
             </div>
           ) : (
             comments.map((c) => (
               <div key={c.id} className="flex gap-3">
                 <Avatar className="w-8 h-8 flex-shrink-0">
-                  <AvatarFallback style={{ background: 'var(--raio-accent-light)', color: 'var(--raio-accent-primary)', fontSize: '12px' }}>
+                  <AvatarFallback style={{ background: 'var(--rayo-terra-100)', color: 'var(--rayo-terra-500)', fontSize: '12px' }}>
                     {c.author_name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px]" style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}>
+                    <span className="text-[13px]" style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
                       {c.author_name}
                     </span>
-                    <span className="text-[11px]" style={{ color: 'var(--raio-text-tertiary)' }}>
+                    <span className="text-[11px]" style={{ color: 'var(--rayo-ink-400)' }}>
                       {formatTime(c.created_at)}
                     </span>
                   </div>
-                  <p className="text-[13px] mt-1" style={{ color: 'var(--raio-text-secondary)' }}>
+                  <p className="text-[13px] mt-1" style={{ color: 'var(--rayo-ink-700)' }}>
                     {c.content}
                   </p>
                   <button
                     onClick={() => onLikeComment(c.id)}
                     className="flex items-center gap-1 mt-1 text-[12px] transition-colors"
-                    style={{ color: c.user_liked ? 'var(--raio-accent-primary)' : 'var(--raio-text-tertiary)' }}
+                    style={{ color: c.user_liked ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)' }}
                   >
                     <Heart className="w-3 h-3" fill={c.user_liked ? 'currentColor' : 'none'} />
                     {c.like_count > 0 && <span>{c.like_count}</span>}
@@ -1461,20 +1461,20 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
           )}
         </div>
 
-        <div className="p-4 border-t flex items-center gap-2" style={{ borderColor: 'var(--raio-border-default)' }}>
+        <div className="p-4 border-t flex items-center gap-2" style={{ borderColor: 'var(--rayo-sand-300)' }}>
           <Input
             placeholder="Escreva um comentário..."
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
             className="flex-1"
-            style={{ background: 'var(--raio-bg-secondary)', color: 'var(--raio-text-primary)' }}
+            style={{ background: 'var(--rayo-sand-50)', color: 'var(--rayo-forest-900)' }}
           />
           <Button
             size="icon"
             onClick={handleSubmit}
             disabled={!commentText.trim() || submitting}
-            style={{ background: 'var(--raio-accent-primary)', color: '#fff' }}
+            style={{ background: 'var(--rayo-terra-500)', color: '#fff' }}
           >
             <Send className="w-4 h-4" />
           </Button>

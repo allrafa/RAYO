@@ -55,13 +55,13 @@ export function CompactAudioPlayer({ book }: CompactAudioPlayerProps) {
           background: theme === 'dark' 
             ? 'rgba(17, 24, 39, 0.95)' 
             : 'rgba(255, 255, 255, 0.95)',
-          borderColor: 'var(--raio-border-default)',
+          borderColor: 'var(--rayo-sand-300)',
         }}
       >
         {/* Progress Bar - Ultra fina no topo */}
         <div 
           className="h-1 w-full relative group cursor-pointer"
-          style={{ background: 'var(--raio-bg-tertiary)' }}
+          style={{ background: 'var(--rayo-sand-300)' }}
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             const x = e.clientX - rect.left;
@@ -74,14 +74,14 @@ export function CompactAudioPlayer({ book }: CompactAudioPlayerProps) {
             className="h-full transition-all duration-300 relative"
             style={{ 
               width: `${progressPercentage}%`,
-              background: 'var(--raio-accent-primary)',
+              background: 'var(--rayo-terra-500)',
             }}
           >
             {/* Handle - aparece no hover */}
             <div 
               className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
               style={{ 
-                background: 'var(--raio-accent-primary)',
+                background: 'var(--rayo-terra-500)',
                 boxShadow: '0 0 4px rgba(0,0,0,0.3)'
               }}
             />
@@ -93,7 +93,7 @@ export function CompactAudioPlayer({ book }: CompactAudioPlayerProps) {
           {/* Thumbnail */}
           <div 
             className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0"
-            style={{ background: 'var(--raio-bg-tertiary)' }}
+            style={{ background: 'var(--rayo-sand-300)' }}
           >
             <ImageWithFallback
               src={book.coverUrl}
@@ -108,14 +108,14 @@ export function CompactAudioPlayer({ book }: CompactAudioPlayerProps) {
               className="text-sm truncate"
               style={{ 
                 fontWeight: 600,
-                color: 'var(--raio-text-primary)' 
+                color: 'var(--rayo-forest-900)' 
               }}
             >
               {currentTitle.length > 60 ? currentTitle.slice(0, 60) + '...' : currentTitle}
             </h3>
             <p 
               className="text-xs truncate"
-              style={{ color: 'var(--raio-text-tertiary)' }}
+              style={{ color: 'var(--rayo-ink-400)' }}
             >
               {formatTime(state.currentTime)} / {formatTime(state.duration)}
             </p>
@@ -130,7 +130,7 @@ export function CompactAudioPlayer({ book }: CompactAudioPlayerProps) {
                   variant="ghost"
                   size="icon"
                   className="flex-shrink-0"
-                  style={{ color: 'var(--raio-text-secondary)' }}
+                  style={{ color: 'var(--rayo-ink-700)' }}
                 >
                   <Settings className="w-5 h-5" />
                 </Button>
@@ -139,15 +139,15 @@ export function CompactAudioPlayer({ book }: CompactAudioPlayerProps) {
                 side="bottom" 
                 className="h-[80vh]"
                 style={{ 
-                  background: 'var(--raio-bg-secondary)',
-                  borderColor: 'var(--raio-border-default)'
+                  background: 'var(--rayo-sand-50)',
+                  borderColor: 'var(--rayo-sand-300)'
                 }}
               >
                 <SheetHeader>
-                  <SheetTitle style={{ color: 'var(--raio-text-primary)' }}>
+                  <SheetTitle style={{ color: 'var(--rayo-forest-900)' }}>
                     Controles de Áudio
                   </SheetTitle>
-                  <SheetDescription style={{ color: 'var(--raio-text-tertiary)' }}>
+                  <SheetDescription style={{ color: 'var(--rayo-ink-400)' }}>
                     Ajuste a velocidade, volume e navegação do áudio
                   </SheetDescription>
                 </SheetHeader>
@@ -163,8 +163,8 @@ export function CompactAudioPlayer({ book }: CompactAudioPlayerProps) {
               className="w-10 h-10 rounded-full flex-shrink-0"
               onClick={togglePlay}
               style={{
-                background: 'var(--raio-accent-primary)',
-                color: theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF'
+                background: 'var(--rayo-terra-500)',
+                color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF'
               }}
             >
               {state.isPlaying ? (

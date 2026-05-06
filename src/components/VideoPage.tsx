@@ -119,16 +119,16 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--raio-bg-primary)' }}>
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--raio-text-secondary)' }} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--rayo-sand-100)' }}>
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--rayo-ink-700)' }} />
       </div>
     );
   }
 
   if (!currentVideo) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6" style={{ background: 'var(--raio-bg-primary)' }}>
-        <p style={{ color: 'var(--raio-text-secondary)' }}>Nenhum vídeo publicado ainda.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-6" style={{ background: 'var(--rayo-sand-100)' }}>
+        <p style={{ color: 'var(--rayo-ink-700)' }}>Nenhum vídeo publicado ainda.</p>
         <Button variant="outline" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
         </Button>
@@ -139,13 +139,13 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
   const relatedVideos = videos.filter((v) => v.id !== currentVideo.id);
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--raio-bg-primary)' }}>
+    <div className="min-h-screen" style={{ background: 'var(--rayo-sand-100)' }}>
       <div
         className="sticky top-0 z-50 backdrop-blur-sm px-4 py-3"
         style={{
-          background: 'var(--raio-bg-primary)',
+          background: 'var(--rayo-sand-100)',
           opacity: 0.95,
-          borderBottom: '1px solid var(--raio-border-default)'
+          borderBottom: '1px solid var(--rayo-sand-300)'
         }}
       >
         <div className="flex items-center gap-3">
@@ -153,11 +153,11 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
             variant="ghost"
             size="icon"
             onClick={onBack}
-            style={{ color: 'var(--raio-text-primary)' }}
+            style={{ color: 'var(--rayo-forest-900)' }}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-lg truncate flex-1" style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}>
+          <h1 className="text-lg truncate flex-1" style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
             {currentVideo.title}
           </h1>
         </div>
@@ -192,12 +192,12 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
 
           <div className="mt-4 space-y-4">
             <div>
-              <h1 className="text-xl leading-tight mb-2" style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}>
+              <h1 className="text-xl leading-tight mb-2" style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}>
                 {currentVideo.title}
               </h1>
 
               <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--raio-text-tertiary)' }}>
+                <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--rayo-ink-400)' }}>
                   <div className="flex items-center gap-1">
                     <Eye className="w-4 h-4" />
                     <span>{currentVideo.views} visualizações</span>
@@ -217,12 +217,12 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
               </div>
             </div>
 
-            <Card style={{ background: 'var(--raio-bg-secondary)', borderColor: 'var(--raio-border-default)' }}>
+            <Card style={{ background: 'var(--rayo-sand-50)', borderColor: 'var(--rayo-sand-300)' }}>
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ background: 'linear-gradient(135deg, var(--raio-accent-primary) 0%, var(--raio-accent-hover) 100%)' }}
+                    style={{ background: 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)' }}
                   >
                     <span className="text-white text-sm" style={{ fontWeight: 700 }}>R</span>
                   </div>
@@ -230,10 +230,10 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}>{currentVideo.channel}</h3>
-                        <p className="text-sm" style={{ color: 'var(--raio-text-tertiary)' }}>{currentVideo.subscribers} inscritos</p>
+                        <h3 style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>{currentVideo.channel}</h3>
+                        <p className="text-sm" style={{ color: 'var(--rayo-ink-400)' }}>{currentVideo.subscribers} inscritos</p>
                       </div>
-                      <Button className="transition-all" style={{ background: 'var(--raio-accent-primary)', color: '#FFFFFF' }}>
+                      <Button className="transition-all" style={{ background: 'var(--rayo-terra-500)', color: '#FFFFFF' }}>
                         <Plus className="w-4 h-4 mr-2" />
                         Inscrever-se
                       </Button>
@@ -263,7 +263,7 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
 
         {relatedVideos.length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-lg" style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}>
+            <h2 className="text-lg" style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
               Vídeos relacionados
             </h2>
 
@@ -273,7 +273,7 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
                   key={video.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
                   onClick={() => handleVideoClick(video)}
-                  style={{ background: 'var(--raio-bg-secondary)', borderColor: 'var(--raio-border-default)' }}
+                  style={{ background: 'var(--rayo-sand-50)', borderColor: 'var(--rayo-sand-300)' }}
                 >
                   <CardContent className="p-3">
                     <div className="flex gap-3">
@@ -285,11 +285,11 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-sm leading-tight line-clamp-2 mb-1" style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}>
+                        <h3 className="text-sm leading-tight line-clamp-2 mb-1" style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
                           {video.title}
                         </h3>
-                        <p className="text-xs mb-2" style={{ color: 'var(--raio-text-tertiary)' }}>{video.channel}</p>
-                        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--raio-text-tertiary)' }}>
+                        <p className="text-xs mb-2" style={{ color: 'var(--rayo-ink-400)' }}>{video.channel}</p>
+                        <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--rayo-ink-400)' }}>
                           <span>{video.views} visualizações</span>
                           <span>•</span>
                           <span>{video.uploadDate}</span>
@@ -297,7 +297,7 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
                         <Badge
                           variant="outline"
                           className="mt-2 text-xs"
-                          style={{ borderColor: 'var(--raio-border-default)', color: 'var(--raio-text-secondary)' }}
+                          style={{ borderColor: 'var(--rayo-sand-300)', color: 'var(--rayo-ink-700)' }}
                         >
                           {video.category}
                         </Badge>

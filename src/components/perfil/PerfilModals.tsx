@@ -122,7 +122,7 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
             />
             <p
               className="text-xs text-right"
-              style={{ color: bioOver ? "rgb(220,38,38)" : "var(--raio-text-tertiary)" }}
+              style={{ color: bioOver ? "rgb(220,38,38)" : "var(--rayo-ink-400)" }}
             >
               {bioLength}/280
             </p>
@@ -141,10 +141,10 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
                     className="px-3 py-1.5 rounded-full text-sm transition-colors"
                     style={{
                       background: active
-                        ? "var(--raio-accent-primary)"
-                        : "var(--raio-bg-tertiary)",
-                      color: active ? "#fff" : "var(--raio-text-primary)",
-                      border: `1px solid ${active ? "var(--raio-accent-primary)" : "var(--raio-border-default)"}`,
+                        ? "var(--rayo-terra-500)"
+                        : "var(--rayo-sand-300)",
+                      color: active ? "#fff" : "var(--rayo-forest-900)",
+                      border: `1px solid ${active ? "var(--rayo-terra-500)" : "var(--rayo-sand-300)"}`,
                     }}
                   >
                     <span className="mr-1">{opt.emoji}</span>
@@ -173,10 +173,10 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
                     className="px-3 py-1.5 rounded-full text-xs transition-colors"
                     style={{
                       background: active
-                        ? "var(--raio-accent-primary)"
-                        : "var(--raio-bg-tertiary)",
-                      color: active ? "#fff" : "var(--raio-text-secondary)",
-                      border: `1px solid ${active ? "var(--raio-accent-primary)" : "var(--raio-border-default)"}`,
+                        ? "var(--rayo-terra-500)"
+                        : "var(--rayo-sand-300)",
+                      color: active ? "#fff" : "var(--rayo-ink-700)",
+                      border: `1px solid ${active ? "var(--rayo-terra-500)" : "var(--rayo-sand-300)"}`,
                     }}
                   >
                     {opt.label}
@@ -351,16 +351,16 @@ export function LanguageModal({ open, onOpenChange, current, onSelect }: Languag
                 }}
                 className="w-full flex items-center justify-between p-3 rounded-lg transition-colors text-left"
                 style={{
-                  background: active ? "var(--raio-bg-tertiary)" : "transparent",
-                  border: `1px solid ${active ? "var(--raio-accent-primary)" : "var(--raio-border-default)"}`,
+                  background: active ? "var(--rayo-sand-300)" : "transparent",
+                  border: `1px solid ${active ? "var(--rayo-terra-500)" : "var(--rayo-sand-300)"}`,
                 }}
               >
                 <div>
-                  <p style={{ color: "var(--raio-text-primary)", fontWeight: 500 }}>
+                  <p style={{ color: "var(--rayo-forest-900)", fontWeight: 500 }}>
                     {opt.label}
                   </p>
                   {opt.note && (
-                    <p className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+                    <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
                       {opt.note}
                     </p>
                   )}
@@ -368,7 +368,7 @@ export function LanguageModal({ open, onOpenChange, current, onSelect }: Languag
                 {active && (
                   <span
                     className="text-xs"
-                    style={{ color: "var(--raio-accent-primary)", fontWeight: 600 }}
+                    style={{ color: "var(--rayo-terra-500)", fontWeight: 600 }}
                   >
                     selecionado
                   </span>

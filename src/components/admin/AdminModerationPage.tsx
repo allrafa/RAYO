@@ -109,7 +109,7 @@ function PostsList({ status }: { status: Status }) {
 
   if (loading) {
     return (
-      <div className="text-center py-8" style={{ color: "var(--raio-text-tertiary)" }}>
+      <div className="text-center py-8" style={{ color: "var(--rayo-ink-400)" }}>
         Carregando posts...
       </div>
     );
@@ -118,7 +118,7 @@ function PostsList({ status }: { status: Status }) {
     return (
       <div
         className="p-4 rounded-lg"
-        style={{ background: "var(--raio-error-subtle)", color: "var(--raio-error)" }}
+        style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-700)" }}
       >
         {errorMsg}
       </div>
@@ -126,7 +126,7 @@ function PostsList({ status }: { status: Status }) {
   }
   if (items.length === 0) {
     return (
-      <div className="text-center py-8" style={{ color: "var(--raio-text-tertiary)" }}>
+      <div className="text-center py-8" style={{ color: "var(--rayo-ink-400)" }}>
         Nenhum post {status === "hidden" ? "oculto" : status === "visible" ? "visível" : ""} encontrado.
       </div>
     );
@@ -138,8 +138,8 @@ function PostsList({ status }: { status: Status }) {
           key={post.id}
           className="rounded-xl border p-4"
           style={{
-            background: "var(--raio-bg-secondary)",
-            borderColor: "var(--raio-border-default)",
+            background: "var(--rayo-sand-50)",
+            borderColor: "var(--rayo-sand-300)",
           }}
         >
           <div className="flex items-start justify-between gap-4 mb-2">
@@ -147,27 +147,27 @@ function PostsList({ status }: { status: Status }) {
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <Badge variant="outline">{post.forum_name}</Badge>
                 <StatusBadge hidden={post.is_hidden} />
-                <span className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+                <span className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
                   {formatDate(post.created_at)}
                 </span>
               </div>
               {post.title && (
                 <h4
                   className="text-base"
-                  style={{ color: "var(--raio-text-primary)", fontWeight: 600 }}
+                  style={{ color: "var(--rayo-forest-900)", fontWeight: 600 }}
                 >
                   {post.title}
                 </h4>
               )}
               <p
                 className="text-sm mt-1 line-clamp-3"
-                style={{ color: "var(--raio-text-secondary)" }}
+                style={{ color: "var(--rayo-ink-700)" }}
               >
                 {post.content}
               </p>
               <div
                 className="mt-2 flex items-center gap-3 text-xs"
-                style={{ color: "var(--raio-text-tertiary)" }}
+                style={{ color: "var(--rayo-ink-400)" }}
               >
                 <span>por {post.author_name}</span>
                 <span>· {post.like_count} curtidas</span>
@@ -238,7 +238,7 @@ function CommentsList({ status }: { status: Status }) {
 
   if (loading) {
     return (
-      <div className="text-center py-8" style={{ color: "var(--raio-text-tertiary)" }}>
+      <div className="text-center py-8" style={{ color: "var(--rayo-ink-400)" }}>
         Carregando comentários...
       </div>
     );
@@ -247,7 +247,7 @@ function CommentsList({ status }: { status: Status }) {
     return (
       <div
         className="p-4 rounded-lg"
-        style={{ background: "var(--raio-error-subtle)", color: "var(--raio-error)" }}
+        style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-700)" }}
       >
         {errorMsg}
       </div>
@@ -255,7 +255,7 @@ function CommentsList({ status }: { status: Status }) {
   }
   if (items.length === 0) {
     return (
-      <div className="text-center py-8" style={{ color: "var(--raio-text-tertiary)" }}>
+      <div className="text-center py-8" style={{ color: "var(--rayo-ink-400)" }}>
         Nenhum comentário {status === "hidden" ? "oculto" : status === "visible" ? "visível" : ""} encontrado.
       </div>
     );
@@ -267,8 +267,8 @@ function CommentsList({ status }: { status: Status }) {
           key={c.id}
           className="rounded-xl border p-4"
           style={{
-            background: "var(--raio-bg-secondary)",
-            borderColor: "var(--raio-border-default)",
+            background: "var(--rayo-sand-50)",
+            borderColor: "var(--rayo-sand-300)",
           }}
         >
           <div className="flex items-start justify-between gap-4">
@@ -276,20 +276,20 @@ function CommentsList({ status }: { status: Status }) {
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <StatusBadge hidden={c.is_hidden} />
                 {c.post_title && (
-                  <span className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+                  <span className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
                     em "{c.post_title}"
                   </span>
                 )}
-                <span className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+                <span className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
                   · {formatDate(c.created_at)}
                 </span>
               </div>
-              <p className="text-sm" style={{ color: "var(--raio-text-primary)" }}>
+              <p className="text-sm" style={{ color: "var(--rayo-forest-900)" }}>
                 {c.content}
               </p>
               <div
                 className="mt-2 text-xs"
-                style={{ color: "var(--raio-text-tertiary)" }}
+                style={{ color: "var(--rayo-ink-400)" }}
               >
                 por {c.author_name} · {c.like_count} curtidas
               </div>
@@ -325,18 +325,18 @@ export function AdminModerationPage() {
       <div>
         <h2
           className="text-2xl mb-1"
-          style={{ color: "var(--raio-text-primary)", fontWeight: 700 }}
+          style={{ color: "var(--rayo-forest-900)", fontWeight: 700 }}
         >
           Moderação da Comunidade
         </h2>
-        <p className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
+        <p className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
           Oculte conteúdos inadequados sem excluí-los em definitivo. Itens ocultos
           desaparecem do feed mas podem ser restaurados a qualquer momento.
         </p>
       </div>
 
       <div className="flex items-center gap-3">
-        <span className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
+        <span className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
           Filtro:
         </span>
         <Select value={status} onValueChange={(v) => setStatus(v as Status)}>

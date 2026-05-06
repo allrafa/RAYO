@@ -28,7 +28,7 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
       className="fixed inset-0 flex items-center justify-center overflow-hidden"
       style={{
         background:
-          "radial-gradient(ellipse 80% 60% at 50% 35%, var(--raio-bg-secondary) 0%, var(--raio-bg-primary) 55%, var(--raio-bg-warm-cream) 100%)",
+          "radial-gradient(ellipse 80% 60% at 50% 35%, var(--rayo-sand-50) 0%, var(--rayo-sand-100) 55%, var(--raio-bg-warm-cream) 100%)",
       }}
       initial={{ opacity: 1 }}
       animate={{ opacity: isExiting ? 0 : 1 }}
@@ -49,14 +49,14 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
         animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : -8 }}
         transition={{ duration: 0.8, delay: 0.3 }}
       >
-        <span className="block w-8 h-px bg-[var(--raio-text-primary)]/20" />
+        <span className="block w-8 h-px bg-[var(--rayo-forest-900)]/20" />
         <span
           className="text-[10px] tracking-[0.32em] uppercase"
-          style={{ color: "var(--raio-text-secondary)", fontWeight: 500 }}
+          style={{ color: "var(--rayo-ink-700)", fontWeight: 500 }}
         >
           RAYO · Família
         </span>
-        <span className="block w-8 h-px bg-[var(--raio-text-primary)]/20" />
+        <span className="block w-8 h-px bg-[var(--rayo-forest-900)]/20" />
       </motion.div>
 
       <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-[520px] px-8">
@@ -91,7 +91,7 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
               }}
             />
             <motion.div
-              className="absolute inset-0 rounded-full border border-[var(--raio-accent-primary)]/25"
+              className="absolute inset-0 rounded-full border border-[var(--rayo-terra-500)]/25"
               animate={{ scale: [1, 1.7, 1.7], opacity: [0.5, 0, 0] }}
               transition={{ duration: 3.2, repeat: Infinity, ease: "easeOut" }}
             />
@@ -113,19 +113,19 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
             style={{
               fontSize: "clamp(56px, 9vw, 84px)",
               lineHeight: 0.95,
-              color: "var(--raio-text-primary)",
+              color: "var(--rayo-forest-900)",
               letterSpacing: "-0.025em",
               fontWeight: 400,
             }}
           >
-            Bem-<span style={{ fontStyle: "italic", color: "var(--raio-accent-hover)" }}>vindo</span>
+            Bem-<span style={{ fontStyle: "italic", color: "var(--rayo-terra-700)" }}>vindo</span>
           </h1>
         </motion.div>
 
         {/* Subtitle */}
         <motion.p
           className="text-center text-[15px] leading-relaxed max-w-[380px] mx-auto mb-12"
-          style={{ color: "var(--raio-text-strong)", fontWeight: 400, lineHeight: 1.65 }}
+          style={{ color: "var(--rayo-forest-900)", fontWeight: 400, lineHeight: 1.65 }}
           initial={{ opacity: 0, y: 10 }}
           animate={{
             opacity: isVisible ? 1 : 0,
@@ -151,8 +151,8 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
             onClick={handleStart}
             className="relative w-full group overflow-hidden"
             style={{
-              background: "var(--raio-text-primary)",
-              color: "var(--raio-text-inverse)",
+              background: "var(--rayo-forest-900)",
+              color: "var(--rayo-sand-50)",
               border: "none",
               borderRadius: "14px",
               padding: "18px 32px",
@@ -161,12 +161,12 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
               letterSpacing: "0.02em",
               cursor: "pointer",
               boxShadow:
-                "0 1px 2px var(--raio-overlay-dark-medium), 0 8px 24px -10px var(--raio-accent-glow-medium)",
+                "0 1px 2px rgba(12,59,46,0.40), 0 8px 24px -10px rgba(200,85,61,0.30)",
             }}
             whileHover={{
               scale: 1.015,
               boxShadow:
-                "0 4px 12px var(--raio-overlay-dark-strong), 0 12px 32px -10px var(--raio-accent-glow-strong)",
+                "0 4px 12px rgba(12,59,46,0.65), 0 12px 32px -10px var(--raio-accent-glow-strong)",
             }}
             whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.43, 0.13, 0.23, 0.96] }}
@@ -192,13 +192,13 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
               <button
                 type="button"
                 onClick={onSkipToLogin}
-                className="text-[13px] tracking-wide transition-colors hover:text-[var(--raio-text-primary)]"
-                style={{ color: "var(--raio-text-strong)", fontWeight: 500 }}
+                className="text-[13px] tracking-wide transition-colors hover:text-[var(--rayo-forest-900)]"
+                style={{ color: "var(--rayo-forest-900)", fontWeight: 500 }}
               >
                 Já tenho conta —{" "}
                 <span
                   className="underline underline-offset-4 decoration-[0.5px]"
-                  style={{ color: "var(--raio-text-primary)" }}
+                  style={{ color: "var(--rayo-forest-900)" }}
                 >
                   Entrar
                 </span>
@@ -208,14 +208,14 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
 
           <p
             className="mt-6 text-center text-[11px] leading-relaxed max-w-[320px] mx-auto"
-            style={{ color: "var(--raio-text-secondary)", fontWeight: 400 }}
+            style={{ color: "var(--rayo-ink-700)", fontWeight: 400 }}
           >
             Ao continuar, você concorda com nossos{" "}
             <a
               href="#termos"
               onClick={(e) => e.preventDefault()}
-              className="underline decoration-[0.5px] underline-offset-2 hover:text-[var(--raio-text-primary)] transition-colors"
-              style={{ color: "var(--raio-text-strong)" }}
+              className="underline decoration-[0.5px] underline-offset-2 hover:text-[var(--rayo-forest-900)] transition-colors"
+              style={{ color: "var(--rayo-forest-900)" }}
             >
               Termos de Uso
             </a>{" "}
@@ -223,8 +223,8 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
             <a
               href="#privacidade"
               onClick={(e) => e.preventDefault()}
-              className="underline decoration-[0.5px] underline-offset-2 hover:text-[var(--raio-text-primary)] transition-colors"
-              style={{ color: "var(--raio-text-strong)" }}
+              className="underline decoration-[0.5px] underline-offset-2 hover:text-[var(--rayo-forest-900)] transition-colors"
+              style={{ color: "var(--rayo-forest-900)" }}
             >
               Política de Privacidade
             </a>
@@ -240,14 +240,14 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
         animate={{ opacity: isVisible ? 1 : 0 }}
         transition={{ duration: 1, delay: 1.2 }}
       >
-        <span className="block w-12 h-px bg-[var(--raio-text-primary)]/15" />
+        <span className="block w-12 h-px bg-[var(--rayo-forest-900)]/15" />
         <span
           className="font-display-serif italic text-[18px]"
-          style={{ color: "var(--raio-accent-hover)", lineHeight: 1 }}
+          style={{ color: "var(--rayo-terra-700)", lineHeight: 1 }}
         >
           ·
         </span>
-        <span className="block w-12 h-px bg-[var(--raio-text-primary)]/15" />
+        <span className="block w-12 h-px bg-[var(--rayo-forest-900)]/15" />
       </motion.div>
 
       {/* Floating particles */}
@@ -259,7 +259,7 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
             style={{
               width: Math.random() * 3 + 1,
               height: Math.random() * 3 + 1,
-              background: "linear-gradient(135deg, var(--raio-accent-bright), var(--raio-accent-hover))",
+              background: "linear-gradient(135deg, var(--raio-accent-bright), var(--rayo-terra-700))",
               left: `${15 + Math.random() * 70}%`,
               top: `${15 + Math.random() * 70}%`,
             }}

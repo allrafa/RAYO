@@ -33,7 +33,7 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
   return (
     <div 
       className="min-h-screen pb-24 lg:pb-8"
-      style={{ background: 'var(--raio-bg-primary)' }}
+      style={{ background: 'var(--rayo-sand-100)' }}
     >
       {/* Hero Section com Gradient */}
       <div className="relative">
@@ -42,8 +42,8 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
           className="absolute inset-0 h-[60vh] lg:h-[70vh]"
           style={{
             background: theme === 'dark'
-              ? 'linear-gradient(180deg, rgba(0,0,0,0.8) 0%, var(--raio-bg-primary) 100%)'
-              : 'linear-gradient(180deg, rgba(249,250,251,0.95) 0%, var(--raio-bg-primary) 100%)'
+              ? 'linear-gradient(180deg, rgba(0,0,0,0.8) 0%, var(--rayo-sand-100) 100%)'
+              : 'linear-gradient(180deg, rgba(249,250,251,0.95) 0%, var(--rayo-sand-100) 100%)'
           }}
         />
         
@@ -67,7 +67,7 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
             onClick={onBack}
             className="mb-6 -ml-2"
             style={{ 
-              color: 'var(--raio-text-secondary)',
+              color: 'var(--rayo-ink-700)',
               background: theme === 'dark' 
                 ? 'rgba(0, 0, 0, 0.3)'
                 : 'rgba(255, 255, 255, 0.5)',
@@ -102,8 +102,8 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
                   <Badge 
                     className="absolute top-4 right-4 text-xs shadow-lg"
                     style={{
-                      background: 'var(--raio-accent-primary)',
-                      color: theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF',
+                      background: 'var(--rayo-terra-500)',
+                      color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF',
                     }}
                   >
                     Premium
@@ -120,7 +120,7 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
                   className="text-[32px] lg:text-[48px] mb-2"
                   style={{ 
                     fontWeight: 700,
-                    color: 'var(--raio-text-primary)',
+                    color: 'var(--rayo-forest-900)',
                     lineHeight: 1.1
                   }}
                 >
@@ -128,17 +128,17 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
                 </h1>
                 <p 
                   className="text-[18px] lg:text-[20px]"
-                  style={{ color: 'var(--raio-text-secondary)' }}
+                  style={{ color: 'var(--rayo-ink-700)' }}
                 >
                   por {book.author}
                 </p>
               </div>
 
               {/* Stats */}
-              <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: 'var(--raio-text-tertiary)' }}>
+              <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: 'var(--rayo-ink-400)' }}>
                 <div className="flex items-center gap-1">
-                  <Star className="w-4 h-4 fill-current" style={{ color: 'var(--raio-accent-primary)' }} />
-                  <span style={{ color: 'var(--raio-text-primary)' }}>{book.averageRating.toFixed(1)}</span>
+                  <Star className="w-4 h-4 fill-current" style={{ color: 'var(--rayo-terra-500)' }} />
+                  <span style={{ color: 'var(--rayo-forest-900)' }}>{book.averageRating.toFixed(1)}</span>
                 </div>
                 <span>•</span>
                 <div className="flex items-center gap-1">
@@ -164,8 +164,8 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
                     key={index}
                     variant="outline"
                     style={{
-                      borderColor: 'var(--raio-border-default)',
-                      color: 'var(--raio-text-secondary)'
+                      borderColor: 'var(--rayo-sand-300)',
+                      color: 'var(--rayo-ink-700)'
                     }}
                   >
                     {cat}
@@ -177,15 +177,15 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
               {book.isEnrolled && book.currentPage > 0 && (
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm" style={{ color: 'var(--raio-text-secondary)' }}>
+                    <span className="text-sm" style={{ color: 'var(--rayo-ink-700)' }}>
                       Seu progresso
                     </span>
-                    <span className="text-sm" style={{ color: 'var(--raio-accent-primary)', fontWeight: 600 }}>
+                    <span className="text-sm" style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}>
                       {book.progress}%
                     </span>
                   </div>
                   <Progress value={book.progress} className="h-2 mb-1" />
-                  <p className="text-xs" style={{ color: 'var(--raio-text-tertiary)' }}>
+                  <p className="text-xs" style={{ color: 'var(--rayo-ink-400)' }}>
                     Página {book.currentPage} de {book.pages}
                   </p>
                 </div>
@@ -197,17 +197,17 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
                   size="lg"
                   className="gap-2"
                   style={{
-                    background: 'var(--raio-accent-primary)',
-                    color: theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF',
+                    background: 'var(--rayo-terra-500)',
+                    color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF',
                     paddingLeft: '2rem',
                     paddingRight: '2rem'
                   }}
                   onClick={onStartReading}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--raio-accent-hover)';
+                    e.currentTarget.style.background = 'var(--rayo-terra-700)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--raio-accent-primary)';
+                    e.currentTarget.style.background = 'var(--rayo-terra-500)';
                   }}
                 >
                   <Play className="w-5 h-5" />
@@ -222,8 +222,8 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
                     toast.success(book.isFavorite ? 'Removido dos favoritos' : 'Adicionado aos favoritos');
                   }}
                   style={{
-                    borderColor: book.isFavorite ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)',
-                    color: book.isFavorite ? 'var(--raio-accent-primary)' : 'var(--raio-text-secondary)'
+                    borderColor: book.isFavorite ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)',
+                    color: book.isFavorite ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-700)'
                   }}
                 >
                   <Heart className={`w-5 h-5 ${book.isFavorite ? 'fill-current' : ''}`} />
@@ -254,17 +254,17 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
         {/* Summary */}
         {content && (
-          <Card style={{ background: 'var(--raio-bg-secondary)', borderColor: 'var(--raio-border-default)' }}>
+          <Card style={{ background: 'var(--rayo-sand-50)', borderColor: 'var(--rayo-sand-300)' }}>
             <CardContent className="p-6">
               <h2 
                 className="text-[24px] mb-4" 
-                style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}
+                style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
               >
                 Sobre este livro
               </h2>
               <p 
                 className="text-[16px] leading-relaxed"
-                style={{ color: 'var(--raio-text-secondary)' }}
+                style={{ color: 'var(--rayo-ink-700)' }}
               >
                 {content.summary}
               </p>
@@ -274,11 +274,11 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
 
         {/* Key Takeaways */}
         {content && content.keyTakeaways.length > 0 && (
-          <Card style={{ background: 'var(--raio-bg-secondary)', borderColor: 'var(--raio-border-default)' }}>
+          <Card style={{ background: 'var(--rayo-sand-50)', borderColor: 'var(--rayo-sand-300)' }}>
             <CardContent className="p-6">
               <h2 
                 className="text-[24px] mb-4" 
-                style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}
+                style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
               >
                 Principais aprendizados
               </h2>
@@ -287,13 +287,13 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
                   <li 
                     key={index}
                     className="flex items-start gap-3 text-[16px]"
-                    style={{ color: 'var(--raio-text-secondary)' }}
+                    style={{ color: 'var(--rayo-ink-700)' }}
                   >
                     <span 
                       className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs"
                       style={{ 
-                        background: 'var(--raio-accent-light)',
-                        color: 'var(--raio-accent-primary)',
+                        background: 'var(--rayo-terra-100)',
+                        color: 'var(--rayo-terra-500)',
                         fontWeight: 600
                       }}
                     >
@@ -308,40 +308,40 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
         )}
 
         {/* Book Details */}
-        <Card style={{ background: 'var(--raio-bg-secondary)', borderColor: 'var(--raio-border-default)' }}>
+        <Card style={{ background: 'var(--rayo-sand-50)', borderColor: 'var(--rayo-sand-300)' }}>
           <CardContent className="p-6">
             <h2 
               className="text-[24px] mb-4" 
-              style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}
+              style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
             >
               Detalhes
             </h2>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm mb-1" style={{ color: 'var(--raio-text-tertiary)' }}>Autor</p>
-                <p style={{ color: 'var(--raio-text-primary)' }}>{book.author}</p>
+                <p className="text-sm mb-1" style={{ color: 'var(--rayo-ink-400)' }}>Autor</p>
+                <p style={{ color: 'var(--rayo-forest-900)' }}>{book.author}</p>
               </div>
               <div>
-                <p className="text-sm mb-1" style={{ color: 'var(--raio-text-tertiary)' }}>Editora</p>
-                <p style={{ color: 'var(--raio-text-primary)' }}>{book.publisher}</p>
+                <p className="text-sm mb-1" style={{ color: 'var(--rayo-ink-400)' }}>Editora</p>
+                <p style={{ color: 'var(--rayo-forest-900)' }}>{book.publisher}</p>
               </div>
               <div>
-                <p className="text-sm mb-1" style={{ color: 'var(--raio-text-tertiary)' }}>Ano</p>
-                <p style={{ color: 'var(--raio-text-primary)' }}>{book.publishedYear}</p>
+                <p className="text-sm mb-1" style={{ color: 'var(--rayo-ink-400)' }}>Ano</p>
+                <p style={{ color: 'var(--rayo-forest-900)' }}>{book.publishedYear}</p>
               </div>
               <div>
-                <p className="text-sm mb-1" style={{ color: 'var(--raio-text-tertiary)' }}>Idioma</p>
-                <p style={{ color: 'var(--raio-text-primary)' }}>
+                <p className="text-sm mb-1" style={{ color: 'var(--rayo-ink-400)' }}>Idioma</p>
+                <p style={{ color: 'var(--rayo-forest-900)' }}>
                   {book.language === 'pt-BR' ? 'Português' : book.language}
                 </p>
               </div>
               <div>
-                <p className="text-sm mb-1" style={{ color: 'var(--raio-text-tertiary)' }}>Páginas</p>
-                <p style={{ color: 'var(--raio-text-primary)' }}>{book.pages}</p>
+                <p className="text-sm mb-1" style={{ color: 'var(--rayo-ink-400)' }}>Páginas</p>
+                <p style={{ color: 'var(--rayo-forest-900)' }}>{book.pages}</p>
               </div>
               <div>
-                <p className="text-sm mb-1" style={{ color: 'var(--raio-text-tertiary)' }}>Formato</p>
-                <p style={{ color: 'var(--raio-text-primary)' }}>
+                <p className="text-sm mb-1" style={{ color: 'var(--rayo-ink-400)' }}>Formato</p>
+                <p style={{ color: 'var(--rayo-forest-900)' }}>
                   {book.format.toUpperCase()}
                 </p>
               </div>

@@ -238,8 +238,8 @@ const buttonStyle = {
 ### 2. Usar CSS Variables (globals.css)
 ```css
 .my-component {
-  background: var(--raio-bg-primary);
-  color: var(--raio-text-primary);
+  background: var(--rayo-sand-100);
+  color: var(--rayo-forest-900);
   border: 1px solid var(--raio-border);
   border-radius: var(--raio-radius-md);
 }

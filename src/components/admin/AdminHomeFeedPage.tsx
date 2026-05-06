@@ -176,10 +176,10 @@ export function AdminHomeFeedPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl mb-1" style={{ fontWeight: 700, color: "var(--raio-text-primary)" }}>
+          <h1 className="text-2xl mb-1" style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }}>
             Home / Destaques
           </h1>
-          <p className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
+          <p className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
             {items.length} card{items.length === 1 ? "" : "s"} em {SECTION_ORDER.length} seções da página inicial.
           </p>
         </div>
@@ -196,7 +196,7 @@ export function AdminHomeFeedPage() {
                 defaultSection: sectionFilter === "all" ? "made_for_you" : sectionFilter,
               })
             }
-            style={{ background: "var(--raio-accent-primary)", color: "#fff" }}
+            style={{ background: "var(--rayo-terra-500)", color: "#fff" }}
           >
             <Plus className="w-4 h-4 mr-2" /> Novo card
           </Button>
@@ -213,9 +213,9 @@ export function AdminHomeFeedPage() {
               onClick={() => setSectionFilter(s)}
               className="px-3 py-1.5 text-sm rounded-full border transition-colors"
               style={{
-                background: active ? "var(--raio-accent-primary)" : "transparent",
-                color: active ? "#fff" : "var(--raio-text-secondary)",
-                borderColor: active ? "var(--raio-accent-primary)" : "var(--raio-border-default)",
+                background: active ? "var(--rayo-terra-500)" : "transparent",
+                color: active ? "#fff" : "var(--rayo-ink-700)",
+                borderColor: active ? "var(--rayo-terra-500)" : "var(--rayo-sand-300)",
               }}
             >
               {label}
@@ -225,7 +225,7 @@ export function AdminHomeFeedPage() {
       </div>
 
       {loading ? (
-        <div className="p-12 text-center text-sm" style={{ color: "var(--raio-text-tertiary)" }}>
+        <div className="p-12 text-center text-sm" style={{ color: "var(--rayo-ink-400)" }}>
           Carregando...
         </div>
       ) : (
@@ -238,10 +238,10 @@ export function AdminHomeFeedPage() {
               <section key={section}>
                 <div className="flex items-end justify-between mb-2">
                   <div>
-                    <h2 className="text-lg" style={{ fontWeight: 600, color: "var(--raio-text-primary)" }}>
+                    <h2 className="text-lg" style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}>
                       {SECTION_LABELS[section]}
                     </h2>
-                    <p className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+                    <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
                       {SECTION_HINTS[section]}
                     </p>
                   </div>
@@ -258,16 +258,16 @@ export function AdminHomeFeedPage() {
                 <div
                   className="rounded-lg border overflow-hidden"
                   style={{
-                    background: "var(--raio-bg-secondary)",
-                    borderColor: "var(--raio-border-default)",
+                    background: "var(--rayo-sand-50)",
+                    borderColor: "var(--rayo-sand-300)",
                   }}
                 >
                   {list.length === 0 ? (
-                    <div className="p-8 text-center text-sm" style={{ color: "var(--raio-text-tertiary)" }}>
+                    <div className="p-8 text-center text-sm" style={{ color: "var(--rayo-ink-400)" }}>
                       Nenhum card nesta seção. Clique em "Adicionar" para criar o primeiro.
                     </div>
                   ) : (
-                    <div className="divide-y" style={{ borderColor: "var(--raio-border-default)" }}>
+                    <div className="divide-y" style={{ borderColor: "var(--rayo-sand-300)" }}>
                       {list.map((item, idx) => (
                         <div
                           key={item.id}
@@ -276,38 +276,38 @@ export function AdminHomeFeedPage() {
                         >
                           <div
                             className="w-16 h-16 rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center text-xs"
-                            style={{ background: "var(--raio-bg-tertiary)" }}
+                            style={{ background: "var(--rayo-sand-300)" }}
                           >
                             {item.image_url ? (
                               <img src={item.image_url} alt="" className="w-full h-full object-cover" />
                             ) : item.gradient ? (
                               <div className={`w-full h-full bg-gradient-to-br ${item.gradient}`} />
                             ) : (
-                              <span style={{ color: "var(--raio-text-tertiary)" }}>—</span>
+                              <span style={{ color: "var(--rayo-ink-400)" }}>—</span>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="truncate" style={{ color: "var(--raio-text-primary)", fontWeight: 600 }}>
+                            <h3 className="truncate" style={{ color: "var(--rayo-forest-900)", fontWeight: 600 }}>
                               {item.title}
                             </h3>
                             {item.subtitle && (
-                              <p className="text-sm truncate" style={{ color: "var(--raio-text-tertiary)" }}>
+                              <p className="text-sm truncate" style={{ color: "var(--rayo-ink-400)" }}>
                                 {item.subtitle}
                               </p>
                             )}
                             <div className="flex gap-2 mt-1 flex-wrap">
                               {item.badge_text && (
-                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--raio-bg-tertiary)", color: "var(--raio-text-secondary)" }}>
+                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--rayo-sand-300)", color: "var(--rayo-ink-700)" }}>
                                   badge: {item.badge_text}
                                 </span>
                               )}
                               {item.meta_text && (
-                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--raio-bg-tertiary)", color: "var(--raio-text-secondary)" }}>
+                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--rayo-sand-300)", color: "var(--rayo-ink-700)" }}>
                                   meta: {item.meta_text}
                                 </span>
                               )}
                               {item.progress !== null && (
-                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--raio-bg-tertiary)", color: "var(--raio-text-secondary)" }}>
+                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--rayo-sand-300)", color: "var(--rayo-ink-700)" }}>
                                   progresso: {item.progress}%
                                 </span>
                               )}
@@ -463,7 +463,7 @@ function HomeFeedForm({ item, defaultSection, onClose }: HomeFeedFormProps) {
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl" style={{ fontWeight: 700, color: "var(--raio-text-primary)" }}>
+        <h1 className="text-2xl" style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }}>
           {item ? "Editar card" : "Novo card"}
         </h1>
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -478,16 +478,16 @@ function HomeFeedForm({ item, defaultSection, onClose }: HomeFeedFormProps) {
             onChange={(e) => patch("section", e.target.value as Section)}
             className="w-full px-3 py-2 rounded-md border outline-none"
             style={{
-              background: "var(--raio-bg-secondary)",
-              color: "var(--raio-text-primary)",
-              borderColor: "var(--raio-border-default)",
+              background: "var(--rayo-sand-50)",
+              color: "var(--rayo-forest-900)",
+              borderColor: "var(--rayo-sand-300)",
             }}
           >
             {SECTION_ORDER.map((s) => (
               <option key={s} value={s}>{SECTION_LABELS[s]}</option>
             ))}
           </select>
-          <p className="text-xs mt-1" style={{ color: "var(--raio-text-tertiary)" }}>
+          <p className="text-xs mt-1" style={{ color: "var(--rayo-ink-400)" }}>
             {SECTION_HINTS[(data.section as Section) ?? "made_for_you"]}
           </p>
         </Field>
@@ -536,7 +536,7 @@ function HomeFeedForm({ item, defaultSection, onClose }: HomeFeedFormProps) {
           </Field>
         </div>
 
-        <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: "var(--raio-text-secondary)" }}>
+        <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: "var(--rayo-ink-700)" }}>
           <input
             type="checkbox"
             checked={data.is_active ?? true}
@@ -546,12 +546,12 @@ function HomeFeedForm({ item, defaultSection, onClose }: HomeFeedFormProps) {
         </label>
       </div>
 
-      <div className="flex gap-2 justify-end pt-4 border-t" style={{ borderColor: "var(--raio-border-default)" }}>
+      <div className="flex gap-2 justify-end pt-4 border-t" style={{ borderColor: "var(--rayo-sand-300)" }}>
         <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>
         <Button
           onClick={() => void save()}
           disabled={saving}
-          style={{ background: "var(--raio-accent-primary)", color: "#fff" }}
+          style={{ background: "var(--rayo-terra-500)", color: "#fff" }}
         >
           {saving ? "Salvando..." : "Salvar"}
         </Button>
@@ -563,7 +563,7 @@ function HomeFeedForm({ item, defaultSection, onClose }: HomeFeedFormProps) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm mb-1" style={{ color: "var(--raio-text-secondary)" }}>
+      <label className="block text-sm mb-1" style={{ color: "var(--rayo-ink-700)" }}>
         {label}
       </label>
       {children}
@@ -589,9 +589,9 @@ function Input({
       maxLength={maxLength}
       className="w-full px-3 py-2 rounded-md border outline-none"
       style={{
-        background: "var(--raio-bg-secondary)",
-        color: "var(--raio-text-primary)",
-        borderColor: "var(--raio-border-default)",
+        background: "var(--rayo-sand-50)",
+        color: "var(--rayo-forest-900)",
+        borderColor: "var(--rayo-sand-300)",
       }}
     />
   );

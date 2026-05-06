@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { LayoutDashboard, Users as UsersIcon, ShieldAlert, ArrowLeft, LogOut, FileText, Sparkles, type LucideIcon } from "lucide-react";
-import { Button } from "../ui/button";
 import { useAuth, userHasRole } from "../AuthContext";
 import type { UserRole } from "../AuthContext";
 import { AdminOverviewPage } from "./AdminOverviewPage";
@@ -25,8 +24,7 @@ type NavItem = {
 export function AdminShell({ onExitAdmin }: AdminShellProps) {
   const { user, logout } = useAuth();
 
-  // Each section declares the minimum role required to see it. Producer gets
-  // baseline shell + Overview; Moderator adds Moderation; Admin adds Users.
+  // Each section declares the minimum role required to see it.
   const navItems: NavItem[] = [
     { id: "overview", label: "Visão geral", icon: LayoutDashboard, minRole: "producer" },
     { id: "cms", label: "Conteúdo", icon: FileText, minRole: "producer" },
@@ -46,22 +44,15 @@ export function AdminShell({ onExitAdmin }: AdminShellProps) {
   );
 
   const renderSection = () => {
-    // Defensive: if the user's role no longer permits the current section
-    // (e.g. demoted while on the page), fall back to the first visible one.
     const current = navItems.find((i) => i.id === section);
     const renderById = (id: AdminSection) => {
       switch (id) {
-        case "users":
-          return <AdminUsersPage />;
-        case "moderation":
-          return <AdminModerationPage />;
-        case "cms":
-          return <AdminCmsPage />;
-        case "home-feed":
-          return <AdminHomeFeedPage />;
+        case "users":       return <AdminUsersPage />;
+        case "moderation":  return <AdminModerationPage />;
+        case "cms":         return <AdminCmsPage />;
+        case "home-feed":   return <AdminHomeFeedPage />;
         case "overview":
-        default:
-          return <AdminOverviewPage />;
+        default:            return <AdminOverviewPage />;
       }
     };
     if (!current || !userHasRole(user, current.minRole)) {
@@ -72,43 +63,29 @@ export function AdminShell({ onExitAdmin }: AdminShellProps) {
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col lg:flex-row"
-      style={{ background: "var(--raio-bg-primary)" }}
-    >
-      <aside
-        className="lg:w-64 lg:min-h-screen flex flex-col border-b lg:border-b-0 lg:border-r"
-        style={{
-          background: "var(--raio-bg-secondary)",
-          borderColor: "var(--raio-border-default)",
-        }}
-      >
-        <div className="p-6 border-b" style={{ borderColor: "var(--raio-border-default)" }}>
-          <div className="flex items-center gap-2 mb-1">
-            <ShieldAlert className="w-5 h-5" style={{ color: "var(--raio-accent-primary)" }} />
-            <h1 className="text-lg" style={{ fontWeight: 700, color: "var(--raio-text-primary)" }}>
-              RAYO Admin
-            </h1>
+    <div className="ra-admin-shell">
+      <aside className="ra-admin-side" aria-label="Navegação Admin">
+        <div className="ra-admin-brand">
+          <div className="ra-admin-brand-title">
+            <ShieldAlert className="w-5 h-5" style={{ color: "var(--rayo-terra-500)" }} />
+            <span>RAYO Admin</span>
           </div>
-          <p className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>
+          <p className="ra-admin-brand-sub">
             {user?.name} · {user?.role}
           </p>
         </div>
 
-        <nav className="p-3 space-y-1 flex-1 overflow-x-auto lg:overflow-x-visible flex lg:flex-col gap-1 lg:gap-0">
+        <nav className="ra-admin-nav">
           {visibleItems.map((item) => {
             const Icon = item.icon;
             const isActive = section === item.id;
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => setSection(item.id)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors w-full whitespace-nowrap"
-                style={{
-                  background: isActive ? "var(--raio-bg-tertiary)" : "transparent",
-                  color: isActive ? "var(--raio-accent-primary)" : "var(--raio-text-secondary)",
-                  fontWeight: isActive ? 600 : 500,
-                }}
+                className={`ra-admin-nav-item ${isActive ? "active" : ""}`}
+                aria-current={isActive ? "page" : undefined}
               >
                 <Icon className="w-5 h-5 flex-shrink-0" />
                 <span>{item.label}</span>
@@ -117,31 +94,29 @@ export function AdminShell({ onExitAdmin }: AdminShellProps) {
           })}
         </nav>
 
-        <div
-          className="p-3 space-y-1 border-t"
-          style={{ borderColor: "var(--raio-border-default)" }}
-        >
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 h-11"
+        <div className="ra-admin-foot">
+          <button
+            type="button"
+            className="ra-admin-nav-item"
             onClick={onExitAdmin}
           >
             <ArrowLeft className="w-4 h-4" />
             Voltar para o app
-          </Button>
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 h-11 text-[var(--rayo-terra-700)] hover:bg-[var(--rayo-terra-100)] dark:hover:bg-[var(--rayo-terra-900)]/30"
+          </button>
+          <button
+            type="button"
+            className="ra-admin-nav-item"
+            style={{ color: "var(--rayo-terra-700)" }}
             onClick={() => void logout()}
           >
             <LogOut className="w-4 h-4" />
             Sair
-          </Button>
+          </button>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-auto">
-        <div className="max-w-6xl mx-auto p-4 lg:p-8">{renderSection()}</div>
+      <main className="ra-admin-main">
+        <div className="ra-admin-main-inner">{renderSection()}</div>
       </main>
     </div>
   );

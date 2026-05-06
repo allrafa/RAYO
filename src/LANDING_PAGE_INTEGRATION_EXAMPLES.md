@@ -85,34 +85,34 @@ export function PerfilPage() {
       
       {/* Card Premium - Apenas para free users */}
       {!isPremium && (
-        <Card className="border-2 border-[var(--raio-accent-primary)] bg-gradient-to-br from-[var(--raio-accent-light)] to-[var(--raio-accent-subtle)]">
+        <Card className="border-2 border-[var(--rayo-terra-500)] bg-gradient-to-br from-[var(--raio-accent-light)] to-[var(--raio-accent-subtle)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Crown className="w-5 h-5 text-[var(--raio-accent-primary)]" />
+              <Crown className="w-5 h-5 text-[var(--rayo-terra-500)]" />
               Desbloqueie Todo o Potencial
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-[var(--raio-text-secondary)] text-sm">
+            <p className="text-[var(--rayo-ink-700)] text-sm">
               Acesse 100+ cursos, conselheiro IA ilimitado, e muito mais.
             </p>
             
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-1.5 h-1.5 rounded-full bg-[var(--raio-accent-primary)]" />
-                <span className="text-[var(--raio-text-secondary)]">
+                <div className="w-1.5 h-1.5 rounded-full bg-[var(--rayo-terra-500)]" />
+                <span className="text-[var(--rayo-ink-700)]">
                   Certificados profissionais
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-1.5 h-1.5 rounded-full bg-[var(--raio-accent-primary)]" />
-                <span className="text-[var(--raio-text-secondary)]">
+                <div className="w-1.5 h-1.5 rounded-full bg-[var(--rayo-terra-500)]" />
+                <span className="text-[var(--rayo-ink-700)]">
                   Suporte prioritário
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <div className="w-1.5 h-1.5 rounded-full bg-[var(--raio-accent-primary)]" />
-                <span className="text-[var(--raio-text-secondary)]">
+                <div className="w-1.5 h-1.5 rounded-full bg-[var(--rayo-terra-500)]" />
+                <span className="text-[var(--rayo-ink-700)]">
                   Sem anúncios
                 </span>
               </div>
@@ -120,7 +120,7 @@ export function PerfilPage() {
             
             <PremiumButton onClick={open} variant="default" />
             
-            <p className="text-[var(--raio-text-tertiary)] text-xs text-center">
+            <p className="text-[var(--rayo-ink-400)] text-xs text-center">
               7 dias grátis • R$ 49/mês
             </p>
           </CardContent>
@@ -177,17 +177,17 @@ export function CourseDetailPage({ course }) {
       {/* Header do curso */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <h1 className="text-[var(--raio-text-primary)]">
+          <h1 className="text-[var(--rayo-forest-900)]">
             {course.title}
           </h1>
           {course.isPremium && (
-            <Badge className="bg-[var(--raio-accent-primary)] text-[var(--raio-text-inverse)]">
+            <Badge className="bg-[var(--rayo-terra-500)] text-[var(--raio-text-inverse)]">
               <Lock className="w-3 h-3 mr-1" />
               Premium
             </Badge>
           )}
         </div>
-        <p className="text-[var(--raio-text-secondary)]">
+        <p className="text-[var(--rayo-ink-700)]">
           {course.description}
         </p>
       </div>
@@ -264,14 +264,14 @@ export function ConselheiroPage() {
     <div className="p-4">
       {/* Warning - Perto do limite */}
       {!isPremium && messagesRemaining <= 3 && messagesRemaining > 0 && (
-        <Alert className="mb-4 border-[var(--raio-warning)]">
+        <Alert className="mb-4 border-[var(--rayo-ochre-500)]">
           <MessageCircle className="h-4 w-4" />
           <AlertTitle>Atenção</AlertTitle>
           <AlertDescription>
             Você tem {messagesRemaining} mensagem{messagesRemaining !== 1 ? 's' : ''} restante{messagesRemaining !== 1 ? 's' : ''} hoje.
             <button
               onClick={open}
-              className="text-[var(--raio-accent-primary)] hover:underline ml-1"
+              className="text-[var(--rayo-terra-500)] hover:underline ml-1"
             >
               Faça upgrade para mensagens ilimitadas
             </button>
@@ -281,8 +281,8 @@ export function ConselheiroPage() {
       
       {/* Limite atingido */}
       {!isPremium && hasReachedLimit && (
-        <Alert className="mb-4 border-[var(--raio-accent-primary)] bg-[var(--raio-accent-subtle)]">
-          <Crown className="h-4 w-4 text-[var(--raio-accent-primary)]" />
+        <Alert className="mb-4 border-[var(--rayo-terra-500)] bg-[var(--raio-accent-subtle)]">
+          <Crown className="h-4 w-4 text-[var(--rayo-terra-500)]" />
           <AlertTitle>Limite Diário Atingido</AlertTitle>
           <AlertDescription className="space-y-3">
             <p>
@@ -376,24 +376,24 @@ export function SettingsModal() {
             onClick={item.onClick}
             className={`
               w-full p-4 rounded-lg border text-left
-              hover:bg-[var(--raio-bg-tertiary)] transition-colors
-              ${item.highlight ? 'border-[var(--raio-accent-primary)] bg-[var(--raio-accent-subtle)]' : 'border-[var(--raio-border-default)]'}
+              hover:bg-[var(--rayo-sand-300)] transition-colors
+              ${item.highlight ? 'border-[var(--rayo-terra-500)] bg-[var(--raio-accent-subtle)]' : 'border-[var(--rayo-sand-300)]'}
             `}
           >
             <div className="flex items-center gap-3">
               <div className={`
                 w-10 h-10 rounded-full flex items-center justify-center
-                ${item.highlight ? 'bg-[var(--raio-accent-primary)]' : 'bg-[var(--raio-bg-tertiary)]'}
+                ${item.highlight ? 'bg-[var(--rayo-terra-500)]' : 'bg-[var(--rayo-sand-300)]'}
               `}>
                 <item.icon 
-                  className={`w-5 h-5 ${item.highlight ? 'text-[var(--raio-text-inverse)]' : 'text-[var(--raio-text-secondary)]'}`}
+                  className={`w-5 h-5 ${item.highlight ? 'text-[var(--raio-text-inverse)]' : 'text-[var(--rayo-ink-700)]'}`}
                 />
               </div>
               <div className="flex-1">
-                <div className={`${item.highlight ? 'text-[var(--raio-accent-primary)]' : 'text-[var(--raio-text-primary)]'}`}>
+                <div className={`${item.highlight ? 'text-[var(--rayo-terra-500)]' : 'text-[var(--rayo-forest-900)]'}`}>
                   {item.title}
                 </div>
-                <div className="text-[var(--raio-text-tertiary)] text-sm">
+                <div className="text-[var(--rayo-ink-400)] text-sm">
                   {item.subtitle}
                 </div>
               </div>
@@ -496,7 +496,7 @@ export function TopNavbar() {
   const isPremium = false;
   
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-[var(--raio-bg-secondary)] border-b border-[var(--raio-border-default)] z-40">
+    <header className="fixed top-0 left-0 right-0 h-16 bg-[var(--rayo-sand-50)] border-b border-[var(--rayo-sand-300)] z-40">
       <div className="flex items-center justify-between h-full px-6">
         {/* Logo */}
         <div className="flex items-center gap-2">
@@ -509,8 +509,8 @@ export function TopNavbar() {
             <Badge
               onClick={open}
               className="
-                bg-[var(--raio-accent-primary)] 
-                hover:bg-[var(--raio-accent-hover)] 
+                bg-[var(--rayo-terra-500)] 
+                hover:bg-[var(--rayo-terra-700)] 
                 text-[var(--raio-text-inverse)] 
                 cursor-pointer
                 px-3 py-1
@@ -577,7 +577,7 @@ export function BibliotecaPage() {
             />
             {book.isPremium && !isPremium && (
               <div className="absolute top-2 right-2">
-                <Badge className="bg-[var(--raio-accent-primary)] text-[var(--raio-text-inverse)]">
+                <Badge className="bg-[var(--rayo-terra-500)] text-[var(--raio-text-inverse)]">
                   <Lock className="w-3 h-3" />
                 </Badge>
               </div>

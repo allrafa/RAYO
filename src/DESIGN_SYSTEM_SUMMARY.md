@@ -115,7 +115,7 @@ Acento:     #FCD34D (amarelo dourado) ⚡ MESMO
 
 ### Opção 1: CSS Variables (Mais Fácil)
 ```tsx
-<div className="bg-[var(--raio-bg-primary)] text-[var(--raio-text-primary)]">
+<div className="bg-[var(--rayo-sand-100)] text-[var(--rayo-forest-900)]">
   Conteúdo
 </div>
 ```

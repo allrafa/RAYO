@@ -213,10 +213,10 @@ className="hover:bg-gray-50"
 
 ### Para cada página:
 - [ ] Adicionar `useTheme()` hook
-- [ ] Substituir `bg-white` por `var(--raio-bg-primary)`
+- [ ] Substituir `bg-white` por `var(--rayo-sand-100)`
 - [ ] Substituir `bg-gray-*` por `var(--raio-bg-secondary/tertiary)`
 - [ ] Substituir `text-gray-*` por `var(--raio-text-primary/secondary/tertiary)`
-- [ ] Substituir `border-gray-*` por `var(--raio-border-default)`
+- [ ] Substituir `border-gray-*` por `var(--rayo-sand-300)`
 - [ ] Substituir cores de acento por `var(--raio-accent-*)`
 - [ ] Testar em light mode ✅
 - [ ] Testar em dark mode ✅

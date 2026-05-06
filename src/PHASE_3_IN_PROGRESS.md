@@ -21,18 +21,18 @@
 #### ✅ Já Migrado:
 - [x] Import do `useTheme` adicionado
 - [x] Hook `theme` configurado
-- [x] Background principal usa `var(--raio-bg-primary)`
-- [x] Tabs de navegação usam `var(--raio-border-default)`
-- [x] Background das tabs usa `var(--raio-bg-primary)`
+- [x] Background principal usa `var(--rayo-sand-100)`
+- [x] Tabs de navegação usam `var(--rayo-sand-300)`
+- [x] Background das tabs usa `var(--rayo-sand-100)`
 - [x] Botão "Meus Cursos" usa cores do Design System:
-  - Ativo: `var(--raio-accent-primary)`
-  - Inativo: `var(--raio-text-tertiary)`
-  - Hover: `var(--raio-text-primary)`
+  - Ativo: `var(--rayo-terra-500)`
+  - Inativo: `var(--rayo-ink-400)`
+  - Hover: `var(--rayo-forest-900)`
 - [x] Botão "Marketplace" usa cores do Design System:
-  - Ativo: `var(--raio-accent-primary)`
-  - Inativo: `var(--raio-text-tertiary)`
-  - Hover: `var(--raio-text-primary)`
-- [x] Badge de contador usa `var(--raio-accent-primary)`
+  - Ativo: `var(--rayo-terra-500)`
+  - Inativo: `var(--rayo-ink-400)`
+  - Hover: `var(--rayo-forest-900)`
+- [x] Badge de contador usa `var(--rayo-terra-500)`
 - [x] Badge com cor adaptativa dark/light
 
 #### 🔄 Próximos Passos na AcademiaPage:
@@ -120,22 +120,22 @@
 ### Cores Migradas na Fase 3
 ```typescript
 // Backgrounds
-'var(--raio-bg-primary)'    // Background principal
-'var(--raio-bg-secondary)'  // Background elevado
-'var(--raio-bg-tertiary)'   // Background alternativo
+'var(--rayo-sand-100)'    // Background principal
+'var(--rayo-sand-50)'  // Background elevado
+'var(--rayo-sand-300)'   // Background alternativo
 
 // Textos
-'var(--raio-text-primary)'   // Texto principal
-'var(--raio-text-secondary)' // Texto secundário
-'var(--raio-text-tertiary)'  // Texto terciário (usado em tabs inativas)
+'var(--rayo-forest-900)'   // Texto principal
+'var(--rayo-ink-700)' // Texto secundário
+'var(--rayo-ink-400)'  // Texto terciário (usado em tabs inativas)
 
 // Acentos
-'var(--raio-accent-primary)' // Amarelo dourado (tabs ativas, badges)
-'var(--raio-accent-hover)'   // Amarelo hover
+'var(--rayo-terra-500)' // Amarelo dourado (tabs ativas, badges)
+'var(--rayo-terra-700)'   // Amarelo hover
 'var(--raio-accent-subtle)'  // Amarelo sutil
 
 // Borders
-'var(--raio-border-default)' // Borders padrão
+'var(--rayo-sand-300)' // Borders padrão
 'var(--raio-border-active)'  // Borders ativos (amarelo)
 ```
 
@@ -173,11 +173,11 @@ className="bg-[#22C55E]"    // Verde (sucesso/ativo)
 ### Padrão Após Migração
 ```tsx
 // ✅ Depois (Design System)
-style={{ background: 'var(--raio-bg-primary)' }}
-style={{ color: 'var(--raio-text-tertiary)' }}
-style={{ borderColor: 'var(--raio-border-default)' }}
-style={{ color: 'var(--raio-accent-primary)' }}
-style={{ background: 'var(--raio-accent-primary)' }}
+style={{ background: 'var(--rayo-sand-100)' }}
+style={{ color: 'var(--rayo-ink-400)' }}
+style={{ borderColor: 'var(--rayo-sand-300)' }}
+style={{ color: 'var(--rayo-terra-500)' }}
+style={{ background: 'var(--rayo-terra-500)' }}
 ```
 
 ---

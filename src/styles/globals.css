@@ -172,11 +172,11 @@
   --secondary-foreground: var(--raio-neutral-800);
   --muted: var(--raio-neutral-100);
   --muted-foreground: var(--raio-neutral-600);
-  --accent: var(--raio-mint-500);
+  --accent: var(--rayo-sage-500);
   --accent-foreground: #ffffff;
-  --destructive: var(--raio-coral-600);
+  --destructive: var(--rayo-terra-700);
   --destructive-foreground: #ffffff;
-  --warning: var(--raio-gold-500);
+  --warning: var(--rayo-ochre-500);
   --warning-foreground: #ffffff;
   --success: var(--raio-sage-600);
   --success-foreground: #ffffff;
@@ -185,7 +185,7 @@
   --input: transparent;
   --input-background: var(--raio-neutral-50);
   --switch-background: var(--raio-sage-300);
-  --ring: var(--raio-mint-500);
+  --ring: var(--rayo-sage-500);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -352,7 +352,7 @@
 
   /* ----- Re-map das paletas legadas (gold/coral/mint/neutral/sage)
      para os tons RAYO equivalentes. Componentes que usam diretamente
-     var(--raio-gold-500) etc herdam o novo visual sem refactor. ----- */
+     var(--rayo-ochre-500) etc herdam o novo visual sem refactor. ----- */
   /* gold (amarelo dourado) → ochre */
   --raio-gold-50:  #FAF4E8;
   --raio-gold-100: #F2E9D5;
@@ -501,7 +501,7 @@
   --muted-foreground: var(--raio-neutral-400);
   --accent: var(--raio-mint-400);
   --accent-foreground: var(--raio-neutral-900);
-  --destructive: var(--raio-coral-500);
+  --destructive: var(--rayo-terra-500);
   --destructive-foreground: var(--raio-neutral-50);
   --warning: var(--raio-gold-400);
   --warning-foreground: var(--raio-neutral-900);
@@ -590,10 +590,10 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
-  --color-raio-gold-500: var(--raio-gold-500);
-  --color-raio-gold-600: var(--raio-gold-600);
-  --color-raio-coral-500: var(--raio-coral-500);
-  --color-raio-coral-600: var(--raio-coral-600);
+  --color-raio-gold-500: var(--rayo-ochre-500);
+  --color-raio-gold-600: var(--rayo-ochre-700);
+  --color-raio-coral-500: var(--rayo-terra-500);
+  --color-raio-coral-600: var(--rayo-terra-700);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

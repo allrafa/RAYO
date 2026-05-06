@@ -26,9 +26,9 @@ text-[#718096] hover:text-[#1A202C]
 **Depois:**
 ```tsx
 // Variáveis CSS do Design System
-borderColor: 'var(--raio-accent-primary)'
-color: 'var(--raio-accent-primary)'
-color: 'var(--raio-text-tertiary)'
+borderColor: 'var(--rayo-terra-500)'
+color: 'var(--rayo-terra-500)'
+color: 'var(--rayo-ink-400)'
 // + Hover states consistentes
 ```
 
@@ -51,10 +51,10 @@ bg-[#22C55E] hover:bg-[#16A34A]
 **Depois:**
 ```tsx
 // Variáveis CSS adaptativas
-background: 'var(--raio-bg-secondary)'
-borderColor: 'var(--raio-border-default)'
-background: 'var(--raio-accent-primary)'
-// + Hover: var(--raio-accent-hover)
+background: 'var(--rayo-sand-50)'
+borderColor: 'var(--rayo-sand-300)'
+background: 'var(--rayo-terra-500)'
+// + Hover: var(--rayo-terra-700)
 ```
 
 **Resultado:**
@@ -74,7 +74,7 @@ color: '#1A202C'  // Branco em dark mode ❌
 
 **Depois:**
 ```tsx
-color: 'var(--raio-text-primary)'  // Adapta ao tema ✅
+color: 'var(--rayo-forest-900)'  // Adapta ao tema ✅
 ```
 
 #### 3.2 Badges
@@ -87,9 +87,9 @@ bg-[#F0FDF4] text-[#22C55E]
 **Depois:**
 ```tsx
 background: 'var(--raio-accent-light)'
-color: 'var(--raio-accent-primary)'
+color: 'var(--rayo-terra-500)'
 // OU
-background: 'var(--raio-accent-primary)'
+background: 'var(--rayo-terra-500)'
 color: '#FFFFFF'
 ```
 
@@ -102,8 +102,8 @@ hover:bg-[#F7F8FA]
 
 **Depois:**
 ```tsx
-borderColor: 'var(--raio-border-default)'
-background: 'var(--raio-bg-tertiary)' // on hover
+borderColor: 'var(--rayo-sand-300)'
+background: 'var(--rayo-sand-300)' // on hover
 ```
 
 #### 3.4 Trending Topics
@@ -115,8 +115,8 @@ text-[#718096]  // Cinza hardcoded
 
 **Depois:**
 ```tsx
-color: 'var(--raio-accent-primary)'  // Amarelo RAIO
-color: 'var(--raio-text-tertiary)'   // Adaptativo
+color: 'var(--rayo-terra-500)'  // Amarelo RAIO
+color: 'var(--rayo-ink-400)'   // Adaptativo
 ```
 
 #### 3.5 Quick Stats Card
@@ -130,8 +130,8 @@ text-[#22C55E]
 **Depois:**
 ```tsx
 background: 'var(--raio-accent-light)'  // Amarelo suave
-borderColor: 'var(--raio-accent-primary)'
-color: 'var(--raio-accent-primary)'
+borderColor: 'var(--rayo-terra-500)'
+color: 'var(--rayo-terra-500)'
 ```
 
 **Resultado:**
@@ -155,7 +155,7 @@ color: 'var(--raio-accent-primary)'
 **Card "Todos"**:
 ```tsx
 // Amarelo RAIO quando ativo
-background: 'linear-gradient(135deg, var(--raio-accent-primary), var(--raio-accent-hover))'
+background: 'linear-gradient(135deg, var(--rayo-terra-500), var(--rayo-terra-700))'
 ```
 
 #### 4.2 Group Cards
@@ -169,14 +169,14 @@ bg-[#F7F8FA] text-[#718096]
 
 **Depois:**
 ```tsx
-borderColor: 'var(--raio-border-default)'
-background: 'var(--raio-bg-secondary)'
+borderColor: 'var(--rayo-sand-300)'
+background: 'var(--rayo-sand-50)'
 // Header gradient: RAIO amarelo
-background: 'linear-gradient(135deg, var(--raio-accent-primary), var(--raio-accent-hover))'
+background: 'linear-gradient(135deg, var(--rayo-terra-500), var(--rayo-terra-700))'
 // Badge membro: amarelo
-background: 'var(--raio-accent-primary)'
+background: 'var(--rayo-terra-500)'
 // Botão ativo: amarelo
-background: 'var(--raio-accent-primary)'
+background: 'var(--rayo-terra-500)'
 ```
 
 **Resultado:**
@@ -196,7 +196,7 @@ from-[#F59E0B] to-[#F97316]  // Laranja
 
 **Depois:**
 ```tsx
-background: 'linear-gradient(135deg, var(--raio-accent-primary), var(--raio-accent-hover))'
+background: 'linear-gradient(135deg, var(--rayo-terra-500), var(--rayo-terra-700))'
 boxShadow: 'var(--raio-shadow-glow)'
 ```
 
@@ -213,7 +213,7 @@ bg-[#F59E0B]/10  // Laranja
 
 **Depois:**
 ```tsx
-color: 'var(--raio-accent-primary)'  // Amarelo
+color: 'var(--rayo-terra-500)'  // Amarelo
 background: 'var(--raio-accent-light)'
 ```
 
@@ -230,8 +230,8 @@ text-[#718096]
 
 **Depois:**
 ```tsx
-color: 'var(--raio-text-primary)'
-color: 'var(--raio-text-tertiary)'
+color: 'var(--rayo-forest-900)'
+color: 'var(--rayo-ink-400)'
 ```
 
 #### 6.2 Badges & Icons
@@ -244,7 +244,7 @@ text-[#F59E0B]  // Pin icon laranja
 **Depois:**
 ```tsx
 background: 'var(--raio-accent-light)'
-color: 'var(--raio-accent-primary)'
+color: 'var(--rayo-terra-500)'
 // Pin icon: amarelo RAIO
 ```
 
@@ -253,8 +253,8 @@ color: 'var(--raio-accent-primary)'
 **Outros**: Adaptados ao tema
 
 ```tsx
-color: post.userReacted ? '#FF5A5F' : 'var(--raio-text-tertiary)'
-// Hover: var(--raio-text-primary)
+color: post.userReacted ? '#FF5A5F' : 'var(--rayo-ink-400)'
+// Hover: var(--rayo-forest-900)
 ```
 
 #### 6.4 Borders
@@ -265,8 +265,8 @@ border-[#E2E8F0]
 
 **Depois:**
 ```tsx
-borderColor: 'var(--raio-border-default)'
-style={{ borderTop: '1px solid var(--raio-border-default)' }}
+borderColor: 'var(--rayo-sand-300)'
+style={{ borderTop: '1px solid var(--rayo-sand-300)' }}
 ```
 
 ---
@@ -275,7 +275,7 @@ style={{ borderTop: '1px solid var(--raio-border-default)' }}
 
 ### Elementos Corrigidos:
 - ✅ **52 cores hardcoded** → Variáveis CSS
-- ✅ **15 bordas** → `var(--raio-border-default)`
+- ✅ **15 bordas** → `var(--rayo-sand-300)`
 - ✅ **28 backgrounds** → Variáveis adaptativas
 - ✅ **34 textos** → Hierarquia de texto RAIO
 - ✅ **18 badges** → Amarelo RAIO
@@ -413,14 +413,14 @@ style={{ borderTop: '1px solid var(--raio-border-default)' }}
 // ✅ DEPOIS
 <Button
   style={{
-    background: 'var(--raio-accent-primary)',
+    background: 'var(--rayo-terra-500)',
     color: '#FFFFFF',
   }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.background = 'var(--raio-accent-hover)';
+    e.currentTarget.style.background = 'var(--rayo-terra-700)';
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.background = 'var(--raio-accent-primary)';
+    e.currentTarget.style.background = 'var(--rayo-terra-500)';
   }}
 >
 ```
@@ -431,14 +431,14 @@ style={{ borderTop: '1px solid var(--raio-border-default)' }}
 // ✅ Padrão consistente
 <Card
   style={{
-    borderColor: 'var(--raio-border-default)',
-    background: 'var(--raio-bg-secondary)',
+    borderColor: 'var(--rayo-sand-300)',
+    background: 'var(--rayo-sand-50)',
   }}
 >
   // Content com cores adaptativas
-  <h3 style={{ color: 'var(--raio-text-primary)' }}>
-  <p style={{ color: 'var(--raio-text-secondary)' }}>
-  <small style={{ color: 'var(--raio-text-tertiary)' }}>
+  <h3 style={{ color: 'var(--rayo-forest-900)' }}>
+  <p style={{ color: 'var(--rayo-ink-700)' }}>
+  <small style={{ color: 'var(--rayo-ink-400)' }}>
 </Card>
 ```
 
@@ -493,19 +493,19 @@ DEPOIS: Amarelo RAIO quando ativo ⚡
 ### Badges:
 ```
 ANTES: bg-[#22C55E] verde
-DEPOIS: var(--raio-accent-primary) amarelo 🎯
+DEPOIS: var(--rayo-terra-500) amarelo 🎯
 ```
 
 ### Cards:
 ```
 ANTES: border-[#E2E8F0] fixo
-DEPOIS: var(--raio-border-default) adaptável 🌗
+DEPOIS: var(--rayo-sand-300) adaptável 🌗
 ```
 
 ### Botões:
 ```
 ANTES: bg-[#22C55E] hover:bg-[#16A34A]
-DEPOIS: var(--raio-accent-primary) + hover state ✨
+DEPOIS: var(--rayo-terra-500) + hover state ✨
 ```
 
 ---

@@ -36,8 +36,8 @@ export function AudioPlayer() {
     <div 
       className="space-y-4"
       style={{
-        background: 'var(--raio-bg-secondary)',
-        borderColor: 'var(--raio-border-default)'
+        background: 'var(--rayo-sand-50)',
+        borderColor: 'var(--rayo-sand-300)'
       }}
     >
       {/* Progress Bar */}
@@ -49,7 +49,7 @@ export function AudioPlayer() {
           onValueChange={(value) => seek(value[0])}
           className="cursor-pointer"
         />
-        <div className="flex justify-between text-xs" style={{ color: 'var(--raio-text-tertiary)' }}>
+        <div className="flex justify-between text-xs" style={{ color: 'var(--rayo-ink-400)' }}>
           <span>{formatTime(state.currentTime)}</span>
           <span>{formatTime(state.duration)}</span>
         </div>
@@ -63,7 +63,7 @@ export function AudioPlayer() {
           size="icon"
           onClick={() => skipBackward(15)}
           className="relative"
-          style={{ color: 'var(--raio-text-secondary)' }}
+          style={{ color: 'var(--rayo-ink-700)' }}
         >
           <SkipBack className="w-5 h-5" />
           <span 
@@ -85,14 +85,14 @@ export function AudioPlayer() {
           className="w-12 h-12 rounded-full"
           onClick={togglePlay}
           style={{
-            background: 'var(--raio-accent-primary)',
-            color: theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF'
+            background: 'var(--rayo-terra-500)',
+            color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--raio-accent-hover)';
+            e.currentTarget.style.background = 'var(--rayo-terra-700)';
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--raio-accent-primary)';
+            e.currentTarget.style.background = 'var(--rayo-terra-500)';
           }}
         >
           {state.isPlaying ? (
@@ -108,7 +108,7 @@ export function AudioPlayer() {
           size="icon"
           onClick={() => skipForward(15)}
           className="relative"
-          style={{ color: 'var(--raio-text-secondary)' }}
+          style={{ color: 'var(--rayo-ink-700)' }}
         >
           <SkipForward className="w-5 h-5" />
           <span 
@@ -131,7 +131,7 @@ export function AudioPlayer() {
           variant="ghost"
           size="icon"
           onClick={() => setVolume(state.volume === 0 ? 1 : 0)}
-          style={{ color: 'var(--raio-text-secondary)' }}
+          style={{ color: 'var(--rayo-ink-700)' }}
         >
           {state.volume === 0 ? (
             <VolumeX className="w-5 h-5" />
@@ -158,14 +158,14 @@ export function AudioPlayer() {
             onClick={() => useBookReader().setPlaybackSpeed(speed)}
             style={{
               background: state.playbackSpeed === speed 
-                ? 'var(--raio-accent-primary)' 
+                ? 'var(--rayo-terra-500)' 
                 : 'transparent',
               color: state.playbackSpeed === speed 
-                ? (theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF')
-                : 'var(--raio-text-secondary)',
+                ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+                : 'var(--rayo-ink-700)',
               borderColor: state.playbackSpeed === speed 
-                ? 'var(--raio-accent-primary)' 
-                : 'var(--raio-border-default)'
+                ? 'var(--rayo-terra-500)' 
+                : 'var(--rayo-sand-300)'
             }}
           >
             {speed}x

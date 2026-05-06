@@ -1,0 +1,370 @@
+/* RAYO App-wide DS v2.0 (Task #60)
+   Utilitários compartilhados pelas páginas secundárias (Academia,
+   Conselheiro, Comunidade, Conversas, Perfil, Admin). Complementa
+   home-rayo.css (.rh-*) e nav-rayo.css (.rn-*).
+   Tokens via --rayo-*. Classes prefixadas `ra-`. */
+
+/* ── PAGE SHELL ──────────────────────────────────────────────── */
+.ra-page {
+  min-height: 100vh;
+  background: var(--rayo-sand-100);
+  color: var(--rayo-ink-900);
+  font-family: 'Outfit', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.ra-page-content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 16px 96px;
+  display: flex; flex-direction: column; gap: 32px;
+}
+@media (min-width: 768px) { .ra-page-content { padding: 32px; gap: 40px; } }
+
+/* Sticky header bar */
+.ra-page-header {
+  position: sticky; top: 0; z-index: 30;
+  background: rgba(242,233,213,0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(12,59,46,0.08);
+}
+.ra-page-header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 18px 16px 0;
+}
+@media (min-width: 768px) { .ra-page-header-inner { padding: 22px 32px 0; } }
+
+.ra-eyebrow {
+  font-size: 10px; font-weight: 600;
+  font-family: ui-monospace, 'SF Mono', monospace;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--rayo-terra-500);
+  margin: 0 0 6px;
+}
+.ra-title {
+  font-size: 28px; font-weight: 600; letter-spacing: -0.02em;
+  color: var(--rayo-forest-900); line-height: 1.1;
+  margin: 0;
+}
+@media (min-width: 768px) { .ra-title { font-size: 36px; } }
+.ra-title-light { font-weight: 200; color: var(--rayo-ink-700); font-style: italic; }
+.ra-subtitle {
+  font-size: 14px; color: var(--rayo-ink-700);
+  margin: 6px 0 0; line-height: 1.5;
+}
+
+/* ── TABS ────────────────────────────────────────────────────── */
+.ra-tabs {
+  display: flex; gap: 4px;
+  overflow-x: auto;
+  padding: 16px 0 0;
+  scrollbar-width: none;
+}
+.ra-tabs::-webkit-scrollbar { display: none; }
+.ra-tab {
+  position: relative;
+  padding: 12px 18px;
+  background: transparent; border: none;
+  font-family: inherit; font-size: 13px; font-weight: 500;
+  color: var(--rayo-ink-400);
+  cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: color 0.15s ease;
+  letter-spacing: 0.02em;
+}
+.ra-tab:hover { color: var(--rayo-forest-900); }
+.ra-tab:focus-visible { outline: 2px solid var(--rayo-terra-500); outline-offset: 2px; border-radius: 4px; }
+.ra-tab.active { color: var(--rayo-forest-900); font-weight: 600; }
+.ra-tab.active::after {
+  content: ""; position: absolute;
+  bottom: -1px; left: 12px; right: 12px;
+  height: 2px; background: var(--rayo-terra-500);
+  border-radius: 2px 2px 0 0;
+}
+
+/* ── CARDS ───────────────────────────────────────────────────── */
+.ra-card {
+  background: var(--rayo-sand-50);
+  border: 1px solid var(--rayo-sand-300);
+  border-radius: 16px;
+  padding: 20px;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ra-card-hover:hover {
+  transform: translateY(-1px);
+  border-color: var(--rayo-terra-500);
+  box-shadow: 0 8px 20px rgba(12,59,46,0.08);
+}
+.ra-card-row {
+  display: flex; flex-direction: column; gap: 12px;
+  background: var(--rayo-sand-50);
+  border: 1px solid var(--rayo-sand-300);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+/* ── PILLS / BUTTONS ─────────────────────────────────────────── */
+.ra-pill-primary {
+  background: var(--rayo-terra-500); color: var(--rayo-sand-50);
+  border: none; border-radius: 999px;
+  padding: 11px 20px;
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: background 0.15s ease;
+}
+.ra-pill-primary:hover { background: var(--rayo-terra-700); }
+.ra-pill-primary:focus-visible { outline: 2px solid var(--rayo-forest-900); outline-offset: 2px; }
+.ra-pill-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ra-pill-ghost {
+  background: transparent; color: var(--rayo-forest-900);
+  border: 1.5px solid rgba(12,59,46,0.2);
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-family: inherit; font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.ra-pill-ghost:hover {
+  background: rgba(12,59,46,0.05);
+  border-color: var(--rayo-forest-900);
+}
+.ra-pill-ghost:focus-visible { outline: 2px solid var(--rayo-terra-500); outline-offset: 2px; }
+
+.ra-action {
+  background: transparent; border: none;
+  color: var(--rayo-forest-900);
+  font-family: inherit; font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: color 0.15s ease;
+  padding: 4px 0;
+}
+.ra-action:hover { color: var(--rayo-terra-500); }
+
+/* ── TAGS / CHIPS ────────────────────────────────────────────── */
+.ra-tag {
+  display: inline-flex; align-items: center;
+  padding: 5px 10px;
+  background: var(--rayo-sand-100);
+  color: var(--rayo-forest-900);
+  border-radius: 999px;
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.ra-tag.terra { background: var(--rayo-terra-500); color: var(--rayo-sand-50); }
+.ra-tag.sage  { background: var(--rayo-sage-300); color: var(--rayo-forest-900); }
+.ra-tag.ochre { background: var(--rayo-ochre-500); color: var(--rayo-forest-900); }
+
+/* ── METRICS ─────────────────────────────────────────────────── */
+.ra-metric {
+  background: var(--rayo-sand-50);
+  border: 1px solid var(--rayo-sand-300);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.ra-metric-value {
+  font-size: 28px; font-weight: 600; letter-spacing: -0.02em;
+  color: var(--rayo-forest-900); line-height: 1;
+}
+.ra-metric-label {
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--rayo-ink-400);
+}
+
+/* ── EMPTY STATE ─────────────────────────────────────────────── */
+.ra-empty {
+  text-align: center;
+  padding: 56px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.ra-empty-icon {
+  width: 56px; height: 56px;
+  background: var(--rayo-sand-50);
+  border: 1px solid var(--rayo-sand-300);
+  border-radius: 50%;
+  display: grid; place-items: center;
+  color: var(--rayo-terra-500);
+}
+.ra-empty-title {
+  font-size: 16px; font-weight: 600;
+  color: var(--rayo-forest-900);
+  margin: 0;
+}
+.ra-empty-sub {
+  font-size: 13px; color: var(--rayo-ink-400);
+  max-width: 340px; line-height: 1.5;
+  margin: 0;
+}
+
+/* ── SEARCH PILL ─────────────────────────────────────────────── */
+.ra-search-wrap {
+  position: relative;
+  width: 100%;
+}
+.ra-search {
+  width: 100%; height: 44px;
+  padding: 0 44px 0 44px;
+  background: var(--rayo-sand-100);
+  border: 1px solid rgba(12,59,46,0.12);
+  border-radius: 999px;
+  color: var(--rayo-forest-900);
+  font-family: inherit; font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ra-search::placeholder { color: var(--rayo-ink-400); }
+.ra-search:focus {
+  border-color: var(--rayo-terra-500);
+  box-shadow: 0 0 0 3px rgba(200,85,61,0.12);
+}
+.ra-search-icon {
+  position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+  color: var(--rayo-ink-400); pointer-events: none;
+}
+
+/* ── DISCUSSION LIST (fórum / DM threads) ────────────────────── */
+.ra-disc-list { display: flex; flex-direction: column; gap: 8px; }
+.ra-disc-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px;
+  background: var(--rayo-sand-50);
+  border: 1px solid var(--rayo-sand-300);
+  border-radius: 14px;
+  cursor: pointer; text-align: left; width: 100%;
+  font-family: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.ra-disc-item:hover { border-color: var(--rayo-terra-500); }
+.ra-disc-item.active { background: var(--rayo-sand-100); border-color: var(--rayo-forest-900); }
+.ra-disc-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  background: var(--rayo-sand-300);
+  color: var(--rayo-forest-900);
+  font-weight: 600; font-size: 14px;
+  overflow: hidden;
+}
+.ra-disc-avatar.sage  { background: var(--rayo-sage-300); }
+.ra-disc-avatar.terra { background: var(--rayo-terra-500); color: var(--rayo-sand-50); }
+.ra-disc-avatar.forest{ background: var(--rayo-forest-900); color: var(--rayo-sand-50); }
+.ra-disc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ra-disc-meta {
+  font-size: 10px; font-family: ui-monospace, monospace;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--rayo-ink-400);
+}
+.ra-disc-title {
+  font-size: 14px; font-weight: 600; color: var(--rayo-forest-900);
+  line-height: 1.3; margin: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ra-disc-snippet {
+  font-size: 13px; color: var(--rayo-ink-700);
+  line-height: 1.4; margin: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── CHAT BUBBLES (Conselheiro / DMs) ────────────────────────── */
+.ra-chat-bubble {
+  max-width: 75%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 14px; line-height: 1.5;
+  word-wrap: break-word;
+}
+.ra-chat-bubble.assistant {
+  background: var(--rayo-sand-50);
+  border: 1px solid var(--rayo-sand-300);
+  color: var(--rayo-forest-900);
+  border-top-left-radius: 6px;
+}
+.ra-chat-bubble.user {
+  background: var(--rayo-terra-500);
+  color: var(--rayo-sand-50);
+  border-top-right-radius: 6px;
+}
+
+/* ── ADMIN SHELL (densidade tabular, paleta DS) ──────────────── */
+.ra-admin-shell {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  background: var(--rayo-sand-100);
+  font-family: 'Outfit', system-ui, sans-serif;
+  color: var(--rayo-ink-900);
+}
+@media (min-width: 1024px) { .ra-admin-shell { flex-direction: row; } }
+.ra-admin-side {
+  background: var(--rayo-sand-50);
+  border-bottom: 1px solid var(--rayo-sand-300);
+  display: flex; flex-direction: column;
+}
+@media (min-width: 1024px) {
+  .ra-admin-side {
+    width: 256px; min-height: 100vh;
+    border-bottom: none; border-right: 1px solid var(--rayo-sand-300);
+  }
+}
+.ra-admin-brand {
+  padding: 22px 20px;
+  border-bottom: 1px solid var(--rayo-sand-300);
+}
+.ra-admin-brand-title {
+  font-size: 16px; font-weight: 700;
+  color: var(--rayo-forest-900);
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.ra-admin-brand-sub {
+  font-size: 10px; color: var(--rayo-ink-400);
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  margin-top: 4px;
+}
+.ra-admin-nav {
+  padding: 12px;
+  display: flex; gap: 4px; overflow-x: auto;
+  flex: 1;
+}
+.ra-admin-nav::-webkit-scrollbar { display: none; }
+@media (min-width: 1024px) { .ra-admin-nav { flex-direction: column; overflow-x: visible; } }
+.ra-admin-nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  background: transparent; border: none; border-radius: 10px;
+  font-family: inherit; font-size: 13px; font-weight: 500;
+  color: var(--rayo-ink-700);
+  text-align: left; cursor: pointer; white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.ra-admin-nav-item:hover { background: var(--rayo-sand-100); color: var(--rayo-forest-900); }
+.ra-admin-nav-item.active {
+  background: var(--rayo-forest-900); color: var(--rayo-sand-50);
+  font-weight: 600;
+}
+.ra-admin-foot {
+  padding: 12px;
+  border-top: 1px solid var(--rayo-sand-300);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.ra-admin-main {
+  flex: 1;
+  overflow-x: auto;
+  background: var(--rayo-sand-100);
+}
+.ra-admin-main-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 16px;
+}
+@media (min-width: 1024px) { .ra-admin-main-inner { padding: 32px; } }

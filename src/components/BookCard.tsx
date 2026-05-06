@@ -34,8 +34,8 @@ export function BookCard({
       <Card 
         className="overflow-hidden group hover:shadow-lg transition-all duration-300"
         style={{
-          background: 'var(--raio-bg-secondary)',
-          borderColor: 'var(--raio-border-default)'
+          background: 'var(--rayo-sand-50)',
+          borderColor: 'var(--rayo-sand-300)'
         }}
       >
         <CardContent className="p-3">
@@ -60,7 +60,7 @@ export function BookCard({
               <div 
                 className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-md"
                 style={{
-                  background: 'var(--raio-success)',
+                  background: 'var(--rayo-sage-500)',
                 }}
               >
                 <CheckCircle className="w-5 h-5" style={{ color: '#FFFFFF' }} />
@@ -76,7 +76,7 @@ export function BookCard({
                 <div 
                   className="h-full transition-all"
                   style={{ 
-                    background: 'var(--raio-accent-primary)',
+                    background: 'var(--rayo-terra-500)',
                     width: `${book.progress}%`
                   }}
                 />
@@ -90,14 +90,14 @@ export function BookCard({
               className="text-sm mb-1 line-clamp-2 min-h-[2.5rem]"
               style={{ 
                 fontWeight: 600,
-                color: 'var(--raio-text-primary)' 
+                color: 'var(--rayo-forest-900)' 
               }}
             >
               {book.title}
             </h3>
             <p 
               className="text-xs line-clamp-1"
-              style={{ color: 'var(--raio-text-tertiary)' }}
+              style={{ color: 'var(--rayo-ink-400)' }}
             >
               {book.author}
             </p>
@@ -107,7 +107,7 @@ export function BookCard({
           {book.isEnrolled && !book.isCompleted && book.currentPage > 0 && (
             <p 
               className="text-xs mb-3"
-              style={{ color: 'var(--raio-text-tertiary)' }}
+              style={{ color: 'var(--rayo-ink-400)' }}
             >
               {book.progress}% • {formatBookProgress(book)}
             </p>
@@ -120,27 +120,27 @@ export function BookCard({
               className="w-full"
               style={{
                 background: book.isEnrolled 
-                  ? 'var(--raio-accent-primary)' 
+                  ? 'var(--rayo-terra-500)' 
                   : 'transparent',
                 color: book.isEnrolled
-                  ? (theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF')
-                  : 'var(--raio-accent-primary)',
+                  ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+                  : 'var(--rayo-terra-500)',
                 borderColor: book.isEnrolled 
-                  ? 'var(--raio-accent-primary)'
-                  : 'var(--raio-accent-primary)'
+                  ? 'var(--rayo-terra-500)'
+                  : 'var(--rayo-terra-500)'
               }}
               variant={book.isEnrolled ? 'default' : 'outline'}
               onClick={book.isEnrolled ? onRead : onEnroll}
               onMouseEnter={(e) => {
                 if (book.isEnrolled) {
-                  e.currentTarget.style.background = 'var(--raio-accent-hover)';
+                  e.currentTarget.style.background = 'var(--rayo-terra-700)';
                 } else {
-                  e.currentTarget.style.background = 'var(--raio-accent-light)';
+                  e.currentTarget.style.background = 'var(--rayo-terra-100)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (book.isEnrolled) {
-                  e.currentTarget.style.background = 'var(--raio-accent-primary)';
+                  e.currentTarget.style.background = 'var(--rayo-terra-500)';
                 } else {
                   e.currentTarget.style.background = 'transparent';
                 }
@@ -169,8 +169,8 @@ export function BookCard({
     <Card 
       className="hover:shadow-md transition-all"
       style={{
-        background: 'var(--raio-bg-secondary)',
-        borderColor: 'var(--raio-border-default)'
+        background: 'var(--rayo-sand-50)',
+        borderColor: 'var(--rayo-sand-300)'
       }}
     >
       <CardContent className="p-4 flex gap-4">
@@ -195,21 +195,21 @@ export function BookCard({
           <div className="flex items-start justify-between gap-2 mb-1">
             <h3 
               className="font-semibold line-clamp-2"
-              style={{ color: 'var(--raio-text-primary)' }}
+              style={{ color: 'var(--rayo-forest-900)' }}
             >
               {book.title}
             </h3>
             {book.isCompleted && (
               <CheckCircle 
                 className="w-4 h-4 flex-shrink-0" 
-                style={{ color: 'var(--raio-success)' }}
+                style={{ color: 'var(--rayo-sage-500)' }}
               />
             )}
           </div>
           
           <p 
             className="text-sm mb-2"
-            style={{ color: 'var(--raio-text-tertiary)' }}
+            style={{ color: 'var(--rayo-ink-400)' }}
           >
             {book.author} • {book.publishedYear}
           </p>
@@ -219,7 +219,7 @@ export function BookCard({
               <Progress value={book.progress} className="h-2 mb-1" />
               <p 
                 className="text-xs"
-                style={{ color: 'var(--raio-text-tertiary)' }}
+                style={{ color: 'var(--rayo-ink-400)' }}
               >
                 {book.progress}% • {formatBookProgress(book)}
               </p>
@@ -233,8 +233,8 @@ export function BookCard({
                   size="sm" 
                   onClick={onRead}
                   style={{
-                    background: 'var(--raio-accent-primary)',
-                    color: theme === 'dark' ? 'var(--raio-text-primary)' : '#FFFFFF'
+                    background: 'var(--rayo-terra-500)',
+                    color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF'
                   }}
                 >
                   {book.currentPage > 0 ? 'Continuar' : 'Começar'}
@@ -244,7 +244,7 @@ export function BookCard({
                   variant="ghost" 
                   onClick={onToggleFavorite}
                   style={{
-                    color: book.isFavorite ? 'var(--raio-accent-primary)' : 'var(--raio-text-secondary)'
+                    color: book.isFavorite ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-700)'
                   }}
                 >
                   <Heart className={`w-4 h-4 ${book.isFavorite ? 'fill-current' : ''}`} />
@@ -256,8 +256,8 @@ export function BookCard({
                 variant="outline"
                 onClick={onEnroll}
                 style={{
-                  borderColor: 'var(--raio-accent-primary)',
-                  color: 'var(--raio-accent-primary)'
+                  borderColor: 'var(--rayo-terra-500)',
+                  color: 'var(--rayo-terra-500)'
                 }}
               >
                 Adicionar

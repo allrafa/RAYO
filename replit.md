@@ -13,6 +13,7 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
 ## Stack
 - **Frontend**: React 18, TypeScript, Tailwind CSS v4, Vite
 - **Fonts**: Outfit (única, pesos 200–700) — RAYO Design System v2.0
+- **Design System v2.0 CSS**: trio em `src/styles/`: `home-rayo.css` (`.rh-*` Home/Hero/Stats/Courses), `nav-rayo.css` (`.rn-*` TopBar/MobileBottomNav), `playlists-rayo.css` (`.rh-pl-*` cards quadrados); base compartilhada **`app-rayo.css`** (`.ra-*` page shell, header, tabs, cards, pills, tags, metrics, empty, search, disc-list, chat-bubble, admin-shell). Tokens via `--rayo-*` em `globals.css` — legacy `--raio-*` foi varrido em Maio/2026 (#60).
 - **Backend**: Express.js, TypeScript, tsx
 - **Database**: PostgreSQL
 - **ORM**: _Populate as you build_

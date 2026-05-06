@@ -128,7 +128,7 @@ export function MobileSearchPage({ open, onClose, onTabChange }: Props) {
   return (
     <div
       className="lg:hidden fixed inset-0 z-[60] flex flex-col"
-      style={{ background: "var(--raio-bg-primary)" }}
+      style={{ background: "var(--rayo-sand-100)" }}
       role="dialog"
       aria-label="Buscar"
     >
@@ -136,7 +136,7 @@ export function MobileSearchPage({ open, onClose, onTabChange }: Props) {
         className="flex items-center gap-2 px-3 py-2"
         style={{
           paddingTop: "calc(8px + env(safe-area-inset-top))",
-          borderBottom: "1px solid var(--raio-border-default)",
+          borderBottom: "1px solid var(--rayo-sand-300)",
         }}
       >
         <button
@@ -150,7 +150,7 @@ export function MobileSearchPage({ open, onClose, onTabChange }: Props) {
         <div className="relative flex-1">
           <Search
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-            style={{ color: "var(--raio-text-tertiary)" }}
+            style={{ color: "var(--rayo-ink-400)" }}
           />
           <Input
             ref={inputRef}
@@ -164,8 +164,8 @@ export function MobileSearchPage({ open, onClose, onTabChange }: Props) {
             }}
             className="pl-10 pr-9 h-10"
             style={{
-              background: "var(--raio-bg-tertiary)",
-              color: "var(--raio-text-primary)",
+              background: "var(--rayo-sand-300)",
+              color: "var(--rayo-forest-900)",
             }}
           />
           {q.length > 0 && (
@@ -200,7 +200,7 @@ export function MobileSearchPage({ open, onClose, onTabChange }: Props) {
             Nenhum resultado para "{q}".
           </p>
         ) : (
-          <ul className="divide-y" style={{ borderColor: "var(--raio-border-default)" }}>
+          <ul className="divide-y" style={{ borderColor: "var(--rayo-sand-300)" }}>
             {results.map((r) => (
               <li key={`${r.kind}-${r.id}`}>
                 <button
@@ -210,7 +210,7 @@ export function MobileSearchPage({ open, onClose, onTabChange }: Props) {
                 >
                   <div
                     className="w-12 h-12 rounded-md shrink-0 flex items-center justify-center overflow-hidden"
-                    style={{ background: "var(--raio-bg-tertiary)" }}
+                    style={{ background: "var(--rayo-sand-300)" }}
                   >
                     {r.thumbnail ? (
                       // Não usamos ImageWithFallback aqui pra manter o
@@ -236,8 +236,8 @@ export function MobileSearchPage({ open, onClose, onTabChange }: Props) {
                     <span
                       className="inline-block text-[10px] mt-1 px-1.5 py-0.5 rounded"
                       style={{
-                        background: "var(--raio-bg-tertiary)",
-                        color: "var(--raio-text-secondary)",
+                        background: "var(--rayo-sand-300)",
+                        color: "var(--rayo-ink-700)",
                       }}
                     >
                       {kindLabel(r.kind)}

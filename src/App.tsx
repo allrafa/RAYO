@@ -28,6 +28,7 @@ import { analytics } from "./lib/analytics/mixpanel";
 import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
 import "./styles/nav-rayo.css";
 import "./styles/playlists-rayo.css";
+import "./styles/app-rayo.css";
 
 type PreAuthStage = "welcome" | "onboarding" | "auth";
 type AuthStartMode = "login" | "register";
@@ -161,22 +162,22 @@ function AppContent() {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ background: "var(--raio-bg-primary)" }}
+        style={{ background: "var(--rayo-sand-100)" }}
       >
         <div className="text-center space-y-4">
           <div
             className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
-            style={{ background: "var(--raio-accent-subtle)" }}
+            style={{ background: "var(--rayo-terra-100)" }}
           >
             <div
               className="w-8 h-8 border-2 rounded-full animate-spin"
               style={{
-                borderColor: "var(--raio-accent-primary)",
+                borderColor: "var(--rayo-terra-500)",
                 borderTopColor: "transparent",
               }}
             />
           </div>
-          <p style={{ color: "var(--raio-text-secondary)" }}>
+          <p style={{ color: "var(--rayo-ink-700)" }}>
             Inicializando RAYO...
           </p>
         </div>

@@ -256,7 +256,7 @@ function NotificationToast({ notification, onClose }: NotificationToastProps) {
       case 'warning':
         return <AlertCircle className="w-5 h-5 text-yellow-500" />;
       default:
-        return <Info className="w-5 h-5" style={{ color: 'var(--raio-accent-primary)' }} />;
+        return <Info className="w-5 h-5" style={{ color: 'var(--rayo-terra-500)' }} />;
     }
   };
 
@@ -269,7 +269,7 @@ function NotificationToast({ notification, onClose }: NotificationToastProps) {
       case 'warning':
         return 'var(--warning, #D4A24C)';
       default:
-        return 'var(--raio-accent-primary)';
+        return 'var(--rayo-terra-500)';
     }
   };
 
@@ -277,7 +277,7 @@ function NotificationToast({ notification, onClose }: NotificationToastProps) {
     <motion.div
       className="rounded-2xl shadow-xl overflow-hidden backdrop-blur-xl"
       style={{
-        background: 'var(--raio-bg-secondary)',
+        background: 'var(--rayo-sand-50)',
         border: `2px solid ${getBorderColor()}`,
       }}
       whileHover={{ scale: 1.02 }}
@@ -294,14 +294,14 @@ function NotificationToast({ notification, onClose }: NotificationToastProps) {
               className="text-sm mb-1"
               style={{ 
                 fontWeight: 600,
-                color: 'var(--raio-text-primary)'
+                color: 'var(--rayo-forest-900)'
               }}
             >
               {notification.title}
             </h4>
             <p 
               className="text-sm"
-              style={{ color: 'var(--raio-text-secondary)' }}
+              style={{ color: 'var(--rayo-ink-700)' }}
             >
               {notification.message}
             </p>
@@ -313,9 +313,9 @@ function NotificationToast({ notification, onClose }: NotificationToastProps) {
               onClose();
             }}
             className="flex-shrink-0 p-1 rounded-lg transition-colors"
-            style={{ color: 'var(--raio-text-tertiary)' }}
+            style={{ color: 'var(--rayo-ink-400)' }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'var(--raio-bg-tertiary)';
+              e.currentTarget.style.background = 'var(--rayo-sand-300)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';

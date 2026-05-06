@@ -73,14 +73,14 @@
 ### 3. **PerfilPage - 100% Completa** ✅
 
 #### Elementos Migrados:
-- ✅ Background principal → `var(--raio-bg-primary)`
+- ✅ Background principal → `var(--rayo-sand-100)`
 - ✅ Header gradiente → Amarelo RAIO adaptativo
 - ✅ Avatar cores → Design System
 - ✅ Stats cards (4) → Amarelo unificado com contraste
 - ✅ Activity stats → Cores migradas
 - ✅ Menu sections (mobile) → Backgrounds, textos, borders
-- ✅ Hover states → Usando `var(--raio-bg-tertiary)`
-- ✅ Borders → `var(--raio-border-default)`
+- ✅ Hover states → Usando `var(--rayo-sand-300)`
+- ✅ Borders → `var(--rayo-sand-300)`
 - ✅ Desktop sidebar menu - COMPLETO
 - ✅ Logout buttons (mobile + desktop) - COMPLETO
 - ✅ Footers (mobile + desktop) - COMPLETO
@@ -244,9 +244,9 @@ Propósito: 'from-green-500 to-emerald-600'
 ```
 
 #### 4. Migrar Post Cards (1h)
-- Background → `var(--raio-bg-secondary)`
+- Background → `var(--rayo-sand-50)`
 - Texto → `var(--raio-text-*)`
-- Borders → `var(--raio-border-default)`
+- Borders → `var(--rayo-sand-300)`
 - Avatar e metadata
 - Botões de interação (like, comment, share)
 
@@ -341,7 +341,7 @@ Propósito: 'from-green-500 to-emerald-600'
 - 🏅 Conquistas → Roxo
 
 **Depois:**
-- Todos → Amarelo RAIO (`var(--raio-accent-primary)`)
+- Todos → Amarelo RAIO (`var(--rayo-terra-500)`)
 - Ícones → Amarelo
 - Backgrounds → Amarelo sutil (10-15% opacity)
 
@@ -358,22 +358,22 @@ Propósito: 'from-green-500 to-emerald-600'
 
 ```typescript
 // Backgrounds
-'var(--raio-bg-primary)'      // #FAFAFA (light) / #0A0A0A (dark)
-'var(--raio-bg-secondary)'    // #FFFFFF (light) / #1A1A1A (dark)
-'var(--raio-bg-tertiary)'     // #F5F5F5 (light) / #2A2A2A (dark)
+'var(--rayo-sand-100)'      // #FAFAFA (light) / #0A0A0A (dark)
+'var(--rayo-sand-50)'    // #FFFFFF (light) / #1A1A1A (dark)
+'var(--rayo-sand-300)'     // #F5F5F5 (light) / #2A2A2A (dark)
 
 // Textos
-'var(--raio-text-primary)'    // #1A1A1A (light) / #FAFAFA (dark)
-'var(--raio-text-secondary)'  // #6B7280 (light) / #9CA3AF (dark)
-'var(--raio-text-tertiary)'   // #9CA3AF (light) / #6B7280 (dark)
+'var(--rayo-forest-900)'    // #1A1A1A (light) / #FAFAFA (dark)
+'var(--rayo-ink-700)'  // #6B7280 (light) / #9CA3AF (dark)
+'var(--rayo-ink-400)'   // #9CA3AF (light) / #6B7280 (dark)
 
 // Acentos (NOVO - Melhor Contraste)
-'var(--raio-accent-primary)'  // #D97706 (light) / #FBBF24 (dark)
-'var(--raio-accent-hover)'    // #B45309 (light) / #FCD34D (dark)
+'var(--rayo-terra-500)'  // #D97706 (light) / #FBBF24 (dark)
+'var(--rayo-terra-700)'    // #B45309 (light) / #FCD34D (dark)
 'var(--raio-accent-bright)'   // #FCD34D (light) / #FDE68A (dark)
 
 // Borders
-'var(--raio-border-default)'  // #E5E5E5 (light) / #2A2A2A (dark)
+'var(--rayo-sand-300)'  // #E5E5E5 (light) / #2A2A2A (dark)
 'var(--raio-border-hover)'    // #D1D5DB (light) / #3A3A3A (dark)
 'var(--raio-border-active)'   // #F59E0B (light) / #FBBF24 (dark)
 ```
@@ -386,9 +386,9 @@ className="bg-white text-gray-700 border-gray-200"
 
 // ✅ DEPOIS (Design System)
 style={{
-  background: 'var(--raio-bg-secondary)',
-  color: 'var(--raio-text-primary)',
-  borderColor: 'var(--raio-border-default)',
+  background: 'var(--rayo-sand-50)',
+  color: 'var(--rayo-forest-900)',
+  borderColor: 'var(--rayo-sand-300)',
 }}
 ```
 
@@ -401,17 +401,17 @@ style={{
   onClick={() => setView("tab")}
   style={{ 
     fontWeight: currentView === "tab" ? 700 : 500,
-    borderColor: currentView === "tab" ? 'var(--raio-accent-primary)' : 'transparent',
-    color: currentView === "tab" ? 'var(--raio-accent-primary)' : 'var(--raio-text-tertiary)',
+    borderColor: currentView === "tab" ? 'var(--rayo-terra-500)' : 'transparent',
+    color: currentView === "tab" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
   }}
   onMouseEnter={(e) => {
     if (currentView !== "tab") {
-      e.currentTarget.style.color = 'var(--raio-text-primary)';
+      e.currentTarget.style.color = 'var(--rayo-forest-900)';
     }
   }}
   onMouseLeave={(e) => {
     if (currentView !== "tab") {
-      e.currentTarget.style.color = 'var(--raio-text-tertiary)';
+      e.currentTarget.style.color = 'var(--rayo-ink-400)';
     }
   }}
 >
