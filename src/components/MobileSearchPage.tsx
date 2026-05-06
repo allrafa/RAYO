@@ -3,6 +3,7 @@ import { Search, X, ArrowLeft, BookOpen, Play, Headphones, Users, MessagesSquare
 import { Input } from "./ui/input";
 import { useApp } from "./AppContext";
 import { api } from "../lib/api";
+import { navigateToSearchHit } from "../lib/searchNavigate";
 
 // Task #44 — Busca mobile em tela cheia.
 // Aciona /api/search com debounce, mostra resultados agrupados visualmente
@@ -48,7 +49,12 @@ function saveRecents(list: string[]) {
 }
 
 export function MobileSearchPage({ open, onClose, onTabChange }: Props) {
-  const { setCurrentCourseId, setIsInCourseDetail } = useApp();
+  const {
+    setCurrentCourseId,
+    setIsInCourseDetail,
+    setCurrentVideoId,
+    setIsInVideoPage,
+  } = useApp();
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
@@ -107,31 +113,14 @@ export function MobileSearchPage({ open, onClose, onTabChange }: Props) {
 
   const handleSelect = (r: Result) => {
     commitRecent(q);
-    if (r.kind === "curso") {
-      setCurrentCourseId(r.id);
-      setIsInCourseDetail(true);
-      onTabChange("academia");
-      onClose();
-      return;
-    }
-    if (r.kind === "post") {
-      onTabChange("comunidade");
-      onClose();
-      return;
-    }
-    if (r.kind === "user") {
-      onTabChange("perfil");
-      onClose();
-      return;
-    }
-    // video / audio / reels / podcast
-    if (r.ctaTarget) {
-      window.open(r.ctaTarget, "_blank", "noopener,noreferrer");
-      onClose();
-    } else {
-      onTabChange("academia");
-      onClose();
-    }
+    navigateToSearchHit(r, {
+      onTabChange,
+      setCurrentCourseId,
+      setIsInCourseDetail,
+      setCurrentVideoId,
+      setIsInVideoPage,
+      onClose,
+    });
   };
 
   if (!open) return null;

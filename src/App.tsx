@@ -70,6 +70,15 @@ function AppContent() {
 
   const appContext = useApp();
   const isInBookReader = appContext?.isInBookReader || false;
+  // Task #44 — esconde a MobileTopBar (lupa + envelope) em contextos
+  // de player/leitura/chat onde os ícones flutuantes brigam com o
+  // próprio chrome da página.
+  const isInPlayerContext =
+    appContext?.isInVideoPage ||
+    appContext?.isInBookReader ||
+    appContext?.isInOrbChat ||
+    appContext?.isInCentralConversas ||
+    false;
 
   useEffect(() => {
     analytics.trackAppOpened();
@@ -289,12 +298,14 @@ function AppContent() {
           {/* Mobile-only entry point for Mensagens (moved out of the
               bottom navbar in Task #41). Hidden on the conversas page
               itself to avoid a redundant icon over the chat header. */}
-          {currentTab !== "conversas" && (
-            <MobileTopBar
-              onOpenMessages={() => setCurrentTab("conversas")}
-              onTabChange={setCurrentTab}
-            />
-          )}
+          {currentTab !== "conversas" &&
+            currentTab !== "trilha-conversas" &&
+            !isInPlayerContext && (
+              <MobileTopBar
+                onOpenMessages={() => setCurrentTab("conversas")}
+                onTabChange={setCurrentTab}
+              />
+            )}
         </>
       )}
 

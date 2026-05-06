@@ -9,6 +9,7 @@ import { useScrollDirection } from "./hooks/useScrollDirection";
 import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { useTheme } from "./ThemeProvider";
 import { api } from "../lib/api";
+import { navigateToSearchHit } from "../lib/searchNavigate";
 
 interface TopNavbarProps {
   onTabChange: (tab: string) => void;
@@ -29,9 +30,14 @@ export function TopNavbar({ onTabChange }: TopNavbarProps) {
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const { setCurrentCourseId, setIsInCourseDetail } = useApp();
+  const {
+    setCurrentCourseId,
+    setIsInCourseDetail,
+    setCurrentVideoId,
+    setIsInVideoPage,
+  } = useApp();
   const { scrollDirection, isAtTop } = useScrollDirection({ threshold: 100 });
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const { count: unreadMessages } = useUnreadMessages();
 
   // Task #44: busca real com debounce + dropdown.
@@ -79,25 +85,13 @@ export function TopNavbar({ onTabChange }: TopNavbarProps) {
   const handleSelect = (r: SearchResult) => {
     setShowResults(false);
     setSearchQuery("");
-    if (r.kind === "curso") {
-      setCurrentCourseId(r.id);
-      setIsInCourseDetail(true);
-      onTabChange("academia");
-      return;
-    }
-    if (r.kind === "post") {
-      onTabChange("comunidade");
-      return;
-    }
-    if (r.kind === "user") {
-      onTabChange("perfil");
-      return;
-    }
-    if (r.ctaTarget) {
-      window.open(r.ctaTarget, "_blank", "noopener,noreferrer");
-    } else {
-      onTabChange("academia");
-    }
+    navigateToSearchHit(r, {
+      onTabChange,
+      setCurrentCourseId,
+      setIsInCourseDetail,
+      setCurrentVideoId,
+      setIsInVideoPage,
+    });
   };
 
   const shouldHide = scrollDirection === 'down' && !isAtTop;

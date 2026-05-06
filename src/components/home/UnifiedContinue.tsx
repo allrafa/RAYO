@@ -14,14 +14,16 @@ import { api } from "../../lib/api";
 // Funde cursos em progresso, conteúdos CMS recentes (do
 // /api/home/continue) e vídeos do YouTube em andamento (localStorage,
 // via useVideoProgress) em uma única lista, ordenada por mais recente.
-// Filtros por chip ("Todos" / "Vídeos" / "Cursos" / "Áudios") são
+// Filtros por chip ("Todos" / "Vídeos" / "Cursos" / "Podcasts") são
 // aplicados puramente no cliente — o backend devolve tudo o que sabe.
+// "Podcasts" agrupa kinds de áudio (audio + podcast) já que toda a
+// biblioteca de podcasts da RAIO entra no CMS como audio.
 
-type Filter = "todos" | "videos" | "cursos" | "audios";
+type Filter = "todos" | "videos" | "cursos" | "podcasts";
 
 interface ServerItem {
   id: string;
-  kind: "curso" | "audio" | "video" | "reels";
+  kind: "curso" | "audio" | "podcast" | "video" | "reels";
   title: string;
   subtitle: string | null;
   thumbnail: string | null;
@@ -34,7 +36,7 @@ interface ServerItem {
 
 interface MergedItem {
   id: string;
-  kind: "curso" | "audio" | "video" | "reels" | "youtube";
+  kind: "curso" | "audio" | "podcast" | "video" | "reels" | "youtube";
   title: string;
   subtitle: string | null;
   thumbnail: string | null;
@@ -144,7 +146,8 @@ export function UnifiedContinue({ onOpenAcademia, onOpenHoje }: Props) {
   const filtered = useMemo(() => {
     if (filter === "todos") return items;
     if (filter === "cursos") return items.filter((i) => i.kind === "curso");
-    if (filter === "audios") return items.filter((i) => i.kind === "audio");
+    if (filter === "podcasts")
+      return items.filter((i) => i.kind === "audio" || i.kind === "podcast");
     return items.filter(
       (i) => i.kind === "video" || i.kind === "reels" || i.kind === "youtube",
     );
@@ -205,7 +208,7 @@ export function UnifiedContinue({ onOpenAcademia, onOpenHoje }: Props) {
             { id: "todos", label: "Todos" },
             { id: "videos", label: "Vídeos" },
             { id: "cursos", label: "Cursos" },
-            { id: "audios", label: "Áudios" },
+            { id: "podcasts", label: "Podcasts" },
           ] as Array<{ id: Filter; label: string }>
         ).map((chip) => {
           const active = filter === chip.id;
@@ -308,13 +311,14 @@ function ContinueCard({ item }: { item: MergedItem }) {
 
 function kindIcon(kind: MergedItem["kind"]) {
   if (kind === "curso") return BookOpen;
-  if (kind === "audio") return Headphones;
+  if (kind === "audio" || kind === "podcast") return Headphones;
   if (kind === "reels") return Film;
   return Play;
 }
 
 function kindLabel(kind: MergedItem["kind"]): string {
   if (kind === "curso") return "Curso";
+  if (kind === "podcast") return "Podcast";
   if (kind === "audio") return "Áudio";
   if (kind === "reels") return "Reels";
   if (kind === "youtube") return "YouTube";

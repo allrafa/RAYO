@@ -581,7 +581,10 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
             <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
-                onClick={() => setStatsModal("streak")}
+                onClick={() => {
+                  if ("vibrate" in navigator) navigator.vibrate(10);
+                  setStatsModal("streak");
+                }}
                 aria-label={`Sequência: ${dashboard.gamification.streak} dias. Toque para ver o calendário.`}
                 className="text-left rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-primary)]"
               >
@@ -606,7 +609,10 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
               </button>
               <button
                 type="button"
-                onClick={() => setStatsModal("badges")}
+                onClick={() => {
+                  if ("vibrate" in navigator) navigator.vibrate(10);
+                  setStatsModal("badges");
+                }}
                 aria-label={`Nível ${dashboard.gamification.level} — ${dashboard.gamification.levelTitle}. Toque para ver suas conquistas.`}
                 className="text-left rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-primary)]"
               >
@@ -631,7 +637,10 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
               </button>
               <button
                 type="button"
-                onClick={() => setStatsModal("xp")}
+                onClick={() => {
+                  if ("vibrate" in navigator) navigator.vibrate(10);
+                  setStatsModal("xp");
+                }}
                 aria-label={`${dashboard.weeklyXP} XP nesta semana. Toque para ver o histórico.`}
                 className="text-left rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-primary)]"
               >

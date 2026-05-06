@@ -59,6 +59,42 @@ export function ComunidadePage() {
   const [postComments, setPostComments] = useState<CommentData[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
 
+  // Task #44 — deep-link de busca: quando um resultado de busca de
+  // post é clicado, recebemos o id por CustomEvent e abrimos o painel
+  // de comentários daquele post (se já carregado). Caso o post ainda
+  // não esteja na lista, ignoramos silenciosamente — o usuário cai na
+  // aba certa, e o post aparecerá no scroll do feed.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ id: number }>).detail;
+      const target = posts.find((p) => p.id === detail?.id);
+      if (target) {
+        setSelectedPost(target);
+        setShowComments(true);
+      }
+    };
+    window.addEventListener("raio:open-post", handler as EventListener);
+    // Verifica deep-link pendente armazenado pelo helper
+    // (caso o evento tenha sido disparado antes da página montar).
+    try {
+      const pending = sessionStorage.getItem("raio-pending-post");
+      if (pending) {
+        sessionStorage.removeItem("raio-pending-post");
+        const id = Number(pending);
+        const target = posts.find((p) => p.id === id);
+        if (target) {
+          setSelectedPost(target);
+          setShowComments(true);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return () => {
+      window.removeEventListener("raio:open-post", handler as EventListener);
+    };
+  }, [posts]);
+
   const loadForums = useCallback(async () => {
     setForumsLoading(true);
     setForumsError(null);

@@ -134,6 +134,7 @@ function truncate(s: string, n: number): string {
 
 function normalizeContentKind(kind: string): SearchResult["kind"] {
   if (kind === "audio") return "audio";
+  if (kind === "podcast") return "podcast";
   if (kind === "video") return "video";
   if (kind === "reels") return "reels";
   return "video";
