@@ -9,7 +9,7 @@ import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
-import { CheckCircle2, Clock, SkipForward } from "lucide-react";
+import { CheckCircle2, Clock, ExternalLink, SkipForward } from "lucide-react";
 import { api } from "../../lib/api";
 import { enhancedToast } from "../EnhancedToast";
 
@@ -117,17 +117,16 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted, userId }: Props) {
     ? Math.max(1, Math.round(item.durationSeconds / 60))
     : null;
 
+  const handleOpen = () => {
+    if (!item.ctaTarget) return;
+    if ("vibrate" in navigator) navigator.vibrate(15);
+    window.open(item.ctaTarget, "_blank", "noopener,noreferrer");
+  };
+
   const handleComplete = async () => {
     if (completing) return;
     setCompleting(true);
     if ("vibrate" in navigator) navigator.vibrate(30);
-    // Open the underlying asset (video/audio/external link) when the
-    // producer configured one. Completion still has to be an explicit
-    // action so the user can't accidentally claim XP just by tapping
-    // "Marcar feito" before actually consuming the content.
-    if (item.ctaTarget) {
-      window.open(item.ctaTarget, "_blank", "noopener,noreferrer");
-    }
     try {
       const res = await api.post<CompleteResp>(
         "/api/home/today/complete",
@@ -253,12 +252,22 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted, userId }: Props) {
               </Button>
             ) : (
               <>
+                {item.ctaTarget && (
+                  <Button
+                    variant="outline"
+                    className="rounded-full"
+                    onClick={handleOpen}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-1" /> {item.ctaLabel}
+                  </Button>
+                )}
                 <Button
                   className="flex-1 rounded-full bg-raio-gold-500 hover:bg-raio-gold-600 text-black font-medium"
                   onClick={handleComplete}
                   disabled={completing}
                 >
-                  {completing ? "Marcando..." : item.ctaLabel}
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  {completing ? "Marcando..." : "Marcar como feito"}
                 </Button>
                 <Button
                   variant="ghost"
@@ -266,7 +275,7 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted, userId }: Props) {
                   className="rounded-full text-muted-foreground"
                   onClick={handleSkip}
                 >
-                  <SkipForward className="w-4 h-4 mr-1" /> Pular hoje
+                  <SkipForward className="w-4 h-4 mr-1" /> Pular
                 </Button>
               </>
             )}
