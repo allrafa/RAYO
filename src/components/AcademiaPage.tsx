@@ -836,6 +836,55 @@ function MarketplaceView({
   const [bundlesLoading, setBundlesLoading] = useState<boolean>(true);
   const [bundlesError, setBundlesError] = useState<string | null>(null);
 
+  // Active format filter ("curso" scrolls; others render an inline showcase)
+  const [selectedKind, setSelectedKind] = useState<string | null>(null);
+  const [kindItems, setKindItems] = useState<Array<{
+    id: number;
+    title: string;
+    short_description: string | null;
+    cover_url: string | null;
+    author?: string | null;
+  }>>([]);
+  const [kindLoading, setKindLoading] = useState<boolean>(false);
+  const [kindError, setKindError] = useState<string | null>(null);
+  const kindShowcaseRef = useRef<HTMLDivElement>(null);
+
+  // Fetch items for the selected non-curso format whenever kind or segment change
+  useEffect(() => {
+    if (!selectedKind || selectedKind === "curso") return;
+    let cancelled = false;
+    (async () => {
+      setKindLoading(true);
+      setKindError(null);
+      try {
+        const segParam =
+          selectedSegment && selectedSegment !== "all"
+            ? `&segment=${encodeURIComponent(selectedSegment)}`
+            : "";
+        const res = await api.get<{ items: typeof kindItems }>(
+          `/api/content?kind=${encodeURIComponent(selectedKind)}${segParam}&limit=12`
+        );
+        if (cancelled) return;
+        if (res.success && res.data && Array.isArray(res.data.items)) {
+          setKindItems(res.data.items);
+        } else {
+          setKindError("Não foi possível carregar este formato agora.");
+          setKindItems([]);
+        }
+      } catch {
+        if (!cancelled) {
+          setKindError("Não foi possível carregar este formato agora.");
+          setKindItems([]);
+        }
+      } finally {
+        if (!cancelled) setKindLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedKind, selectedSegment]);
+
   // Re-sync segment if onboarding changes after mount
   useEffect(() => {
     if (userSegments.length > 0 && selectedSegment === "all") {
@@ -864,12 +913,16 @@ function MarketplaceView({
       await Promise.all(
         FORMAT_KINDS.map(async (f) => {
           try {
-            const res = await api.get<{ items: unknown[]; total?: number }>(
-              `/api/content?kind=${encodeURIComponent(f.kind)}&limit=1`
-            );
+            const res = await api.get<{
+              items: unknown[];
+              pagination?: { total?: number };
+              total?: number;
+            }>(`/api/content?kind=${encodeURIComponent(f.kind)}&limit=1`);
             if (res.success && res.data) {
               const total =
-                typeof res.data.total === "number"
+                typeof res.data.pagination?.total === "number"
+                  ? res.data.pagination.total
+                  : typeof res.data.total === "number"
                   ? res.data.total
                   : Array.isArray(res.data.items)
                   ? res.data.items.length
@@ -971,6 +1024,54 @@ function MarketplaceView({
                 >
                   Cursos, livros, áudios e trilhas pensados para cada momento — do solteiro aos pais — tudo em um só lugar.
                 </p>
+
+                {/* Secondary CTA + social proof */}
+                <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (userSegments.length > 0) {
+                        setSelectedSegment(userSegments[0]);
+                      }
+                      setTimeout(() => {
+                        allCoursesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 60);
+                    }}
+                    className="inline-flex items-center gap-2 h-[48px] px-5 rounded-full text-[15px] transition-all"
+                    style={{
+                      background: 'transparent',
+                      color: 'var(--raio-text-primary)',
+                      border: '1.5px solid var(--raio-text-primary)',
+                      fontWeight: 600,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--raio-text-primary)';
+                      e.currentTarget.style.color = 'var(--raio-text-inverse)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = 'var(--raio-text-primary)';
+                    }}
+                  >
+                    {userSegments.length > 0
+                      ? 'Ver coleção da minha fase'
+                      : 'Ver todas as coleções'}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <div
+                    className="flex items-center gap-2 text-[13px]"
+                    style={{ color: 'var(--raio-text-secondary)' }}
+                  >
+                    <span
+                      className="inline-block w-1.5 h-1.5 rounded-full"
+                      style={{ background: 'var(--raio-accent-hover)' }}
+                    />
+                    <span>
+                      Curadoria editorial · 5 fases da família · novos conteúdos toda semana
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Search */}
@@ -1148,11 +1249,18 @@ function MarketplaceView({
                 {FORMAT_KINDS.map((f) => {
                   const count = formatCounts[f.kind] ?? 0;
                   const Icon = f.Icon;
+                  const isActiveKind = selectedKind === f.kind;
                   const handleClick = () => {
-                    if (f.kind === 'curso' && allCoursesRef.current) {
-                      allCoursesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    if (f.kind === 'curso') {
+                      setSelectedKind(null);
+                      if (allCoursesRef.current) {
+                        allCoursesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
                     } else {
-                      toast.info(`${f.label} disponíveis na aba Início.`);
+                      setSelectedKind(f.kind);
+                      setTimeout(() => {
+                        kindShowcaseRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 60);
                     }
                   };
                   return (
@@ -1163,13 +1271,16 @@ function MarketplaceView({
                       className="text-left rounded-2xl p-4 md:p-5 transition-all hover:-translate-y-0.5"
                       style={{
                         background: 'var(--raio-bg-secondary)',
-                        border: '1px solid var(--raio-border-default)',
+                        border: `1px solid ${isActiveKind ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)'}`,
+                        boxShadow: isActiveKind ? '0 0 0 3px rgba(201,144,86,0.18)' : undefined,
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.borderColor = 'var(--raio-accent-primary)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--raio-border-default)';
+                        e.currentTarget.style.borderColor = isActiveKind
+                          ? 'var(--raio-accent-primary)'
+                          : 'var(--raio-border-default)';
                       }}
                     >
                       <div
@@ -1191,6 +1302,103 @@ function MarketplaceView({
                   );
                 })}
               </div>
+
+              {/* Kind showcase — real items for the active non-curso format */}
+              {selectedKind && selectedKind !== 'curso' && (
+                <div ref={kindShowcaseRef} className="mt-8">
+                  <div className="flex items-end justify-between gap-4 mb-4">
+                    <div>
+                      <h3
+                        className="text-[20px] md:text-[22px]"
+                        style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}
+                      >
+                        {FORMAT_KINDS.find((k) => k.kind === selectedKind)?.label}
+                        {selectedSegment !== 'all' && segmentLabel ? ` para ${segmentLabel}` : ''}
+                      </h3>
+                      <p
+                        className="text-[13px] mt-1"
+                        style={{ color: 'var(--raio-text-secondary)' }}
+                      >
+                        {kindLoading
+                          ? 'Carregando…'
+                          : kindError
+                          ? kindError
+                          : `${kindItems.length} ${kindItems.length === 1 ? 'item' : 'itens'}`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedKind(null)}
+                      className="text-[13px] underline"
+                      style={{ color: 'var(--raio-text-secondary)' }}
+                    >
+                      Limpar filtro
+                    </button>
+                  </div>
+
+                  {kindLoading ? (
+                    <div className="flex items-center justify-center py-10">
+                      <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--raio-accent-primary)' }} />
+                    </div>
+                  ) : kindItems.length === 0 ? (
+                    <EmptyMarketplaceState
+                      title={`Nenhum ${FORMAT_KINDS.find((k) => k.kind === selectedKind)?.label.toLowerCase()} disponível ainda`}
+                      description={
+                        selectedSegment !== 'all'
+                          ? `Tente outro segmento ou volte em breve — novos conteúdos chegam toda semana.`
+                          : 'Volte em breve — novos conteúdos chegam toda semana.'
+                      }
+                      actionLabel={selectedSegment !== 'all' ? 'Ver todos os segmentos' : undefined}
+                      onAction={selectedSegment !== 'all' ? () => setSelectedSegment('all') : undefined}
+                    />
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {kindItems.map((it) => (
+                        <div
+                          key={it.id}
+                          className="rounded-2xl overflow-hidden"
+                          style={{
+                            background: 'var(--raio-bg-secondary)',
+                            border: '1px solid var(--raio-border-default)',
+                          }}
+                        >
+                          <div className="relative w-full" style={{ aspectRatio: '4 / 3' }}>
+                            <ImageWithFallback
+                              src={it.cover_url || ''}
+                              alt={it.title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="p-4">
+                            <div
+                              className="text-[14px] line-clamp-2"
+                              style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                            >
+                              {it.title}
+                            </div>
+                            {it.short_description && (
+                              <div
+                                className="text-[12px] mt-1 line-clamp-2"
+                                style={{ color: 'var(--raio-text-secondary)' }}
+                              >
+                                {it.short_description}
+                              </div>
+                            )}
+                            {it.author && (
+                              <div
+                                className="text-[11px] mt-2"
+                                style={{ color: 'var(--raio-text-tertiary)' }}
+                              >
+                                {it.author}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </section>
 
             {/* CURATED BUNDLES — trilhas */}
