@@ -42,6 +42,19 @@ export async function migrateBundles(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_bundles_active ON marketplace_bundles(is_active)`
   );
 
+  // Join table: bundle ↔ course
+  await query(`
+    CREATE TABLE IF NOT EXISTS marketplace_bundle_items (
+      bundle_id INTEGER NOT NULL REFERENCES marketplace_bundles(id) ON DELETE CASCADE,
+      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (bundle_id, course_id)
+    )
+  `);
+  await query(
+    `CREATE INDEX IF NOT EXISTS idx_bundle_items_bundle ON marketplace_bundle_items(bundle_id, sort_order)`
+  );
+
   const seeds: Array<{
     slug: string;
     title: string;
@@ -146,4 +159,40 @@ export async function migrateBundles(): Promise<void> {
   if (inserted > 0) {
     console.log(`[Bundles] Seeded ${inserted}/${seeds.length} curated bundles (missing slugs filled in).`);
   }
+
+  // Idempotently link each bundle to up to 6 active courses matching its
+  // segment (life_context). Existing links are preserved (PK conflict no-op),
+  // and bundle.item_count is refreshed to reflect actual links.
+  const { rows: bundleRows } = await query<{ id: number; segment: string }>(
+    `SELECT id, segment FROM marketplace_bundles WHERE is_active = true`
+  );
+  for (const b of bundleRows) {
+    const { rows: courseRows } = await query<{ id: number }>(
+      `SELECT id FROM courses
+        WHERE is_active = true AND life_context = $1
+        ORDER BY students DESC, id ASC
+        LIMIT 6`,
+      [b.segment]
+    );
+    let order = 0;
+    for (const c of courseRows) {
+      await query(
+        `INSERT INTO marketplace_bundle_items (bundle_id, course_id, sort_order)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (bundle_id, course_id) DO NOTHING`,
+        [b.id, c.id, order++]
+      );
+    }
+  }
+  await query(`
+    UPDATE marketplace_bundles b
+       SET item_count = COALESCE(sub.c, 0)
+      FROM (
+        SELECT bundle_id, COUNT(*)::int AS c
+          FROM marketplace_bundle_items
+         GROUP BY bundle_id
+      ) sub
+     WHERE sub.bundle_id = b.id
+       AND b.item_count IS DISTINCT FROM sub.c
+  `);
 }

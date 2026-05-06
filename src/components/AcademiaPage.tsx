@@ -13,7 +13,7 @@ import { toast } from "sonner@2.0.3";
 import { smartSearch, getSearchResultMessage } from "./SmartSearchEngine";
 import { useTheme } from "./ThemeProvider";
 import { BookCard } from "./BookCard";
-import heroImage from "../assets/marketplace-hero-family.png";
+import heroImage from "../assets/marketplace-hero-family.jpg";
 
 export function AcademiaPage() {
   const { courses, books, setCurrentCourseId, setIsInCourseDetail, setCurrentBookId, setIsInBookDetail, startCourse, enrollInCourse, enrollInBook, toggleBookFavorite, userData } = useApp();
@@ -793,6 +793,15 @@ const FORMAT_KINDS: Array<{
   { kind: "reels",  label: "Reels",   description: "Inspiração rápida",        Icon: Film },
 ];
 
+interface BundleItemAPI {
+  id: number;
+  title: string;
+  thumbnail: string | null;
+  duration: string | null;
+  level: string | null;
+  instructor: string | null;
+}
+
 interface BundleAPI {
   id: number;
   slug: string;
@@ -803,6 +812,7 @@ interface BundleAPI {
   cover_url: string | null;
   accent_color: string | null;
   item_count: number;
+  items?: BundleItemAPI[];
 }
 
 function MarketplaceView({
@@ -848,6 +858,9 @@ function MarketplaceView({
   const [kindLoading, setKindLoading] = useState<boolean>(false);
   const [kindError, setKindError] = useState<string | null>(null);
   const kindShowcaseRef = useRef<HTMLDivElement>(null);
+
+  // Inline-expanded bundle (shows real items list)
+  const [expandedBundleId, setExpandedBundleId] = useState<number | null>(null);
 
   // Fetch items for the selected non-curso format whenever kind or segment change
   useEffect(() => {
@@ -976,11 +989,48 @@ function MarketplaceView({
     return () => { cancelled = true; };
   }, [selectedSegment]);
 
-  // Apply segment filter on top of search-filtered courses
+  // Backend-driven segment filter: when a non-"all" segment is selected we
+  // refetch from /api/courses?life_context=X (server applies the filter and
+  // ordering). Falls back to client-side filtering of the in-memory `courses`
+  // if the request fails or while it's loading. Search query stays client-side
+  // because smartSearch ranks across already-loaded courses.
+  const [serverSegmentCourses, setServerSegmentCourses] = useState<any[] | null>(null);
+  useEffect(() => {
+    if (selectedSegment === "all") {
+      setServerSegmentCourses(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get<{ courses: any[] }>(
+          `/api/courses?life_context=${encodeURIComponent(selectedSegment)}`
+        );
+        if (cancelled) return;
+        if (res.success && res.data && Array.isArray(res.data.courses)) {
+          setServerSegmentCourses(res.data.courses);
+        } else {
+          setServerSegmentCourses(null);
+        }
+      } catch {
+        if (!cancelled) setServerSegmentCourses(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedSegment]);
+
+  // Apply segment filter on top of search-filtered courses. Prefer the
+  // backend-filtered list when available; otherwise fall back to the local
+  // search-aware filter so search keeps working without re-fetching.
   const segmentFilteredCourses = useMemo(() => {
     if (selectedSegment === "all") return filteredCourses;
+    if (searchQuery.trim()) {
+      // Search is local — keep client filter so smart-search ranking is preserved.
+      return filteredCourses.filter((c) => c?.life_context === selectedSegment);
+    }
+    if (serverSegmentCourses) return serverSegmentCourses;
     return filteredCourses.filter((c) => c?.life_context === selectedSegment);
-  }, [filteredCourses, selectedSegment]);
+  }, [filteredCourses, selectedSegment, serverSegmentCourses, searchQuery]);
 
   const segmentLabel = SEGMENTS.find((s) => s.value === selectedSegment)?.label;
 
@@ -1446,7 +1496,24 @@ function MarketplaceView({
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                   {bundles.map((b) => (
-                    <BundleCard key={b.id} bundle={b} />
+                    <BundleCard
+                      key={b.id}
+                      bundle={b}
+                      isExpanded={expandedBundleId === b.id}
+                      onToggle={() =>
+                        setExpandedBundleId((curr) => (curr === b.id ? null : b.id))
+                      }
+                      onOpenCourse={(courseId) => {
+                        setCurrentCourseId(courseId);
+                        setIsInCourseDetail(true);
+                      }}
+                      onSeeAllInSegment={() => {
+                        setSelectedSegment(b.segment);
+                        setTimeout(() => {
+                          allCoursesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 60);
+                      }}
+                    />
                   ))}
                 </div>
               )}
@@ -1686,21 +1753,37 @@ function EmptyMarketplaceState({ title, description, actionLabel, onAction }: Em
 // Curated bundle card
 interface BundleCardProps {
   bundle: BundleAPI;
+  isExpanded: boolean;
+  onToggle: () => void;
+  onOpenCourse: (courseId: number) => void;
+  onSeeAllInSegment: () => void;
 }
 
-function BundleCard({ bundle }: BundleCardProps) {
+function BundleCard({
+  bundle,
+  isExpanded,
+  onToggle,
+  onOpenCourse,
+  onSeeAllInSegment,
+}: BundleCardProps) {
   const accent = bundle.accent_color || 'var(--raio-accent-primary)';
   const segLabel = SEGMENTS.find((s) => s.value === bundle.segment)?.label || bundle.segment;
+  const items = bundle.items || [];
 
   return (
-    <button
-      type="button"
-      onClick={() => toast.info(`Em breve: trilha "${bundle.title}"`)}
-      className="text-left rounded-2xl overflow-hidden transition-all hover:-translate-y-0.5 group"
+    <div
+      className="text-left rounded-2xl overflow-hidden transition-all"
       style={{
         background: 'var(--raio-bg-secondary)',
-        border: '1px solid var(--raio-border-default)',
+        border: `1px solid ${isExpanded ? 'var(--raio-accent-primary)' : 'var(--raio-border-default)'}`,
+        boxShadow: isExpanded ? '0 0 0 3px rgba(201,144,86,0.18)' : undefined,
       }}
+    >
+    <button
+      type="button"
+      onClick={onToggle}
+      className="block w-full text-left transition-all hover:-translate-y-0.5 group"
+      aria-expanded={isExpanded}
     >
       <div
         className="relative h-[120px] flex items-end p-5"
@@ -1759,10 +1842,82 @@ function BundleCard({ bundle }: BundleCardProps) {
           className="text-[13px] pt-2 inline-flex items-center gap-1.5"
           style={{ color: 'var(--raio-accent-primary)', fontWeight: 600 }}
         >
-          Ver trilha <ArrowRight className="w-4 h-4" />
+          {isExpanded ? 'Ocultar trilha' : 'Ver trilha'}{' '}
+          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
         </div>
       </div>
     </button>
+
+    {isExpanded && (
+      <div
+        className="border-t px-5 py-4"
+        style={{ borderColor: 'var(--raio-border-default)' }}
+      >
+        {items.length === 0 ? (
+          <div className="text-[13px]" style={{ color: 'var(--raio-text-secondary)' }}>
+            Itens desta trilha serão publicados em breve.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {items.map((it, i) => (
+              <li key={it.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpenCourse(it.id)}
+                  className="w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors"
+                  style={{ background: 'transparent' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--raio-bg-warm-cream)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <span
+                    className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] shrink-0"
+                    style={{
+                      background: accent,
+                      color: '#FFFFFF',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className="text-[14px] truncate"
+                      style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                    >
+                      {it.title}
+                    </div>
+                    <div
+                      className="text-[12px] truncate"
+                      style={{ color: 'var(--raio-text-secondary)' }}
+                    >
+                      {[it.instructor, it.duration, it.level].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 shrink-0" style={{ color: 'var(--raio-text-tertiary)' }} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <button
+          type="button"
+          onClick={onSeeAllInSegment}
+          className="mt-3 w-full text-[13px] py-2 rounded-lg transition-colors"
+          style={{
+            background: 'var(--raio-bg-warm-cream)',
+            color: 'var(--raio-accent-hover)',
+            fontWeight: 600,
+          }}
+        >
+          Ver todos os cursos para {segLabel} →
+        </button>
+      </div>
+    )}
+    </div>
   );
 }
 
