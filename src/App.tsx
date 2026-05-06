@@ -311,10 +311,6 @@ function AppContent() {
         <Navigation
           currentTab={currentTab}
           onTabChange={setCurrentTab}
-          userName={user.name}
-          userLevel={user.level}
-          notifications={0}
-          isTransparent={false}
         />
       )}
 

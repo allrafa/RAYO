@@ -3,10 +3,6 @@ import { Home, GraduationCap, Users, User } from "lucide-react";
 interface NavigationProps {
   currentTab: string;
   onTabChange: (tab: string) => void;
-  userName?: string;
-  userLevel?: number;
-  notifications?: number;
-  isTransparent?: boolean;
 }
 
 type Tab = { id: string; icon: typeof Home; label: string };
