@@ -329,7 +329,7 @@ function AppContent() {
             isMinimized={isSidebarMinimized}
             onToggleMinimize={() => setIsSidebarMinimized(!isSidebarMinimized)}
           />
-          <TopNavbar onTabChange={setCurrentTab} />
+          <TopNavbar onTabChange={setCurrentTab} isSidebarMinimized={isSidebarMinimized} />
           {/* Mobile-only entry point for Mensagens (moved out of the
               bottom navbar in Task #41). Hidden on the conversas page
               itself to avoid a redundant icon over the chat header. */}

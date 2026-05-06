@@ -1,18 +1,16 @@
 import { Search, Bell, Heart, MessageCircle, Plus, BookOpen, Play, Headphones, Film, Users, MessagesSquare } from "lucide-react";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import { Input } from "./ui/input";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner@2.0.3";
 import { useApp } from "./AppContext";
 import { useScrollDirection } from "./hooks/useScrollDirection";
 import { useUnreadMessages } from "./hooks/useUnreadMessages";
-import { useTheme } from "./ThemeProvider";
 import { api } from "../lib/api";
 import { navigateToSearchHit } from "../lib/searchNavigate";
+import "../styles/nav-rayo.css";
 
 interface TopNavbarProps {
   onTabChange: (tab: string) => void;
+  isSidebarMinimized?: boolean;
 }
 
 interface SearchResult {
@@ -24,7 +22,7 @@ interface SearchResult {
   ctaTarget: string | null;
 }
 
-export function TopNavbar({ onTabChange }: TopNavbarProps) {
+export function TopNavbar({ onTabChange, isSidebarMinimized = false }: TopNavbarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -37,7 +35,6 @@ export function TopNavbar({ onTabChange }: TopNavbarProps) {
     setIsInVideoPage,
   } = useApp();
   const { scrollDirection, isAtTop } = useScrollDirection({ threshold: 100 });
-  const { theme } = useTheme();
   const { count: unreadMessages } = useUnreadMessages();
 
   // Task #44: busca real com debounce + dropdown.
@@ -94,60 +91,38 @@ export function TopNavbar({ onTabChange }: TopNavbarProps) {
     });
   };
 
-  const shouldHide = scrollDirection === 'down' && !isAtTop;
+  const shouldHide = scrollDirection === "down" && !isAtTop;
+  const cls = [
+    "rn-topbar",
+    isSidebarMinimized ? "with-min" : "",
+    shouldHide ? "hide" : "",
+  ].filter(Boolean).join(" ");
 
   return (
-    <header
-      className={`
-        hidden lg:block lg:fixed lg:top-0 lg:left-64 lg:right-0 h-16
-        backdrop-blur-xl
-        transition-transform duration-300 ease-in-out
-        ${shouldHide ? '-translate-y-full' : 'translate-y-0'}
-      `}
-      style={{
-        zIndex: 40,
-        background: 'var(--raio-bg-overlay)',
-        borderBottom: '1px solid var(--raio-border-default)',
-      }}
-    >
-      <div className="h-full px-6 flex items-center justify-between gap-4">
-        <div ref={wrapperRef} className="flex-1 max-w-xl relative">
+    <header className={cls} role="banner">
+      <div className="rn-topbar-inner">
+        <div ref={wrapperRef} className="rn-search-wrap">
           <form onSubmit={handleSubmit}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--raio-text-tertiary)' }} />
-              <Input
-                type="search"
-                placeholder="Buscar cursos, conteúdos, comunidade…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => {
-                  if (results.length > 0) setShowResults(true);
-                }}
-                className="pl-10 pr-4 h-10 border-0 focus-visible:ring-2"
-                style={{
-                  background: 'var(--raio-bg-tertiary)',
-                  color: 'var(--raio-text-primary)',
-                }}
-              />
-            </div>
+            <Search className="rn-search-icon w-4 h-4" aria-hidden="true" />
+            <input
+              type="search"
+              className="rn-search"
+              placeholder="Buscar cursos, conteúdos, comunidade…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => {
+                if (results.length > 0) setShowResults(true);
+              }}
+              aria-label="Buscar"
+            />
           </form>
 
           {showResults && searchQuery.trim().length >= 2 && (
-            <div
-              role="listbox"
-              className="absolute left-0 right-0 mt-2 rounded-lg shadow-xl overflow-hidden max-h-[60vh] overflow-y-auto"
-              style={{
-                background: 'var(--raio-bg-secondary)',
-                border: '1px solid var(--raio-border-default)',
-                zIndex: 50,
-              }}
-            >
+            <div role="listbox" className="rn-search-results">
               {loading ? (
-                <p className="p-4 text-sm text-muted-foreground">Buscando…</p>
+                <p className="rn-search-empty">Buscando…</p>
               ) : results.length === 0 ? (
-                <p className="p-4 text-sm text-muted-foreground">
-                  Nenhum resultado.
-                </p>
+                <p className="rn-search-empty">Nenhum resultado.</p>
               ) : (
                 <ul>
                   {results.map((r) => (
@@ -155,43 +130,22 @@ export function TopNavbar({ onTabChange }: TopNavbarProps) {
                       <button
                         type="button"
                         onClick={() => handleSelect(r)}
-                        className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted"
+                        className="rn-search-item"
                       >
-                        <span
-                          className="w-9 h-9 rounded-md shrink-0 flex items-center justify-center overflow-hidden"
-                          style={{ background: 'var(--raio-bg-tertiary)' }}
-                        >
+                        <span className="rn-search-item-thumb">
                           {r.thumbnail ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={r.thumbnail}
-                              alt=""
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
+                            <img src={r.thumbnail} alt="" loading="lazy" />
                           ) : (
                             kindIcon(r.kind)
                           )}
                         </span>
-                        <span className="flex-1 min-w-0">
-                          <span className="block text-sm font-medium truncate">
-                            {r.title}
-                          </span>
+                        <span className="rn-search-item-text">
+                          <span className="rn-search-item-title">{r.title}</span>
                           {r.subtitle && (
-                            <span className="block text-xs text-muted-foreground truncate">
-                              {r.subtitle}
-                            </span>
+                            <span className="rn-search-item-sub">{r.subtitle}</span>
                           )}
                         </span>
-                        <span
-                          className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
-                          style={{
-                            background: 'var(--raio-bg-tertiary)',
-                            color: 'var(--raio-text-secondary)',
-                          }}
-                        >
-                          {kindLabel(r.kind)}
-                        </span>
+                        <span className="rn-search-item-tag">{kindLabel(r.kind)}</span>
                       </button>
                     </li>
                   ))}
@@ -201,69 +155,60 @@ export function TopNavbar({ onTabChange }: TopNavbarProps) {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative hover:bg-muted disabled:opacity-50"
+        <div className="rn-topbar-actions">
+          <button
+            type="button"
+            className="rn-icon-btn"
             disabled
             aria-disabled="true"
             aria-label="Criar conteúdo (em breve)"
             title="Criar conteúdo — em breve"
           >
             <Plus className="w-5 h-5" />
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative hover:bg-muted disabled:opacity-50"
+          <button
+            type="button"
+            className="rn-icon-btn"
             disabled
             aria-disabled="true"
             aria-label="Favoritos (em breve)"
             title="Favoritos — em breve"
           >
             <Heart className="w-5 h-5" />
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative hover:bg-muted"
-            onClick={() => onTabChange('conversas')}
-            aria-label={unreadMessages > 0 ? `Mensagens (${unreadMessages} não lidas)` : 'Mensagens'}
+          <button
+            type="button"
+            className="rn-icon-btn"
+            onClick={() => onTabChange("conversas")}
+            aria-label={
+              unreadMessages > 0 ? `Mensagens (${unreadMessages} não lidas)` : "Mensagens"
+            }
           >
             <MessageCircle className="w-5 h-5" />
-            {unreadMessages > 0 && (
-              <Badge className="absolute -top-1 -right-1 w-5 h-5 p-0 flex items-center justify-center text-[9px] bg-destructive text-destructive-foreground">
-                {unreadMessages > 9 ? '9+' : unreadMessages}
-              </Badge>
-            )}
-          </Button>
+            {unreadMessages > 0 && <span className="rn-icon-btn-dot" aria-hidden="true" />}
+          </button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative hover:bg-muted disabled:opacity-50"
+          <button
+            type="button"
+            className="rn-icon-btn"
             disabled
             aria-disabled="true"
             aria-label="Notificações (em breve)"
             title="Notificações — em breve"
           >
             <Bell className="w-5 h-5" />
-          </Button>
+          </button>
 
-          <Button
-            className="ml-2 hover:opacity-90"
-            style={{
-              background: 'linear-gradient(135deg, var(--raio-accent-primary) 0%, var(--raio-accent-hover) 100%)',
-              color: theme === 'dark' ? 'var(--raio-text-primary)' : 'var(--raio-text-inverse)',
-            }}
+          <button
+            type="button"
+            className="rn-premium-pill"
             onClick={() => toast.success("Você já é Premium! 🎉")}
             aria-label="Status Premium"
           >
             Premium
-          </Button>
+          </button>
         </div>
       </div>
     </header>
@@ -281,7 +226,7 @@ function kindLabel(k: SearchResult["kind"]): string {
 }
 
 function kindIcon(k: SearchResult["kind"]) {
-  const cls = "w-4 h-4 text-muted-foreground";
+  const cls = "w-4 h-4";
   if (k === "curso") return <BookOpen className={cls} />;
   if (k === "audio" || k === "podcast") return <Headphones className={cls} />;
   if (k === "reels") return <Film className={cls} />;
