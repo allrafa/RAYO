@@ -1,4 +1,4 @@
-import { Heart, MessageCircle, Share2, MoreHorizontal, Plus, TrendingUp, Users, Clock, Pin, Send, Search, Sparkles, Trophy, UserPlus, ChevronRight, CheckCircle, Lock, Globe, Mail } from "lucide-react";
+import { Heart, MessageCircle, Share2, MoreHorizontal, Plus, TrendingUp, Users, Clock, Pin, Send, Search, Sparkles, Trophy, UserPlus, ChevronRight, CheckCircle, Lock, Globe, Mail, Image as ImageIcon, Video, Smile } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -11,6 +11,7 @@ import { SkeletonLoader } from "./SkeletonLoader";
 import { EmptyStateError, EmptyStateNoCommunity } from "./EmptyState";
 import { enhancedToast } from "./EnhancedToast";
 import { useApp } from "./AppContext";
+import { useAuth } from "./AuthContext";
 import { CreatePostModal } from "./CreatePostModal";
 import { EmojiReactionPicker, useReactions } from "./EmojiReactionPicker";
 import { FavoriteIcon } from "./FavoriteButton";
@@ -51,6 +52,7 @@ export function ComunidadePage() {
   const [currentView, setCurrentView] = useState<"feed" | "grupos" | "trending" | "conversas">("feed");
   
   const { posts, likePost, sharePost, loadPosts } = useApp();
+  const { user: authUser } = useAuth();
   const { reactions, handleReaction } = useReactions();
   const { theme } = useTheme();
   const [forums, setForums] = useState<Forum[]>([]);
@@ -352,75 +354,107 @@ export function ComunidadePage() {
           </div>
         </div>
 
-        {/* HERO SECTION - Minimal */}
-        <section 
-          style={{ 
-            background: 'var(--rayo-sand-50)',
-            borderBottom: '1px solid var(--rayo-sand-300)'
-          }}
-        >
-          <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="max-w-2xl mx-auto space-y-4">
-              {/* Search Bar */}
-              <div className="relative">
-                <Input
-                  placeholder='Buscar posts, grupos, tópicos...'
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-[56px] pl-6 pr-16 rounded-full border-2 transition-colors"
-                  style={{ 
-                    fontSize: '16px',
-                    background: 'var(--rayo-sand-100)',
-                    borderColor: 'var(--rayo-sand-300)',
-                    color: 'var(--rayo-forest-900)',
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--rayo-terra-500)';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--rayo-sand-300)';
-                  }}
-                />
-                <Button
-                  size="icon"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-[44px] w-[44px] rounded-full transition-all"
-                  style={{
-                    background: 'var(--rayo-terra-500)',
-                    color: '#FFFFFF',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--rayo-terra-700)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--rayo-terra-500)';
-                  }}
-                >
-                  <Search className="w-5 h-5" />
-                </Button>
-              </div>
-
-              {/* Create Post Button */}
-              <Button
-                onClick={() => setShowCreatePost(true)}
-                className="w-full h-[56px] rounded-full shadow-sm hover:shadow-md transition-all"
-                style={{ 
-                  fontWeight: 600,
-                  background: 'var(--rayo-terra-500)',
-                  color: '#FFFFFF',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--rayo-terra-700)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'var(--rayo-terra-500)';
-                }}
+        {/* COMPOSER (Facebook-style) — only on Feed view */}
+        {currentView === "feed" && (
+          <section
+            style={{
+              background: 'var(--rayo-sand-50)',
+              borderBottom: '1px solid var(--rayo-sand-300)',
+            }}
+          >
+            <div className="max-w-7xl mx-auto px-6 py-4">
+              <div
+                className="max-w-2xl mx-auto ra-card"
+                style={{ padding: 14 }}
               >
-                <Plus className="w-5 h-5 mr-2" />
-                Criar Nova Publicação
-              </Button>
+                <div className="flex items-center gap-3">
+                  {/* Avatar */}
+                  {authUser?.avatar_url ? (
+                    <img
+                      src={authUser.avatar_url}
+                      alt={authUser.name}
+                      className="flex-shrink-0"
+                      style={{
+                        width: 44, height: 44, borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: '1px solid var(--rayo-sand-300)',
+                      }}
+                    />
+                  ) : (
+                    <span
+                      className="ra-disc-avatar terra flex-shrink-0"
+                      style={{ width: 44, height: 44 }}
+                    >
+                      {(authUser?.name || 'R').trim().charAt(0).toUpperCase()}
+                    </span>
+                  )}
+
+                  {/* Read-only input que abre o modal */}
+                  <button
+                    type="button"
+                    onClick={() => setShowCreatePost(true)}
+                    className="flex-1 text-left transition-colors"
+                    style={{
+                      height: 44,
+                      padding: '0 18px',
+                      borderRadius: 999,
+                      background: 'var(--rayo-sand-100)',
+                      border: '1px solid var(--rayo-sand-300)',
+                      color: 'var(--rayo-ink-400)',
+                      fontFamily: 'inherit',
+                      fontSize: 15,
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--rayo-sand-50)';
+                      e.currentTarget.style.borderColor = 'var(--rayo-terra-500)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--rayo-sand-100)';
+                      e.currentTarget.style.borderColor = 'var(--rayo-sand-300)';
+                    }}
+                  >
+                    No que você está pensando, {(authUser?.name || '').split(' ')[0] || 'amigo'}?
+                  </button>
+
+                  {/* Ações rápidas */}
+                  <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
+                    <button
+                      type="button"
+                      className="ra-action"
+                      aria-label="Adicionar foto"
+                      title="Foto"
+                      onClick={() => setShowCreatePost(true)}
+                      style={{ color: 'var(--rayo-sage-500)' }}
+                    >
+                      <ImageIcon className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      className="ra-action"
+                      aria-label="Adicionar vídeo"
+                      title="Vídeo"
+                      onClick={() => setShowCreatePost(true)}
+                      style={{ color: 'var(--rayo-terra-500)' }}
+                    >
+                      <Video className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      className="ra-action"
+                      aria-label="Sentimento"
+                      title="Sentimento"
+                      onClick={() => setShowCreatePost(true)}
+                      style={{ color: 'var(--rayo-ochre-500)' }}
+                    >
+                      <Smile className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* MAIN CONTENT */}
         <div className="max-w-7xl mx-auto px-6 py-8">

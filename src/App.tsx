@@ -319,7 +319,7 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: "var(--rayo-sand-100)" }}>
       <a href="#main-content" className="skip-link">
         Ir para conteúdo principal
       </a>
