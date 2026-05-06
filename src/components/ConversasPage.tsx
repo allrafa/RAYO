@@ -496,30 +496,28 @@ export function ConversasPage() {
           ) : filteredConversations.length === 0 ? (
             <EmptyStateNoConversations onStart={() => setShowNewConvDialog(true)} />
           ) : (
-            filteredConversations.map((conv) => (
-              <button
-                key={conv.id}
-                type="button"
-                onClick={() => setActiveId(conv.id)}
-                className={`w-full p-4 cursor-pointer hover:bg-accent border-b transition-colors text-left ${
-                  activeId === conv.id ? "bg-accent" : ""
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-12 h-12">
-                    <AvatarFallback>{getInitials(conv.other_user_name)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
+            <div className="ra-disc-list p-3">
+              {filteredConversations.map((conv) => (
+                <button
+                  key={conv.id}
+                  type="button"
+                  onClick={() => setActiveId(conv.id)}
+                  className={`ra-disc-item ${activeId === conv.id ? "active" : ""}`}
+                >
+                  <div className="ra-disc-avatar terra">
+                    {getInitials(conv.other_user_name)}
+                  </div>
+                  <div className="ra-disc-body">
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="font-medium truncate">{conv.other_user_name}</h3>
+                      <h3 className="ra-disc-title">{conv.other_user_name}</h3>
                       {conv.last_message_created_at && (
-                        <span className="text-xs text-muted-foreground shrink-0">
+                        <span className="ra-disc-meta shrink-0">
                           {formatRelative(conv.last_message_created_at)}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm text-muted-foreground truncate">
+                      <p className="ra-disc-snippet">
                         {conv.last_message_content
                           ? (conv.last_message_sender_id === currentUserId ? "Você: " : "") + conv.last_message_content
                           : "Comece a conversa..."}
@@ -529,9 +527,9 @@ export function ConversasPage() {
                       )}
                     </div>
                   </div>
-                </div>
-              </button>
-            ))
+                </button>
+              ))}
+            </div>
           )}
         </ScrollArea>
       </div>
@@ -599,9 +597,10 @@ export function ConversasPage() {
                   </Button>
                 </div>
               ) : messages.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground">
-                  <MessageCircle className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Nenhuma mensagem ainda. Envie a primeira!</p>
+                <div className="ra-empty">
+                  <div className="ra-empty-icon"><MessageCircle className="w-5 h-5" /></div>
+                  <p className="ra-empty-title">Nenhuma mensagem ainda.</p>
+                  <p className="ra-empty-sub">Envie a primeira para começar a conversa.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -609,15 +608,11 @@ export function ConversasPage() {
                     const mine = m.sender_id === currentUserId;
                     return (
                       <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                        <div
-                          className={`max-w-[70%] rounded-lg p-3 ${
-                            mine ? "bg-primary text-primary-foreground" : "bg-muted"
-                          }`}
-                        >
+                        <div className={`ra-chat-bubble ${mine ? "user" : "assistant"}`}>
                           <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
                           <p
                             className={`text-xs mt-1 flex items-center gap-1 ${
-                              mine ? "text-primary-foreground/70 justify-end" : "text-muted-foreground"
+                              mine ? "opacity-70 justify-end" : "text-muted-foreground"
                             }`}
                           >
                             <span>{formatTime(m.created_at)}</span>

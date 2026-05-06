@@ -31,14 +31,18 @@ export function BookCard({
   // Grid variant (padrão - para biblioteca)
   if (variant === 'grid') {
     return (
-      <Card 
-        className="overflow-hidden group hover:shadow-lg transition-all duration-300"
+      <div
+        className="ra-card ra-card-hover overflow-hidden group"
         style={{
-          background: 'var(--rayo-sand-50)',
-          borderColor: 'var(--rayo-sand-300)'
+          padding: 0,
+          background:
+            'linear-gradient(180deg, var(--rayo-sand-50) 0%, var(--rayo-sand-100) 100%)',
+          borderTop: '3px solid transparent',
+          borderImage:
+            'linear-gradient(90deg, var(--rayo-forest-900), var(--rayo-terra-500), var(--rayo-sage-500)) 1',
         }}
       >
-        <CardContent className="p-3">
+        <div className="p-3">
           {/* Cover Image - CLICÁVEL */}
           <div 
             className="relative aspect-[2/3] mb-3 rounded-lg overflow-hidden cursor-pointer"
@@ -159,21 +163,15 @@ export function BookCard({
               )}
             </Button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   // List variant (para listas horizontais ou verticais)
   return (
-    <Card 
-      className="hover:shadow-md transition-all"
-      style={{
-        background: 'var(--rayo-sand-50)',
-        borderColor: 'var(--rayo-sand-300)'
-      }}
-    >
-      <CardContent className="p-4 flex gap-4">
+    <div className="ra-card ra-card-hover" style={{ padding: 0 }}>
+      <div className="p-4 flex gap-4">
         {/* Cover */}
         <div 
           className="w-20 h-28 flex-shrink-0 rounded overflow-hidden"
@@ -265,7 +263,7 @@ export function BookCard({
             )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

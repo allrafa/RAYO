@@ -550,12 +550,7 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
       {/* Sidebar */}
       <div className="space-y-6">
         {/* Trending Topics */}
-        <Card 
-          style={{
-            borderColor: 'var(--rayo-sand-300)',
-            background: 'var(--rayo-sand-50)',
-          }}
-        >
+        <div className="ra-card" style={{ padding: 0 }}>
           <div className="p-6">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp 
@@ -572,58 +567,34 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
                 Tópicos em Alta
               </h3>
             </div>
-            <div className="space-y-3">
+            <div className="ra-disc-list">
               {trendingTopics.map((topic, index) => (
-                <div 
-                  key={index} 
-                  className="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors"
-                  style={{ background: 'transparent' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--rayo-sand-300)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                  }}
+                <button
+                  key={index}
+                  type="button"
+                  className="ra-disc-item"
                 >
-                  <div>
-                    <div 
-                      className="text-[14px]" 
-                      style={{ 
-                        fontWeight: 600,
-                        color: 'var(--rayo-terra-500)' 
-                      }}
-                    >
+                  <div className="ra-disc-avatar terra">#</div>
+                  <div className="ra-disc-body">
+                    <h4 className="ra-disc-title" style={{ color: 'var(--rayo-terra-500)' }}>
                       {topic.topic}
-                    </div>
-                    <div 
-                      className="text-[12px]" 
-                      style={{ color: 'var(--rayo-ink-400)' }}
-                    >
-                      {topic.posts} posts
-                    </div>
+                    </h4>
+                    <p className="ra-disc-snippet">{topic.posts} posts</p>
                   </div>
-                  <Badge 
-                    style={{ 
-                      fontSize: '11px', 
-                      fontWeight: 600,
-                      background: 'var(--rayo-terra-100)',
-                      color: 'var(--rayo-terra-500)',
-                    }}
-                  >
-                    {topic.trend}
-                  </Badge>
-                </div>
+                  <span className="ra-tag terra">{topic.trend}</span>
+                </button>
               ))}
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Quick Stats */}
-        <Card 
+        <div
+          className="ra-card"
           style={{
             background: 'var(--rayo-terra-100)',
             borderColor: 'var(--rayo-terra-500)',
-            borderWidth: '1px',
+            padding: 0,
           }}
         >
           <div className="p-6 space-y-4">
@@ -643,101 +614,25 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
               </h3>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div 
-                className="rounded-lg p-3 text-center"
-                style={{
-                  background: 'var(--rayo-sand-50)',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                <div 
-                  className="text-[20px] mb-1" 
-                  style={{ 
-                    fontWeight: 700, 
-                    color: 'var(--rayo-forest-900)' 
-                  }}
-                >
-                  5
-                </div>
-                <div 
-                  className="text-[11px]" 
-                  style={{ color: 'var(--rayo-ink-400)' }}
-                >
-                  Posts criados
-                </div>
+              <div className="ra-metric" style={{ alignItems: 'center', textAlign: 'center', padding: 12 }}>
+                <div className="ra-metric-value" style={{ fontSize: 20 }}>5</div>
+                <div className="ra-metric-label">Posts criados</div>
               </div>
-              <div 
-                className="rounded-lg p-3 text-center"
-                style={{
-                  background: 'var(--rayo-sand-50)',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                <div 
-                  className="text-[20px] mb-1" 
-                  style={{ 
-                    fontWeight: 700, 
-                    color: 'var(--rayo-forest-900)' 
-                  }}
-                >
-                  28
-                </div>
-                <div 
-                  className="text-[11px]" 
-                  style={{ color: 'var(--rayo-ink-400)' }}
-                >
-                  Comentários
-                </div>
+              <div className="ra-metric" style={{ alignItems: 'center', textAlign: 'center', padding: 12 }}>
+                <div className="ra-metric-value" style={{ fontSize: 20 }}>28</div>
+                <div className="ra-metric-label">Comentários</div>
               </div>
-              <div 
-                className="rounded-lg p-3 text-center"
-                style={{
-                  background: 'var(--rayo-sand-50)',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                <div 
-                  className="text-[20px] mb-1" 
-                  style={{ 
-                    fontWeight: 700, 
-                    color: 'var(--rayo-forest-900)' 
-                  }}
-                >
-                  142
-                </div>
-                <div 
-                  className="text-[11px]" 
-                  style={{ color: 'var(--rayo-ink-400)' }}
-                >
-                  Curtidas
-                </div>
+              <div className="ra-metric" style={{ alignItems: 'center', textAlign: 'center', padding: 12 }}>
+                <div className="ra-metric-value" style={{ fontSize: 20 }}>142</div>
+                <div className="ra-metric-label">Curtidas</div>
               </div>
-              <div 
-                className="rounded-lg p-3 text-center"
-                style={{
-                  background: 'var(--rayo-sand-50)',
-                  backdropFilter: 'blur(8px)',
-                }}
-              >
-                <div 
-                  className="text-[20px] mb-1" 
-                  style={{ 
-                    fontWeight: 700, 
-                    color: 'var(--rayo-forest-900)' 
-                  }}
-                >
-                  3
-                </div>
-                <div 
-                  className="text-[11px]" 
-                  style={{ color: 'var(--rayo-ink-400)' }}
-                >
-                  Grupos ativos
-                </div>
+              <div className="ra-metric" style={{ alignItems: 'center', textAlign: 'center', padding: 12 }}>
+                <div className="ra-metric-value" style={{ fontSize: 20 }}>3</div>
+                <div className="ra-metric-label">Grupos ativos</div>
               </div>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );
@@ -1021,12 +916,7 @@ function TrendingView({ posts, reactions, onReact, onComment, onShare, trendingT
         </div>
 
         <div className="space-y-4">
-          <Card 
-            style={{
-              borderColor: 'var(--rayo-sand-300)',
-              background: 'var(--rayo-sand-50)',
-            }}
-          >
+          <div className="ra-card" style={{ padding: 0 }}>
             <div className="p-6">
               <h3 
                 className="text-[18px] mb-4" 
@@ -1073,7 +963,7 @@ function TrendingView({ posts, reactions, onReact, onComment, onShare, trendingT
                 ))}
               </div>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
     </div>
@@ -1093,14 +983,8 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
   const { likePost } = useApp();
 
   return (
-    <Card 
-      className="hover:shadow-md transition-shadow"
-      style={{
-        borderColor: 'var(--rayo-sand-300)',
-        background: 'var(--rayo-sand-50)',
-      }}
-    >
-      <CardContent className="p-6">
+    <div className="ra-card ra-card-hover">
+      <div>
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -1234,8 +1118,8 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
             <FavoriteIcon id={post.id} type="post" />
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -1257,13 +1141,7 @@ function GroupCard({ group }: GroupCardProps) {
   };
 
   return (
-    <Card 
-      className="hover:shadow-lg transition-all overflow-hidden group"
-      style={{
-        borderColor: 'var(--rayo-sand-300)',
-        background: 'var(--rayo-sand-50)',
-      }}
-    >
+    <div className="ra-card ra-card-hover overflow-hidden group" style={{ padding: 0 }}>
       {/* Group Image */}
       <div 
         className="relative h-32 overflow-hidden"
@@ -1293,7 +1171,7 @@ function GroupCard({ group }: GroupCardProps) {
         )}
       </div>
 
-      <CardContent className="p-4">
+      <div className="p-4">
         <div className="mb-3">
           <h3 
             className="text-[16px] mb-1 line-clamp-1" 
@@ -1304,16 +1182,7 @@ function GroupCard({ group }: GroupCardProps) {
           >
             {group.name}
           </h3>
-          <Badge 
-            style={{ 
-              fontSize: '11px', 
-              fontWeight: 600,
-              background: 'var(--rayo-terra-100)',
-              color: 'var(--rayo-terra-500)',
-            }}
-          >
-            {group.category}
-          </Badge>
+          <span className="ra-tag terra">{group.category}</span>
         </div>
 
         <div 
@@ -1368,8 +1237,8 @@ function GroupCard({ group }: GroupCardProps) {
             </>
           )}
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

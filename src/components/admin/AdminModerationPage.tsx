@@ -122,22 +122,16 @@ function PostsList({ status }: { status: Status }) {
   }
   if (items.length === 0) {
     return (
-      <div className="text-center py-8" style={{ color: "var(--rayo-ink-400)" }}>
-        Nenhum post {status === "hidden" ? "oculto" : status === "visible" ? "visível" : ""} encontrado.
+      <div className="ra-empty">
+        <div className="ra-empty-icon"><FileText className="w-5 h-5" /></div>
+        <p className="ra-empty-title">Nenhum post {status === "hidden" ? "oculto" : status === "visible" ? "visível" : ""} encontrado.</p>
       </div>
     );
   }
   return (
     <div className="space-y-3">
       {items.map((post) => (
-        <div
-          key={post.id}
-          className="rounded-xl border p-4"
-          style={{
-            background: "var(--rayo-sand-50)",
-            borderColor: "var(--rayo-sand-300)",
-          }}
-        >
+        <div key={post.id} className="ra-card">
           <div className="flex items-start justify-between gap-4 mb-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -251,22 +245,16 @@ function CommentsList({ status }: { status: Status }) {
   }
   if (items.length === 0) {
     return (
-      <div className="text-center py-8" style={{ color: "var(--rayo-ink-400)" }}>
-        Nenhum comentário {status === "hidden" ? "oculto" : status === "visible" ? "visível" : ""} encontrado.
+      <div className="ra-empty">
+        <div className="ra-empty-icon"><MessageCircle className="w-5 h-5" /></div>
+        <p className="ra-empty-title">Nenhum comentário {status === "hidden" ? "oculto" : status === "visible" ? "visível" : ""} encontrado.</p>
       </div>
     );
   }
   return (
     <div className="space-y-3">
       {items.map((c) => (
-        <div
-          key={c.id}
-          className="rounded-xl border p-4"
-          style={{
-            background: "var(--rayo-sand-50)",
-            borderColor: "var(--rayo-sand-300)",
-          }}
-        >
+        <div key={c.id} className="ra-card">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1 flex-wrap">

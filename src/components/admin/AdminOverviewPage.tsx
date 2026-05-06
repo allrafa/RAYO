@@ -38,28 +38,12 @@ function StatCard({
   icon: typeof Users;
 }) {
   return (
-    <div
-      className="rounded-xl p-5 border"
-      style={{
-        background: "var(--rayo-sand-50)",
-        borderColor: "var(--rayo-sand-300)",
-      }}
-    >
-      <div className="flex items-center justify-between mb-2">
-        <span
-          className="text-xs uppercase tracking-wider"
-          style={{ color: "var(--rayo-ink-400)", fontWeight: 600 }}
-        >
-          {title}
-        </span>
+    <div className="ra-metric">
+      <div className="flex items-center justify-between">
+        <span className="ra-metric-label">{title}</span>
         <Icon className="w-4 h-4" style={{ color: "var(--rayo-ink-400)" }} />
       </div>
-      <div
-        className="text-3xl mb-1"
-        style={{ color: "var(--rayo-forest-900)", fontWeight: 700 }}
-      >
-        {value}
-      </div>
+      <div className="ra-metric-value">{value}</div>
       {subtitle && (
         <div className="text-xs" style={{ color: "var(--rayo-ink-700)" }}>
           {subtitle}

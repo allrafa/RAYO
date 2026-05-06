@@ -701,7 +701,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                   return (
                     <Card 
                       key={index} 
-                      className="p-4 lg:p-5 shadow-lg border-0 desktop-card-hover"
+                      className="ra-card ra-card-hover p-4 lg:p-5 shadow-lg border-0 desktop-card-hover"
                       style={{ background: 'var(--rayo-sand-50)' }}
                     >
                       <div className="flex flex-col lg:gap-3">
@@ -992,7 +992,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
             {/* Activity Stats - Desktop Only */}
             <div className="hidden lg:block px-0 mb-8">
               <Card 
-                className="p-6 border-0 shadow-md"
+                className="ra-card p-6 border-0 shadow-md"
                 style={{ background: 'var(--rayo-sand-50)' }}
               >
                 <h3 

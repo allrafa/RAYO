@@ -263,8 +263,10 @@ export function AdminHomeFeedPage() {
                   }}
                 >
                   {list.length === 0 ? (
-                    <div className="p-8 text-center text-sm" style={{ color: "var(--rayo-ink-400)" }}>
-                      Nenhum card nesta seção. Clique em "Adicionar" para criar o primeiro.
+                    <div className="ra-empty">
+                      <div className="ra-empty-icon"><Plus className="w-5 h-5" /></div>
+                      <p className="ra-empty-title">Nenhum card nesta seção.</p>
+                      <p className="ra-empty-sub">Clique em "Adicionar" para criar o primeiro.</p>
                     </div>
                   ) : (
                     <div className="divide-y" style={{ borderColor: "var(--rayo-sand-300)" }}>
@@ -297,24 +299,16 @@ export function AdminHomeFeedPage() {
                             )}
                             <div className="flex gap-2 mt-1 flex-wrap">
                               {item.badge_text && (
-                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--rayo-sand-300)", color: "var(--rayo-ink-700)" }}>
-                                  badge: {item.badge_text}
-                                </span>
+                                <span className="ra-tag">badge: {item.badge_text}</span>
                               )}
                               {item.meta_text && (
-                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--rayo-sand-300)", color: "var(--rayo-ink-700)" }}>
-                                  meta: {item.meta_text}
-                                </span>
+                                <span className="ra-tag">meta: {item.meta_text}</span>
                               )}
                               {item.progress !== null && (
-                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--rayo-sand-300)", color: "var(--rayo-ink-700)" }}>
-                                  progresso: {item.progress}%
-                                </span>
+                                <span className="ra-tag">progresso: {item.progress}%</span>
                               )}
                               {!item.is_active && (
-                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(234,179,8,0.15)", color: "rgb(180,131,7)" }}>
-                                  oculto
-                                </span>
+                                <span className="ra-tag ochre">oculto</span>
                               )}
                               {item.link_state === "draft" && (
                                 <span

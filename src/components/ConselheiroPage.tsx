@@ -399,23 +399,7 @@ export function ConselheiroPage() {
               {/* Mensagem */}
               <div className={`flex flex-col ${message.type === 'user' ? 'items-end' : 'items-start'} max-w-[75%]`}>
                 {/* Bubble */}
-                <div
-                  className={`rounded-2xl px-4 py-3 shadow-sm ${
-                    message.type === 'user' 
-                      ? 'rounded-tr-none' 
-                      : 'rounded-tl-none'
-                  }`}
-                  style={{
-                    background: message.type === 'user' 
-                      ? 'var(--rayo-terra-500)'
-                      : 'var(--rayo-sand-50)',
-                    color: message.type === 'user'
-                      ? '#FFFFFF'
-                      : 'var(--rayo-forest-900)',
-                    borderWidth: message.type === 'agent' ? '1px' : '0',
-                    borderColor: 'var(--rayo-sand-300)'
-                  }}
-                >
+                <div className={`ra-chat-bubble ${message.type === 'user' ? 'user' : 'assistant'} shadow-sm`}>
                   <p className="leading-relaxed whitespace-pre-wrap">
                     {message.content}
                   </p>
@@ -518,14 +502,7 @@ export function ConselheiroPage() {
                 </div>
               </div>
               
-              <div
-                className="rounded-2xl rounded-tl-none px-4 py-3 shadow-sm"
-                style={{
-                  background: 'var(--rayo-sand-50)',
-                  borderWidth: '1px',
-                  borderColor: 'var(--rayo-sand-300)'
-                }}
-              >
+              <div className="ra-chat-bubble assistant shadow-sm">
                 <div className="flex gap-1">
                   <div 
                     className="w-2 h-2 rounded-full animate-bounce"

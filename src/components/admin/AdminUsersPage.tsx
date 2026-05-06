@@ -208,13 +208,7 @@ export function AdminUsersPage() {
         </div>
       )}
 
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{
-          background: "var(--rayo-sand-50)",
-          borderColor: "var(--rayo-sand-300)",
-        }}
-      >
+      <div className="ra-card overflow-hidden" style={{ padding: 0 }}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -247,12 +241,12 @@ export function AdminUsersPage() {
               )}
               {!loading && data && data.users.length === 0 && (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-8 text-center"
-                    style={{ color: "var(--rayo-ink-400)" }}
-                  >
-                    Nenhum usuário encontrado.
+                  <td colSpan={6} className="px-0 py-0">
+                    <div className="ra-empty">
+                      <div className="ra-empty-icon"><ShieldAlert className="w-5 h-5" /></div>
+                      <p className="ra-empty-title">Nenhum usuário encontrado.</p>
+                      <p className="ra-empty-sub">Tente ajustar os filtros de busca acima.</p>
+                    </div>
                   </td>
                 </tr>
               )}

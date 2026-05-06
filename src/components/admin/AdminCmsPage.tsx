@@ -332,8 +332,10 @@ export function AdminCmsPage() {
             Carregando...
           </div>
         ) : items.length === 0 ? (
-          <div className="p-12 text-center text-sm" style={{ color: "var(--rayo-ink-400)" }}>
-            Nenhum conteúdo encontrado.
+          <div className="ra-empty">
+            <div className="ra-empty-icon"><Archive className="w-5 h-5" /></div>
+            <p className="ra-empty-title">Nenhum conteúdo encontrado.</p>
+            <p className="ra-empty-sub">Ajuste os filtros ou crie um novo conteúdo.</p>
           </div>
         ) : (
           <div className="divide-y" style={{ borderColor: "var(--rayo-sand-300)" }}>
@@ -352,26 +354,14 @@ export function AdminCmsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="ra-tag">{KIND_LABELS[item.kind]}</span>
                     <span
-                      className="text-xs px-2 py-0.5 rounded-full"
-                      style={{
-                        background: "var(--rayo-sand-300)",
-                        color: "var(--rayo-ink-700)",
-                      }}
-                    >
-                      {KIND_LABELS[item.kind]}
-                    </span>
-                    <span
-                      className="text-xs px-2 py-0.5 rounded-full"
-                      style={
+                      className={
                         item.status === "published"
-                          ? { background: "rgba(34,197,94,0.15)", color: "rgb(22,163,74)" }
+                          ? "ra-tag sage"
                           : item.status === "archived"
-                          // Slate / muted tone — distinct from draft (amber)
-                          // and published (green) so producers can scan the
-                          // list and immediately tell archived rows apart.
-                          ? { background: "rgba(100,116,139,0.18)", color: "rgb(71,85,105)" }
-                          : { background: "rgba(234,179,8,0.15)", color: "rgb(180,131,7)" }
+                          ? "ra-tag"
+                          : "ra-tag ochre"
                       }
                     >
                       {item.status === "published"
@@ -381,9 +371,7 @@ export function AdminCmsPage() {
                         : "Rascunho"}
                     </span>
                     {item.is_premium && (
-                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(168,85,247,0.15)", color: "rgb(147,51,234)" }}>
-                        Premium
-                      </span>
+                      <span className="ra-tag terra">Premium</span>
                     )}
                   </div>
                   <h3

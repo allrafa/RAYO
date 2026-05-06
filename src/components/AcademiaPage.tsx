@@ -331,102 +331,22 @@ function MinhaBlibiotecaView({
       {libraryFilter === 'all' && (
         <div className="mt-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card 
-              style={{ 
-                background: 'var(--rayo-sand-50)',
-                borderColor: 'var(--rayo-sand-300)',
-              }}
-            >
-              <CardContent className="p-4 text-center">
-                <div 
-                  className="text-[24px] mb-1" 
-                  style={{ 
-                    fontWeight: 700, 
-                    color: 'var(--rayo-forest-900)' 
-                  }}
-                >
-                  {totalCourses + totalBooks}
-                </div>
-                <div 
-                  className="text-[12px]" 
-                  style={{ color: 'var(--rayo-ink-700)' }}
-                >
-                  Itens na Biblioteca
-                </div>
-              </CardContent>
-            </Card>
-            <Card 
-              style={{ 
-                background: 'var(--rayo-sand-50)',
-                borderColor: 'var(--rayo-sand-300)',
-              }}
-            >
-              <CardContent className="p-4 text-center">
-                <div 
-                  className="text-[24px] mb-1" 
-                  style={{ 
-                    fontWeight: 700, 
-                    color: 'var(--rayo-forest-900)' 
-                  }}
-                >
-                  {totalCourses}
-                </div>
-                <div 
-                  className="text-[12px]" 
-                  style={{ color: 'var(--rayo-ink-700)' }}
-                >
-                  Cursos Ativos
-                </div>
-              </CardContent>
-            </Card>
-            <Card 
-              style={{ 
-                background: 'var(--rayo-sand-50)',
-                borderColor: 'var(--rayo-sand-300)',
-              }}
-            >
-              <CardContent className="p-4 text-center">
-                <div 
-                  className="text-[24px] mb-1" 
-                  style={{ 
-                    fontWeight: 700, 
-                    color: 'var(--rayo-forest-900)' 
-                  }}
-                >
-                  {totalBooks}
-                </div>
-                <div 
-                  className="text-[12px]" 
-                  style={{ color: 'var(--rayo-ink-700)' }}
-                >
-                  Livros
-                </div>
-              </CardContent>
-            </Card>
-            <Card 
-              style={{ 
-                background: 'var(--rayo-sand-50)',
-                borderColor: 'var(--rayo-sand-300)',
-              }}
-            >
-              <CardContent className="p-4 text-center">
-                <div 
-                  className="text-[24px] mb-1" 
-                  style={{ 
-                    fontWeight: 700, 
-                    color: 'var(--rayo-forest-900)' 
-                  }}
-                >
-                  {books.filter(b => b.isCompleted).length + courses.filter(c => c.progress === 100).length}
-                </div>
-                <div 
-                  className="text-[12px]" 
-                  style={{ color: 'var(--rayo-ink-700)' }}
-                >
-                  Itens Concluídos
-                </div>
-              </CardContent>
-            </Card>
+            <div className="ra-metric ra-card-hover" style={{ alignItems: 'center', textAlign: 'center' }}>
+              <div className="ra-metric-value">{totalCourses + totalBooks}</div>
+              <div className="ra-metric-label">Itens na Biblioteca</div>
+            </div>
+            <div className="ra-metric ra-card-hover" style={{ alignItems: 'center', textAlign: 'center' }}>
+              <div className="ra-metric-value">{totalCourses}</div>
+              <div className="ra-metric-label">Cursos Ativos</div>
+            </div>
+            <div className="ra-metric ra-card-hover" style={{ alignItems: 'center', textAlign: 'center' }}>
+              <div className="ra-metric-value">{totalBooks}</div>
+              <div className="ra-metric-label">Livros</div>
+            </div>
+            <div className="ra-metric ra-card-hover" style={{ alignItems: 'center', textAlign: 'center' }}>
+              <div className="ra-metric-value">{books.filter(b => b.isCompleted).length + courses.filter(c => c.progress === 100).length}</div>
+              <div className="ra-metric-label">Itens Concluídos</div>
+            </div>
           </div>
         </div>
       )}
@@ -1976,9 +1896,16 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
   };
 
   return (
-    <Card
-      className="group border-0 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden"
-      style={{ background: 'var(--rayo-sand-50)' }}
+    <div
+      className="ra-card ra-card-hover group overflow-hidden"
+      style={{
+        padding: 0,
+        background:
+          'linear-gradient(180deg, var(--rayo-sand-50) 0%, var(--rayo-sand-100) 100%)',
+        borderTop: '3px solid transparent',
+        borderImage:
+          'linear-gradient(90deg, var(--rayo-forest-900), var(--rayo-terra-500), var(--rayo-sage-500)) 1',
+      }}
     >
       {/* Thumbnail */}
       <div 
@@ -2014,7 +1941,7 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
       </div>
 
       {/* Content */}
-      <CardContent className="p-4 space-y-3">
+      <div className="p-4 space-y-3">
         <div onClick={onClick} className="cursor-pointer">
           {/* Rating */}
           <div className="flex items-center gap-1.5">
@@ -2130,7 +2057,7 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
             Acessar Curso
           </Button>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
