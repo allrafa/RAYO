@@ -171,7 +171,7 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
             transition={{ duration: 0.2, ease: [0.43, 0.13, 0.23, 0.96] }}
           >
             <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent"
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--raio-bg-overlay-soft)] to-transparent"
               initial={{ x: "-100%" }}
               whileHover={{ x: "100%" }}
               transition={{ duration: 0.7, ease: "easeInOut" }}

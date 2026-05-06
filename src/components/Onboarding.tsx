@@ -577,7 +577,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               {step > 1 && (
                 <button
                   onClick={handleBack}
-                  className="p-2 -ml-2 hover:bg-black/5 rounded-lg transition-colors"
+                  className="p-2 -ml-2 hover:bg-[var(--raio-overlay-dark-soft)] rounded-lg transition-colors"
                   aria-label="Voltar"
                 >
                   <ArrowLeft className="w-5 h-5" style={{ color: "var(--raio-text-primary)" }} />
