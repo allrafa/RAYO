@@ -366,7 +366,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
               <button
                 type="button"
                 className="rh-stat forest"
-                onClick={() => { if ("vibrate" in navigator) navigator.vibrate(10); setStatsModal("badges"); }}
+                onClick={() => { if ("vibrate" in navigator) navigator.vibrate(10); setStatsModal("xp"); }}
                 aria-label={`Nível ${dashboard.gamification.level} — ${dashboard.gamification.levelTitle}.`}
               >
                 <div className="rh-stat-icon"><Trophy className="w-4 h-4" /></div>
