@@ -874,79 +874,77 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
               </div>
             ) : null;
 
-          const renderRecentlyPlayed = (): ReactNode => (
-            <div key="recently_played" className="px-4 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-xl font-semibold">Tocados recentemente</h2>
-              </div>
-              <HomeFeedRail
-                items={homeCategories.recentlyPlayed}
-                size="medium"
-                emptyHint="Sem itens recentes em destaque. Adicione cards em Admin → Home / Destaques."
-              />
-            </div>
-          );
-
-          const renderMadeForYou = (): ReactNode => (
-            <div key="made_for_you" className="px-4 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-xl font-semibold">Feito para você</h2>
-              </div>
-              {youtubeLoading ? (
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="space-y-3">
-                      <div className="aspect-square bg-muted rounded-lg animate-pulse" />
-                      <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
-                      <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
-                    </div>
-                  ))}
+          // CMS-backed rails (recently_played / trending / podcasts /
+          // made_for_you fallback) return null when empty so the home
+          // doesn't show empty placeholders for end users (Task #43).
+          const renderRecentlyPlayed = (): ReactNode =>
+            homeCategories.recentlyPlayed.length > 0 ? (
+              <div key="recently_played" className="px-4 mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-xl font-semibold">Tocados recentemente</h2>
                 </div>
-              ) : (
-                <>
-                  {youtubeData && youtubeData.playlists.length > 0 ? (
-                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                      {youtubeData.playlists.map((playlist) => (
-                        <YouTubePlaylistCard
-                          key={playlist.id}
-                          playlist={playlist}
-                          onClick={handlePlaylistClick}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <HomeFeedRail
-                      items={homeCategories.madeForYou}
-                      size="large"
-                      emptyHint="Nenhuma playlist em destaque ainda. Producers podem adicionar cards em Admin → Home / Destaques."
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          );
-
-          const renderTrending = (): ReactNode => (
-            <div key="trending" className="px-4 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-xl font-semibold">Em alta no RAIO</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setIsInPlaylistsExpanded(true);
-                  }}
-                >
-                  Ver tudo
-                </Button>
+                <HomeFeedRail items={homeCategories.recentlyPlayed} size="medium" />
               </div>
-              <HomeFeedRail
-                items={homeCategories.trending}
-                size="medium"
-                emptyHint="Sem destaques 'Em alta' no momento. Adicione cards em Admin → Home / Destaques."
-              />
-            </div>
-          );
+            ) : null;
+
+          const renderMadeForYou = (): ReactNode => {
+            const hasPlaylists =
+              !youtubeLoading && youtubeData && youtubeData.playlists.length > 0;
+            const hasFallback =
+              !youtubeLoading && homeCategories.madeForYou.length > 0;
+            // Skeleton while YT loads; nothing once we know there's no
+            // data on either source.
+            if (!youtubeLoading && !hasPlaylists && !hasFallback) return null;
+            return (
+              <div key="made_for_you" className="px-4 mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-xl font-semibold">Feito para você</h2>
+                </div>
+                {youtubeLoading ? (
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="space-y-3">
+                        <div className="aspect-square bg-muted rounded-lg animate-pulse" />
+                        <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
+                        <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
+                      </div>
+                    ))}
+                  </div>
+                ) : hasPlaylists ? (
+                  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {youtubeData!.playlists.map((playlist) => (
+                      <YouTubePlaylistCard
+                        key={playlist.id}
+                        playlist={playlist}
+                        onClick={handlePlaylistClick}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <HomeFeedRail items={homeCategories.madeForYou} size="large" />
+                )}
+              </div>
+            );
+          };
+
+          const renderTrending = (): ReactNode =>
+            homeCategories.trending.length > 0 ? (
+              <div key="trending" className="px-4 mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-xl font-semibold">Em alta no RAIO</h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setIsInPlaylistsExpanded(true);
+                    }}
+                  >
+                    Ver tudo
+                  </Button>
+                </div>
+                <HomeFeedRail items={homeCategories.trending} size="medium" />
+              </div>
+            ) : null;
 
           const renderQuizzes = (): ReactNode => (
             <div key="quizzes" className="px-4 mb-8">
@@ -1006,18 +1004,15 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
             </div>
           );
 
-          const renderPodcasts = (): ReactNode => (
-            <div key="podcasts" className="px-4 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-xl font-semibold">Podcasts para você</h2>
+          const renderPodcasts = (): ReactNode =>
+            homeCategories.podcasts.length > 0 ? (
+              <div key="podcasts" className="px-4 mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-xl font-semibold">Podcasts para você</h2>
+                </div>
+                <HomeFeedRail items={homeCategories.podcasts} size="medium" />
               </div>
-              <HomeFeedRail
-                items={homeCategories.podcasts}
-                size="medium"
-                emptyHint="Nenhum podcast em destaque ainda. Adicione cards em Admin → Home / Destaques."
-              />
-            </div>
-          );
+            ) : null;
 
           const RAIL_RENDERERS: Record<string, () => ReactNode> = {
             continue: renderContinue,

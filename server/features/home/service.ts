@@ -21,6 +21,8 @@ interface ContentItemRow {
   segments: string[] | null;
   hook: string | null;
   cta: string | null;
+  media_url: string | null;
+  external_url: string | null;
 }
 
 function epochDay(d = new Date()): number {
@@ -36,6 +38,11 @@ export interface TodayItem {
   durationSeconds: number | null;
   hook: string | null;
   ctaLabel: string;
+  // Where the primary CTA should take the user. Frontend opens this in
+  // a new tab when present; null means "no destination" (rare — the
+  // user can still mark complete). external_url wins over media_url so
+  // producers can override the played asset with e.g. a YouTube link.
+  ctaTarget: string | null;
   segments: string[];
   completedAt: string | null;
 }
@@ -58,7 +65,8 @@ async function pickTodayItem(userId: number): Promise<ContentItemRow | null> {
   // segment combinations).
   const segmentFiltered = await query<ContentItemRow>(
     `SELECT id, kind, title, short_description, cover_url,
-            duration_seconds, segments, hook, cta
+            duration_seconds, segments, hook, cta,
+            media_url, external_url
        FROM content_items
       WHERE status = 'published'
         AND kind = ANY($1::text[])
@@ -71,7 +79,8 @@ async function pickTodayItem(userId: number): Promise<ContentItemRow | null> {
   if (items.length === 0) {
     const fallback = await query<ContentItemRow>(
       `SELECT id, kind, title, short_description, cover_url,
-              duration_seconds, segments, hook, cta
+              duration_seconds, segments, hook, cta,
+              media_url, external_url
          FROM content_items
         WHERE status = 'published'
           AND kind = ANY($1::text[])
@@ -113,6 +122,8 @@ export async function getTodayItem(userId: number): Promise<TodayItem | null> {
     ctaLabel:
       picked.cta?.trim() ||
       (picked.kind === "audio" ? "Ouvir agora" : "Assistir agora"),
+    ctaTarget:
+      picked.external_url?.trim() || picked.media_url?.trim() || null,
     segments: picked.segments ?? [],
     completedAt: compRows[0]?.completed_at ?? null,
   };

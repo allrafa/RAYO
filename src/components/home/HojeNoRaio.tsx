@@ -21,6 +21,7 @@ interface TodayItem {
   durationSeconds: number | null;
   hook: string | null;
   ctaLabel: string;
+  ctaTarget: string | null;
   segments: string[];
   completedAt: string | null;
 }
@@ -102,6 +103,13 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted }: Props) {
     if (completing) return;
     setCompleting(true);
     if ("vibrate" in navigator) navigator.vibrate(30);
+    // Open the underlying asset (video/audio/external link) when the
+    // producer configured one. Completion still has to be an explicit
+    // action so the user can't accidentally claim XP just by tapping
+    // "Marcar feito" before actually consuming the content.
+    if (item.ctaTarget) {
+      window.open(item.ctaTarget, "_blank", "noopener,noreferrer");
+    }
     try {
       const res = await api.post<CompleteResp>(
         "/api/home/today/complete",
