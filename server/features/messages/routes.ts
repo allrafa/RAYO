@@ -10,7 +10,8 @@ import {
   getUnreadConversationCount,
   searchUsers,
 } from "./service.js";
-import { subscribeUser } from "./events.js";
+import { subscribeUser, publishToUser } from "./events.js";
+import { query } from "../../db/index.js";
 import { AppError } from "../academia/service.js";
 
 const router = Router();
@@ -140,6 +141,47 @@ router.post("/conversations/:id/read", requireAuth, async (req, res, next) => {
     }
     const result = await markConversationRead(conversationId, req.user!.id);
     success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+// Ephemeral "typing" signal. Validates that the caller belongs to the
+// conversation, then fans out a `typing` event to the OTHER participant
+// via SSE. Nothing is persisted — if no SSE subscriber is listening,
+// the signal is silently dropped (which is fine; recipients auto-clear
+// the indicator after a few seconds without new pings).
+router.post("/conversations/:id/typing", requireAuth, async (req, res, next) => {
+  try {
+    const conversationId = parseInt(req.params.id, 10);
+    if (isNaN(conversationId) || conversationId < 1) {
+      sendError(res, "ID de conversa inválido", "INVALID_CONVERSATION_ID", 400);
+      return;
+    }
+    const userId = req.user!.id;
+    const { rows } = await query<{ user_a_id: number; user_b_id: number }>(
+      `SELECT user_a_id, user_b_id FROM conversations WHERE id = $1`,
+      [conversationId]
+    );
+    if (rows.length === 0) {
+      sendError(res, "Conversa não encontrada", "CONVERSATION_NOT_FOUND", 404);
+      return;
+    }
+    const conv = rows[0];
+    if (conv.user_a_id !== userId && conv.user_b_id !== userId) {
+      sendError(res, "Acesso negado a esta conversa", "FORBIDDEN", 403);
+      return;
+    }
+    const recipientId = conv.user_a_id === userId ? conv.user_b_id : conv.user_a_id;
+    publishToUser(recipientId, "typing", {
+      conversation_id: conversationId,
+      user_id: userId,
+    });
+    success(res, { ok: true });
   } catch (err) {
     if (err instanceof AppError) {
       sendError(res, err.message, err.code, err.statusCode);

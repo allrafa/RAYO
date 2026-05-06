@@ -95,12 +95,19 @@ export function ConversasPage() {
   const [userSearching, setUserSearching] = useState(false);
   const [creatingConversation, setCreatingConversation] = useState(false);
 
+  // Map of conversation_id -> { user_id, expiresAt } for typing indicators.
+  const [typingByConv, setTypingByConv] = useState<Record<number, { user_id: number; expiresAt: number }>>({});
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<number | null>(null);
   // Refs let our stable stream subscriber read fresh values without
   // re-subscribing on every render.
   const activeIdRef = useRef<number | null>(null);
   const streamConnectedRef = useRef(false);
+  // Throttle: timestamp of the last typing POST we sent for the active conv.
+  const lastTypingSentAtRef = useRef<number>(0);
+  // Per-conversation auto-expiry timers so we clear stale indicators.
+  const typingExpiryTimersRef = useRef<Map<number, number>>(new Map());
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId) || null,
@@ -160,6 +167,17 @@ export function ConversasPage() {
     }
   }, []);
 
+  // Clear any pending typing-expiry timers when the page unmounts so we
+  // don't leave dangling setTimeout callbacks running after navigation.
+  useEffect(() => {
+    return () => {
+      for (const handle of typingExpiryTimersRef.current.values()) {
+        window.clearTimeout(handle);
+      }
+      typingExpiryTimersRef.current.clear();
+    };
+  }, []);
+
   // Keep refs in sync with React state so the stable SSE subscriber can read them.
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -182,6 +200,8 @@ export function ConversasPage() {
   // Load messages when a conversation is opened. Realtime updates (SSE) drive
   // appends after that; the interval below is only a safety-net fallback.
   useEffect(() => {
+    // Reset typing throttle when switching conversations.
+    lastTypingSentAtRef.current = 0;
     if (activeId == null) {
       setMessages([]);
       lastMessageIdRef.current = null;
@@ -229,8 +249,43 @@ export function ConversasPage() {
         }
         return;
       }
+      if (event.type === "typing") {
+        const { conversation_id, user_id } = event.payload;
+        if (user_id === currentUserId) return;
+        const expiresAt = Date.now() + 4500;
+        setTypingByConv((prev) => ({ ...prev, [conversation_id]: { user_id, expiresAt } }));
+        const timers = typingExpiryTimersRef.current;
+        const existing = timers.get(conversation_id);
+        if (existing) window.clearTimeout(existing);
+        const handle = window.setTimeout(() => {
+          setTypingByConv((prev) => {
+            const cur = prev[conversation_id];
+            if (!cur || cur.expiresAt > Date.now()) return prev;
+            const next = { ...prev };
+            delete next[conversation_id];
+            return next;
+          });
+          timers.delete(conversation_id);
+        }, 4600);
+        timers.set(conversation_id, handle);
+        return;
+      }
       if (event.type === "message:new") {
         const { conversation_id, message } = event.payload;
+        // A new message from someone supersedes their "typing" indicator.
+        if (message.sender_id !== currentUserId) {
+          setTypingByConv((prev) => {
+            if (!prev[conversation_id]) return prev;
+            const next = { ...prev };
+            delete next[conversation_id];
+            return next;
+          });
+          const timer = typingExpiryTimersRef.current.get(conversation_id);
+          if (timer) {
+            window.clearTimeout(timer);
+            typingExpiryTimersRef.current.delete(conversation_id);
+          }
+        }
         const openId = activeIdRef.current;
         if (openId === conversation_id) {
           // Append to the active conversation, dedupe by id (the sender will
@@ -292,6 +347,16 @@ export function ConversasPage() {
     return () => window.clearTimeout(handle);
   }, [userSearchQuery, showNewConvDialog]);
 
+  // Throttled "I'm typing" ping: at most one POST every 3s while the user
+  // keeps typing. The recipient auto-clears the indicator ~4.5s after the
+  // last ping, so this gives a continuous indicator with minimal traffic.
+  const sendTypingPing = useCallback((conversationId: number) => {
+    const now = Date.now();
+    if (now - lastTypingSentAtRef.current < 3000) return;
+    lastTypingSentAtRef.current = now;
+    void api.post(`/api/messages/conversations/${conversationId}/typing`);
+  }, []);
+
   const handleSendMessage = async () => {
     const content = newMessage.trim();
     if (!content || activeId == null || sending) return;
@@ -303,6 +368,8 @@ export function ConversasPage() {
     setSending(false);
     if (res.success && res.data) {
       setNewMessage("");
+      // Reset throttle so the next keystroke sends a fresh "typing" ping.
+      lastTypingSentAtRef.current = 0;
       setMessages((prev) => [...prev, res.data!.message]);
       lastMessageIdRef.current = res.data.message.id;
       requestAnimationFrame(() => {
@@ -489,6 +556,18 @@ export function ConversasPage() {
                 </Avatar>
                 <div>
                   <h2 className="font-body font-medium">{activeConversation.other_user_name}</h2>
+                  {(() => {
+                    const t = typingByConv[activeConversation.id];
+                    if (!t || t.user_id !== activeConversation.other_user_id) return null;
+                    return (
+                      <p
+                        className="text-xs text-muted-foreground italic"
+                        aria-live="polite"
+                      >
+                        {activeConversation.other_user_name} está digitando...
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -578,7 +657,12 @@ export function ConversasPage() {
                   <Input
                     placeholder="Digite sua mensagem..."
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={(e) => {
+                      setNewMessage(e.target.value);
+                      if (e.target.value.trim().length > 0 && activeId != null) {
+                        sendTypingPing(activeId);
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();

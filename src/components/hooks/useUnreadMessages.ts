@@ -14,7 +14,13 @@ export type MessageStreamEvent =
   | { type: "message:new"; payload: MessageNewPayload }
   | { type: "message:read"; payload: MessageReadPayload }
   | { type: "unread:changed"; payload: UnreadChangedPayload }
+  | { type: "typing"; payload: TypingPayload }
   | { type: "connected"; payload: Record<string, never> };
+
+export interface TypingPayload {
+  conversation_id: number;
+  user_id: number;
+}
 
 export interface MessageNewPayload {
   conversation_id: number;
@@ -156,6 +162,15 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
           /* ignore */
         }
       };
+      const handleTyping = (e: MessageEvent) => {
+        if (!mountedRef.current) return;
+        try {
+          const data = JSON.parse(e.data) as TypingPayload;
+          broadcast({ type: "typing", payload: data });
+        } catch {
+          /* ignore */
+        }
+      };
       const handleError = () => {
         // EventSource will auto-reconnect with built-in backoff. We just
         // flip the flag so the fallback poll kicks in until we recover.
@@ -167,6 +182,7 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
       es.addEventListener("message:new", handleMessageNew);
       es.addEventListener("message:read", handleMessageRead);
       es.addEventListener("unread:changed", handleUnreadChanged);
+      es.addEventListener("typing", handleTyping);
       es.addEventListener("error", handleError);
     }
 

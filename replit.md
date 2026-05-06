@@ -1,76 +1,77 @@
 # RAIO Platform
-RAIO is a digital platform designed to strengthen families by providing transformative content, an engaged community, and practical resources across various life contexts.
+RAIO is a digital platform designed to strengthen families through transformative content, engaged community, and practical resources across five life contexts: Solteiro, Namoro, Noivos, Casados, Pais.
 
 ## Run & Operate
-- `npm run dev`: Starts the Express server (port 5000) with Vite dev middleware for both API and frontend.
-- `npm run build`: Builds the frontend for production.
+- `npm run dev`: Starts Express server on port 5000 with Vite dev middleware (serves both API and frontend).
+- `npm run build`: Builds frontend for production.
 - **Environment Variables**:
     - `resend_api_key`: Resend API key for email sending.
-    - `RESEND_FROM_EMAIL`: (Optional) Sender email address (default: `RAIO <onboarding@resend.dev>`).
-    - `APP_URL`: (Optional) Public URL for email links (default: `https://${REPLIT_DEV_DOMAIN}`).
-    - `ADMIN_EMAILS`: Comma-separated emails for initial `admin` role assignment.
+    - `RESEND_FROM_EMAIL`: (Optional) Sender email address for Resend (default: `RAIO <onboarding@resend.dev>`).
+    - `APP_URL`: (Optional) Public URL used in email links (default: `https://${REPLIT_DEV_DOMAIN}`).
+    - `ADMIN_EMAILS`: (Optional) Comma-separated emails to promote to `admin` role on boot.
 
 ## Stack
 - **Frontend**: React 18, TypeScript, Tailwind CSS v4, Vite
-- **Backend**: Express.js, TypeScript, tsx
+- **Backend**: Express.js, TypeScript, tsx (runtime)
 - **Database**: PostgreSQL
 - **ORM**: _Populate as you build_
 - **Validation**: _Populate as you build_
-- **Build Tool**: Vite
-- **Runtime**: Node.js (via tsx)
-- **Authentication**: Session-based with secure cookies
+- **Auth**: Session-based with secure cookies
 - **Email**: Resend
 
 ## Where things live
-- `server/`: Backend source code.
-    - `server/index.ts`: Backend entry point.
-    - `server/db/`: Database connection and schema.
-    - `server/features/`: Feature-specific logic (routes, services, validation).
-- `src/`: Frontend source code.
-    - `src/App.tsx`: Root React component.
-    - `src/components/AuthContext.tsx`: Authentication provider.
-    - `src/lib/api.ts`: API client.
-    - `src/design-tokens.ts`: Canonical UI design tokens.
-    - `src/styles/globals.css`: Global CSS and Tailwind directives.
-- `architecture.md`: Full development protocol (source of truth for architectural guidelines).
-- `tsconfig.json`: Frontend TypeScript configuration.
-- `tsconfig.server.json`: Backend TypeScript configuration.
-- `vite.config.ts`: Vite and API proxy configuration.
+- `server/`: Backend
+    - `index.ts`: Entry point (Express app).
+    - `db/`: Database connection + schema.
+    - `middleware/`: Security, auth, error handling.
+    - `features/`: Feature folders (routes + service + validation).
+- `src/`: Frontend (React)
+    - `App.tsx`: Root component.
+    - `components/`: UI components.
+    - `lib/api.ts`: API client.
+    - `styles/`: CSS.
+    - `design-tokens.ts`: Canonical UI tokens.
+- `architecture.md`: Full development protocol (MUST be consulted before every sprint).
+- `tsconfig.json`: Frontend TS config.
+- `tsconfig.server.json`: Backend TS config.
+- `vite.config.ts`: Vite + API proxy config.
 
 ## Architecture decisions
-- **Thin Client, Fat Server**: All business logic, authentication, data access, and security enforcement reside on the Express.js backend; the frontend primarily captures user intent.
-- **Feature-based Organization**: Backend features are organized into `server/features/` folders, each containing related routes, services, and validation.
-- **Idempotent Migrations/Seeds**: Database seed scripts (e.g., for CMS, home feed) are designed to be idempotent, allowing safe re-execution on server restarts.
-- **Soft Deletes for Moderation**: Instead of hard-deleting, posts and comments are soft-hidden (`is_hidden` flag) to allow moderator restoration.
-- **Role-Based Access Control**: A numeric role hierarchy (`client` < `producer` < `moderator` < `admin`) is enforced by middleware for administrative functions.
+- **Thin Client, Fat Server**: All business logic, auth, data access, and security enforcement reside on the Express.js backend. The frontend focuses solely on capturing user intent.
+- **Idempotent Migrations/Seeds**: Boot-time migrations for CMS content and Home Feed items are designed to be idempotent, ensuring consistent initial data and safe re-runs.
+- **Role-Based Access Control**: A numeric hierarchy of roles (`client` < `producer` < `moderator` < `admin`) is enforced by middleware for administrative actions.
+- **Soft Deletes for Moderation**: Instead of hard deletion, content (posts, comments) can be `hidden` by moderators, allowing for restoration.
+- **Server-Sent Events (SSE) for Real-time Messaging**: Direct Messaging uses SSE for real-time updates on new messages, unread counts, and ephemeral typing indicators, reducing polling overhead.
 
 ## Product
-- **User Segmentation**: Supports 5 life contexts (Solteiro, Namoro, Noivos, Casados, Pais) for tailored content and experiences.
-- **Content Management System (CMS)**: Manages six content types (`audio`, `video`, `reels`, `serie`, `curso`, `livro`) with admin tools for creation, publishing, and media uploads.
-- **Gamification**: Includes XP, levels, badges, missions (daily/weekly), and streaks to encourage engagement.
-- **Community Features**: Forums, posts, comments, and like functionality for user interaction.
-- **Personalized Dashboard**: Aggregates user-specific data like gamification stats, course progress, and recommended content.
-- **Direct Messaging**: Real-time private conversations between users with unread counts and SSE for instant updates.
-- **LGPD Compliance**: Features for data export and anonymization of user data upon deletion request.
-- **Admin & Moderation Tools**: Overview metrics, user role management, and content visibility toggling.
+- **User Authentication**: Register, login, logout, password reset, and user profile management. Email verification is required for registration.
+- **Content Management System (CMS)**: Manages six content kinds (audio, video, reels, serie, curso, livro) with admin tools for creation, publishing, and media uploads.
+- **Gamification**: XP levels, badges, missions, and streaks to engage users.
+- **Community Forums**: Features forums, posts, comments, and likes with moderation capabilities.
+- **Personalized Dashboard**: Aggregates user-specific gamification stats, course progress, recommendations, and relevant community posts.
+- **Direct Messaging**: Private conversations between users with real-time updates and unread message indicators.
+- **LGPD Compliance**: Features for data export and account deletion (anonymization of PII).
+- **Admin & Moderation**: Tools for user management (roles), content moderation (hide/restore), and platform overview metrics.
 
 ## User preferences
-_Populate as you build_
+- I prefer simple language.
+- I like functional programming paradigms.
+- I want iterative development with frequent, small updates.
+- Ask before making major changes to the codebase or architecture.
+- I prefer detailed explanations for complex features or decisions.
+- Do not make changes to the `docs/` folder without explicit instruction.
+- Do not make changes to the `replit.nix` file.
 
 ## Gotchas
-- **Route Order in Express**: In `server/features/cms/routes.ts` (and similar), fixed-prefix routes must be declared *before* `/:id` catch-all routes to ensure correct matching.
-- **Email Verification Cooldown**: There's a 60-second cooldown between sending verification codes.
-- **Password Reset Always Returns Success**: The `POST /api/auth/forgot-password` endpoint always returns a success message to prevent email enumeration, even if the email is not registered.
-- **Content Deletion Cascades**: Deleting a series cascades to its episodes; deleting a course module cascades to its lessons.
-- **Home Feed Card Visibility**: `GET /api/home-feed` will hide cards linked to `content_items` that are not `published`. Static promo cards (no `content_item_id`) are always visible.
+- **Route Order**: In Express, fixed-prefix routes must be declared before dynamic parameter routes (e.g., `/:id`) to prevent incorrect matching.
+- **Email Enumeration Prevention**: The `POST /api/auth/forgot-password` endpoint always returns a success message to prevent attackers from inferring valid email addresses.
+- **Object-Level Authorization**: Producers can only modify content they created, unless overridden by `moderator+` roles.
+- **Content Card Mapping**: `badge_text`, `meta_text`, `progress`, and `gradient` fields in Home Feed cards have specific contextual meanings depending on the section.
+- **Static Assets**: Uploaded media is served statically via `/uploads/*` and relies on `multer` disk storage; future plans include object storage.
 
 ## Pointers
-- **Development Protocol**: `architecture.md` (MUST be consulted before every sprint).
-- **UI/UX Audit**: `docs/ui-ux-audit.md` for design system and UI/UX issues.
-- **External Documentation**:
-    - [React](https://react.dev/)
-    - [Express.js](https://expressjs.com/)
-    - [PostgreSQL](https://www.postgresql.org/docs/)
-    - [Tailwind CSS](https://tailwindcss.com/docs)
-    - [Vite](https://vitejs.dev/)
-    - [Resend](https://resend.com/docs)
+- **Development Protocol**: `architecture.md`
+- **UI/UX Audit**: `docs/ui-ux-audit.md`
+- **Email Sending (Resend)**: Refer to `server/lib/email.ts` and Resend documentation for email configurations.
+- **Role Management**: See `server/middleware/auth.ts` for `requireRole(minRole)` implementation.
+- **API Client**: `src/lib/api.ts`
