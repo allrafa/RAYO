@@ -261,7 +261,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
             <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
               Bem-vindo(a) de volta
             </h2>
-            <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+            <p className="text-[15px]" style={{ color: "var(--rayo-ink-500)", lineHeight: 1.6 }}>
               Entre com seus dados para continuar
             </p>
           </div>
@@ -298,7 +298,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                 type="button"
                 onClick={goToForgot}
                 className="text-sm transition-colors hover:underline"
-                style={{ color: "#6B7280", fontWeight: 500 }}
+                style={{ color: "var(--rayo-ink-500)", fontWeight: 500 }}
               >
                 Esqueci minha senha
               </button>
@@ -322,13 +322,13 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
           transition={{ duration: 0.3 }}
         >
           <div className="text-center mb-10">
-            <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#FEF3C7" }}>
+            <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "var(--rayo-terra-100)" }}>
               <KeyRound className="w-7 h-7" style={{ color: "var(--accent)" }} />
             </div>
             <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
               Esqueceu sua senha?
             </h2>
-            <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+            <p className="text-[15px]" style={{ color: "var(--rayo-ink-500)", lineHeight: 1.6 }}>
               Informe o e-mail da sua conta e enviaremos um link para criar uma nova senha.
             </p>
           </div>
@@ -376,7 +376,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                   disabled={isSubmitting || !canRequestReset}
                   className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
-                    background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "12px",
+                    background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "16px",
                     padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
                     cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                   }}
@@ -408,13 +408,13 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
             transition={{ duration: 0.3 }}
           >
             <div className="text-center mb-10">
-              <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#D1FAE5" }}>
-                <CheckCircle2 className="w-7 h-7" style={{ color: "#059669" }} />
+              <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "var(--rayo-sage-100)" }}>
+                <CheckCircle2 className="w-7 h-7" style={{ color: "var(--rayo-forest-700)" }} />
               </div>
               <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
                 Senha redefinida!
               </h2>
-              <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+              <p className="text-[15px]" style={{ color: "var(--rayo-ink-500)", lineHeight: 1.6 }}>
                 Sua senha foi atualizada e todas as sessões anteriores foram encerradas. Faça login com a nova senha para continuar.
               </p>
             </div>
@@ -430,7 +430,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                 }}
                 className="relative w-full group overflow-hidden"
                 style={{
-                  background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "12px",
+                  background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "16px",
                   padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
                   cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                 }}
@@ -456,13 +456,13 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
           transition={{ duration: 0.3 }}
         >
           <div className="text-center mb-10">
-            <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#FEF3C7" }}>
+            <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "var(--rayo-terra-100)" }}>
               <KeyRound className="w-7 h-7" style={{ color: "var(--accent)" }} />
             </div>
             <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
               Crie uma nova senha
             </h2>
-            <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+            <p className="text-[15px]" style={{ color: "var(--rayo-ink-500)", lineHeight: 1.6 }}>
               Escolha uma senha forte para proteger sua conta.
             </p>
           </div>
@@ -542,7 +542,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
             <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
               Crie sua conta
             </h2>
-            <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+            <p className="text-[15px]" style={{ color: "var(--rayo-ink-500)", lineHeight: 1.6 }}>
               Vamos verificar seu email para começar
             </p>
           </div>
@@ -577,7 +577,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                 disabled={isSubmitting || !canSendCode}
                 className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{
-                  background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "12px",
+                  background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "16px",
                   padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
                   cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                 }}
@@ -607,13 +607,13 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
           transition={{ duration: 0.3 }}
         >
           <div className="text-center mb-10">
-            <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#FEF3C7" }}>
+            <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "var(--rayo-terra-100)" }}>
               <Mail className="w-7 h-7" style={{ color: "var(--accent)" }} />
             </div>
             <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
               Verifique seu email
             </h2>
-            <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+            <p className="text-[15px]" style={{ color: "var(--rayo-ink-500)", lineHeight: 1.6 }}>
               Enviamos um código de 6 dígitos para
             </p>
             <p className="text-[15px] mt-1" style={{ color: "var(--foreground)", fontWeight: 500 }}>
@@ -653,7 +653,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                 disabled={isSubmitting || !codeComplete}
                 className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{
-                  background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "12px",
+                  background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "16px",
                   padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
                   cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                 }}
@@ -674,7 +674,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                 onClick={handleResendCode}
                 disabled={resendTimer > 0 || isSubmitting}
                 className="text-sm transition-colors disabled:opacity-40"
-                style={{ color: "#6B7280" }}
+                style={{ color: "var(--rayo-ink-500)" }}
               >
                 {resendTimer > 0
                   ? `Reenviar código em ${resendTimer}s`
@@ -706,13 +706,13 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
         transition={{ duration: 0.3 }}
       >
         <div className="text-center mb-10">
-          <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#D1FAE5" }}>
-            <ShieldCheck className="w-7 h-7" style={{ color: "#059669" }} />
+          <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "var(--rayo-sage-100)" }}>
+            <ShieldCheck className="w-7 h-7" style={{ color: "var(--rayo-forest-700)" }} />
           </div>
           <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
             Email verificado!
           </h2>
-          <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
+          <p className="text-[15px]" style={{ color: "var(--rayo-ink-500)", lineHeight: 1.6 }}>
             Agora escolha uma senha para sua conta
           </p>
         </div>
@@ -744,7 +744,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center overflow-hidden" style={{ background: "#FAFAFA" }}>
+    <div className="fixed inset-0 flex items-center justify-center overflow-hidden" style={{ background: "var(--rayo-sand-50)" }}>
       <div
         className="absolute inset-0 opacity-[0.015] pointer-events-none"
         style={{
@@ -765,7 +765,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
 
         <div className="mt-8 text-center space-y-3">
           {(mode === "login" || (mode === "register" && registerStep === "form")) && (
-            <button onClick={switchMode} className="text-sm transition-colors" style={{ color: "#6B7280", fontWeight: 400 }}>
+            <button onClick={switchMode} className="text-sm transition-colors" style={{ color: "var(--rayo-ink-500)", fontWeight: 400 }}>
               {mode === "login" ? (
                 <span>
                   Ainda não tem conta?{" "}
@@ -781,7 +781,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
           )}
 
           {mode === "forgot" && !forgotMessage && (
-            <button onClick={backToLogin} className="text-sm transition-colors flex items-center justify-center gap-1 mx-auto" style={{ color: "#6B7280", fontWeight: 400 }}>
+            <button onClick={backToLogin} className="text-sm transition-colors flex items-center justify-center gap-1 mx-auto" style={{ color: "var(--rayo-ink-500)", fontWeight: 400 }}>
               <ArrowLeft size={14} />
               Voltar para login
             </button>
@@ -836,7 +836,7 @@ function ActionButton({ label, isSubmitting }: { label: string; isSubmitting: bo
         disabled={isSubmitting}
         className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
         style={{
-          background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "12px",
+          background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "16px",
           padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
           cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
         }}

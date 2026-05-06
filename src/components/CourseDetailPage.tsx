@@ -200,7 +200,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Video/Image */}
           <div className="lg:col-span-2">
-            <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-green-600 to-green-700">
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[var(--rayo-forest-700)] to-[var(--rayo-forest-900)]">
               <ImageWithFallback
                 src={course.thumbnail}
                 alt={course.title}
@@ -219,12 +219,12 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
               
               {/* Course badges */}
               <div className="absolute top-4 left-4 flex flex-col gap-2">
-                <Badge className="bg-green-600 text-white">
+                <Badge className="bg-[var(--rayo-forest-700)] text-white">
                   <Award className="w-3 h-3 mr-1" />
                   Certificado
                 </Badge>
                 {course.isPremium && (
-                  <Badge className="bg-yellow-500 text-white">
+                  <Badge className="bg-[var(--rayo-ochre-500)] text-white">
                     ⭐ Premium
                   </Badge>
                 )}
@@ -253,7 +253,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                   {/* Course Stats */}
                   <div className="grid grid-cols-2 gap-4 py-4 border-y border-border">
                     <div className="text-center">
-                      <div className="flex items-center justify-center gap-1 text-yellow-500 mb-1">
+                      <div className="flex items-center justify-center gap-1 text-[var(--rayo-ochre-500)] mb-1">
                         <Star className="w-4 h-4 fill-current" />
                         <span className="font-semibold">{course.rating}</span>
                       </div>
@@ -297,7 +297,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                   <div className="space-y-3">
                     {course.price > 0 ? (
                       <div className="text-center">
-                        <div className="text-3xl font-bold text-green-600">
+                        <div className="text-3xl font-bold text-[var(--rayo-forest-700)]">
                           R$ {displayPrice.toFixed(2).replace('.', ',')}
                         </div>
                         <div className="text-sm text-muted-foreground">
@@ -306,7 +306,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                       </div>
                     ) : (
                       <div className="text-center">
-                        <div className="text-3xl font-bold text-green-600">
+                        <div className="text-3xl font-bold text-[var(--rayo-forest-700)]">
                           Gratuito
                         </div>
                       </div>
@@ -334,7 +334,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                     ) : (
                       <div className="space-y-2">
                         <Button 
-                          className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white" 
+                          className="w-full bg-gradient-to-r from-[var(--rayo-forest-700)] to-[var(--rayo-forest-900)] hover:from-[var(--rayo-forest-900)] hover:to-[var(--rayo-ink-900)] text-white" 
                           size="lg"
                           onClick={handleEnroll}
                           disabled={isLoading}
@@ -368,19 +368,19 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                   {/* Course Features */}
                   <div className="space-y-2 pt-4 border-t border-border">
                     <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <CheckCircle className="w-4 h-4 text-[var(--rayo-forest-700)]" />
                       <span>Acesso vitalício</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <CheckCircle className="w-4 h-4 text-[var(--rayo-forest-700)]" />
                       <span>Certificado de conclusão</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <CheckCircle className="w-4 h-4 text-[var(--rayo-forest-700)]" />
                       <span>Suporte da comunidade</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <CheckCircle className="w-4 h-4 text-[var(--rayo-forest-700)]" />
                       <span>Atualizações gratuitas</span>
                     </div>
                   </div>
@@ -420,7 +420,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                          allCompleted ? 'bg-green-600 text-white' : 'bg-muted text-muted-foreground'
+                          allCompleted ? 'bg-[var(--rayo-forest-700)] text-white' : 'bg-muted text-muted-foreground'
                         }`}>
                           {allCompleted ? <CheckCircle className="w-4 h-4" /> : index + 1}
                         </div>
@@ -454,7 +454,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                             <div key={lesson.id} className="flex items-center justify-between text-sm py-1.5">
                               <div className="flex items-center gap-2 flex-1">
                                 {isLessonCompleted ? (
-                                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                                  <CheckCircle className="w-4 h-4 text-[var(--rayo-forest-700)] shrink-0" />
                                 ) : (
                                   <Play className="w-4 h-4 text-muted-foreground shrink-0" />
                                 )}
@@ -501,7 +501,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                     <p className="text-muted-foreground">{instructor.title}</p>
                     <div className="flex items-center gap-4 mt-2 text-sm">
                       <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                        <Star className="w-4 h-4 text-[var(--rayo-ochre-500)] fill-current" />
                         <span>{instructor.rating} avaliação</span>
                       </div>
                       <div className="flex items-center gap-1">
@@ -542,7 +542,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                           <h4 className="font-medium">{testimonial.name}</h4>
                           <div className="flex">
                             {[...Array(testimonial.rating)].map((_, i) => (
-                              <Star key={i} className="w-3 h-3 text-yellow-500 fill-current" />
+                              <Star key={i} className="w-3 h-3 text-[var(--rayo-ochre-500)] fill-current" />
                             ))}
                           </div>
                           <span className="text-xs text-muted-foreground">{testimonial.time}</span>

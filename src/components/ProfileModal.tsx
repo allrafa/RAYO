@@ -151,7 +151,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                 onClick={handleViewFavorites}
               >
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-red-500">{stats.totalFavorites}</div>
+                  <div className="text-2xl font-bold text-[var(--rayo-terra-500)]">{stats.totalFavorites}</div>
                   <div className="text-xs text-muted-foreground flex items-center justify-center gap-1">
                     <Heart className="w-3 h-3" />
                     Favoritos

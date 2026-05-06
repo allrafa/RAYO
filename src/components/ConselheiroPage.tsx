@@ -489,7 +489,7 @@ export function ConselheiroPage() {
                   <div 
                     className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg"
                     style={{
-                      background: 'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)',
+                      background: 'linear-gradient(135deg, var(--rayo-ink-500) 0%, var(--rayo-ink-700) 100%)',
                       fontWeight: 600
                     }}
                   >

@@ -131,7 +131,7 @@ export function AdminShell({ onExitAdmin }: AdminShellProps) {
           </Button>
           <Button
             variant="ghost"
-            className="w-full justify-start gap-3 h-11 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+            className="w-full justify-start gap-3 h-11 text-[var(--rayo-terra-700)] hover:bg-[var(--rayo-terra-100)] dark:hover:bg-[var(--rayo-terra-900)]/30"
             onClick={() => void logout()}
           >
             <LogOut className="w-4 h-4" />

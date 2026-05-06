@@ -168,7 +168,7 @@ export function SearchModal({ open, onOpenChange }: SearchModalProps) {
                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                       {result.rating && (
                         <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                          <Star className="w-3 h-3 fill-[var(--rayo-ochre-500)] text-[var(--rayo-ochre-500)]" />
                           <span>{result.rating}</span>
                         </div>
                       )}

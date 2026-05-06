@@ -222,7 +222,7 @@ export function FavoritesPage({ onBack }: FavoritesPageProps) {
             <Card>
               <CardContent className="p-3 text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <Heart className="w-5 h-5 text-red-500" />
+                  <Heart className="w-5 h-5 text-[var(--rayo-terra-500)]" />
                 </div>
                 <div className="font-display font-bold text-lg">{favoriteStats.totalFavorites}</div>
                 <div className="text-xs text-muted-foreground">Total</div>
@@ -242,7 +242,7 @@ export function FavoritesPage({ onBack }: FavoritesPageProps) {
             <Card>
               <CardContent className="p-3 text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <Video className="w-5 h-5 text-green-500" />
+                  <Video className="w-5 h-5 text-[var(--rayo-forest-500)]" />
                 </div>
                 <div className="font-display font-bold text-lg">{favoriteStats.videosFavorites}</div>
                 <div className="text-xs text-muted-foreground">Vídeos</div>
@@ -252,7 +252,7 @@ export function FavoritesPage({ onBack }: FavoritesPageProps) {
             <Card>
               <CardContent className="p-3 text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <MessageCircle className="w-5 h-5 text-purple-500" />
+                  <MessageCircle className="w-5 h-5 text-[var(--rayo-sage-500)]" />
                 </div>
                 <div className="font-display font-bold text-lg">{favoriteStats.postsFavorites}</div>
                 <div className="text-xs text-muted-foreground">Posts</div>
@@ -262,7 +262,7 @@ export function FavoritesPage({ onBack }: FavoritesPageProps) {
             <Card>
               <CardContent className="p-3 text-center">
                 <div className="flex items-center justify-center mb-1">
-                  <ShoppingBag className="w-5 h-5 text-orange-500" />
+                  <ShoppingBag className="w-5 h-5 text-[var(--rayo-ochre-500)]" />
                 </div>
                 <div className="font-display font-bold text-lg">{favoriteStats.productsFavorites}</div>
                 <div className="text-xs text-muted-foreground">Produtos</div>
@@ -400,7 +400,7 @@ export function FavoritesPage({ onBack }: FavoritesPageProps) {
                         
                         {favorite.type === 'course' && itemData.rating && (
                           <div className="flex items-center gap-1">
-                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                            <Star className="w-3 h-3 fill-[var(--rayo-ochre-500)] text-[var(--rayo-ochre-500)]" />
                             <span>{itemData.rating}</span>
                           </div>
                         )}

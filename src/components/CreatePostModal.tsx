@@ -279,8 +279,8 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home" }: Cr
                   {content.length}/2000 caracteres
                 </span>
                 <span className={`font-medium ${
-                  content.length < 5 ? "text-amber-600" : 
-                  content.length > 1800 ? "text-red-600" : "text-green-600"
+                  content.length < 5 ? "text-[var(--rayo-ochre-700)]" : 
+                  content.length > 1800 ? "text-[var(--rayo-terra-700)]" : "text-[var(--rayo-forest-700)]"
                 }`}>
                   {content.length < 5 ? "Continue escrevendo..." : 
                    content.length > 1800 ? "Quase no limite" : "Perfeito!"}
@@ -326,7 +326,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home" }: Cr
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-10 w-10 p-0 hover:bg-green-100 hover:text-green-700 transition-colors"
+                className="h-10 w-10 p-0 hover:bg-[var(--rayo-sand-100)] hover:text-[var(--rayo-forest-700)] transition-colors"
                 onClick={handleImageSelect}
                 disabled={selectedImages.length >= 4}
                 title="Adicionar fotos"
@@ -336,7 +336,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home" }: Cr
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-10 w-10 p-0 hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                className="h-10 w-10 p-0 hover:bg-[var(--rayo-sand-200)] hover:text-[var(--rayo-forest-700)] transition-colors"
                 onClick={handleImageSelect}
                 disabled={selectedImages.length >= 4}
                 title="Tirar foto"
