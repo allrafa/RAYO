@@ -429,7 +429,7 @@ export function AdminCmsPage() {
                     <Edit2 className="w-4 h-4" />
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => remove(item)} title="Excluir">
-                    <Trash2 className="w-4 h-4 text-red-500" />
+                    <Trash2 className="w-4 h-4" style={{ color: "var(--rayo-terra-500)" }} />
                   </Button>
                 </div>
               </div>
@@ -450,7 +450,7 @@ export function AdminCmsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <AlertTriangle className="w-5 h-5" style={{ color: "var(--rayo-ochre-500)" }} />
               Despublicar este conteúdo?
             </AlertDialogTitle>
             <AlertDialogDescription>

@@ -427,7 +427,7 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
                           <option value="video">Vídeo</option>
                         </select>
                         <Button size="sm" variant="ghost" onClick={() => removeEp(ep)}>
-                          <Trash2 className="w-4 h-4 text-red-500" />
+                          <Trash2 className="w-4 h-4" style={{ color: "var(--rayo-terra-500)" }} />
                         </Button>
                       </div>
                       <input className={cls} style={inputStyle} placeholder="URL do arquivo / vídeo"
@@ -542,7 +542,7 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
                 <span key={t} className="text-xs px-2 py-1 rounded-full border flex items-center gap-1"
                   style={{ borderColor: "var(--rayo-sand-300)", color: "var(--rayo-ink-700)" }}>
                   {t}
-                  <button onClick={() => removeTag(t, "interests")} className="text-red-500">×</button>
+                  <button onClick={() => removeTag(t, "interests")} style={{ color: "var(--rayo-terra-500)" }}>×</button>
                 </span>
               ))}
             </div>
@@ -558,7 +558,7 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
                 <span key={t} className="text-xs px-2 py-1 rounded-full border flex items-center gap-1"
                   style={{ borderColor: "var(--rayo-sand-300)", color: "var(--rayo-ink-700)" }}>
                   {t}
-                  <button onClick={() => removeTag(t, "tags")} className="text-red-500">×</button>
+                  <button onClick={() => removeTag(t, "tags")} style={{ color: "var(--rayo-terra-500)" }}>×</button>
                 </span>
               ))}
             </div>

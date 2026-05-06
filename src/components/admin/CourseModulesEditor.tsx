@@ -165,7 +165,7 @@ export function CourseModulesEditor({ courseId }: { courseId: number }) {
                 <Plus className="w-4 h-4 mr-1" /> Lição
               </Button>
               <Button size="sm" variant="ghost" onClick={() => removeModule(mod)}>
-                <Trash2 className="w-4 h-4 text-red-500" />
+                <Trash2 className="w-4 h-4" style={{ color: "var(--rayo-terra-500)" }} />
               </Button>
             </div>
 
@@ -192,7 +192,7 @@ export function CourseModulesEditor({ courseId }: { courseId: number }) {
                         <option value="text">Texto</option>
                       </select>
                       <Button size="sm" variant="ghost" onClick={() => removeLesson(mod, lesson)}>
-                        <Trash2 className="w-4 h-4 text-red-500" />
+                        <Trash2 className="w-4 h-4" style={{ color: "var(--rayo-terra-500)" }} />
                       </Button>
                     </div>
                     <input

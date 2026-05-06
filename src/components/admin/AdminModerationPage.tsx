@@ -50,13 +50,9 @@ type Status = "all" | "visible" | "hidden";
 
 function StatusBadge({ hidden }: { hidden: boolean }) {
   return hidden ? (
-    <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-      <EyeOff className="w-3 h-3 mr-1" /> Oculto
-    </Badge>
+    <span className="ra-tag ochre"><EyeOff className="w-3 h-3 mr-1 inline" /> Oculto</span>
   ) : (
-    <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-      <Eye className="w-3 h-3 mr-1" /> Visível
-    </Badge>
+    <span className="ra-tag sage"><Eye className="w-3 h-3 mr-1 inline" /> Visível</span>
   );
 }
 

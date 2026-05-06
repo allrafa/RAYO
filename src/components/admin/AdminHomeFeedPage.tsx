@@ -396,7 +396,7 @@ export function AdminHomeFeedPage() {
                               onClick={() => void remove(item)}
                               title="Excluir"
                             >
-                              <Trash2 className="w-4 h-4 text-red-500" />
+                              <Trash2 className="w-4 h-4" style={{ color: "var(--rayo-terra-500)" }} />
                             </Button>
                           </div>
                         </div>
