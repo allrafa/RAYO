@@ -184,13 +184,17 @@ export async function migrateBundles(): Promise<void> {
       );
     }
   }
+  // Use a LEFT JOIN-style subquery so bundles with zero linked items also
+  // converge to 0 (a plain GROUP BY would skip them).
   await query(`
     UPDATE marketplace_bundles b
-       SET item_count = COALESCE(sub.c, 0)
+       SET item_count = sub.c
       FROM (
-        SELECT bundle_id, COUNT(*)::int AS c
-          FROM marketplace_bundle_items
-         GROUP BY bundle_id
+        SELECT b2.id AS bundle_id,
+               COUNT(mbi.course_id)::int AS c
+          FROM marketplace_bundles b2
+          LEFT JOIN marketplace_bundle_items mbi ON mbi.bundle_id = b2.id
+         GROUP BY b2.id
       ) sub
      WHERE sub.bundle_id = b.id
        AND b.item_count IS DISTINCT FROM sub.c
