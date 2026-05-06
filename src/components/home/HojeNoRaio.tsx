@@ -3,7 +3,8 @@
 // (/api/home/today) returns a deterministic single item per
 // (user, day, segment); the user can mark it done (+15 XP, streak bump)
 // or "Pular hoje" to dismiss the block locally for the rest of the day.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import Confetti from "react-confetti";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -61,6 +62,10 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted }: Props) {
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
   const [skipped, setSkipped] = useState<boolean>(() => readSkipped());
+  // Lightweight confetti burst on the first successful completion of
+  // the day. Auto-clears after 1.6s so the canvas doesn't linger.
+  const [showConfetti, setShowConfetti] = useState(false);
+  const confettiTimeoutRef = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,6 +88,14 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted }: Props) {
   useEffect(() => {
     setSkipped(readSkipped());
   }, [refreshKey]);
+
+  useEffect(() => {
+    return () => {
+      if (confettiTimeoutRef.current) {
+        window.clearTimeout(confettiTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -131,6 +144,13 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted }: Props) {
       }
       const data = res.data;
       if (!data.alreadyCompleted && data.xpAwarded > 0) {
+        setShowConfetti(true);
+        if (confettiTimeoutRef.current) {
+          window.clearTimeout(confettiTimeoutRef.current);
+        }
+        confettiTimeoutRef.current = window.setTimeout(() => {
+          setShowConfetti(false);
+        }, 1600);
         enhancedToast.achievement({
           title: `+${data.xpAwarded} XP!`,
           description: data.currentStreak
@@ -162,6 +182,17 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted }: Props) {
 
   return (
     <div className="px-4 mb-6">
+      {showConfetti && (
+        <Confetti
+          width={typeof window !== "undefined" ? window.innerWidth : 360}
+          height={typeof window !== "undefined" ? window.innerHeight : 640}
+          numberOfPieces={120}
+          recycle={false}
+          gravity={0.35}
+          tweenDuration={1500}
+          style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 60 }}
+        />
+      )}
       <Card className="overflow-hidden border-[var(--raio-border-default)]">
         <div className="relative">
           {item.coverUrl ? (
