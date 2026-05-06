@@ -86,6 +86,17 @@ function AppContent() {
     }
   }, [resetToken]);
 
+  // When the user logs out (or session expires) mid-runtime, re-sync the
+  // pre-auth routing from the device flag so they land directly on login
+  // instead of seeing a stale Welcome screen from the initial mount.
+  useEffect(() => {
+    if (user || isLoading || resetToken) return;
+    if (isReturningDevice() && preAuthStage === "welcome") {
+      setPreAuthStage("auth");
+      setAuthStartMode("login");
+    }
+  }, [user, isLoading, resetToken, preAuthStage]);
+
   const clearResetToken = () => {
     setResetToken(null);
     if (typeof window !== "undefined") {
