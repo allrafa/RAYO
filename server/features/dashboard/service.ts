@@ -92,6 +92,53 @@ function getCurrentLevelXP(level: number): number {
   return found ? found.xp : 0;
 }
 
+// ── Recommended rail ordering (Task #43) ─────────────────────────────
+// Each user's primary segment biases the order in which Home rails are
+// rendered. Frontend resolves rail ids → components and silently skips
+// unknown ids, so this list is forward-compatible: adding a new rail id
+// here is enough to expose it as soon as the frontend knows about it.
+const RAIL_ORDER_BY_SEGMENT: Record<string, string[]> = {
+  solteiro: [
+    "quizzes", "recommended", "made_for_you", "podcasts", "trending",
+    "recently_played", "discussoes", "shorts", "youtube_continue",
+    "missions", "continue",
+  ],
+  namoro: [
+    "recommended", "podcasts", "discussoes", "made_for_you", "quizzes",
+    "trending", "recently_played", "shorts", "youtube_continue",
+    "missions", "continue",
+  ],
+  noivos: [
+    "recommended", "made_for_you", "discussoes", "podcasts", "trending",
+    "quizzes", "recently_played", "shorts", "youtube_continue",
+    "missions", "continue",
+  ],
+  casados: [
+    "continue", "recommended", "discussoes", "made_for_you", "trending",
+    "podcasts", "recently_played", "shorts", "quizzes",
+    "youtube_continue", "missions",
+  ],
+  pais: [
+    "recommended", "quizzes", "made_for_you", "discussoes", "trending",
+    "podcasts", "recently_played", "shorts", "youtube_continue",
+    "missions", "continue",
+  ],
+};
+
+const DEFAULT_RAIL_ORDER = [
+  "continue", "recommended", "missions", "discussoes",
+  "youtube_continue", "shorts", "recently_played", "made_for_you",
+  "trending", "quizzes", "podcasts",
+];
+
+function buildRailOrder(segments: string[]): string[] {
+  const primary = segments[0]?.toString().toLowerCase();
+  if (primary && RAIL_ORDER_BY_SEGMENT[primary]) {
+    return RAIL_ORDER_BY_SEGMENT[primary];
+  }
+  return DEFAULT_RAIL_ORDER;
+}
+
 function getMissionIcon(actionType: string): string {
   const icons: Record<string, string> = {
     watch_lesson: "📚",
@@ -277,6 +324,7 @@ export async function getDashboard(userId: number) {
       name: user.name,
       segments: user.segments || [],
     },
+    recommendedSectionOrder: buildRailOrder(user.segments || []),
     gamification,
     weeklyXP,
     completedCoursesCount: completedCount,

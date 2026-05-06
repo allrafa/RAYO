@@ -662,6 +662,24 @@ export async function initializeSchema() {
   await query(`CREATE INDEX IF NOT EXISTS idx_home_feed_items_section ON home_feed_items(section, sort_order)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_home_feed_items_active ON home_feed_items(is_active)`);
 
+  // ──────────────────────────────────────────────────────────────────
+  // "Hoje no RAIO" — daily completion log (Task #43).
+  // One row per (user, day). UNIQUE constraint makes the
+  // POST /api/home/today/complete endpoint idempotent and prevents
+  // farming XP by replaying the request.
+  // ──────────────────────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS home_today_completions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content_item_id INTEGER NOT NULL REFERENCES content_items(id) ON DELETE CASCADE,
+      completed_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      completed_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(user_id, completed_date)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_home_today_completions_user_date ON home_today_completions(user_id, completed_date DESC)`);
+
   await seedBadgesAndMissions();
   // NOTE: seedCourses() was retired as part of Task #17 — the CMS
   // (`server/features/cms/*`) is now the authoritative source for course

@@ -12,6 +12,7 @@ import gamificationRoutes from "./features/gamification/routes.js";
 import academiaRoutes from "./features/academia/routes.js";
 import communityRoutes from "./features/community/routes.js";
 import dashboardRoutes from "./features/dashboard/routes.js";
+import homeRoutes from "./features/home/routes.js";
 import lgpdRoutes from "./features/lgpd/routes.js";
 import messagesRoutes from "./features/messages/routes.js";
 import adminRoutes from "./features/admin/routes.js";
@@ -48,6 +49,7 @@ app.use("/api/gamification", rateLimiter(60, 15 * 60 * 1000), gamificationRoutes
 app.use("/api/courses", rateLimiter(60, 15 * 60 * 1000), academiaRoutes);
 app.use("/api/community", rateLimiter(60, 15 * 60 * 1000), optionalAuth, communityRoutes);
 app.use("/api/dashboard", rateLimiter(60, 15 * 60 * 1000), dashboardRoutes);
+app.use("/api/home", rateLimiter(120, 15 * 60 * 1000), homeRoutes);
 app.use("/api/users", rateLimiter(10, 15 * 60 * 1000), lgpdRoutes);
 // Higher cap because the DM UI polls (messages every 10s, conversations every 30s,
 // unread-count every 20s); each authenticated user must comfortably fit a 15-min

@@ -15,7 +15,8 @@ import { QuizPage } from "./QuizPage";
 import { SimpleQuizTest } from "./SimpleQuizTest";
 import { MusicPage } from "./MusicPage";
 import { PlaylistsExpandedPage } from "./PlaylistsExpandedPage";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import { HojeNoRaio } from "./home/HojeNoRaio";
 import raioLogoFull from "figma:asset/91df98d68db1bbd58de3db20caeed5acda1da6fc.png";
 import { useYouTubeData } from "./hooks/useYouTubeData";
 import { useVideoProgress } from "./hooks/useVideoProgress";
@@ -32,6 +33,7 @@ import { useAuth } from "./AuthContext";
 
 interface DashboardData {
   greeting: { name: string; segments: string[] };
+  recommendedSectionOrder?: string[];
   gamification: {
     level: number;
     levelTitle: string;
@@ -189,6 +191,9 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   const [playerPlaylist, setPlayerPlaylist] = useState<YouTubePlaylist | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+  // Bumped on PullToRefresh and on "Hoje no RAIO" completion so the
+  // HojeNoRaio child re-fetches its state alongside the dashboard.
+  const [todayRefreshKey, setTodayRefreshKey] = useState(0);
   // Home rails (Tocados recentemente / Feito para você / Em alta / Podcasts)
   // are sourced from the CMS via /api/home-feed (Task #20). Producers manage
   // these cards in Admin → Home / Destaques.
@@ -279,6 +284,10 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
     setIsLoading(true);
     try {
       await Promise.all([loadDashboard(), loadHomeFeed()]);
+      // Bump after parallel fetches so HojeNoRaio also reloads (and
+      // re-evaluates the local "skipped today" flag — useful when the
+      // tab has been open across midnight).
+      setTodayRefreshKey((k) => k + 1);
     } catch (error) {
       console.error("Erro na atualização:", error);
     } finally {
@@ -623,386 +632,431 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
           </div>
         )}
 
-        {/* Continue de onde parou - Cursos em progresso */}
-        {dashboard && dashboard.coursesInProgress.length > 0 && (
-          <div className="px-4 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl font-semibold">Continue de onde parou</h2>
-            </div>
-            <div className="overflow-x-auto scrollbar-hide">
-              <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
-                {dashboard.coursesInProgress.map((course) => (
-                  <Card
-                    key={course.id}
-                    className="w-64 shrink-0 cursor-pointer hover:shadow-lg transition-shadow overflow-hidden"
-                    onClick={() => {
-                      setCurrentCourseId(course.id);
-                      setIsInCourseDetail(true);
-                    }}
-                  >
-                    <div className="relative h-36 overflow-hidden">
-                      <ImageWithFallback
-                        src={course.thumbnail}
-                        alt={course.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/20">
-                        <div className="h-full bg-primary rounded-r-full" style={{ width: `${course.progress}%` }} />
-                      </div>
-                      <Badge className="absolute top-2 right-2 bg-black/70 text-white text-xs">{Math.round(course.progress)}%</Badge>
-                    </div>
-                    <CardContent className="p-3">
-                      <h3 className="font-medium text-sm line-clamp-1 mb-1">{course.title}</h3>
-                      <p className="text-xs text-muted-foreground">{course.completedLessons}/{course.totalLessons} aulas</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Recomendado para você */}
-        {dashboard && dashboard.recommendedCourses.length > 0 && (
-          <div className="px-4 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl font-semibold">Recomendado para você</h2>
-            </div>
-            <div className="overflow-x-auto scrollbar-hide">
-              <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
-                {dashboard.recommendedCourses.map((course) => (
-                  <Card
-                    key={course.id}
-                    className="w-52 shrink-0 cursor-pointer hover:shadow-lg transition-shadow overflow-hidden group"
-                    onClick={() => {
-                      setCurrentCourseId(course.id);
-                      setIsInCourseDetail(true);
-                    }}
-                  >
-                    <div className="relative h-32 overflow-hidden">
-                      <ImageWithFallback
-                        src={course.thumbnail}
-                        alt={course.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      {course.isPremium && (
-                        <Badge className="absolute top-2 left-2 bg-yellow-500 text-black text-xs">Premium</Badge>
-                      )}
-                      <Badge className="absolute top-2 right-2 bg-black/70 text-white text-xs">{course.duration}</Badge>
-                    </div>
-                    <CardContent className="p-3">
-                      <h3 className="font-medium text-sm line-clamp-2 mb-1">{course.title}</h3>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                        <span>{course.rating.toFixed(1)}</span>
-                        <span className="mx-1">·</span>
-                        <span>{course.totalLessons} aulas</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Missões Ativas */}
-        {dashboard && dashboard.missions.length > 0 && (
-          <div className="px-4 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl font-semibold">Missões do dia</h2>
-            </div>
-            <div className="space-y-2">
-              {dashboard.missions.filter(m => m.type === 'daily').slice(0, 3).map((mission) => (
-                <Card key={mission.id} className={`p-3 ${mission.completed ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200/50' : ''}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{mission.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm line-clamp-1">{mission.title}</span>
-                        {mission.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all ${mission.completed ? 'bg-emerald-500' : 'bg-primary'}`}
-                            style={{ width: `${Math.min(100, (mission.currentProgress / mission.actionCount) * 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground shrink-0">{mission.currentProgress}/{mission.actionCount}</span>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="text-xs shrink-0">+{mission.rewardXP} XP</Badge>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Discussões Ativas */}
-        {dashboard && dashboard.recentPosts.length > 0 && (
-          <div className="px-4 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl font-semibold">Discussões ativas</h2>
-            </div>
-            <div className="space-y-2">
-              {dashboard.recentPosts.slice(0, 3).map((post) => (
-                <Card key={post.id} className="p-3 cursor-pointer hover:shadow-md transition-shadow">
-                  <div className="flex gap-3">
-                    <span className="text-xl shrink-0">{post.forumIcon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm line-clamp-2 mb-1">{post.content}</p>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>{post.authorName}</span>
-                        <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {post.likeCount}</span>
-                        <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> {post.commentCount}</span>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Continuar assistindo - Vídeos YouTube em progresso */}
-        <div className="px-4 mb-8">
-          <div className="flex items-center justify-between mb-4 mt-8">
-            <h2 className="font-display text-xl font-semibold">Continuar assistindo</h2>
-          </div>
-          
-          {youtubeLoading ? (
-            <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="w-[280px] lg:w-[320px] flex-shrink-0">
-                  <div className="aspect-video bg-muted rounded-lg animate-pulse mb-3" />
-                  <div className="h-4 bg-muted rounded w-3/4 mb-2 animate-pulse" />
-                  <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              {(() => {
-                const inProgressVideoIds = getInProgressVideos();
-                const inProgressVideos = youtubeData?.videos.filter(video => 
-                  inProgressVideoIds.some(p => p.videoId === video.id)
-                ) || [];
-                
-                if (inProgressVideos.length === 0) {
-                  // Fallback: mostrar últimos vídeos do canal
-                  const latestVideos = youtubeData?.videos.slice(0, 6) || [];
-                  return (
-                    <div className="overflow-x-auto scrollbar-hide">
-                      <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
-                        {latestVideos.map((video) => (
-                          <YouTubeVideoCard
-                            key={video.id}
-                            video={video}
-                            onClick={setSelectedVideo}
-                            showProgress={false}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-                
-                return (
-                  <div className="overflow-x-auto scrollbar-hide">
-                    <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
-                      {inProgressVideos.map((video) => (
-                        <YouTubeVideoCard
-                          key={video.id}
-                          video={video}
-                          onClick={setSelectedVideo}
-                          showProgress={true}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-            </>
-          )}
-        </div>
-
-        {/* Shorts RAIO */}
-        {!youtubeLoading && youtubeData && youtubeData.shorts.length > 0 && (
-          <div className="px-4 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-display text-xl font-semibold">Shorts RAIO</h2>
-            </div>
-            <div className="overflow-x-auto scrollbar-hide">
-              <div className="flex gap-3 pb-2" style={{ width: 'max-content' }}>
-                {youtubeData.shorts.map((short) => (
-                  <YouTubeShortCard
-                    key={short.id}
-                    short={short}
-                    onClick={setSelectedVideo}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tocados recentemente — CMS-managed rail (Task #20) */}
-        <div className="px-4 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-xl font-semibold">Tocados recentemente</h2>
-          </div>
-          <HomeFeedRail
-            items={homeCategories.recentlyPlayed}
-            size="medium"
-            emptyHint="Sem itens recentes em destaque. Adicione cards em Admin → Home / Destaques."
+        {/* "Hoje no RAIO" — bloco fixo entre stats e rails (Task #43).
+            Usa um endpoint próprio (/api/home/today) e bumpa
+            todayRefreshKey após completar para forçar refetch do
+            dashboard (XP/streak atualizados). */}
+        {authUser && (
+          <HojeNoRaio
+            refreshKey={todayRefreshKey}
+            onCompleted={() => {
+              void loadDashboard();
+            }}
           />
-        </div>
+        )}
 
-        {/* Feito para você - Playlists do YouTube */}
-        <div className="px-4 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-xl font-semibold">Feito para você</h2>
-          </div>
-          
-          {youtubeLoading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="space-y-3">
-                  <div className="aspect-square bg-muted rounded-lg animate-pulse" />
-                  <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
-                  <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
+        {/* ── Rails dinâmicas (Task #43) ────────────────────────────
+            A ordem das rails é definida pelo backend
+            (dashboard.recommendedSectionOrder) e varia por segmento
+            primário do usuário. Cada rail é um sub-componente
+            nomeado por id; ids desconhecidos são ignorados
+            silenciosamente para tolerar deploys parciais. */}
+        {(() => {
+          const renderContinue = (): ReactNode =>
+            dashboard && dashboard.coursesInProgress.length > 0 ? (
+              <div key="continue" className="px-4 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-xl font-semibold">Continue de onde parou</h2>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              {youtubeData && youtubeData.playlists.length > 0 ? (
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {youtubeData.playlists.map((playlist) => (
-                    <YouTubePlaylistCard
-                      key={playlist.id}
-                      playlist={playlist}
-                      onClick={handlePlaylistClick}
-                    />
+                <div className="overflow-x-auto scrollbar-hide">
+                  <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
+                    {dashboard.coursesInProgress.map((course) => (
+                      <Card
+                        key={course.id}
+                        className="w-64 shrink-0 cursor-pointer hover:shadow-lg transition-shadow overflow-hidden"
+                        onClick={() => {
+                          setCurrentCourseId(course.id);
+                          setIsInCourseDetail(true);
+                        }}
+                      >
+                        <div className="relative h-36 overflow-hidden">
+                          <ImageWithFallback
+                            src={course.thumbnail}
+                            alt={course.title}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/20">
+                            <div className="h-full bg-primary rounded-r-full" style={{ width: `${course.progress}%` }} />
+                          </div>
+                          <Badge className="absolute top-2 right-2 bg-black/70 text-white text-xs">{Math.round(course.progress)}%</Badge>
+                        </div>
+                        <CardContent className="p-3">
+                          <h3 className="font-medium text-sm line-clamp-1 mb-1">{course.title}</h3>
+                          <p className="text-xs text-muted-foreground">{course.completedLessons}/{course.totalLessons} aulas</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null;
+
+          const renderRecommended = (): ReactNode =>
+            dashboard && dashboard.recommendedCourses.length > 0 ? (
+              <div key="recommended" className="px-4 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-xl font-semibold">Recomendado para você</h2>
+                </div>
+                <div className="overflow-x-auto scrollbar-hide">
+                  <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
+                    {dashboard.recommendedCourses.map((course) => (
+                      <Card
+                        key={course.id}
+                        className="w-52 shrink-0 cursor-pointer hover:shadow-lg transition-shadow overflow-hidden group"
+                        onClick={() => {
+                          setCurrentCourseId(course.id);
+                          setIsInCourseDetail(true);
+                        }}
+                      >
+                        <div className="relative h-32 overflow-hidden">
+                          <ImageWithFallback
+                            src={course.thumbnail}
+                            alt={course.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          {course.isPremium && (
+                            <Badge className="absolute top-2 left-2 bg-yellow-500 text-black text-xs">Premium</Badge>
+                          )}
+                          <Badge className="absolute top-2 right-2 bg-black/70 text-white text-xs">{course.duration}</Badge>
+                        </div>
+                        <CardContent className="p-3">
+                          <h3 className="font-medium text-sm line-clamp-2 mb-1">{course.title}</h3>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                            <span>{course.rating.toFixed(1)}</span>
+                            <span className="mx-1">·</span>
+                            <span>{course.totalLessons} aulas</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null;
+
+          const renderMissions = (): ReactNode =>
+            dashboard && dashboard.missions.length > 0 ? (
+              <div key="missions" className="px-4 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-xl font-semibold">Missões do dia</h2>
+                </div>
+                <div className="space-y-2">
+                  {dashboard.missions.filter(m => m.type === 'daily').slice(0, 3).map((mission) => (
+                    <Card key={mission.id} className={`p-3 ${mission.completed ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200/50' : ''}`}>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">{mission.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm line-clamp-1">{mission.title}</span>
+                            {mission.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${mission.completed ? 'bg-emerald-500' : 'bg-primary'}`}
+                                style={{ width: `${Math.min(100, (mission.currentProgress / mission.actionCount) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground shrink-0">{mission.currentProgress}/{mission.actionCount}</span>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-xs shrink-0">+{mission.rewardXP} XP</Badge>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+
+          const renderDiscussoes = (): ReactNode =>
+            dashboard && dashboard.recentPosts.length > 0 ? (
+              <div key="discussoes" className="px-4 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-xl font-semibold">Discussões ativas</h2>
+                </div>
+                <div className="space-y-2">
+                  {dashboard.recentPosts.slice(0, 3).map((post) => (
+                    <Card key={post.id} className="p-3 cursor-pointer hover:shadow-md transition-shadow">
+                      <div className="flex gap-3">
+                        <span className="text-xl shrink-0">{post.forumIcon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm line-clamp-2 mb-1">{post.content}</p>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span>{post.authorName}</span>
+                            <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {post.likeCount}</span>
+                            <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> {post.commentCount}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+
+          const renderYouTubeContinue = (): ReactNode => (
+            <div key="youtube_continue" className="px-4 mb-8">
+              <div className="flex items-center justify-between mb-4 mt-8">
+                <h2 className="font-display text-xl font-semibold">Continuar assistindo</h2>
+              </div>
+              {youtubeLoading ? (
+                <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="w-[280px] lg:w-[320px] flex-shrink-0">
+                      <div className="aspect-video bg-muted rounded-lg animate-pulse mb-3" />
+                      <div className="h-4 bg-muted rounded w-3/4 mb-2 animate-pulse" />
+                      <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
+                    </div>
                   ))}
                 </div>
               ) : (
-                // Fallback: cards curados pelo CMS (Admin → Home / Destaques).
-                <HomeFeedRail
-                  items={homeCategories.madeForYou}
-                  size="large"
-                  emptyHint="Nenhuma playlist em destaque ainda. Producers podem adicionar cards em Admin → Home / Destaques."
-                />
+                <>
+                  {(() => {
+                    const inProgressVideoIds = getInProgressVideos();
+                    const inProgressVideos = youtubeData?.videos.filter(video =>
+                      inProgressVideoIds.some(p => p.videoId === video.id)
+                    ) || [];
+                    if (inProgressVideos.length === 0) {
+                      const latestVideos = youtubeData?.videos.slice(0, 6) || [];
+                      return (
+                        <div className="overflow-x-auto scrollbar-hide">
+                          <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
+                            {latestVideos.map((video) => (
+                              <YouTubeVideoCard
+                                key={video.id}
+                                video={video}
+                                onClick={setSelectedVideo}
+                                showProgress={false}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="overflow-x-auto scrollbar-hide">
+                        <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
+                          {inProgressVideos.map((video) => (
+                            <YouTubeVideoCard
+                              key={video.id}
+                              video={video}
+                              onClick={setSelectedVideo}
+                              showProgress={true}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
               )}
-            </>
-          )}
-        </div>
-
-        {/* Em alta */}
-        <div className="px-4 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-xl font-semibold">Em alta no RAIO</h2>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => {
-                setIsInPlaylistsExpanded(true);
-              }}
-            >
-              Ver tudo
-            </Button>
-          </div>
-          <HomeFeedRail
-            items={homeCategories.trending}
-            size="medium"
-            emptyHint="Sem destaques 'Em alta' no momento. Adicione cards em Admin → Home / Destaques."
-          />
-        </div>
-
-        {/* Smart Recommendations */}
-        {/* Quizzes de Autoconhecimento */}
-        <div className="px-4 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-xl font-semibold">Descubra seu perfil</h2>
-            {/* "Ver tudo" oculto até existir destino real (Task #42). */}
-          </div>
-          <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex gap-4 pb-2 transition-all duration-300 ease-out" style={{ width: 'max-content' }}>
-              
-              {/* Card 1: Quiz de Comunicação */}
-              <div className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
-                <Card 
-                  className="w-48 cursor-pointer border-0 bg-gradient-to-br from-raio-coral-500 to-raio-coral-600 text-white overflow-hidden"
-                  onClick={() => {
-                    setCurrentQuiz('communication');
-                  }}
-                >
-                  <div className="relative p-4 h-28">
-                    <div className="absolute top-2 right-2">
-                      <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                        <Brain className="w-3 h-3 mr-1" />
-                        Quiz
-                      </Badge>
-                    </div>
-                    <div className="flex flex-col justify-end h-full">
-                      <h3 className="font-semibold text-sm mb-1">Comunicação no Relacionamento</h3>
-                      <div className="flex items-center text-xs opacity-90">
-                        <Clock className="w-3 h-3 mr-1" />
-                        5 perguntas
-                      </div>
-                    </div>
-                    <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-white/10 rounded-full" />
-                  </div>
-                </Card>
-              </div>
-
-              {/* Card 2: Quiz de Gestão de Conflitos */}
-              <div className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
-                <Card 
-                  className="w-48 cursor-pointer border-0 bg-gradient-to-br from-raio-gold-500 to-raio-gold-600 text-white overflow-hidden"
-                  onClick={() => {
-                    setCurrentQuiz('conflict');
-                  }}
-                >
-                  <div className="relative p-4 h-28">
-                    <div className="absolute top-2 right-2">
-                      <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                        <Target className="w-3 h-3 mr-1" />
-                        Quiz
-                      </Badge>
-                    </div>
-                    <div className="flex flex-col justify-end h-full">
-                      <h3 className="font-semibold text-sm mb-1">Gestão de Conflitos</h3>
-                      <div className="flex items-center text-xs opacity-90">
-                        <Users className="w-3 h-3 mr-1" />
-                        5 perguntas
-                      </div>
-                    </div>
-                    <div className="absolute -top-2 -left-2 w-10 h-10 bg-white/10 rounded-full" />
-                  </div>
-                </Card>
-              </div>
-
-
-
             </div>
-          </div>
-        </div>
+          );
 
-        {/* Podcasts */}
-        <div className="px-4 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-xl font-semibold">Podcasts para você</h2>
-            {/* "Ver tudo" oculto até existir destino real (Task #42). */}
-          </div>
-          <HomeFeedRail
-            items={homeCategories.podcasts}
-            size="medium"
-            emptyHint="Nenhum podcast em destaque ainda. Adicione cards em Admin → Home / Destaques."
-          />
-        </div>
+          const renderShorts = (): ReactNode =>
+            !youtubeLoading && youtubeData && youtubeData.shorts.length > 0 ? (
+              <div key="shorts" className="px-4 mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-xl font-semibold">Shorts RAIO</h2>
+                </div>
+                <div className="overflow-x-auto scrollbar-hide">
+                  <div className="flex gap-3 pb-2" style={{ width: 'max-content' }}>
+                    {youtubeData.shorts.map((short) => (
+                      <YouTubeShortCard
+                        key={short.id}
+                        short={short}
+                        onClick={setSelectedVideo}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null;
+
+          const renderRecentlyPlayed = (): ReactNode => (
+            <div key="recently_played" className="px-4 mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display text-xl font-semibold">Tocados recentemente</h2>
+              </div>
+              <HomeFeedRail
+                items={homeCategories.recentlyPlayed}
+                size="medium"
+                emptyHint="Sem itens recentes em destaque. Adicione cards em Admin → Home / Destaques."
+              />
+            </div>
+          );
+
+          const renderMadeForYou = (): ReactNode => (
+            <div key="made_for_you" className="px-4 mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display text-xl font-semibold">Feito para você</h2>
+              </div>
+              {youtubeLoading ? (
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="space-y-3">
+                      <div className="aspect-square bg-muted rounded-lg animate-pulse" />
+                      <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
+                      <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  {youtubeData && youtubeData.playlists.length > 0 ? (
+                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {youtubeData.playlists.map((playlist) => (
+                        <YouTubePlaylistCard
+                          key={playlist.id}
+                          playlist={playlist}
+                          onClick={handlePlaylistClick}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <HomeFeedRail
+                      items={homeCategories.madeForYou}
+                      size="large"
+                      emptyHint="Nenhuma playlist em destaque ainda. Producers podem adicionar cards em Admin → Home / Destaques."
+                    />
+                  )}
+                </>
+              )}
+            </div>
+          );
+
+          const renderTrending = (): ReactNode => (
+            <div key="trending" className="px-4 mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display text-xl font-semibold">Em alta no RAIO</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setIsInPlaylistsExpanded(true);
+                  }}
+                >
+                  Ver tudo
+                </Button>
+              </div>
+              <HomeFeedRail
+                items={homeCategories.trending}
+                size="medium"
+                emptyHint="Sem destaques 'Em alta' no momento. Adicione cards em Admin → Home / Destaques."
+              />
+            </div>
+          );
+
+          const renderQuizzes = (): ReactNode => (
+            <div key="quizzes" className="px-4 mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display text-xl font-semibold">Descubra seu perfil</h2>
+              </div>
+              <div className="overflow-x-auto scrollbar-hide">
+                <div className="flex gap-4 pb-2 transition-all duration-300 ease-out" style={{ width: 'max-content' }}>
+                  <div className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
+                    <Card
+                      className="w-48 cursor-pointer border-0 bg-gradient-to-br from-raio-coral-500 to-raio-coral-600 text-white overflow-hidden"
+                      onClick={() => { setCurrentQuiz('communication'); }}
+                    >
+                      <div className="relative p-4 h-28">
+                        <div className="absolute top-2 right-2">
+                          <Badge variant="secondary" className="bg-white/20 text-white border-0">
+                            <Brain className="w-3 h-3 mr-1" />
+                            Quiz
+                          </Badge>
+                        </div>
+                        <div className="flex flex-col justify-end h-full">
+                          <h3 className="font-semibold text-sm mb-1">Comunicação no Relacionamento</h3>
+                          <div className="flex items-center text-xs opacity-90">
+                            <Clock className="w-3 h-3 mr-1" />
+                            5 perguntas
+                          </div>
+                        </div>
+                        <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-white/10 rounded-full" />
+                      </div>
+                    </Card>
+                  </div>
+                  <div className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
+                    <Card
+                      className="w-48 cursor-pointer border-0 bg-gradient-to-br from-raio-gold-500 to-raio-gold-600 text-white overflow-hidden"
+                      onClick={() => { setCurrentQuiz('conflict'); }}
+                    >
+                      <div className="relative p-4 h-28">
+                        <div className="absolute top-2 right-2">
+                          <Badge variant="secondary" className="bg-white/20 text-white border-0">
+                            <Target className="w-3 h-3 mr-1" />
+                            Quiz
+                          </Badge>
+                        </div>
+                        <div className="flex flex-col justify-end h-full">
+                          <h3 className="font-semibold text-sm mb-1">Gestão de Conflitos</h3>
+                          <div className="flex items-center text-xs opacity-90">
+                            <Users className="w-3 h-3 mr-1" />
+                            5 perguntas
+                          </div>
+                        </div>
+                        <div className="absolute -top-2 -left-2 w-10 h-10 bg-white/10 rounded-full" />
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+
+          const renderPodcasts = (): ReactNode => (
+            <div key="podcasts" className="px-4 mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-display text-xl font-semibold">Podcasts para você</h2>
+              </div>
+              <HomeFeedRail
+                items={homeCategories.podcasts}
+                size="medium"
+                emptyHint="Nenhum podcast em destaque ainda. Adicione cards em Admin → Home / Destaques."
+              />
+            </div>
+          );
+
+          const RAIL_RENDERERS: Record<string, () => ReactNode> = {
+            continue: renderContinue,
+            recommended: renderRecommended,
+            missions: renderMissions,
+            discussoes: renderDiscussoes,
+            youtube_continue: renderYouTubeContinue,
+            shorts: renderShorts,
+            recently_played: renderRecentlyPlayed,
+            made_for_you: renderMadeForYou,
+            trending: renderTrending,
+            quizzes: renderQuizzes,
+            podcasts: renderPodcasts,
+          };
+
+          // Fallback order mirrors the legacy hardcoded layout when the
+          // backend hasn't shipped recommendedSectionOrder yet (or for
+          // anonymous visitors with no dashboard payload).
+          const DEFAULT_ORDER = [
+            "continue", "recommended", "missions", "discussoes",
+            "youtube_continue", "shorts", "recently_played",
+            "made_for_you", "trending", "quizzes", "podcasts",
+          ];
+
+          const order = dashboard?.recommendedSectionOrder?.length
+            ? dashboard.recommendedSectionOrder
+            : DEFAULT_ORDER;
+
+          // Dedupe defensively — backend should never send dupes, but a
+          // bad config would otherwise yield duplicate React keys.
+          const seen = new Set<string>();
+          return order
+            .filter((id) => {
+              if (seen.has(id)) return false;
+              seen.add(id);
+              return true;
+            })
+            .map((id) => RAIL_RENDERERS[id]?.() ?? null);
+        })()}
 
         {/* Espaço para a navbar mobile não cobrir o último rail (Task #42) */}
         <div className="h-20" aria-hidden="true" />

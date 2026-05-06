@@ -43,6 +43,16 @@ RAIO is a digital platform designed to strengthen families through transformativ
 - **Role-Based Access Control**: A numeric hierarchy of roles (`client` < `producer` < `moderator` < `admin`) is enforced by middleware for administrative actions.
 - **Soft Deletes for Moderation**: Instead of hard deletion, content (posts, comments) can be `hidden` by moderators, allowing for restoration.
 - **Server-Sent Events (SSE) for Real-time Messaging**: Direct Messaging uses SSE for real-time updates on new messages, unread counts, and ephemeral typing indicators, reducing polling overhead.
+- **Segment-driven Home order + daily rotation (Task #43)**: Backend
+  exposes `recommendedSectionOrder` (string[]) on the dashboard payload,
+  computed from the user's primary `segments[0]`. The frontend renders
+  rails dynamically by id and ignores unknown ids, so adding a rail in
+  `RAIL_ORDER_BY_SEGMENT` is forward-compatible. "Hoje no RAIO"
+  (`GET /api/home/today`) picks one item per (user, day, segment) using
+  a deterministic `(epochDay + userId) % n` rotation; completion
+  (`POST /api/home/today/complete`) is idempotent (UNIQUE on
+  `home_today_completions(user_id, completed_date)`) and awards
+  `+15 XP` plus a streak bump on first claim only.
 
 ## Product
 - **User Authentication**: Register, login, logout, password reset, and user profile management. Email verification is required for registration.
@@ -84,6 +94,7 @@ RAIO is a digital platform designed to strengthen families through transformativ
 - **Content Card Mapping**: `badge_text`, `meta_text`, `progress`, and `gradient` fields in Home Feed cards have specific contextual meanings depending on the section.
 - **Static Assets**: Uploaded media is served statically via `/uploads/*` and relies on `multer` disk storage; future plans include object storage.
 - **No fake discounts**: Course pricing displays `course.price` directly. Never reintroduce a hardcoded `* 0.5` "50% OFF" — there is no `original_price` field. Promotions must come from real backend data.
+- **Idempotent daily completions (Task #43)**: `POST /api/home/today/complete` uses `INSERT … ON CONFLICT (user_id, completed_date) DO NOTHING` and only awards XP/streak when the insert actually wrote a row (`rowCount === 1`). Never bypass that guard or duplicate completions will yield extra XP.
 
 ## Pointers
 - **Development Protocol**: `architecture.md`
