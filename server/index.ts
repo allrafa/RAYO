@@ -42,6 +42,12 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+// Task #51 — the app sits behind the Replit proxy (and any deploy proxy in
+// production). Trust a single hop so `req.ip` reflects the real client
+// without letting arbitrary upstream callers spoof X-Forwarded-For to evade
+// the rate limiter.
+app.set("trust proxy", 1);
+
 app.use(securityMiddleware);
 app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
@@ -49,25 +55,67 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", corsMiddleware);
 app.use("/api/health", healthRoutes);
-app.use("/api/auth", rateLimiter(20, 15 * 60 * 1000), authRoutes);
-app.use("/api/users", rateLimiter(30, 15 * 60 * 1000), userRoutes);
-app.use("/api/gamification", rateLimiter(60, 15 * 60 * 1000), gamificationRoutes);
-app.use("/api/courses", rateLimiter(60, 15 * 60 * 1000), academiaRoutes);
-app.use("/api/community", rateLimiter(60, 15 * 60 * 1000), optionalAuth, communityRoutes);
-app.use("/api/dashboard", rateLimiter(60, 15 * 60 * 1000), dashboardRoutes);
-app.use("/api/home", rateLimiter(120, 15 * 60 * 1000), homeRoutes);
-app.use("/api/search", rateLimiter(120, 15 * 60 * 1000), searchRoutes);
-app.use("/api/users", rateLimiter(10, 15 * 60 * 1000), lgpdRoutes);
+// Task #51 — limiters revisados:
+//   * Cada limiter tem agora seu próprio bucket interno.
+//   * Rotas autenticadas usam `keyByCookie: true`, então cada sessão tem seu
+//     próprio orçamento e usuários atrás de proxy compartilhado não brigam
+//     pelo mesmo IP.
+//   * `/api/auth/me` é chamado em todo boot/refresh e foi removido da
+//     contagem para não estourar o orçamento de auth com refreshes.
+//   * Endpoints de escrita sensíveis em `/api/auth` (login, register,
+//     password reset, código de verificação) ganharam um sub-limiter
+//     estrito que continua protegendo contra brute force.
+//   * LGPD migrou para o prefixo dedicado `/api/lgpd` para não rodar seu
+//     limiter apertado em cima de toda chamada `/api/users/*`.
+const SENSITIVE_AUTH_PATHS = new Set([
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/change-password",
+  "/send-code",
+  "/verify-code",
+]);
+const isSensitiveAuthPost = (req: import("express").Request) =>
+  req.method === "POST" && SENSITIVE_AUTH_PATHS.has(req.path);
+const isAuthMe = (req: import("express").Request) =>
+  req.method === "GET" && req.path === "/me";
+app.use(
+  "/api/auth",
+  // Strict per-IP limiter that ONLY applies to sensitive write endpoints
+  // (login/register/password reset/code verification). This is the
+  // brute-force guard.
+  rateLimiter(20, 15 * 60 * 1000, {
+    skip: (req) => !isSensitiveAuthPost(req),
+  }),
+  // General limiter for the rest of /api/auth (logout, etc). Keyed by
+  // session cookie so each user has their own budget. Skips both the
+  // sensitive POSTs (already covered above) and GET /me, which is
+  // called on every app boot/refresh and is not an abuse vector.
+  rateLimiter(60, 15 * 60 * 1000, {
+    keyByCookie: true,
+    skip: (req) => isSensitiveAuthPost(req) || isAuthMe(req),
+  }),
+  authRoutes,
+);
+app.use("/api/users", rateLimiter(120, 15 * 60 * 1000, { keyByCookie: true }), userRoutes);
+app.use("/api/gamification", rateLimiter(120, 15 * 60 * 1000, { keyByCookie: true }), gamificationRoutes);
+app.use("/api/courses", rateLimiter(120, 15 * 60 * 1000, { keyByCookie: true }), academiaRoutes);
+app.use("/api/community", rateLimiter(120, 15 * 60 * 1000, { keyByCookie: true }), optionalAuth, communityRoutes);
+app.use("/api/dashboard", rateLimiter(120, 15 * 60 * 1000, { keyByCookie: true }), dashboardRoutes);
+app.use("/api/home", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), homeRoutes);
+app.use("/api/search", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), searchRoutes);
+app.use("/api/lgpd", rateLimiter(20, 15 * 60 * 1000, { keyByCookie: true }), lgpdRoutes);
 // Higher cap because the DM UI polls (messages every 10s, conversations every 30s,
 // unread-count every 20s); each authenticated user must comfortably fit a 15-min
 // active session without hitting 429.
-app.use("/api/messages", rateLimiter(600, 15 * 60 * 1000), messagesRoutes);
-app.use("/api/admin", rateLimiter(120, 15 * 60 * 1000), adminRoutes);
-app.use("/api/admin/cms", rateLimiter(300, 15 * 60 * 1000), adminCmsRouter);
-app.use("/api/content", rateLimiter(120, 15 * 60 * 1000), publicCmsRouter);
-app.use("/api/admin/home-feed", rateLimiter(300, 15 * 60 * 1000), adminHomeFeedRouter);
-app.use("/api/home-feed", rateLimiter(120, 15 * 60 * 1000), publicHomeFeedRouter);
-app.use("/api/bundles", rateLimiter(120, 15 * 60 * 1000), bundlesRoutes);
+app.use("/api/messages", rateLimiter(600, 15 * 60 * 1000, { keyByCookie: true }), messagesRoutes);
+app.use("/api/admin", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), adminRoutes);
+app.use("/api/admin/cms", rateLimiter(300, 15 * 60 * 1000, { keyByCookie: true }), adminCmsRouter);
+app.use("/api/content", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), publicCmsRouter);
+app.use("/api/admin/home-feed", rateLimiter(300, 15 * 60 * 1000, { keyByCookie: true }), adminHomeFeedRouter);
+app.use("/api/home-feed", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), publicHomeFeedRouter);
+app.use("/api/bundles", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), bundlesRoutes);
 
 // Task #48 — `/uploads/*` is now backed by Replit Object Storage. The
 // URL contract is unchanged so `users.avatar_url` /

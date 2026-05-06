@@ -2,27 +2,19 @@ import helmet from "helmet";
 import cors from "cors";
 import type { Request, Response, NextFunction } from "express";
 
-const isDev = process.env.NODE_ENV !== "production";
-
 export const securityMiddleware = helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
-  frameguard: isDev ? false : { action: "sameorigin" },
 });
-
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",")
-  : [];
 
 function isReplitOrigin(origin: string): boolean {
   try {
-    const hostname = new URL(origin).hostname;
-    // `.replit.app` covers published deployments (same-origin in prod),
-    // `.replit.dev` / `.repl.co` cover dev/preview iframes.
+    const url = new URL(origin);
     return (
-      hostname.endsWith(".replit.app") ||
-      hostname.endsWith(".replit.dev") ||
-      hostname.endsWith(".repl.co")
+      url.hostname.endsWith(".replit.dev") ||
+      url.hostname.endsWith(".repl.co") ||
+      url.hostname.endsWith(".replit.app") ||
+      url.hostname.endsWith(".replit.com")
     );
   } catch {
     return false;
@@ -32,11 +24,6 @@ function isReplitOrigin(origin: string): boolean {
 export const corsMiddleware = cors({
   origin: (origin, callback) => {
     if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    if (allowedOrigins.includes(origin)) {
       callback(null, true);
       return;
     }
@@ -53,11 +40,47 @@ export const corsMiddleware = cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 });
 
-const requestCounts = new Map<string, { count: number; resetAt: number }>();
+export type RateLimiterOptions = {
+  // When true and a session_token cookie is present, the bucket is keyed by
+  // the session token instead of the client IP. This prevents users behind a
+  // shared proxy / NAT (e.g. the Replit preview iframe) from exhausting each
+  // other's quota, and avoids one user's tabs piling onto a single IP bucket.
+  keyByCookie?: boolean;
+  // Predicate to exclude specific requests from counting. Returning true
+  // bypasses the limiter for that request entirely.
+  skip?: (req: Request) => boolean;
+};
 
-export function rateLimiter(maxRequests: number, windowMs: number) {
+export function rateLimiter(
+  maxRequests: number,
+  windowMs: number,
+  options: RateLimiterOptions = {},
+) {
+  // Each limiter gets its OWN bucket map. Sharing one module-level map across
+  // every limiter instance would mean one route's traffic eating another
+  // route's quota — defeating the per-prefix limits configured in index.ts.
+  const requestCounts = new Map<string, { count: number; resetAt: number }>();
+  const { keyByCookie = false, skip } = options;
+
+  // Periodic GC for this limiter's bucket only.
+  setInterval(() => {
+    const now = Date.now();
+    for (const [k, entry] of requestCounts.entries()) {
+      if (now > entry.resetAt) requestCounts.delete(k);
+    }
+  }, 60000).unref?.();
+
   return (req: Request, res: Response, next: NextFunction) => {
-    const key = req.ip || "unknown";
+    if (skip && skip(req)) return next();
+
+    let key: string;
+    const sessionToken = keyByCookie ? req.cookies?.session_token : undefined;
+    if (sessionToken && typeof sessionToken === "string") {
+      key = `sess:${sessionToken}`;
+    } else {
+      key = `ip:${req.ip || "unknown"}`;
+    }
+
     const now = Date.now();
     const entry = requestCounts.get(key);
 
@@ -82,12 +105,3 @@ export function rateLimiter(maxRequests: number, windowMs: number) {
     next();
   };
 }
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of requestCounts.entries()) {
-    if (now > entry.resetAt) {
-      requestCounts.delete(key);
-    }
-  }
-}, 60000);

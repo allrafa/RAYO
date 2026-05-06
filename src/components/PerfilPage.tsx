@@ -456,7 +456,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const handleExportData = async () => {
     setExportingData(true);
     try {
-      const res = await api.post<{ message: string; export: Record<string, unknown> }>("/api/users/data-export");
+      const res = await api.post<{ message: string; export: Record<string, unknown> }>("/api/lgpd/data-export");
       if (res.success && res.data) {
         const blob = new Blob([JSON.stringify(res.data.export, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
@@ -481,7 +481,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const handleDeleteAccount = async () => {
     setDeletingAccount(true);
     try {
-      const res = await api.post("/api/users/data-deletion");
+      const res = await api.post("/api/lgpd/data-deletion");
       if (res.success) {
         toast.success("Sua conta foi removida conforme a LGPD.");
         await logout();
