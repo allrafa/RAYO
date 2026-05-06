@@ -57,9 +57,9 @@ app.use("/api", corsMiddleware);
 app.use("/api/health", healthRoutes);
 // Task #51 — limiters revisados:
 //   * Cada limiter tem agora seu próprio bucket interno.
-//   * Rotas autenticadas usam `keyByCookie: true`, então cada sessão tem seu
-//     próprio orçamento e usuários atrás de proxy compartilhado não brigam
-//     pelo mesmo IP.
+//   * Rotas autenticadas usam `keyByUser: true` (rodando `optionalAuth`
+//     antes do limiter), então cada usuário tem seu próprio orçamento e
+//     usuários atrás de proxy compartilhado não brigam pelo mesmo IP.
 //   * `/api/auth/me` é chamado em todo boot/refresh e foi removido da
 //     contagem para não estourar o orçamento de auth com refreshes.
 //   * Endpoints de escrita sensíveis em `/api/auth` (login, register,
@@ -67,12 +67,15 @@ app.use("/api/health", healthRoutes);
 //     estrito que continua protegendo contra brute force.
 //   * LGPD migrou para o prefixo dedicado `/api/lgpd` para não rodar seu
 //     limiter apertado em cima de toda chamada `/api/users/*`.
+// Endpoints autenticados como `/change-password` ficam DE FORA dessa lista:
+// eles já têm sessão (req.user existe), então o limiter geral por usuário
+// abaixo cobre o caso. A lista aqui é só para POSTs anônimos onde o brute-
+// force é o vetor real.
 const SENSITIVE_AUTH_PATHS = new Set([
   "/login",
   "/register",
   "/forgot-password",
   "/reset-password",
-  "/change-password",
   "/send-code",
   "/verify-code",
 ]);
