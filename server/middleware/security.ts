@@ -17,7 +17,13 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 function isReplitOrigin(origin: string): boolean {
   try {
     const hostname = new URL(origin).hostname;
-    return hostname.endsWith(".replit.dev") || hostname.endsWith(".repl.co");
+    // `.replit.app` covers published deployments (same-origin in prod),
+    // `.replit.dev` / `.repl.co` cover dev/preview iframes.
+    return (
+      hostname.endsWith(".replit.app") ||
+      hostname.endsWith(".replit.dev") ||
+      hostname.endsWith(".repl.co")
+    );
   } catch {
     return false;
   }
@@ -35,7 +41,7 @@ export const corsMiddleware = cors({
       return;
     }
 
-    if (isDev && isReplitOrigin(origin)) {
+    if (isReplitOrigin(origin)) {
       callback(null, true);
       return;
     }
