@@ -91,7 +91,12 @@ async function start() {
     } else {
       const buildPath = path.resolve(__dirname, "..", "build");
       app.use(express.static(buildPath));
-      app.get("*", (_req, res) => {
+      // SPA fallback: in Express 5 the legacy `app.get("*")` throws at
+      // startup ("Missing parameter name") because path-to-regexp v8 no
+      // longer accepts bare "*" as a wildcard. A trailing middleware is
+      // the version-agnostic equivalent and only fires for unmatched
+      // non-/api requests.
+      app.use((_req, res) => {
         res.sendFile(path.join(buildPath, "index.html"));
       });
       logger.info("Server", "Serving static build.");
