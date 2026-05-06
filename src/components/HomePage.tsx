@@ -801,64 +801,52 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
               </div>
             ) : null;
 
-          const renderYouTubeContinue = (): ReactNode => (
-            <div key="youtube_continue" className="px-4 mb-8">
-              <div className="flex items-center justify-between mb-4 mt-8">
-                <h2 className="font-display text-xl font-semibold">Continuar assistindo</h2>
-              </div>
-              {youtubeLoading ? (
-                <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="w-[280px] lg:w-[320px] flex-shrink-0">
-                      <div className="aspect-video bg-muted rounded-lg animate-pulse mb-3" />
-                      <div className="h-4 bg-muted rounded w-3/4 mb-2 animate-pulse" />
-                      <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
-                    </div>
-                  ))}
+          const renderYouTubeContinue = (): ReactNode => {
+            // Compute available content up-front so we can omit the
+            // entire rail when neither in-progress nor latest videos
+            // exist (Task #43 — no empty section shells).
+            const inProgressVideoIds = getInProgressVideos();
+            const inProgressVideos = youtubeData?.videos.filter(video =>
+              inProgressVideoIds.some(p => p.videoId === video.id)
+            ) || [];
+            const latestVideos = youtubeData?.videos.slice(0, 6) || [];
+            const videosToShow =
+              inProgressVideos.length > 0 ? inProgressVideos : latestVideos;
+            const showProgress = inProgressVideos.length > 0;
+            if (!youtubeLoading && videosToShow.length === 0) return null;
+
+            return (
+              <div key="youtube_continue" className="px-4 mb-8">
+                <div className="flex items-center justify-between mb-4 mt-8">
+                  <h2 className="font-display text-xl font-semibold">Continuar assistindo</h2>
                 </div>
-              ) : (
-                <>
-                  {(() => {
-                    const inProgressVideoIds = getInProgressVideos();
-                    const inProgressVideos = youtubeData?.videos.filter(video =>
-                      inProgressVideoIds.some(p => p.videoId === video.id)
-                    ) || [];
-                    if (inProgressVideos.length === 0) {
-                      const latestVideos = youtubeData?.videos.slice(0, 6) || [];
-                      return (
-                        <div className="overflow-x-auto scrollbar-hide">
-                          <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
-                            {latestVideos.map((video) => (
-                              <YouTubeVideoCard
-                                key={video.id}
-                                video={video}
-                                onClick={setSelectedVideo}
-                                showProgress={false}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="overflow-x-auto scrollbar-hide">
-                        <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
-                          {inProgressVideos.map((video) => (
-                            <YouTubeVideoCard
-                              key={video.id}
-                              video={video}
-                              onClick={setSelectedVideo}
-                              showProgress={true}
-                            />
-                          ))}
-                        </div>
+                {youtubeLoading ? (
+                  <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="w-[280px] lg:w-[320px] flex-shrink-0">
+                        <div className="aspect-video bg-muted rounded-lg animate-pulse mb-3" />
+                        <div className="h-4 bg-muted rounded w-3/4 mb-2 animate-pulse" />
+                        <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
                       </div>
-                    );
-                  })()}
-                </>
-              )}
-            </div>
-          );
+                    ))}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto scrollbar-hide">
+                    <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
+                      {videosToShow.map((video) => (
+                        <YouTubeVideoCard
+                          key={video.id}
+                          video={video}
+                          onClick={setSelectedVideo}
+                          showProgress={showProgress}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          };
 
           const renderShorts = (): ReactNode =>
             !youtubeLoading && youtubeData && youtubeData.shorts.length > 0 ? (
