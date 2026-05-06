@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   User, Settings, Bell, Heart, Trophy, Zap, 
   ChevronRight, LogOut, Moon, Sun, Globe, 
@@ -67,22 +67,56 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
 
   const [gamProfile, setGamProfile] = useState<GamificationProfile | null>(null);
   const [badges, setBadges] = useState<BadgeData[]>([]);
-  // Task #44 — deep-link de busca de pessoas. Como o app ainda não
-  // tem rota de "perfil de outro usuário", apenas registramos o id
-  // alvo pra mostrar um aviso no topo. Quando a rota existir, basta
-  // trocar essa view por uma navegação real.
-  const [pendingProfileId, setPendingProfileId] = useState<number | null>(null);
+  // Task #44 — deep-link de busca de pessoas: quando o usuário clica
+  // num resultado kind="user", buscamos o perfil público mínimo via
+  // /api/users/:id/public e renderizamos no topo (overlay simples
+  // dentro da própria PerfilPage). Não há rota dedicada de perfil
+  // alheio ainda, então o overlay é o destino "real" — pode ser
+  // promovido a uma página própria sem mudar o contrato do helper.
+  interface PublicProfile {
+    id: number;
+    name: string;
+    segments: string[];
+    level: number;
+    xp: number;
+    streak: number;
+    totalBadges: number;
+    joinedAt: string;
+  }
+  const [otherProfile, setOtherProfile] = useState<PublicProfile | null>(null);
+  const [otherProfileLoading, setOtherProfileLoading] = useState(false);
+  const [otherProfileError, setOtherProfileError] = useState<string | null>(
+    null,
+  );
+
+  const loadOtherProfile = useCallback(async (id: number) => {
+    setOtherProfile(null);
+    setOtherProfileError(null);
+    setOtherProfileLoading(true);
+    const res = await api.get<{ user: PublicProfile }>(
+      `/api/users/${id}/public`,
+    );
+    if (res.success && res.data) {
+      setOtherProfile(res.data.user);
+    } else {
+      setOtherProfileError(
+        res.error?.message || "Não foi possível carregar este perfil.",
+      );
+    }
+    setOtherProfileLoading(false);
+  }, []);
+
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ id: number }>).detail;
-      if (detail?.id) setPendingProfileId(detail.id);
+      if (detail?.id) void loadOtherProfile(detail.id);
     };
     window.addEventListener("raio:open-profile", handler as EventListener);
     try {
       const pending = sessionStorage.getItem("raio-pending-profile");
       if (pending) {
         sessionStorage.removeItem("raio-pending-profile");
-        setPendingProfileId(Number(pending));
+        void loadOtherProfile(Number(pending));
       }
     } catch {
       // ignore
@@ -93,7 +127,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
         handler as EventListener,
       );
     };
-  }, []);
+  }, [loadOtherProfile]);
   const [exportingData, setExportingData] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -254,30 +288,73 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       className="min-h-screen pb-24 lg:pb-8"
       style={{ background: 'var(--raio-bg-primary)' }}
     >
-      {pendingProfileId !== null && (
-        <div
-          role="status"
-          className="mx-auto max-w-md lg:max-w-7xl px-4 lg:px-8 pt-3"
-        >
+      {(otherProfile || otherProfileLoading || otherProfileError) && (
+        <div className="mx-auto max-w-md lg:max-w-7xl px-4 lg:px-8 pt-3">
           <div
-            className="text-xs px-3 py-2 rounded-md flex items-center justify-between gap-2"
+            role="region"
+            aria-label="Perfil público"
+            className="rounded-xl p-4 mb-3"
             style={{
-              background: "var(--raio-bg-tertiary)",
+              background: "var(--raio-bg-secondary)",
               border: "1px solid var(--raio-border-default)",
-              color: "var(--raio-text-secondary)",
             }}
           >
-            <span>
-              Perfil público de outros usuários ainda em construção
-              (id solicitado: {pendingProfileId}).
-            </span>
-            <button
-              type="button"
-              onClick={() => setPendingProfileId(null)}
-              className="underline"
-            >
-              fechar
-            </button>
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Perfil público
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setOtherProfile(null);
+                  setOtherProfileError(null);
+                }}
+                className="text-xs underline text-muted-foreground"
+              >
+                fechar
+              </button>
+            </div>
+            {otherProfileLoading && (
+              <p className="text-sm text-muted-foreground">Carregando…</p>
+            )}
+            {otherProfileError && (
+              <p className="text-sm text-destructive">{otherProfileError}</p>
+            )}
+            {otherProfile && (
+              <div>
+                <h3 className="text-lg font-semibold mb-1">
+                  {otherProfile.name}
+                </h3>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Membro desde{" "}
+                  {new Date(otherProfile.joinedAt).toLocaleDateString("pt-BR", {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                  {otherProfile.segments.length > 0 &&
+                    ` · ${otherProfile.segments.join(", ")}`}
+                </p>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  {[
+                    { label: "Nível", value: otherProfile.level },
+                    { label: "XP", value: otherProfile.xp },
+                    { label: "Sequência", value: otherProfile.streak },
+                    { label: "Conquistas", value: otherProfile.totalBadges },
+                  ].map((s) => (
+                    <div
+                      key={s.label}
+                      className="rounded-lg p-2"
+                      style={{ background: "var(--raio-bg-tertiary)" }}
+                    >
+                      <p className="text-base font-semibold">{s.value}</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {s.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

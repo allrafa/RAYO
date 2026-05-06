@@ -60,32 +60,71 @@ export function ComunidadePage() {
   const [loadingComments, setLoadingComments] = useState(false);
 
   // Task #44 — deep-link de busca: quando um resultado de busca de
-  // post é clicado, recebemos o id por CustomEvent e abrimos o painel
-  // de comentários daquele post (se já carregado). Caso o post ainda
-  // não esteja na lista, ignoramos silenciosamente — o usuário cai na
-  // aba certa, e o post aparecerá no scroll do feed.
+  // post é clicado, recebemos o id por CustomEvent. Tentamos abrir o
+  // post da memória; se não estiver carregado, buscamos via
+  // /api/community/posts/:id e abrimos do mesmo jeito.
+  const openPostById = useCallback(
+    async (id: number) => {
+      const cached = posts.find((p) => p.id === id);
+      if (cached) {
+        setSelectedPost(cached);
+        setShowComments(true);
+        return;
+      }
+      const res = await api.get<{
+        post: {
+          id: number;
+          author_name: string;
+          content: string;
+          category: string;
+          like_count: number;
+          comment_count: number;
+          share_count: number;
+          is_pinned: boolean;
+          user_liked: boolean;
+          forum_id: number;
+          forum_name?: string;
+          author_id: number;
+          created_at: string;
+          title: string | null;
+        };
+      }>(`/api/community/posts/${id}`);
+      if (res.success && res.data) {
+        const p = res.data.post;
+        setSelectedPost({
+          id: p.id,
+          author: p.author_name,
+          avatar: "/placeholder-avatar.jpg",
+          time: new Date(p.created_at).toLocaleDateString("pt-BR"),
+          content: p.content,
+          category: p.category || "",
+          likes: p.like_count,
+          comments: p.comment_count,
+          shares: p.share_count,
+          isPinned: p.is_pinned,
+          userReacted: p.user_liked,
+          visibility: "comunidade",
+          forum_id: p.forum_id,
+          forum_name: p.forum_name,
+          author_id: p.author_id,
+        });
+        setShowComments(true);
+      }
+    },
+    [posts],
+  );
+
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ id: number }>).detail;
-      const target = posts.find((p) => p.id === detail?.id);
-      if (target) {
-        setSelectedPost(target);
-        setShowComments(true);
-      }
+      if (detail?.id) void openPostById(detail.id);
     };
     window.addEventListener("raio:open-post", handler as EventListener);
-    // Verifica deep-link pendente armazenado pelo helper
-    // (caso o evento tenha sido disparado antes da página montar).
     try {
       const pending = sessionStorage.getItem("raio-pending-post");
       if (pending) {
         sessionStorage.removeItem("raio-pending-post");
-        const id = Number(pending);
-        const target = posts.find((p) => p.id === id);
-        if (target) {
-          setSelectedPost(target);
-          setShowComments(true);
-        }
+        void openPostById(Number(pending));
       }
     } catch {
       // ignore
@@ -93,7 +132,7 @@ export function ComunidadePage() {
     return () => {
       window.removeEventListener("raio:open-post", handler as EventListener);
     };
-  }, [posts]);
+  }, [openPostById]);
 
   const loadForums = useCallback(async () => {
     setForumsLoading(true);

@@ -167,6 +167,15 @@ export interface ContinueItem {
   contentItemId?: number;
 }
 
+// Task #44 — Por design, o "Continue de onde parou" tem 2 fontes:
+//   1) Backend (este arquivo): cursos em progresso + interações
+//      recentes com conteúdo CMS (audio/video/reels/podcast).
+//   2) Frontend (UnifiedContinue): progresso de YouTube vive em
+//      localStorage no navegador (useVideoProgress) e por isso é
+//      mesclado client-side. Sem store server-side de tempo de
+//      playback YT, qualquer "merge no servidor" seria menos preciso
+//      que o que o cliente já tem. O cliente ordena tudo por
+//      lastAccessedAt antes de renderizar.
 export async function getContinueItems(userId: number): Promise<ContinueItem[]> {
   const { rows: courseRows } = await query<{
     course_id: number;
