@@ -275,7 +275,7 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted, userId }: Props) {
                   className="rounded-full text-muted-foreground"
                   onClick={handleSkip}
                 >
-                  <SkipForward className="w-4 h-4 mr-1" /> Pular
+                  <SkipForward className="w-4 h-4 mr-1" /> Pular hoje
                 </Button>
               </>
             )}

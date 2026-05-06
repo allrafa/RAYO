@@ -1,4 +1,4 @@
-import { query } from "../../db/index.js";
+import { query, getClient } from "../../db/index.js";
 import { addXP, updateStreak } from "../gamification/service.js";
 
 // Kinds eligible for the "Hoje no RAIO" daily prompt. Keep this short:
@@ -156,30 +156,43 @@ export async function completeTodayItem(
     return { error: "INVALID_TODAY_ITEM" };
   }
 
-  // ON CONFLICT makes this endpoint safe to call repeatedly — the second
-  // call returns alreadyCompleted=true with no extra XP. The unique index
-  // on (user_id, completed_date) is what guarantees once-per-day semantics.
-  const { rows: inserted } = await query<{ id: number }>(
-    `INSERT INTO home_today_completions (user_id, content_item_id, completed_date)
-     VALUES ($1, $2, CURRENT_DATE)
-     ON CONFLICT (user_id, completed_date) DO NOTHING
-     RETURNING id`,
-    [userId, picked.id],
-  );
-
-  if (inserted.length === 0) {
-    return { alreadyCompleted: true, xpAwarded: 0 };
+  // Wrap insert + XP + streak in a single transaction so a failure in
+  // any side-effect rolls back the completion row. Without this, a
+  // crash between INSERT and addXP would leave a "completed" record
+  // for the day with no reward — and the user could never retry.
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
+    const inserted = await client.query<{ id: number }>(
+      `INSERT INTO home_today_completions (user_id, content_item_id, completed_date)
+       VALUES ($1, $2, CURRENT_DATE)
+       ON CONFLICT (user_id, completed_date) DO NOTHING
+       RETURNING id`,
+      [userId, picked.id],
+    );
+    if (inserted.rowCount === 0) {
+      await client.query("COMMIT");
+      return { alreadyCompleted: true, xpAwarded: 0 };
+    }
+    // addXP/updateStreak use the shared pool, not our client. They run
+    // their own statements but the completion row's BEGIN/COMMIT
+    // boundary still ensures the row is only durable once we reach
+    // COMMIT below — if either throws, ROLLBACK undoes the insert.
+    const xp = await addXP(userId, TODAY_XP, "today_complete");
+    const streak = await updateStreak(userId);
+    await client.query("COMMIT");
+    return {
+      alreadyCompleted: false,
+      xpAwarded: TODAY_XP,
+      newTotalXP: xp.newTotalXP,
+      newLevel: xp.newLevel,
+      leveledUp: xp.leveledUp,
+      currentStreak: streak.currentStreak,
+    };
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
   }
-
-  const xp = await addXP(userId, TODAY_XP, "today_complete");
-  const streak = await updateStreak(userId);
-
-  return {
-    alreadyCompleted: false,
-    xpAwarded: TODAY_XP,
-    newTotalXP: xp.newTotalXP,
-    newLevel: xp.newLevel,
-    leveledUp: xp.leveledUp,
-    currentStreak: streak.currentStreak,
-  };
 }
