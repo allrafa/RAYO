@@ -404,6 +404,8 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
             <ImageWithFallback
               src={item.image}
               alt={item.title}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           )}
@@ -543,25 +545,61 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
         {dashboard && (
           <div className="px-4 mt-6 mb-6">
             {/* Saudação foi promovida para o hero (Task #42); aqui ficam só os stats. */}
+            {/* Stats com gradientes de marca RAIO (Task #42).
+                Os 3 ângulos da identidade: gold (sequência/calor),
+                gold-mais-escuro (nível/conquista) e coral (energia semanal). */}
             <div className="grid grid-cols-3 gap-3">
-              <Card className="p-3 text-center bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/30 dark:to-orange-900/20 border-orange-200/50">
+              <Card
+                className="p-3 text-center border-[var(--raio-border-default)]"
+                style={{
+                  background:
+                    'linear-gradient(135deg, var(--raio-gold-50), var(--raio-gold-100))',
+                }}
+              >
                 <div className="flex flex-col items-center gap-1">
-                  <Flame className="w-5 h-5 text-orange-500" />
-                  <span className="text-2xl font-bold text-orange-600">{dashboard.gamification.streak}</span>
+                  <Flame className="w-5 h-5" style={{ color: 'var(--raio-gold-500)' }} />
+                  <span
+                    className="text-2xl font-bold"
+                    style={{ color: 'var(--raio-gold-700)' }}
+                  >
+                    {dashboard.gamification.streak}
+                  </span>
                   <span className="text-xs text-muted-foreground">Sequência</span>
                 </div>
               </Card>
-              <Card className="p-3 text-center bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/30 dark:to-purple-900/20 border-purple-200/50">
+              <Card
+                className="p-3 text-center border-[var(--raio-border-default)]"
+                style={{
+                  background:
+                    'linear-gradient(135deg, var(--raio-gold-100), var(--raio-gold-200))',
+                }}
+              >
                 <div className="flex flex-col items-center gap-1">
-                  <Trophy className="w-5 h-5 text-purple-500" />
-                  <span className="text-2xl font-bold text-purple-600">{dashboard.gamification.level}</span>
+                  <Trophy className="w-5 h-5" style={{ color: 'var(--raio-gold-600)' }} />
+                  <span
+                    className="text-2xl font-bold"
+                    style={{ color: 'var(--raio-gold-800)' }}
+                  >
+                    {dashboard.gamification.level}
+                  </span>
                   <span className="text-xs text-muted-foreground">{dashboard.gamification.levelTitle}</span>
                 </div>
               </Card>
-              <Card className="p-3 text-center bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950/30 dark:to-emerald-900/20 border-emerald-200/50">
+              <Card
+                className="p-3 text-center border-[var(--raio-border-default)]"
+                style={{
+                  background:
+                    'linear-gradient(135deg, var(--raio-coral-50), var(--raio-coral-100))',
+                }}
+              >
                 <div className="flex flex-col items-center gap-1">
-                  <Zap className="w-5 h-5 text-emerald-500" />
-                  <span className="text-2xl font-bold text-emerald-600">{dashboard.weeklyXP}</span>
+                  <Zap className="w-5 h-5" style={{ color: 'var(--raio-coral-500)' }} />
+                  <span
+                    className="text-2xl font-bold"
+                    style={{ color: 'var(--raio-coral-700)' }}
+                  >
+                    {dashboard.weeklyXP}
+                  </span>
                   <span className="text-xs text-muted-foreground">XP semanal</span>
                 </div>
               </Card>
@@ -573,8 +611,12 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-500"
-                  style={{ width: `${dashboard.gamification.levelProgress}%` }}
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${dashboard.gamification.levelProgress}%`,
+                    background:
+                      'linear-gradient(90deg, var(--raio-gold-500), var(--raio-gold-600))',
+                  }}
                 />
               </div>
             </div>
