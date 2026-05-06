@@ -41,27 +41,32 @@ interface Props {
   // Notify parent so dashboard stats (streak/XP) can be refetched after
   // a successful completion.
   onCompleted?: () => void;
+  // Used to scope the local "skipped today" flag so two accounts on the
+  // same browser don't share each other's dismissal state.
+  userId?: number | string | null;
 }
-
-const SKIP_KEY = "raio_today_skipped_date";
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function readSkipped(): boolean {
+function skipKey(userId?: number | string | null): string {
+  return `raio_today_skipped_date:${userId ?? "anon"}`;
+}
+
+function readSkipped(userId?: number | string | null): boolean {
   try {
-    return localStorage.getItem(SKIP_KEY) === todayStr();
+    return localStorage.getItem(skipKey(userId)) === todayStr();
   } catch {
     return false;
   }
 }
 
-export function HojeNoRaio({ refreshKey = 0, onCompleted }: Props) {
+export function HojeNoRaio({ refreshKey = 0, onCompleted, userId }: Props) {
   const [item, setItem] = useState<TodayItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
-  const [skipped, setSkipped] = useState<boolean>(() => readSkipped());
+  const [skipped, setSkipped] = useState<boolean>(() => readSkipped(userId));
   // Lightweight confetti burst on the first successful completion of
   // the day. Auto-clears after 1.6s so the canvas doesn't linger.
   const [showConfetti, setShowConfetti] = useState(false);
@@ -86,8 +91,8 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted }: Props) {
   // Re-check skip flag on refresh — covers crossing midnight while the
   // tab was open, after which yesterday's skip should no longer apply.
   useEffect(() => {
-    setSkipped(readSkipped());
-  }, [refreshKey]);
+    setSkipped(readSkipped(userId));
+  }, [refreshKey, userId]);
 
   useEffect(() => {
     return () => {
@@ -172,7 +177,7 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted }: Props) {
 
   const handleSkip = () => {
     try {
-      localStorage.setItem(SKIP_KEY, todayStr());
+      localStorage.setItem(skipKey(userId), todayStr());
     } catch {
       // localStorage may be unavailable (private mode); fall back to
       // session-only skip.

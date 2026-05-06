@@ -645,6 +645,7 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
         {authUser && (
           <HojeNoRaio
             refreshKey={todayRefreshKey}
+            userId={authUser.id}
             onCompleted={() => {
               void loadDashboard();
             }}
