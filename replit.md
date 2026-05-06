@@ -168,6 +168,18 @@ RAIO is a digital platform designed to strengthen families through transformativ
   storage, and falls back to disk for un-migrated legacy files. Boot-time
   `backfillLocalUploads` is idempotent and copies any pre-existing
   on-disk file into the bucket.
+- **Image optimization on upload (Task #50)**: Uploads pass through
+  `server/lib/imageOptimization.ts` (sharp) before
+  `putPublicObject`. Avatar route re-encodes to a 512x512 WebP @ Q82
+  (typical < 50 KB) regardless of input format; the multer 2 MB cap
+  on the inbound request stays in place. CMS `uploadMiddleware`
+  resizes raster images to a 2048px largest-side ceiling and
+  re-encodes (PNG → palette PNG, WebP → WebP, JPEG/other → progressive
+  mozjpeg). GIFs pass through untouched to preserve animation;
+  audio/video/PDF skip optimization entirely. `file.mimetype` and the
+  storage key extension are rewritten to match the optimized output so
+  `media_assets.mime_type` stays consistent. Decode failures fall
+  through with the original buffer rather than 500ing.
 - **No fake discounts**: Course pricing displays `course.price` directly. Never reintroduce a hardcoded `* 0.5` "50% OFF" — there is no `original_price` field. Promotions must come from real backend data.
 - **Idempotent daily completions (Task #43)**: `POST /api/home/today/complete` uses `INSERT … ON CONFLICT (user_id, completed_date) DO NOTHING` and only awards XP/streak when the insert actually wrote a row (`rowCount === 1`). Never bypass that guard or duplicate completions will yield extra XP.
 

@@ -12,6 +12,7 @@ import {
   publicObjectKeyToStored,
   resolveStoredMediaUrl,
 } from "../../lib/objectStorageBridge.js";
+import { optimizeAvatar } from "../../lib/imageOptimization.js";
 
 const router = Router();
 
@@ -21,11 +22,6 @@ const router = Router();
 // (o handler estático em server/index.ts traduz para object storage,
 // com fallback para disco em arquivos legados).
 const AVATAR_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const EXT_BY_MIME: Record<string, string> = {
-  "image/jpeg": ".jpg",
-  "image/png": ".png",
-  "image/webp": ".webp",
-};
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 2 * 1024 * 1024 },
@@ -210,9 +206,19 @@ router.post("/avatar", requireAuth, (req: Request, res: Response, next: NextFunc
         error(res, "Arquivo não enviado", "VALIDATION_ERROR", 400);
         return;
       }
-      const ext = EXT_BY_MIME[req.file.mimetype] || ".bin";
-      const key = `avatar/${Date.now()}-${randomUUID().slice(0, 8)}${ext}`;
-      await putPublicObject(key, req.file.buffer, req.file.mimetype);
+      // Task #50 — re-encode to a 512x512 WebP before persisting so the
+      // bucket holds ~tens of KB instead of the original (up to 2 MB)
+      // upload. The 2 MB multer cap above still guards the inbound
+      // request.
+      let optimized;
+      try {
+        optimized = await optimizeAvatar(req.file.buffer);
+      } catch {
+        error(res, "Não foi possível processar a imagem", "UPLOAD_ERROR", 400);
+        return;
+      }
+      const key = `avatar/${Date.now()}-${randomUUID().slice(0, 8)}${optimized.extension}`;
+      await putPublicObject(key, optimized.buffer, optimized.mimetype);
       // Persist the storage reference. updateUserProfile → toSafeUser
       // already turns it into a fresh signed URL before returning.
       const updatedUser = await updateUserProfile(req.user!.id, {

@@ -8,6 +8,7 @@ import {
   publicObjectKeyToStored,
   parsePublicUploadStoragePath,
 } from "../../lib/objectStorageBridge.js";
+import { optimizeCmsImage } from "../../lib/imageOptimization.js";
 
 // Task #48 — Uploads now live in Replit Object Storage (public bucket).
 // We keep the multer-based contract (handlers still see `req.file` with
@@ -81,11 +82,33 @@ export function uploadMiddleware(
     const file = req.file;
     if (!file) return next();
     try {
-      const ext = path.extname(file.originalname) || extensionForMime(file.mimetype);
+      let buffer = file.buffer;
+      let mimetype = file.mimetype;
+      // Task #50 — shrink card thumbnails to a sane ceiling
+      // (~2048px largest side) before uploading. We only touch raster
+      // images; audio/video/pdf go through untouched.
+      if (mimetype.startsWith("image/")) {
+        try {
+          const optimized = await optimizeCmsImage(buffer, mimetype);
+          buffer = optimized.buffer;
+          mimetype = optimized.mimetype;
+          // Reflect the canonical mimetype back so downstream metadata
+          // (media_assets.mime_type, content cards) stays consistent.
+          file.mimetype = mimetype;
+          file.size = buffer.length;
+        } catch {
+          // If sharp can't decode it (corrupt upload), fall through
+          // and let object storage / consumers reject it.
+        }
+      }
+      const originalExt = path.extname(file.originalname);
+      const ext = mimetype.startsWith("image/")
+        ? extensionForMime(mimetype) || originalExt
+        : originalExt || extensionForMime(mimetype);
       const safeName = `${Date.now()}-${randomShort()}${ext}`;
-      const kind = inferKind(file.mimetype);
+      const kind = inferKind(mimetype);
       const key = `${kind}/${safeName}`;
-      await putPublicObject(key, file.buffer, file.mimetype);
+      await putPublicObject(key, buffer, mimetype);
       // Mutate req.file so route handlers see object-storage coordinates
       // instead of a fake disk path.
       file.path = `objstore://${key}`;
