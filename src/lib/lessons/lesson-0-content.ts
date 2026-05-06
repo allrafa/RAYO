@@ -66,7 +66,7 @@ Comunicação não é sobre quem ganha a discussão.
 
 É sobre quem cuida melhor do relacionamento.
 
-E aqui no RAIO, você vai aprender exatamente como fazer isso.
+E aqui no RAYO, você vai aprender exatamente como fazer isso.
 
 Pequenas mudanças nas palavras.
 Grandes transformações na família.
@@ -229,7 +229,7 @@ O que você diz?
         'Imagina aprender a lidar com conflitos, educar filhos, cultivar intimidade, fortalecer a fé em família.',
         'Imagina transformar 5 minutos por dia em um relacionamento completamente diferente em 30 dias.',
         '',
-        'Isso é o RAIO.',
+        'Isso é o RAYO.',
         '',
         'Não são palestras longas. Não é teoria complicada.',
         'São práticas simples, baseadas em REAL LIFE, que você aplica HOJE e vê resultado AMANHÃ.'
@@ -238,9 +238,9 @@ O que você diz?
     },
     
     social_proof: {
-      stat: 'Mais de 10.000 famílias já estão transformando suas relações com o RAIO.',
+      stat: 'Mais de 10.000 famílias já estão transformando suas relações com o RAYO.',
       testimonial: {
-        quote: '"Eu achei que meu casamento estava acabado. Hoje, depois de 30 dias no RAIO, a gente se comunica de um jeito que nunca conseguimos em 10 anos juntos."',
+        quote: '"Eu achei que meu casamento estava acabado. Hoje, depois de 30 dias no RAYO, a gente se comunica de um jeito que nunca conseguimos em 10 anos juntos."',
         author: '— Juliana, 34 anos, São Paulo'
       }
     },

@@ -1,5 +1,5 @@
 // ============================================================================
-// 🔐 RAIO ECOSYSTEM - CONSENT & PRIVACY MANAGER
+// 🔐 RAYO ECOSYSTEM - CONSENT & PRIVACY MANAGER
 // Sistema completo de gerenciamento de consentimento (LGPD)
 // Consultoria: Bozoma Saint John - "Confiança é a moeda mais valiosa"
 // ============================================================================

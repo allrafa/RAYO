@@ -1,5 +1,5 @@
 /**
- * RAIO - YouTube Integration Types
+ * RAYO - YouTube Integration Types
  * Types para integração com YouTube Data API v3
  */
 

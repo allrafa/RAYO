@@ -1,5 +1,5 @@
 /**
- * RAIO - YouTube Data Service
+ * RAYO - YouTube Data Service
  * Serviço para buscar dados do canal @eusourafaraio
  */
 
@@ -248,7 +248,7 @@ function getMockData(): YouTubeCache {
     videos: [
       {
         id: 'mock-video-1',
-        title: 'Como Fortalecer seu Relacionamento - RAIO',
+        title: 'Como Fortalecer seu Relacionamento - RAYO',
         description: 'Descubra estratégias práticas para fortalecer seu relacionamento e construir uma base sólida de amor e respeito.',
         thumbnail: {
           default: 'https://images.unsplash.com/photo-1758524944375-7d61202cc481?w=120&h=90&fit=crop',

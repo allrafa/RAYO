@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - BIBLIOTECA PAGE
+// 📚 RAYO ECOSYSTEM - BIBLIOTECA PAGE
 // Página dedicada da Biblioteca acessível do Perfil
 // ============================================================================
 
@@ -246,7 +246,7 @@ export function BibliotecaPage({ onBack }: BibliotecaPageProps) {
               className="text-[16px] mb-6" 
               style={{ color: 'var(--raio-text-secondary)' }}
             >
-              Explore a Academia RAIO e adicione conteúdos à sua biblioteca
+              Explore a Academia RAYO e adicione conteúdos à sua biblioteca
             </p>
             <Button onClick={onBack}>
               Explorar Conteúdos

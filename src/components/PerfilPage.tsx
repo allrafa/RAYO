@@ -653,7 +653,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                        userData.segments?.[0] === 'namoro' ? '💕 Namoro' :
                        userData.segments?.[0] === 'noivos' ? '💍 Noivos' :
                        userData.segments?.[0] === 'casados' ? '👰‍♀️ Casados' :
-                       userData.segments?.[0] === 'pais' ? '👶 Pais' : '💚 Membro RAIO'}
+                       userData.segments?.[0] === 'pais' ? '👶 Pais' : '💚 Membro RAYO'}
                     </p>
 
                     <div className="flex items-center justify-center lg:justify-start gap-2 mb-4 lg:mb-6">
@@ -1229,13 +1229,13 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                   className="text-xs" 
                   style={{ color: 'var(--raio-text-tertiary)' }}
                 >
-                  RAIO Ecossistema v1.0.0
+                  RAYO Ecossistema v1.0.0
                 </p>
                 <p 
                   className="text-xs" 
                   style={{ color: 'var(--raio-text-tertiary)' }}
                 >
-                  © 2025 RAIO. Todos os direitos reservados.
+                  © 2025 RAYO. Todos os direitos reservados.
                 </p>
               </div>
             </div>
@@ -1433,13 +1433,13 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                 className="text-xs" 
                 style={{ color: 'var(--raio-text-tertiary)' }}
               >
-                RAIO Ecossistema v1.0.0
+                RAYO Ecossistema v1.0.0
               </p>
               <p 
                 className="text-xs" 
                 style={{ color: 'var(--raio-text-tertiary)' }}
               >
-                © 2025 RAIO. Todos os direitos reservados.
+                © 2025 RAYO. Todos os direitos reservados.
               </p>
             </div>
           </div>

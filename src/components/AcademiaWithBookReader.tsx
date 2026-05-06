@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - ACADEMIA WITH BOOK READER
+// 📚 RAYO ECOSYSTEM - ACADEMIA WITH BOOK READER
 // Wrapper que gerencia Academia + Book Reader
 // ============================================================================
 

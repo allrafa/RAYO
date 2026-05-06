@@ -1,5 +1,5 @@
 /**
- * RAIO - YouTube Playlist Card
+ * RAYO - YouTube Playlist Card
  * Card de playlist estilo Spotify
  */
 

@@ -90,7 +90,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             Configurações
           </DialogTitle>
           <DialogDescription>
-            Personalize sua experiência na plataforma RAIO
+            Personalize sua experiência na plataforma RAYO
           </DialogDescription>
         </DialogHeader>
 

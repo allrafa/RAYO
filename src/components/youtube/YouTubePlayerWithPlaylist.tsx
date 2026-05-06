@@ -1,5 +1,5 @@
 /**
- * RAIO - YouTube Player com Lista de Playlist
+ * RAYO - YouTube Player com Lista de Playlist
  * Player estilo YouTube com lista de vídeos ao lado
  */
 

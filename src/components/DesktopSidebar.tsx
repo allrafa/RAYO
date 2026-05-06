@@ -33,7 +33,7 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
   const baseItems: MenuItem[] = [
     { id: "home", label: "Início", icon: Home },
     { id: "academia", label: "Academia", icon: GraduationCap },
-    { id: "conselheiro", label: "Conselheiro", icon: null, isSpecial: true }, // Logo RAIO customizada
+    { id: "conselheiro", label: "Conselheiro", icon: null, isSpecial: true }, // Logo RAYO customizada
     { id: "comunidade", label: "Comunidade", icon: Users },
     { id: "conversas", label: "Mensagens", icon: MessageCircle, badge: unreadMessages },
     { id: "perfil", label: "Perfil", icon: User },
@@ -71,7 +71,7 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
           >
             <img 
               src={raioLogo}
-              alt="RAIO"
+              alt="RAYO"
               className="w-6 h-6 object-contain"
               style={{
                 filter: 'brightness(0) invert(1)', // Torna a logo branca
@@ -87,7 +87,7 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
                   color: 'var(--raio-text-primary)',
                 }}
               >
-                RAIO
+                RAYO
               </h1>
               <p 
                 className="text-xs"
@@ -205,7 +205,7 @@ export function DesktopSidebar({ currentTab, onTabChange, isMinimized = false, o
                 ) : isSpecial ? (
                   <img 
                     src={raioLogo}
-                    alt="Conselheiro RAIO"
+                    alt="Conselheiro RAYO"
                     className={`w-5 h-5 object-contain transition-all ${
                       isActive ? 'scale-110' : ''
                     }`}

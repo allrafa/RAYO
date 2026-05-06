@@ -1,5 +1,5 @@
 /**
- * RAIO - Video Progress Hook
+ * RAYO - Video Progress Hook
  * Hook para gerenciar progresso de visualização de vídeos
  */
 

@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
+/* RAYO Design System v2 — Outfit única (200–700) */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap');
 @import 'tailwindcss' source(none);
 @source './**/*.{js,ts,jsx,tsx}';
 @import 'tw-animate-css';

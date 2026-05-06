@@ -754,7 +754,7 @@ function LessonCard({ lesson, lessonNumber, onClick, isLocked }: LessonCardProps
   );
 }
 
-// MARKETPLACE VIEW — Editorial RAIO style
+// MARKETPLACE VIEW — Editorial RAYO style
 interface MarketplaceViewProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -1036,7 +1036,7 @@ function MarketplaceView({
 
   return (
     <div>
-      {/* HERO — Editorial RAIO */}
+      {/* HERO — Editorial RAYO */}
       <section
         className="relative overflow-hidden"
         style={{ background: 'var(--raio-bg-warm-cream)' }}

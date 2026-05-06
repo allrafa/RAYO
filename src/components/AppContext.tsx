@@ -32,7 +32,7 @@ function mapLivroToBook(c: CmsLivro): Book {
     id: String(c.id),
     slug: c.slug ?? undefined,
     title: c.title,
-    author: c.author ?? 'RAIO',
+    author: c.author ?? 'RAYO',
     coverImage: c.cover_url ?? '',
     description: c.long_description ?? c.short_description ?? '',
     category: c.interests && c.interests.length > 0 ? c.interests : ['Geral'],

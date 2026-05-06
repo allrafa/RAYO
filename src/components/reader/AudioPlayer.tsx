@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - AUDIO PLAYER
+// 📚 RAYO ECOSYSTEM - AUDIO PLAYER
 // Player de áudio com controles completos
 // ============================================================================
 

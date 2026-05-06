@@ -1,4 +1,4 @@
-// "Hoje no RAIO" — daily nudge block (Task #43).
+// "Hoje no RAYO" — daily nudge block (Task #43).
 // Sits between the stats grid and the rails on HomePage. Backend
 // (/api/home/today) returns a deterministic single item per
 // (user, day, segment); the user can mark it done (+15 XP, streak bump)
@@ -159,12 +159,12 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted, userId }: Props) {
           title: `+${data.xpAwarded} XP!`,
           description: data.currentStreak
             ? `Sequência de ${data.currentStreak} dia${data.currentStreak === 1 ? "" : "s"}.`
-            : "Hoje no RAIO completo.",
+            : "Hoje no RAYO completo.",
           haptic: true,
         });
       } else {
         enhancedToast.info({
-          title: "Você já completou o Hoje no RAIO",
+          title: "Você já completou o Hoje no RAYO",
         });
       }
       setItem({ ...item, completedAt: new Date().toISOString() });
@@ -220,7 +220,7 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted, userId }: Props) {
           )}
           <div className="absolute top-3 left-3">
             <Badge className="bg-black/60 text-white border-0 text-[10px] uppercase tracking-wider">
-              Hoje no RAIO
+              Hoje no RAYO
             </Badge>
           </div>
         </div>

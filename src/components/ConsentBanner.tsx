@@ -1,5 +1,5 @@
 // ============================================================================
-// 🍪 RAIO ECOSYSTEM - CONSENT BANNER
+// 🍪 RAYO ECOSYSTEM - CONSENT BANNER
 // Banner de consentimento LGPD-compliant
 // ============================================================================
 

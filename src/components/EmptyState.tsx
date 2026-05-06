@@ -123,7 +123,7 @@ export function EmptyStateNoCommunity({ onCreate }: { onCreate?: () => void }) {
     <EmptyState
       illustration="💬"
       title="Seja o primeiro a postar"
-      description="Compartilhe sua experiência e conecte-se com outros membros da comunidade RAIO."
+      description="Compartilhe sua experiência e conecte-se com outros membros da comunidade RAYO."
       action={onCreate ? {
         label: "Criar Post",
         onClick: onCreate

@@ -258,7 +258,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
             <div className="w-16 h-16 mx-auto mb-6">
               <img src={logoIcon} alt="Rayo" className="w-full h-full object-contain" />
             </div>
-            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
               Bem-vindo(a) de volta
             </h2>
             <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
@@ -268,26 +268,26 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="email" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Email</Label>
+              <Label htmlFor="email" style={{ color: "var(--foreground)", fontSize: "14px", fontWeight: 500 }}>Email</Label>
               <Input
                 id="email" type="email" placeholder="seu@email.com" value={email}
                 onChange={(e) => setEmail(e.target.value)} required autoComplete="email" autoFocus
-                className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px]"
+                className="h-12 bg-white border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] rounded-lg focus:border-[var(--ring)] focus:ring-1 focus:ring-[var(--ring)] text-[15px]"
                 style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Senha</Label>
+              <Label htmlFor="password" style={{ color: "var(--foreground)", fontSize: "14px", fontWeight: 500 }}>Senha</Label>
               <div className="relative">
                 <Input
                   id="password" type={showPassword ? "text" : "password"} placeholder="Sua senha"
                   value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password"
-                  className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px] pr-12"
+                  className="h-12 bg-white border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] rounded-lg focus:border-[var(--ring)] focus:ring-1 focus:ring-[var(--ring)] text-[15px] pr-12"
                   style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1" style={{ color: "#9CA3AF" }} tabIndex={-1}>
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1" style={{ color: "var(--muted-foreground)" }} tabIndex={-1}>
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
@@ -323,9 +323,9 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
         >
           <div className="text-center mb-10">
             <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#FEF3C7" }}>
-              <KeyRound className="w-7 h-7" style={{ color: "#D97706" }} />
+              <KeyRound className="w-7 h-7" style={{ color: "var(--accent)" }} />
             </div>
-            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
               Esqueceu sua senha?
             </h2>
             <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
@@ -342,14 +342,14 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                 <CheckCircle2 className="w-5 h-5 mx-auto mb-2" />
                 {forgotMessage}
               </div>
-              <p className="text-xs text-center" style={{ color: "#9CA3AF" }}>
+              <p className="text-xs text-center" style={{ color: "var(--muted-foreground)" }}>
                 Verifique também a caixa de spam. O link é válido por 30 minutos.
               </p>
               <div className="text-center">
                 <button
                   onClick={backToLogin}
                   className="text-sm flex items-center justify-center gap-1 mx-auto transition-colors"
-                  style={{ color: "#1A1A1A", fontWeight: 500 }}
+                  style={{ color: "var(--foreground)", fontWeight: 500 }}
                 >
                   <ArrowLeft size={14} />
                   Voltar para login
@@ -359,11 +359,11 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
           ) : (
             <form onSubmit={handleForgotPassword} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="forgot-email" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Email</Label>
+                <Label htmlFor="forgot-email" style={{ color: "var(--foreground)", fontSize: "14px", fontWeight: 500 }}>Email</Label>
                 <Input
                   id="forgot-email" type="email" placeholder="seu@email.com" value={email}
                   onChange={(e) => setEmail(e.target.value)} required autoComplete="email" autoFocus
-                  className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px]"
+                  className="h-12 bg-white border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] rounded-lg focus:border-[var(--ring)] focus:ring-1 focus:ring-[var(--ring)] text-[15px]"
                   style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
                 />
               </div>
@@ -376,7 +376,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                   disabled={isSubmitting || !canRequestReset}
                   className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
-                    background: "#1A1A1A", color: "#FFFFFF", border: "none", borderRadius: "12px",
+                    background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "12px",
                     padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
                     cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                   }}
@@ -411,7 +411,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
               <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#D1FAE5" }}>
                 <CheckCircle2 className="w-7 h-7" style={{ color: "#059669" }} />
               </div>
-              <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+              <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
                 Senha redefinida!
               </h2>
               <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
@@ -430,7 +430,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                 }}
                 className="relative w-full group overflow-hidden"
                 style={{
-                  background: "#1A1A1A", color: "#FFFFFF", border: "none", borderRadius: "12px",
+                  background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "12px",
                   padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
                   cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                 }}
@@ -457,9 +457,9 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
         >
           <div className="text-center mb-10">
             <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#FEF3C7" }}>
-              <KeyRound className="w-7 h-7" style={{ color: "#D97706" }} />
+              <KeyRound className="w-7 h-7" style={{ color: "var(--accent)" }} />
             </div>
-            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
               Crie uma nova senha
             </h2>
             <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
@@ -469,17 +469,17 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
 
           <form onSubmit={handleResetPassword} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="new-password" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Nova senha</Label>
+              <Label htmlFor="new-password" style={{ color: "var(--foreground)", fontSize: "14px", fontWeight: 500 }}>Nova senha</Label>
               <div className="relative">
                 <Input
                   id="new-password" type={showPassword ? "text" : "password"} placeholder="Mínimo 8 caracteres"
                   value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8}
                   autoComplete="new-password" autoFocus
-                  className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px] pr-12"
+                  className="h-12 bg-white border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] rounded-lg focus:border-[var(--ring)] focus:ring-1 focus:ring-[var(--ring)] text-[15px] pr-12"
                   style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1" style={{ color: "#9CA3AF" }} tabIndex={-1}>
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1" style={{ color: "var(--muted-foreground)" }} tabIndex={-1}>
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
@@ -501,7 +501,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                     setMode("forgot");
                   }}
                   className="text-sm transition-colors hover:underline"
-                  style={{ color: "#1A1A1A", fontWeight: 500 }}
+                  style={{ color: "var(--foreground)", fontWeight: 500 }}
                 >
                   Solicitar um novo link
                 </button>
@@ -514,7 +514,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                     setMode("login");
                   }}
                   className="text-xs transition-colors flex items-center justify-center gap-1"
-                  style={{ color: "#9CA3AF" }}
+                  style={{ color: "var(--muted-foreground)" }}
                 >
                   <ArrowLeft size={12} />
                   Voltar para login
@@ -539,7 +539,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
             <div className="w-16 h-16 mx-auto mb-6">
               <img src={logoIcon} alt="Rayo" className="w-full h-full object-contain" />
             </div>
-            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
               Crie sua conta
             </h2>
             <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
@@ -549,21 +549,21 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
 
           <div className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="name" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Nome</Label>
+              <Label htmlFor="name" style={{ color: "var(--foreground)", fontSize: "14px", fontWeight: 500 }}>Nome</Label>
               <Input
                 id="name" type="text" placeholder="Seu nome" value={name}
                 onChange={(e) => setName(e.target.value)} autoComplete="name"
-                className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px]"
+                className="h-12 bg-white border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] rounded-lg focus:border-[var(--ring)] focus:ring-1 focus:ring-[var(--ring)] text-[15px]"
                 style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="reg-email" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Email</Label>
+              <Label htmlFor="reg-email" style={{ color: "var(--foreground)", fontSize: "14px", fontWeight: 500 }}>Email</Label>
               <Input
                 id="reg-email" type="email" placeholder="seu@email.com" value={email}
                 onChange={(e) => setEmail(e.target.value)} autoComplete="email"
-                className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px]"
+                className="h-12 bg-white border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] rounded-lg focus:border-[var(--ring)] focus:ring-1 focus:ring-[var(--ring)] text-[15px]"
                 style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
               />
             </div>
@@ -577,7 +577,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                 disabled={isSubmitting || !canSendCode}
                 className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{
-                  background: "#1A1A1A", color: "#FFFFFF", border: "none", borderRadius: "12px",
+                  background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "12px",
                   padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
                   cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                 }}
@@ -608,15 +608,15 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
         >
           <div className="text-center mb-10">
             <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#FEF3C7" }}>
-              <Mail className="w-7 h-7" style={{ color: "#D97706" }} />
+              <Mail className="w-7 h-7" style={{ color: "var(--accent)" }} />
             </div>
-            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+            <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
               Verifique seu email
             </h2>
             <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
               Enviamos um código de 6 dígitos para
             </p>
-            <p className="text-[15px] mt-1" style={{ color: "#1A1A1A", fontWeight: 500 }}>
+            <p className="text-[15px] mt-1" style={{ color: "var(--foreground)", fontWeight: 500 }}>
               {email}
             </p>
           </div>
@@ -635,10 +635,10 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                   onKeyDown={(e) => handleCodeKeyDown(index, e)}
                   className="w-12 h-14 text-center text-xl font-semibold rounded-lg border focus:outline-none transition-all"
                   style={{
-                    background: "#FFFFFF",
-                    color: "#1A1A1A",
-                    borderColor: digit ? "#FCD34D" : "#E5E5E5",
-                    boxShadow: digit ? "0 0 0 1px #FCD34D" : "0 1px 2px rgba(0, 0, 0, 0.05)",
+                    background: "var(--card)",
+                    color: "var(--foreground)",
+                    borderColor: digit ? "var(--ring)" : "var(--border)",
+                    boxShadow: digit ? "0 0 0 1px var(--ring)" : "0 1px 2px rgba(14, 26, 20, 0.05)",
                   }}
                 />
               ))}
@@ -653,7 +653,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
                 disabled={isSubmitting || !codeComplete}
                 className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{
-                  background: "#1A1A1A", color: "#FFFFFF", border: "none", borderRadius: "12px",
+                  background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "12px",
                   padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
                   cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
                 }}
@@ -686,7 +686,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
               <button
                 onClick={() => { setRegisterStep("form"); setError(""); setVerificationCode(["", "", "", "", "", ""]); }}
                 className="text-xs flex items-center justify-center gap-1 mx-auto transition-colors"
-                style={{ color: "#9CA3AF" }}
+                style={{ color: "var(--muted-foreground)" }}
               >
                 <ArrowLeft size={12} />
                 Alterar email
@@ -709,7 +709,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
           <div className="w-14 h-14 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ background: "#D1FAE5" }}>
             <ShieldCheck className="w-7 h-7" style={{ color: "#059669" }} />
           </div>
-          <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "#1A1A1A" }}>
+          <h2 className="text-[24px] tracking-tight mb-3" style={{ fontWeight: 600, color: "var(--foreground)" }}>
             Email verificado!
           </h2>
           <p className="text-[15px]" style={{ color: "#6B7280", lineHeight: 1.6 }}>
@@ -719,17 +719,17 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
 
         <form onSubmit={handleRegister} className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="reg-password" style={{ color: "#1A1A1A", fontSize: "14px", fontWeight: 500 }}>Senha</Label>
+            <Label htmlFor="reg-password" style={{ color: "var(--foreground)", fontSize: "14px", fontWeight: 500 }}>Senha</Label>
             <div className="relative">
               <Input
                 id="reg-password" type={showPassword ? "text" : "password"} placeholder="Mínimo 8 caracteres"
                 value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8}
                 autoComplete="new-password" autoFocus
-                className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px] pr-12"
+                className="h-12 bg-white border-[var(--border)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] rounded-lg focus:border-[var(--ring)] focus:ring-1 focus:ring-[var(--ring)] text-[15px] pr-12"
                 style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)" }}
               />
               <button type="button" onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1" style={{ color: "#9CA3AF" }} tabIndex={-1}>
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1" style={{ color: "var(--muted-foreground)" }} tabIndex={-1}>
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
@@ -769,7 +769,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
               {mode === "login" ? (
                 <span>
                   Ainda não tem conta?{" "}
-                  <span style={{ color: "#1A1A1A", fontWeight: 500 }}>Criar conta</span>
+                  <span style={{ color: "var(--foreground)", fontWeight: 500 }}>Criar conta</span>
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-1">
@@ -788,7 +788,7 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
           )}
 
           {onGoBack && (mode === "login" || (mode === "register" && registerStep === "form")) && (
-            <button onClick={onGoBack} className="block mx-auto text-xs transition-colors" style={{ color: "#9CA3AF" }}>
+            <button onClick={onGoBack} className="block mx-auto text-xs transition-colors" style={{ color: "var(--muted-foreground)" }}>
               Voltar ao início
             </button>
           )}
@@ -836,7 +836,7 @@ function ActionButton({ label, isSubmitting }: { label: string; isSubmitting: bo
         disabled={isSubmitting}
         className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
         style={{
-          background: "#1A1A1A", color: "#FFFFFF", border: "none", borderRadius: "12px",
+          background: "var(--primary)", color: "var(--primary-foreground)", border: "none", borderRadius: "12px",
           padding: "16px 32px", fontSize: "15px", fontWeight: 500, letterSpacing: "-0.01em",
           cursor: "pointer", boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
         }}

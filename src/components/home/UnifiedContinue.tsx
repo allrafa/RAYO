@@ -17,7 +17,7 @@ import { api } from "../../lib/api";
 // Filtros por chip ("Todos" / "Vídeos" / "Cursos" / "Podcasts") são
 // aplicados puramente no cliente — o backend devolve tudo o que sabe.
 // "Podcasts" agrupa kinds de áudio (audio + podcast) já que toda a
-// biblioteca de podcasts da RAIO entra no CMS como audio.
+// biblioteca de podcasts da RAYO entra no CMS como audio.
 
 type Filter = "todos" | "videos" | "cursos" | "podcasts";
 
@@ -178,7 +178,7 @@ export function UnifiedContinue({ onOpenAcademia, onOpenHoje }: Props) {
           <div className="flex gap-2 justify-center flex-wrap">
             {onOpenHoje && (
               <Button size="sm" variant="outline" onClick={onOpenHoje}>
-                Ver Hoje no RAIO
+                Ver Hoje no RAYO
               </Button>
             )}
             <Button size="sm" onClick={onOpenAcademia}>

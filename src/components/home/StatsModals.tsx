@@ -60,7 +60,7 @@ export function StreakCalendarModal({ open, onOpenChange }: ModalProps) {
             Sua sequência
           </DialogTitle>
           <DialogDescription>
-            Cada dia com pelo menos uma ação no RAIO conta para sua sequência.
+            Cada dia com pelo menos uma ação no RAYO conta para sua sequência.
           </DialogDescription>
         </DialogHeader>
 
@@ -156,7 +156,7 @@ export function BadgesModal({ open, onOpenChange }: ModalProps) {
           <DialogDescription>
             {badges.length > 0
               ? `${earnedCount} de ${badges.length} conquistas desbloqueadas.`
-              : "Avance no RAIO para desbloquear conquistas."}
+              : "Avance no RAYO para desbloquear conquistas."}
           </DialogDescription>
         </DialogHeader>
 
@@ -227,7 +227,7 @@ const REASON_LABELS: Record<string, string> = {
   streak_day: "Sequência diária",
   streak_week: "Sequência semanal",
   daily_login: "Login diário",
-  today_complete: "Hoje no RAIO",
+  today_complete: "Hoje no RAYO",
 };
 
 export function XPHistoryModal({ open, onOpenChange }: ModalProps) {
@@ -277,7 +277,7 @@ export function XPHistoryModal({ open, onOpenChange }: ModalProps) {
               </p>
               {data.weeks.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2">
-                  Sem XP registrado ainda. Comece pelo "Hoje no RAIO".
+                  Sem XP registrado ainda. Comece pelo "Hoje no RAYO".
                 </p>
               ) : (
                 <div className="flex items-end gap-2 h-32">

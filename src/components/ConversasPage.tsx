@@ -423,7 +423,7 @@ export function ConversasPage() {
                 <DialogHeader>
                   <DialogTitle className="font-display">Nova conversa</DialogTitle>
                   <DialogDescription className="font-body">
-                    Procure por nome ou e-mail exato de outro usuário do RAIO
+                    Procure por nome ou e-mail exato de outro usuário do RAYO
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3">

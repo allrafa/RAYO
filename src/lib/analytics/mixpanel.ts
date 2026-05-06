@@ -1,5 +1,5 @@
 // ============================================================================
-// 📊 RAIO ECOSYSTEM - MIXPANEL ANALYTICS SERVICE
+// 📊 RAYO ECOSYSTEM - MIXPANEL ANALYTICS SERVICE
 // Sistema completo de tracking baseado nas melhores práticas do Duolingo
 // Consultoria: Jorge Mazal (Ex-CPO Duolingo) + Gina Gotthilf (VP Growth)
 // ============================================================================

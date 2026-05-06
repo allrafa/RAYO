@@ -1,5 +1,5 @@
-# RAIO Platform
-RAIO is a digital platform designed to strengthen families through transformative content, engaged community, and practical resources across five life contexts: Solteiro, Namoro, Noivos, Casados, Pais.
+# RAYO Platform
+RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para fortalecer famílias através de conteúdo transformador, comunidade engajada e recursos práticos em cinco contextos de vida: Solteiro, Namoro, Noivos, Casados, Pais.
 
 ## Run & Operate
 - `npm run dev`: Starts Express server with Vite dev middleware.
@@ -12,7 +12,7 @@ RAIO is a digital platform designed to strengthen families through transformativ
 
 ## Stack
 - **Frontend**: React 18, TypeScript, Tailwind CSS v4, Vite
-- **Fonts**: Urbanist, Instrument Serif
+- **Fonts**: Outfit (única, pesos 200–700) — RAYO Design System v2.0
 - **Backend**: Express.js, TypeScript, tsx
 - **Database**: PostgreSQL
 - **ORM**: _Populate as you build_

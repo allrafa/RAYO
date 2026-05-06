@@ -1,5 +1,5 @@
 // ============================================================================
-// 📊 RAIO ECOSYSTEM - ANALYTICS HOOKS
+// 📊 RAYO ECOSYSTEM - ANALYTICS HOOKS
 // React Hooks para facilitar tracking em componentes
 // ============================================================================
 

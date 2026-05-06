@@ -223,7 +223,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home" }: Cr
             Criar Publicação
           </DialogTitle>
           <DialogDescription>
-            Compartilhe suas experiências, insights e momentos especiais com a comunidade RAIO
+            Compartilhe suas experiências, insights e momentos especiais com a comunidade RAYO
           </DialogDescription>
         </DialogHeader>
 
@@ -266,7 +266,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home" }: Cr
           {/* Content */}
           <div className="space-y-3">
             <Textarea
-              placeholder="Compartilhe suas experiências, insights e momentos especiais com a comunidade RAIO..."
+              placeholder="Compartilhe suas experiências, insights e momentos especiais com a comunidade RAYO..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="min-h-32 resize-none border-none shadow-none text-lg placeholder:text-muted-foreground/60 focus-visible:ring-0 p-0"

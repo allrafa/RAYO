@@ -51,9 +51,9 @@ export function LandingPageModal({
         className="h-[95vh] p-0 overflow-y-auto"
       >
         {/* Hidden titles for accessibility */}
-        <SheetTitle className="sr-only">Landing Page RAIO</SheetTitle>
+        <SheetTitle className="sr-only">Landing Page RAYO</SheetTitle>
         <SheetDescription className="sr-only">
-          Conheça os planos e recursos da plataforma RAIO para fortalecer sua família
+          Conheça os planos e recursos da plataforma RAYO para fortalecer sua família
         </SheetDescription>
         
         <LandingPage

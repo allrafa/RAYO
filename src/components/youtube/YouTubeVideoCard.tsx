@@ -1,5 +1,5 @@
 /**
- * RAIO - YouTube Video Card
+ * RAYO - YouTube Video Card
  * Card de vídeo com thumbnail, título, duração e progresso
  */
 

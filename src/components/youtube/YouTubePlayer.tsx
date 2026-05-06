@@ -1,5 +1,5 @@
 /**
- * RAIO - YouTube Player
+ * RAYO - YouTube Player
  * Player embutido com tracking de progresso
  */
 

@@ -10,7 +10,7 @@ export function PrivacyPolicyPage({ onBack }: PrivacyPolicyPageProps) {
   const sections = [
     {
       title: "1. Informações que Coletamos",
-      content: `Coletamos as seguintes informações quando você utiliza a plataforma RAIO:
+      content: `Coletamos as seguintes informações quando você utiliza a plataforma RAYO:
 
 • Dados de cadastro: nome, endereço de e-mail e senha (armazenada de forma criptografada).
 • Dados de perfil: contexto de vida (solteiro, namoro, casados, pais), interesses, objetivos e preferências de conteúdo.
@@ -118,12 +118,12 @@ Você também pode registrar reclamações junto à Autoridade Nacional de Prote
 
         <Card className="p-5 lg:p-8 border-0 shadow-md mb-6" style={{ background: "var(--raio-bg-secondary)" }}>
           <p className="text-sm mb-4" style={{ color: "var(--raio-text-secondary)" }}>
-            A RAIO ("nós", "nosso") valoriza a privacidade dos seus usuários. Esta Política de Privacidade
+            A RAYO ("nós", "nosso") valoriza a privacidade dos seus usuários. Esta Política de Privacidade
             descreve como coletamos, usamos, armazenamos e protegemos seus dados pessoais, em conformidade
             com a Lei Geral de Proteção de Dados Pessoais (LGPD — Lei 13.709/2018).
           </p>
           <p className="text-sm" style={{ color: "var(--raio-text-secondary)" }}>
-            Ao utilizar a plataforma RAIO, você concorda com as práticas descritas nesta política.
+            Ao utilizar a plataforma RAYO, você concorda com as práticas descritas nesta política.
           </p>
         </Card>
 

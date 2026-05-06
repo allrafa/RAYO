@@ -1,5 +1,5 @@
 /**
- * RAIO - YouTube Data Hook
+ * RAYO - YouTube Data Hook
  * Hook para gerenciar dados do YouTube com cache e estado
  */
 

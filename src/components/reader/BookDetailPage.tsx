@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - BOOK DETAIL PAGE
+// 📚 RAYO ECOSYSTEM - BOOK DETAIL PAGE
 // Página de detalhes do livro estilo Netflix
 // ============================================================================
 

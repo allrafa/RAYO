@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - MOCK TRANSCRIPTS
+// 📚 RAYO ECOSYSTEM - MOCK TRANSCRIPTS
 // Transcrições mock com timestamps para sincronização
 // ============================================================================
 

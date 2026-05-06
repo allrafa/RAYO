@@ -140,7 +140,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
   }, [courseId, course.isEnrolled]);
 
   const instructor = {
-    name: course.instructor || "RAIO Academy",
+    name: course.instructor || "RAYO Academy",
     title: "Especialista",
     avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
     experience: "15+ anos",

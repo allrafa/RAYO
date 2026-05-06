@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - TRANSCRIPT VIEWER
+// 📚 RAYO ECOSYSTEM - TRANSCRIPT VIEWER
 // Visualizador de transcrição sincronizada com áudio
 // ============================================================================
 

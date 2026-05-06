@@ -73,7 +73,7 @@ function mapVideo(v: CmsVideo): VideoVM {
     views: formatViews(v.view_count),
     uploadDate: relativeDate(v.published_at),
     thumbnail: v.cover_url ?? "",
-    channel: "RAIO Academy",
+    channel: "RAYO Academy",
     subscribers: "2.3M",
     likes: "—",
     category: v.interests?.[0] ?? "Geral",

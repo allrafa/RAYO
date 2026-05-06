@@ -175,7 +175,7 @@ function AppContent() {
             />
           </div>
           <p style={{ color: "var(--raio-text-secondary)" }}>
-            Inicializando RAIO...
+            Inicializando RAYO...
           </p>
         </div>
       </div>
@@ -305,7 +305,7 @@ function AppContent() {
       return (
         <div className="p-6 max-w-md mx-auto mt-8">
           <div className="text-center py-8 space-y-4">
-            <h2 className="text-xl font-semibold">Carregando RAIO...</h2>
+            <h2 className="text-xl font-semibold">Carregando RAYO...</h2>
             <p className="text-muted-foreground">
               Preparando sua experiência de transformação
             </p>

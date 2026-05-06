@@ -1,5 +1,5 @@
 /**
- * RAIO - YouTube Mock Banner
+ * RAYO - YouTube Mock Banner
  * Banner informativo sobre modo mock
  */
 

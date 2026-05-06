@@ -87,7 +87,7 @@ export function AdminShell({ onExitAdmin }: AdminShellProps) {
           <div className="flex items-center gap-2 mb-1">
             <ShieldAlert className="w-5 h-5" style={{ color: "var(--raio-accent-primary)" }} />
             <h1 className="text-lg" style={{ fontWeight: 700, color: "var(--raio-text-primary)" }}>
-              RAIO Admin
+              RAYO Admin
             </h1>
           </div>
           <p className="text-xs" style={{ color: "var(--raio-text-tertiary)" }}>

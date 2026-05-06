@@ -128,7 +128,7 @@ export function LandingPage({
             <div className="aspect-[16/10] lg:aspect-[16/9]">
               <ImageWithFallback
                 src="https://images.unsplash.com/photo-1624448445915-97154f5e688c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGZhbWlseSUyMHRvZ2V0aGVyfGVufDF8fHx8MTc2MTMwNDExNXww&ixlib=rb-4.1.0&q=80&w=1080"
-                alt="Família feliz utilizando a plataforma RAIO"
+                alt="Família feliz utilizando a plataforma RAYO"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -222,7 +222,7 @@ export function LandingPage({
               Você se identifica?
             </h2>
             <p className="text-[var(--raio-text-secondary)] max-w-2xl mx-auto">
-              Sabemos que a jornada familiar tem seus desafios. O RAIO está aqui para apoiar você.
+              Sabemos que a jornada familiar tem seus desafios. O RAYO está aqui para apoiar você.
             </p>
           </motion.div>
 
@@ -279,7 +279,7 @@ export function LandingPage({
               <Zap className="w-8 h-8 text-[var(--raio-text-inverse)]" />
             </div>
             <h2 className="text-[var(--raio-text-primary)] mb-4">
-              RAIO é a solução completa
+              RAYO é a solução completa
             </h2>
             <p className="text-[var(--raio-text-secondary)] max-w-2xl mx-auto">
               Uma plataforma que reúne tudo que você precisa: conteúdo transformador, 
@@ -537,7 +537,7 @@ export function LandingPage({
               Perguntas frequentes
             </h2>
             <p className="text-[var(--raio-text-secondary)]">
-              Tudo que você precisa saber sobre o RAIO
+              Tudo que você precisa saber sobre o RAYO
             </p>
           </motion.div>
 
@@ -659,7 +659,7 @@ export function LandingPage({
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2">
               <Zap className="w-5 h-5 text-[var(--raio-accent-primary)]" />
-              <span className="text-[var(--raio-text-primary)]">RAIO</span>
+              <span className="text-[var(--raio-text-primary)]">RAYO</span>
             </div>
 
             <div className="flex flex-wrap justify-center gap-6 text-sm">
@@ -678,7 +678,7 @@ export function LandingPage({
             </div>
 
             <p className="text-[var(--raio-text-tertiary)] text-sm">
-              © 2025 RAIO. Todos os direitos reservados.
+              © 2025 RAYO. Todos os direitos reservados.
             </p>
           </div>
         </div>

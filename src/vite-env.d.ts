@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 // ============================================================================
-// 🌩️ RAIO ECOSYSTEM - VITE ENVIRONMENT TYPE DEFINITIONS
+// 🌩️ RAYO ECOSYSTEM - VITE ENVIRONMENT TYPE DEFINITIONS
 // ============================================================================
 
 interface ImportMetaEnv {

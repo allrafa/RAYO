@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - BOOK READER PAGE
+// 📚 RAYO ECOSYSTEM - BOOK READER PAGE
 // Leitor interativo com sincronização de áudio e texto
 // ============================================================================
 

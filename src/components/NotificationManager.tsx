@@ -267,7 +267,7 @@ function NotificationToast({ notification, onClose }: NotificationToastProps) {
       case 'error':
         return '#EF4444';
       case 'warning':
-        return '#F59E0B';
+        return 'var(--warning, #D4A24C)';
       default:
         return 'var(--raio-accent-primary)';
     }

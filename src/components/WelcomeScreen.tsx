@@ -54,7 +54,7 @@ export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
           className="text-[10px] tracking-[0.32em] uppercase"
           style={{ color: "var(--raio-text-secondary)", fontWeight: 500 }}
         >
-          RAIO · Família
+          RAYO · Família
         </span>
         <span className="block w-8 h-px bg-[var(--raio-text-primary)]/20" />
       </motion.div>

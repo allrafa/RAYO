@@ -2,7 +2,7 @@
 
 :root {
   /* ========================================================================
-     🎨 RAIO DESIGN SYSTEM - NEW UNIFIED TOKENS
+     🎨 RAYO DESIGN SYSTEM - NEW UNIFIED TOKENS
      Baseado em /design-tokens.ts
      ======================================================================== */
   
@@ -71,10 +71,13 @@
   --raio-overlay-text-primary-soft: rgba(26, 26, 26, 0.5);
   --raio-overlay-text-primary-faint: rgba(26, 26, 26, 0.2);
   
-  /* RAIO DESIGN SYSTEM - Typography */
-  --font-family-display: "Urbanist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-family-display-serif: "Instrument Serif", "Cormorant Garamond", "Times New Roman", serif;
-  --font-family-body: "Urbanist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* RAYO DESIGN SYSTEM - Typography */
+  /* RAYO REBRAND v2 — Outfit única (200–700). Display-serif aponta para
+     Outfit também (sem mistura de famílias) para compatibilidade com
+     componentes legados que ainda referenciam --font-family-display-serif. */
+  --font-family-display: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-display-serif: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family-body: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-size: 16px;
   
   /* Typography Scale */
@@ -95,7 +98,7 @@
   --font-weight-bold: 700;
   --font-weight-extrabold: 800;
 
-  /* RAIO DESIGN SYSTEM - Sage Green Palette (Minimalista) */
+  /* RAYO DESIGN SYSTEM - Sage Green Palette (Minimalista) */
   --raio-sage-900: #2d3730;
   --raio-sage-800: #37443a;
   --raio-sage-700: #435347;
@@ -119,7 +122,7 @@
   --raio-mint-100: #ccfbef;
   --raio-mint-50: #f0fdf9;
 
-  /* RAIO Brand Colors - Cores adicionais para diversidade */
+  /* RAYO Brand Colors - Cores adicionais para diversidade */
   --raio-gold-900: #78350f;
   --raio-gold-800: #92400e;
   --raio-gold-700: #b45309;
@@ -154,7 +157,7 @@
   --raio-neutral-100: #f5f5f4;
   --raio-neutral-50: #fafaf9;
 
-  /* RAIO Semantic Colors - Minimalista */
+  /* RAYO Semantic Colors - Minimalista */
   --background: #ffffff;
   --background-secondary: var(--raio-neutral-50);
   --foreground: var(--raio-neutral-900);
@@ -197,6 +200,218 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* ========================================================================
+     🌅 RAYO DESIGN SYSTEM v2.0 — REBRAND (Maio/2026)
+     Saturado · Contrastante · Editorial · Outfit
+     Estes tokens são a fonte de verdade da nova identidade. Os legacy
+     --raio-* abaixo são re-mapeados para apontar para esta paleta, então
+     componentes existentes herdam o novo visual sem precisar de refactor.
+     ======================================================================== */
+
+  /* Sand — base quente (proporção dominante: ~55%) */
+  --rayo-sand-50:  #FAF4E8;
+  --rayo-sand-100: #F2E9D5;
+  --rayo-sand-200: #E8DBBF;
+  --rayo-sand-300: #D9C89E;
+  --rayo-sand-400: #BFA87A;
+
+  /* Forest — verde escuro dominante (~20%) */
+  --rayo-forest-900: #0C3B2E;
+  --rayo-forest-700: #144D3C;
+  --rayo-forest-500: #1E6A52;
+
+  /* Sage — verde médio vivo (~12%) */
+  --rayo-sage-100: #DCE8D2;
+  --rayo-sage-300: #A9C396;
+  --rayo-sage-500: #6D9773;
+  --rayo-sage-700: #4F7253;
+
+  /* Terracota — accent de ações & destaques (~9%) */
+  --rayo-terra-100: #F2D6CC;
+  --rayo-terra-300: #E08770;
+  --rayo-terra-500: #C8553D;
+  --rayo-terra-700: #9C3A26;
+  --rayo-terra-900: #5E2113;
+
+  /* Ochre — dourado pontual (~4%) */
+  --rayo-ochre-300: #E8C77E;
+  --rayo-ochre-500: #D4A24C;
+  --rayo-ochre-700: #A37A2D;
+
+  /* Ink — texto */
+  --rayo-ink-900: #0E1A14;
+  --rayo-ink-700: #1F2A22;
+  --rayo-ink-500: #4A5247;
+  --rayo-ink-400: #6E7569;
+  --rayo-ink-300: #9CA098;
+
+  /* Raios editoriais */
+  --rayo-r-sm: 10px;
+  --rayo-r-md: 16px;
+  --rayo-r-lg: 24px;
+  --rayo-r-xl: 32px;
+  --rayo-r-pill: 999px;
+
+  /* Sombras editoriais (ink-tinted, não preto puro) */
+  --rayo-shadow-sm: 0 1px 2px rgba(14, 26, 20, 0.05), 0 2px 8px rgba(14, 26, 20, 0.04);
+  --rayo-shadow-md: 0 4px 16px rgba(14, 26, 20, 0.08), 0 12px 40px rgba(14, 26, 20, 0.05);
+  --rayo-shadow-lg: 0 8px 28px rgba(14, 26, 20, 0.12), 0 24px 64px rgba(14, 26, 20, 0.08);
+
+  /* ----- Re-map dos tokens legacy --raio-* para a paleta RAYO ----- */
+  /* Backgrounds: page = sand-50, cards = white (elevação), alt = sand-100 */
+  --raio-bg-primary: var(--rayo-sand-50);
+  --raio-bg-secondary: #FFFFFF;
+  --raio-bg-tertiary: var(--rayo-sand-100);
+  --raio-bg-warm-cream: var(--rayo-sand-100);
+  --raio-bg-warm-soft: var(--rayo-sand-50);
+  --raio-bg-overlay: rgba(250, 244, 232, 0.7);
+  --raio-bg-overlay-strong: rgba(250, 244, 232, 0.92);
+  --raio-bg-overlay-medium: rgba(250, 244, 232, 0.6);
+  --raio-bg-overlay-soft: rgba(250, 244, 232, 0.4);
+  --raio-bg-inverse-soft: rgba(12, 59, 46, 0.85);
+  --raio-bg-inverse-transparent: rgba(12, 59, 46, 0);
+
+  /* Texto */
+  --raio-text-primary: var(--rayo-ink-900);
+  --raio-text-deep: var(--rayo-ink-700);
+  --raio-text-strong: var(--rayo-ink-500);
+  --raio-text-secondary: var(--rayo-ink-500);
+  --raio-text-tertiary: var(--rayo-ink-400);
+  --raio-text-inverse: var(--rayo-sand-50);
+
+  /* Bordas */
+  --raio-border-default: var(--rayo-sand-200);
+  --raio-border-hover: var(--rayo-sand-300);
+  --raio-border-active: var(--rayo-terra-500);
+  --raio-border-divider: var(--rayo-sand-200);
+
+  /* Accent: amber → terracota; bright/gold → ochre */
+  --raio-accent-primary: var(--rayo-terra-500);
+  --raio-accent-hover: var(--rayo-terra-700);
+  --raio-accent-light: var(--rayo-terra-100);
+  --raio-accent-subtle: var(--rayo-sand-50);
+  --raio-accent-bright: var(--rayo-ochre-300);
+
+  /* Glows recalibrados em terracota/ochre */
+  --raio-accent-glow-soft: rgba(200, 85, 61, 0.18);
+  --raio-accent-glow-medium: rgba(200, 85, 61, 0.35);
+  --raio-accent-glow-strong: rgba(200, 85, 61, 0.55);
+  --raio-accent-glow-amber-bright: rgba(232, 199, 126, 0.18);
+  --raio-accent-primary-rgb: 200, 85, 61;
+  --raio-accent-hover-rgb: 156, 58, 38;
+  --raio-accent-bright-rgb: 232, 199, 126;
+
+  /* Sombras (tom forest, mais editorial) */
+  --raio-shadow-sm: var(--rayo-shadow-sm);
+  --raio-shadow-md: var(--rayo-shadow-md);
+  --raio-shadow-lg: var(--rayo-shadow-lg);
+  --raio-shadow-xl: 0 12px 48px rgba(14, 26, 20, 0.16), 0 32px 96px rgba(14, 26, 20, 0.10);
+  --raio-shadow-glow: 0 0 20px rgba(200, 85, 61, 0.30);
+
+  /* ----- Tailwind v4 semantic tokens (shadcn) ----- */
+  --background: var(--rayo-sand-50);
+  --background-secondary: var(--rayo-sand-100);
+  --foreground: var(--rayo-ink-900);
+  --card: #FFFFFF;
+  --card-foreground: var(--rayo-ink-900);
+  --popover: #FFFFFF;
+  --popover-foreground: var(--rayo-ink-900);
+  /* Primary: forest 900 (CTAs sólidos, nav ativo) */
+  --primary: var(--rayo-forest-900);
+  --primary-hover: var(--rayo-forest-700);
+  --primary-foreground: var(--rayo-sand-50);
+  --secondary: var(--rayo-sand-100);
+  --secondary-foreground: var(--rayo-ink-900);
+  --muted: var(--rayo-sand-100);
+  --muted-foreground: var(--rayo-ink-500);
+  /* Accent: terracota (badges, eyebrows, highlights) */
+  --accent: var(--rayo-terra-500);
+  --accent-foreground: var(--rayo-sand-50);
+  --destructive: var(--rayo-terra-500);
+  --destructive-foreground: var(--rayo-sand-50);
+  --warning: var(--rayo-ochre-500);
+  --warning-foreground: var(--rayo-ink-900);
+  --success: var(--rayo-sage-500);
+  --success-foreground: var(--rayo-sand-50);
+  --border: var(--rayo-sand-300);
+  --border-hover: var(--rayo-sand-400);
+  --input: transparent;
+  --input-background: #FFFFFF;
+  --switch-background: var(--rayo-sand-300);
+  --ring: var(--rayo-terra-500);
+  --radius: 16px;
+  --sidebar: var(--rayo-sand-50);
+  --sidebar-foreground: var(--rayo-ink-700);
+  --sidebar-primary: var(--rayo-forest-900);
+  --sidebar-primary-foreground: var(--rayo-sand-50);
+  --sidebar-accent: var(--rayo-sand-100);
+  --sidebar-accent-foreground: var(--rayo-ink-900);
+  --sidebar-border: var(--rayo-sand-200);
+  --sidebar-ring: var(--rayo-terra-500);
+
+  /* ----- Re-map das paletas legadas (gold/coral/mint/neutral/sage)
+     para os tons RAYO equivalentes. Componentes que usam diretamente
+     var(--raio-gold-500) etc herdam o novo visual sem refactor. ----- */
+  /* gold (amarelo dourado) → ochre */
+  --raio-gold-50:  #FAF4E8;
+  --raio-gold-100: #F2E9D5;
+  --raio-gold-200: #E8DBBF;
+  --raio-gold-300: #E8C77E;
+  --raio-gold-400: #D4A24C;
+  --raio-gold-500: #D4A24C;
+  --raio-gold-600: #A37A2D;
+  --raio-gold-700: #A37A2D;
+  --raio-gold-800: #5E2113;
+  --raio-gold-900: #0E1A14;
+
+  /* coral (rosa-pink) → terracota */
+  --raio-coral-50:  #FAF4E8;
+  --raio-coral-100: #F2D6CC;
+  --raio-coral-200: #F2D6CC;
+  --raio-coral-300: #E08770;
+  --raio-coral-400: #E08770;
+  --raio-coral-500: #C8553D;
+  --raio-coral-600: #9C3A26;
+  --raio-coral-700: #9C3A26;
+  --raio-coral-800: #5E2113;
+  --raio-coral-900: #5E2113;
+
+  /* mint (turquesa) → sage/forest */
+  --raio-mint-50:  #FAF4E8;
+  --raio-mint-100: #DCE8D2;
+  --raio-mint-200: #DCE8D2;
+  --raio-mint-300: #A9C396;
+  --raio-mint-400: #6D9773;
+  --raio-mint-500: #1E6A52;
+  --raio-mint-600: #144D3C;
+  --raio-mint-700: #144D3C;
+  --raio-mint-800: #0C3B2E;
+  --raio-mint-900: #0C3B2E;
+
+  /* sage legacy (verde-cinza) → sage RAYO */
+  --raio-sage-50:  #FAF4E8;
+  --raio-sage-100: #DCE8D2;
+  --raio-sage-200: #DCE8D2;
+  --raio-sage-300: #A9C396;
+  --raio-sage-400: #6D9773;
+  --raio-sage-500: #4F7253;
+  --raio-sage-600: #4F7253;
+  --raio-sage-700: #144D3C;
+  --raio-sage-800: #0C3B2E;
+  --raio-sage-900: #0C3B2E;
+
+  /* neutral (frio) → ink/sand (quente) */
+  --raio-neutral-50:  #FAF4E8;
+  --raio-neutral-100: #F2E9D5;
+  --raio-neutral-200: #E8DBBF;
+  --raio-neutral-300: #D9C89E;
+  --raio-neutral-400: #9CA098;
+  --raio-neutral-500: #6E7569;
+  --raio-neutral-600: #4A5247;
+  --raio-neutral-700: #1F2A22;
+  --raio-neutral-800: #0E1A14;
+  --raio-neutral-900: #0E1A14;
 }
 
 .dark {
@@ -269,7 +484,7 @@
   --raio-shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.9);
   --raio-shadow-glow: 0 0 20px rgba(252, 211, 77, 0.4);
 
-  /* RAIO Dark Mode - Minimalista (Sistema Antigo - Manter compatibilidade) */
+  /* RAYO Dark Mode - Minimalista (Sistema Antigo - Manter compatibilidade) */
   --background: var(--raio-neutral-900);
   --background-secondary: var(--raio-neutral-800);
   --foreground: var(--raio-neutral-50);
@@ -311,6 +526,37 @@
   --sidebar-accent-foreground: oklch(0.98 0 0);
   --sidebar-border: oklch(0.25 0 0);
   --sidebar-ring: oklch(0.4 0 0);
+
+  /* ========================================================================
+     🌌 RAYO DARK — overrides mínimos (rebrand dark completo virá depois)
+     Aqui apenas alinhamos o accent ao terracota/ochre da nova marca.
+     A paleta de superfícies escuras permanece neutra preta por enquanto.
+     ======================================================================== */
+  --raio-accent-primary: var(--rayo-terra-300);
+  --raio-accent-hover: var(--rayo-terra-500);
+  --raio-accent-light: var(--rayo-terra-900);
+  --raio-accent-subtle: #1F1B16;
+  --raio-accent-bright: var(--rayo-ochre-300);
+  --raio-accent-glow-soft: rgba(224, 135, 112, 0.18);
+  --raio-accent-glow-medium: rgba(224, 135, 112, 0.35);
+  --raio-accent-glow-strong: rgba(224, 135, 112, 0.55);
+  --raio-accent-glow-amber-bright: rgba(232, 199, 126, 0.18);
+  --raio-accent-primary-rgb: 224, 135, 112;
+  --raio-accent-hover-rgb: 200, 85, 61;
+  --raio-accent-bright-rgb: 232, 199, 126;
+  --raio-shadow-glow: 0 0 20px rgba(224, 135, 112, 0.4);
+
+  /* Tailwind semantic — mantém superfícies escuras, troca primário/accent */
+  --primary: var(--rayo-sage-500);
+  --primary-hover: var(--rayo-sage-300);
+  --accent: var(--rayo-terra-500);
+  --accent-foreground: var(--rayo-sand-50);
+  --ring: var(--rayo-terra-500);
+  --destructive: var(--rayo-terra-500);
+  --warning: var(--rayo-ochre-500);
+  --success: var(--rayo-sage-500);
+  --sidebar-primary: var(--rayo-forest-700);
+  --sidebar-ring: var(--rayo-terra-500);
 }
 
 @theme inline {
@@ -374,7 +620,7 @@
     transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* RAIO Typography Classes */
+  /* RAYO Typography Classes */
   .font-display {
     font-family: var(--font-family-display);
   }

@@ -67,7 +67,7 @@ export function EmailVerification({ email, onVerified, onBack }: EmailVerificati
       if (verificationCode.length === 6) {
         enhancedToast.success({
           title: "Email verificado! ✅",
-          description: "Bem-vindo ao RAIO",
+          description: "Bem-vindo ao RAYO",
           haptic: true
         });
         onVerified();

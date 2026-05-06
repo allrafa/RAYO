@@ -1,5 +1,5 @@
 /**
- * RAIO - Página de Favoritos
+ * RAYO - Página de Favoritos
  * Lista de vídeos favoritados pelo usuário
  */
 

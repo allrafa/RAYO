@@ -1,5 +1,5 @@
 /**
- * RAIO - YouTube Short Card
+ * RAYO - YouTube Short Card
  * Card vertical para Shorts (formato 9:16)
  */
 

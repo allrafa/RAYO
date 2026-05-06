@@ -16,6 +16,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Carregar tema do localStorage na montagem
   useEffect(() => {
+    // Mantém a chave 'raio-theme' por compatibilidade com sessões existentes
+    // após o rebrand RAIO→RAYO (Maio/2026); migrar via release futura.
     const savedTheme = localStorage.getItem('raio-theme') as Theme | null;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
@@ -43,9 +45,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Atualizar meta theme-color para mobile
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
+      // RAYO v2: forest-900 em light, ink-900 em dark (alinhado ao index.html)
       metaThemeColor.setAttribute(
         'content',
-        newTheme === 'dark' ? '#0A0A0A' : '#FAFAFA'
+        newTheme === 'dark' ? '#0E1A14' : '#0C3B2E'
       );
     }
   };

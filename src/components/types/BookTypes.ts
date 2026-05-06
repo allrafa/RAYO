@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - BOOK TYPES
+// 📚 RAYO ECOSYSTEM - BOOK TYPES
 // Estrutura de dados para livros na Biblioteca
 // ============================================================================
 

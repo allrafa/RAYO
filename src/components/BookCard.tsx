@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - BOOK CARD COMPONENT
+// 📚 RAYO ECOSYSTEM - BOOK CARD COMPONENT
 // Card de livro para exibição na Biblioteca
 // ============================================================================
 

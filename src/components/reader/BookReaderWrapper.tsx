@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - BOOK READER WRAPPER
+// 📚 RAYO ECOSYSTEM - BOOK READER WRAPPER
 // Wrapper que gerencia a navegação entre Detail e Reader
 // ============================================================================
 

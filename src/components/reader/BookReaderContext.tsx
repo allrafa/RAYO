@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - BOOK READER CONTEXT
+// 📚 RAYO ECOSYSTEM - BOOK READER CONTEXT
 // Gerenciamento de estado do leitor de livros com áudio sincronizado
 // ============================================================================
 

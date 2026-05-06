@@ -1,5 +1,5 @@
 /**
- * RAIO - YouTube Playlist Modal
+ * RAYO - YouTube Playlist Modal
  * Modal para visualizar playlists do YouTube com lista de vídeos
  */
 

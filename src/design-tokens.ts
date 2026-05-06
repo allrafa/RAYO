@@ -1,17 +1,19 @@
 /**
- * 🎨 RAIO DESIGN SYSTEM - DESIGN TOKENS
- * 
- * Arquivo central que define TODOS os tokens de design do ecossistema RAIO.
- * Este é o único lugar onde cores, espaçamentos, tipografia e animações devem ser definidos.
- * 
- * Uso:
- * import { colors, spacing, typography, animations, radius, shadows } from './design-tokens';
- * 
+ * 🌅 RAYO DESIGN SYSTEM v2.0 — DESIGN TOKENS (Maio/2026)
+ *
+ * Identidade: Saturado · Contrastante · Editorial · Outfit
+ *
+ * Paleta canônica RAYO em `colors.rayo` — fonte de verdade do rebrand.
+ * Os blocos `colors.light` e `colors.dark` foram remapeados para apontar
+ * para a paleta RAYO, então código existente que importa `colors.light.*`
+ * herda o novo visual sem mudança de API.
+ *
  * Princípios:
- * 1. Minimalismo Premium (off-white/preto com acentos amarelos)
- * 2. Content-First (hierarquia clara)
- * 3. Motion Purposeful (animações sutis)
- * 4. Acessibilidade Total (WCAG AAA)
+ * 1. Sand 55 · Forest 20 · Sage 12 · Terracota 9 · Ochre 4
+ * 2. Tipografia única (Outfit, pesos 200–700) — contraste por peso
+ * 3. Cantos arredondados editoriais (10/16/24/32/pill)
+ * 4. Sombras tom-em-tom (ink-tinted, não preto puro)
+ * 5. Acessibilidade WCAG AA (Forest 900 sobre Sand 50 ≈ 13:1)
  */
 
 // ============================================================================
@@ -20,54 +22,97 @@
 
 export const colors = {
   // ---------------------------------------------------------------------------
-  // LIGHT MODE (Padrão) - Off-White Premium
+  // 🌅 RAYO PALETTE — Fonte de verdade do rebrand v2.0
+  // ---------------------------------------------------------------------------
+  rayo: {
+    sand: {
+      50:  '#FAF4E8',  // Page background
+      100: '#F2E9D5',  // Alt sections, cards alternados
+      200: '#E8DBBF',  // Bordas sutis
+      300: '#D9C89E',  // Bordas hover
+      400: '#BFA87A',  // Bordas ênfase
+    },
+    forest: {
+      900: '#0C3B2E',  // Primary CTA, nav ativo, hero
+      700: '#144D3C',  // Hover de primary
+      500: '#1E6A52',  // Acentos verdes mais vivos
+    },
+    sage: {
+      100: '#DCE8D2',
+      300: '#A9C396',
+      500: '#6D9773',  // Success / progress positivo
+      700: '#4F7253',
+    },
+    terra: {
+      100: '#F2D6CC',  // Backgrounds de badges leves
+      300: '#E08770',  // Avatares, ícones
+      500: '#C8553D',  // Accent principal — ações, eyebrows, ring
+      700: '#9C3A26',  // Hover de accent
+      900: '#5E2113',  // Texto sobre terra-100
+    },
+    ochre: {
+      300: '#E8C77E',  // Highlights pontuais (XP, eyebrows)
+      500: '#D4A24C',  // Warning
+      700: '#A37A2D',
+    },
+    ink: {
+      900: '#0E1A14',  // Texto principal
+      700: '#1F2A22',  // Texto secundário enfatizado
+      500: '#4A5247',  // Texto secundário
+      400: '#6E7569',  // Labels / metadata
+      300: '#9CA098',  // Placeholders / disabled
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // LIGHT MODE — Mapeado para a paleta RAYO (mantém API compatível)
   // ---------------------------------------------------------------------------
   light: {
     // Backgrounds
     background: {
-      primary: '#FAFAFA',      // Off-white principal (WelcomeScreen, Onboarding)
+      primary: '#FAF4E8',      // Sand 50 — página
       secondary: '#FFFFFF',    // Branco puro para cards elevados
-      tertiary: '#F5F5F5',     // Cinza clarinho para seções alternadas
-      warmCream: '#F3EFE7',    // Warm cream (editorial gradient stop)
-      warmSoft: '#F5F1EA',     // Warm cream suavizado (numeral watermark)
-      overlay: 'rgba(255, 255, 255, 0.7)',  // Glassmorphism
+      tertiary: '#F2E9D5',     // Sand 100 — seções alternadas
+      warmCream: '#F2E9D5',    // Sand 100 (editorial gradient stop)
+      warmSoft: '#FAF4E8',     // Sand 50 (numeral watermark)
+      overlay: 'rgba(250, 244, 232, 0.7)',  // Glassmorphism sand
     },
     
-    // Textos
+    // Textos — Ink palette
     text: {
-      primary: '#1A1A1A',      // Preto quente principal
-      deep: '#374151',         // Cinza-escuro para ênfase em corpo (editorial)
-      strong: '#4B5563',       // Corpo de subtítulos editoriais
-      secondary: '#6B7280',    // Cinza médio para texto secundário
-      tertiary: '#9CA3AF',     // Cinza claro para labels/placeholders
-      inverse: '#FAFAFA',      // Texto em backgrounds escuros
-      disabled: '#D1D5DB',     // Texto desabilitado
+      primary: '#0E1A14',      // Ink 900
+      deep: '#1F2A22',         // Ink 700
+      strong: '#4A5247',       // Ink 500
+      secondary: '#4A5247',    // Ink 500
+      tertiary: '#9CA098',     // Ink 300
+      inverse: '#FAF4E8',      // Sand 50 sobre Forest
+      disabled: '#D9C89E',     // Sand 300
     },
     
-    // Bordas
+    // Bordas — Sand para sutil, Terra para ativo
     border: {
-      default: '#E5E5E5',      // Borda padrão sutil
-      hover: '#D1D5DB',        // Borda em hover
-      active: '#F59E0B',       // Borda em foco/ativo (amarelo com melhor contraste)
-      divider: '#F3F4F6',      // Divisores ultra sutis
+      default: '#E8DBBF',      // Sand 200
+      hover: '#D9C89E',        // Sand 300
+      active: '#C8553D',       // Terra 500
+      divider: '#E8DBBF',      // Sand 200
     },
     
-    // Acentos (Amarelo Dourado - Brand RAIO) - Ajustado para melhor contraste
+    // Acentos — Terracota (substitui amber) + Ochre (gold pontual)
     accent: {
-      primary: '#D97706',      // Amarelo mais escuro para texto (WCAG AAA)
-      hover: '#B45309',        // Amarelo ainda mais escuro para hover
-      light: '#FEF3C7',        // Amarelo claro (backgrounds sutis)
-      subtle: '#FFFBEB',       // Amarelo muito sutil (hover states)
-      bright: '#FCD34D',       // Amarelo brilhante para backgrounds/badges
-      // Glows (rgba) usados em estados selecionados editoriais e CTAs
-      glowSoft: 'rgba(180, 83, 9, 0.18)',
-      glowMedium: 'rgba(180, 83, 9, 0.35)',
-      glowStrong: 'rgba(180, 83, 9, 0.55)',
-      glowAmberBright: 'rgba(252, 211, 77, 0.12)',
+      primary: '#C8553D',      // Terra 500 — accent principal
+      hover: '#9C3A26',        // Terra 700
+      light: '#F2D6CC',        // Terra 100 — backgrounds de badges
+      subtle: '#FAF4E8',       // Sand 50 — hover states
+      bright: '#E8C77E',       // Ochre 300 — highlights pontuais
+      // Glows recalibrados em terracota
+      glowSoft: 'rgba(200, 85, 61, 0.18)',
+      glowMedium: 'rgba(200, 85, 61, 0.35)',
+      glowStrong: 'rgba(200, 85, 61, 0.55)',
+      glowAmberBright: 'rgba(232, 199, 126, 0.12)',
       // Triplas RGB para composição em gradientes
-      primaryRgb: '217, 119, 6',
-      hoverRgb: '180, 83, 9',
-      brightRgb: '252, 211, 77',
+      primaryRgb: '200, 85, 61',
+      hoverRgb: '156, 58, 38',
+      brightRgb: '232, 199, 126',
     },
 
     // Overlays translúcidos (insets, micro-shadows)
@@ -283,12 +328,14 @@ export const spacing = {
 // ============================================================================
 
 export const typography = {
-  // Font Families
+  // Font Families — RAYO v2: Outfit única (200–700)
+  // displaySerif aponta para Outfit também (sem mistura) para compatibilidade
+  // com componentes legados que ainda referenciam essa chave.
   family: {
-    display: '"Urbanist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    displaySerif: '"Instrument Serif", "Cormorant Garamond", "Times New Roman", serif',
-    body: '"Urbanist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-    mono: '"SF Mono", "Monaco", "Cascadia Code", "Roboto Mono", monospace',
+    display: '"Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    displaySerif: '"Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    body: '"Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    mono: 'ui-monospace, "SF Mono", "Monaco", "Cascadia Code", "Roboto Mono", monospace',
   },
   
   // Font Sizes

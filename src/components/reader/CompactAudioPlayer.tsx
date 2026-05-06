@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - COMPACT AUDIO PLAYER
+// 📚 RAYO ECOSYSTEM - COMPACT AUDIO PLAYER
 // Player minimalista fixo no bottom inspirado no Headway
 // ============================================================================
 

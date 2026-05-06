@@ -1,5 +1,5 @@
 // ============================================================================
-// 📚 RAIO ECOSYSTEM - BIBLIOTECA WITH BOOK READER
+// 📚 RAYO ECOSYSTEM - BIBLIOTECA WITH BOOK READER
 // Wrapper que gerencia Biblioteca + Book Reader
 // ============================================================================
 

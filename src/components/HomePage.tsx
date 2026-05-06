@@ -199,7 +199,7 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
   const [playerPlaylist, setPlayerPlaylist] = useState<YouTubePlaylist | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
-  // Bumped on PullToRefresh and on "Hoje no RAIO" completion so the
+  // Bumped on PullToRefresh and on "Hoje no RAYO" completion so the
   // HojeNoRaio child re-fetches its state alongside the dashboard.
   const [todayRefreshKey, setTodayRefreshKey] = useState(0);
   // Task #44: stats da Home agora abrem modais informativos.
@@ -510,7 +510,7 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
           />
           {/* Overlay legível em qualquer tema (texto sempre branco) */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/55 to-black/90" />
-          {/* Brilho sutil de marca (token RAIO accent) */}
+          {/* Brilho sutil de marca (token RAYO accent) */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
@@ -525,7 +525,7 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
             <div className="flex items-center gap-3 pt-1">
               <img
                 src={raioLogoFull}
-                alt="RAIO"
+                alt="RAYO"
                 className="h-7 w-auto object-contain"
                 style={{ filter: 'brightness(0) invert(1)' }}
               />
@@ -571,7 +571,7 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
         {dashboard && (
           <div className="px-4 mt-6 mb-6">
             {/* Saudação foi promovida para o hero (Task #42); aqui ficam só os stats. */}
-            {/* Stats com gradientes de marca RAIO (Task #42).
+            {/* Stats com gradientes de marca RAYO (Task #42).
                 Os 3 ângulos da identidade: gold (sequência/calor),
                 gold-mais-escuro (nível/conquista) e coral (energia semanal). */}
             {/* Task #44 — cada stat agora abre um modal com mais
@@ -683,7 +683,7 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
           </div>
         )}
 
-        {/* "Hoje no RAIO" — bloco fixo entre stats e rails (Task #43).
+        {/* "Hoje no RAYO" — bloco fixo entre stats e rails (Task #43).
             Usa um endpoint próprio (/api/home/today) e bumpa
             todayRefreshKey após completar para forçar refetch do
             dashboard (XP/streak atualizados). */}
@@ -828,7 +828,7 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
             !youtubeLoading && youtubeData && youtubeData.shorts.length > 0 ? (
               <div key="shorts" className="px-4 mb-8">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Shorts RAIO</h2>
+                  <h2 className="font-display text-xl font-semibold">Shorts RAYO</h2>
                 </div>
                 <div className="overflow-x-auto scrollbar-hide">
                   <div className="flex gap-3 pb-2" style={{ width: 'max-content' }}>
@@ -894,7 +894,7 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
             homeCategories.trending.length > 0 ? (
               <div key="trending" className="px-4 mb-8">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Em alta no RAIO</h2>
+                  <h2 className="font-display text-xl font-semibold">Em alta no RAYO</h2>
                   <Button
                     variant="ghost"
                     size="sm"
