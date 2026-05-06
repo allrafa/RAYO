@@ -186,6 +186,12 @@
   padding: 56px 20px;
   display: flex; flex-direction: column; align-items: center; gap: 12px;
 }
+.ra-empty.dashed {
+  background: var(--rayo-sand-50);
+  border: 1px dashed var(--rayo-sand-300);
+  border-radius: 16px;
+}
+.ra-empty.large { padding: 72px 24px; gap: 16px; }
 .ra-empty-icon {
   width: 56px; height: 56px;
   background: var(--rayo-sand-50);
@@ -194,15 +200,51 @@
   display: grid; place-items: center;
   color: var(--rayo-terra-500);
 }
+.ra-empty.large .ra-empty-icon { width: 80px; height: 80px; }
 .ra-empty-title {
   font-size: 16px; font-weight: 600;
   color: var(--rayo-forest-900);
   margin: 0;
 }
+.ra-empty.large .ra-empty-title { font-size: 24px; }
 .ra-empty-sub {
   font-size: 13px; color: var(--rayo-ink-400);
   max-width: 340px; line-height: 1.5;
   margin: 0;
+}
+.ra-empty.large .ra-empty-sub { font-size: 15px; max-width: 460px; color: var(--rayo-ink-700); }
+.ra-empty-action {
+  margin-top: 8px;
+  background: transparent; border: none;
+  color: var(--rayo-terra-500);
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.ra-empty-action:hover { color: var(--rayo-terra-700); }
+.ra-empty-action:focus-visible { outline: 2px solid var(--rayo-terra-500); outline-offset: 2px; border-radius: 4px; }
+
+/* ── PROGRESS METER ──────────────────────────────────────────── */
+.ra-progress {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.ra-progress-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 13px;
+}
+.ra-progress-label { color: var(--rayo-ink-700); }
+.ra-progress-value { color: var(--rayo-forest-900); font-weight: 600; }
+.ra-progress-track {
+  height: 8px;
+  background: var(--rayo-sand-300);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.ra-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%);
+  border-radius: 999px;
+  transition: width 0.5s ease;
 }
 
 /* ── SEARCH PILL ─────────────────────────────────────────────── */

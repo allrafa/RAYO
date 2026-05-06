@@ -195,33 +195,14 @@ function MinhaBlibiotecaView({
   if (libraryItems.length === 0 && libraryFilter === 'all') {
     return (
       <div className="max-w-7xl mx-auto px-6 py-20">
-        <div className="text-center space-y-6">
-          <div 
-            className="w-24 h-24 rounded-full flex items-center justify-center mx-auto"
-            style={{ background: 'var(--rayo-sand-300)' }}
-          >
-            <BookOpen 
-              className="w-12 h-12" 
-              style={{ color: 'var(--rayo-ink-400)' }}
-            />
+        <div className="ra-empty large">
+          <div className="ra-empty-icon">
+            <BookOpen className="w-8 h-8" />
           </div>
-          <div>
-            <h2 
-              className="text-[32px] mb-3" 
-              style={{ 
-                fontWeight: 700, 
-                color: 'var(--rayo-forest-900)' 
-              }}
-            >
-              Sua biblioteca está vazia
-            </h2>
-            <p 
-              className="text-[18px] mb-8" 
-              style={{ color: 'var(--rayo-ink-700)' }}
-            >
-              Explore nosso marketplace e comece sua jornada de transformação
-            </p>
-          </div>
+          <h2 className="ra-empty-title">Sua biblioteca está vazia</h2>
+          <p className="ra-empty-sub">
+            Explore nosso marketplace e comece sua jornada de transformação
+          </p>
         </div>
       </div>
     );
@@ -506,29 +487,13 @@ function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
 
         {/* Progress bar */}
         {course.progress > 0 && (
-          <div className="mt-4 space-y-2">
-            <div className="flex justify-between text-[13px]">
-              <span style={{ color: 'var(--rayo-ink-700)' }}>
-                Progresso do curso
-              </span>
-              <span style={{ 
-                fontWeight: 600, 
-                color: 'var(--rayo-forest-900)' 
-              }}>
-                {course.progress}%
-              </span>
+          <div className="ra-progress mt-4">
+            <div className="ra-progress-head">
+              <span className="ra-progress-label">Progresso do curso</span>
+              <span className="ra-progress-value">{course.progress}%</span>
             </div>
-            <div 
-              className="h-2 rounded-full overflow-hidden"
-              style={{ background: 'var(--rayo-sand-300)' }}
-            >
-              <div
-                className="h-full transition-all duration-500"
-                style={{ 
-                  width: `${course.progress}%`,
-                  background: 'linear-gradient(90deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)'
-                }}
-              />
+            <div className="ra-progress-track">
+              <div className="ra-progress-fill" style={{ width: `${course.progress}%` }} />
             </div>
           </div>
         )}
@@ -1326,11 +1291,8 @@ function MarketplaceView({
                       {kindItems.map((it) => (
                         <div
                           key={it.id}
-                          className="rounded-2xl overflow-hidden"
-                          style={{
-                            background: 'var(--rayo-sand-50)',
-                            border: '1px solid var(--rayo-sand-300)',
-                          }}
+                          className="ra-card ra-card-hover overflow-hidden"
+                          style={{ padding: 0 }}
                         >
                           <div className="relative w-full" style={{ aspectRatio: '4 / 3' }}>
                             <ImageWithFallback
@@ -1629,40 +1591,18 @@ interface EmptyMarketplaceStateProps {
 
 function EmptyMarketplaceState({ title, description, actionLabel, onAction }: EmptyMarketplaceStateProps) {
   return (
-    <div
-      className="rounded-2xl py-12 px-6 text-center"
-      style={{
-        background: 'var(--rayo-sand-50)',
-        border: '1px dashed var(--rayo-sand-300)',
-      }}
-    >
-      <div
-        className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
-        style={{ background: 'var(--rayo-sand-50)' }}
-      >
-        <Sparkles className="w-6 h-6" style={{ color: 'var(--rayo-terra-700)' }} />
+    <div className="ra-empty dashed">
+      <div className="ra-empty-icon">
+        <Sparkles className="w-6 h-6" />
       </div>
-      <h3
-        className="text-[18px] mb-2"
-        style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
-      >
-        {title}
-      </h3>
+      <h3 className="ra-empty-title" style={{ fontSize: 18 }}>{title}</h3>
       {description && (
-        <p
-          className="text-[14px] max-w-[420px] mx-auto"
-          style={{ color: 'var(--rayo-ink-700)', lineHeight: 1.55 }}
-        >
+        <p className="ra-empty-sub" style={{ fontSize: 14, maxWidth: 420, color: 'var(--rayo-ink-700)' }}>
           {description}
         </p>
       )}
       {actionLabel && onAction && (
-        <button
-          type="button"
-          onClick={onAction}
-          className="mt-5 text-[14px]"
-          style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}
-        >
+        <button type="button" onClick={onAction} className="ra-empty-action">
           {actionLabel} →
         </button>
       )}
