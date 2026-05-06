@@ -2,7 +2,6 @@ import { useState } from "react";
 import { MessageCircle, Search } from "lucide-react";
 import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { MobileSearchPage } from "./MobileSearchPage";
-import "../styles/nav-rayo.css";
 
 interface MobileTopBarProps {
   onOpenMessages: () => void;

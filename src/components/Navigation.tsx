@@ -1,5 +1,4 @@
 import { Home, GraduationCap, Users, User } from "lucide-react";
-import "../styles/nav-rayo.css";
 
 interface NavigationProps {
   currentTab: string;

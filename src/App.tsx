@@ -26,6 +26,7 @@ import { LandingPage } from "./components/LandingPage";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
 import { analytics } from "./lib/analytics/mixpanel";
 import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
+import "./styles/nav-rayo.css";
 
 type PreAuthStage = "welcome" | "onboarding" | "auth";
 type AuthStartMode = "login" | "register";

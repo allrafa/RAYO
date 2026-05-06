@@ -6,7 +6,6 @@ import { useScrollDirection } from "./hooks/useScrollDirection";
 import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { api } from "../lib/api";
 import { navigateToSearchHit } from "../lib/searchNavigate";
-import "../styles/nav-rayo.css";
 
 interface TopNavbarProps {
   onTabChange: (tab: string) => void;

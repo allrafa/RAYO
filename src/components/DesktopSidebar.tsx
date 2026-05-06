@@ -5,7 +5,6 @@ import { useAuth, userHasRole } from "./AuthContext";
 import { useTheme } from "./ThemeProvider";
 import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { toast } from "sonner@2.0.3";
-import "../styles/nav-rayo.css";
 
 interface DesktopSidebarProps {
   currentTab: string;
