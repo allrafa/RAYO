@@ -59,6 +59,29 @@ export const colors = {
       light: '#FEF3C7',        // Amarelo claro (backgrounds sutis)
       subtle: '#FFFBEB',       // Amarelo muito sutil (hover states)
       bright: '#FCD34D',       // Amarelo brilhante para backgrounds/badges
+      // Glows (rgba) usados em estados selecionados editoriais e CTAs
+      glowSoft: 'rgba(180, 83, 9, 0.18)',
+      glowMedium: 'rgba(180, 83, 9, 0.35)',
+      glowStrong: 'rgba(180, 83, 9, 0.55)',
+      glowAmberBright: 'rgba(252, 211, 77, 0.12)',
+      // Triplas RGB para composição em gradientes
+      primaryRgb: '217, 119, 6',
+      hoverRgb: '180, 83, 9',
+      brightRgb: '252, 211, 77',
+    },
+
+    // Overlays translúcidos (insets, micro-shadows)
+    overlay: {
+      darkSoft: 'rgba(0, 0, 0, 0.04)',
+      darkMedium: 'rgba(0, 0, 0, 0.06)',
+      darkStrong: 'rgba(0, 0, 0, 0.1)',
+      textPrimarySoft: 'rgba(26, 26, 26, 0.5)',
+      textPrimaryFaint: 'rgba(26, 26, 26, 0.2)',
+      bgStrong: 'rgba(255, 255, 255, 0.92)',
+      bgMedium: 'rgba(255, 255, 255, 0.6)',
+      bgSoft: 'rgba(255, 255, 255, 0.4)',
+      inverseSoft: 'rgba(250, 250, 250, 0.85)',
+      inverseTransparent: 'rgba(250, 250, 250, 0)',
     },
     
     // Estados Semânticos
