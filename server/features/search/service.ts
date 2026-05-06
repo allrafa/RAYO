@@ -57,6 +57,7 @@ export async function searchAll(qRaw: string): Promise<SearchResponse> {
               media_url, external_url
          FROM content_items
         WHERE status = 'published'
+          AND kind IN ('audio','video','reels','podcast')
           AND (title ILIKE $1 OR short_description ILIKE $1)
         ORDER BY (CASE WHEN title ILIKE $1 THEN 0 ELSE 1 END),
                  view_count DESC
