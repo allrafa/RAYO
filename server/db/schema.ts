@@ -203,6 +203,14 @@ export async function initializeSchema() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'client'
   `);
 
+  // Task #45 — Perfil aprimorado
+  await query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT
+  `);
+  await query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT
+  `);
+
   await query(`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`);
 
   // DB-level integrity guard: only the four documented roles are accepted.

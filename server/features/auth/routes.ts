@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { validateRegister, validateLogin } from "./validation.js";
-import { registerUser, loginUser, logoutUser, sendVerificationCode, verifyCode, requestPasswordReset, resetPassword } from "./service.js";
+import { registerUser, loginUser, logoutUser, sendVerificationCode, verifyCode, requestPasswordReset, resetPassword, changePassword } from "./service.js";
 import { success, created, error } from "../../utils/response.js";
 import { requireAuth } from "../../middleware/auth.js";
 
@@ -158,6 +158,25 @@ router.post("/logout", requireAuth, async (req: Request, res: Response, next: Ne
 
 router.get("/me", requireAuth, async (req: Request, res: Response) => {
   success(res, { user: req.user });
+});
+
+// Task #45 — troca de senha do usuário logado.
+router.post("/change-password", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || typeof currentPassword !== "string") {
+      error(res, "Senha atual é obrigatória", "VALIDATION_ERROR", 400);
+      return;
+    }
+    if (!newPassword || typeof newPassword !== "string" || newPassword.length < 8) {
+      error(res, "A nova senha deve ter pelo menos 8 caracteres", "VALIDATION_ERROR", 400);
+      return;
+    }
+    await changePassword(req.user!.id, currentPassword, newPassword);
+    success(res, { message: "Senha alterada com sucesso" });
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

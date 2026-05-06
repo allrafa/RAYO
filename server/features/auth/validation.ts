@@ -72,6 +72,8 @@ function validateStringArray(value: unknown, maxItems: number): string[] {
 }
 
 export interface ProfileUpdateInput {
+  name?: string;
+  bio?: string | null;
   segments?: string[];
   interests?: string[];
   goals?: string[];
@@ -79,11 +81,41 @@ export interface ProfileUpdateInput {
 }
 
 export function validateProfileUpdate(body: unknown): { valid: true; data: ProfileUpdateInput } | { valid: false; message: string } {
-  const { segments, interests, goals, content_preferences } = (body || {}) as Record<string, unknown>;
+  const { name, bio, segments, interests, goals, content_preferences } =
+    (body || {}) as Record<string, unknown>;
 
   const data: ProfileUpdateInput = {};
   let hasField = false;
 
+  if (name !== undefined) {
+    if (typeof name !== "string") {
+      return { valid: false, message: "Nome inválido" };
+    }
+    const trimmed = name.trim();
+    if (trimmed.length < 2) {
+      return { valid: false, message: "Nome deve ter pelo menos 2 caracteres" };
+    }
+    if (trimmed.length > 100) {
+      return { valid: false, message: "Nome deve ter no máximo 100 caracteres" };
+    }
+    data.name = trimmed;
+    hasField = true;
+  }
+  if (bio !== undefined) {
+    if (bio === null || bio === "") {
+      data.bio = null;
+    } else {
+      if (typeof bio !== "string") {
+        return { valid: false, message: "Bio inválida" };
+      }
+      const trimmed = bio.trim();
+      if (trimmed.length > 280) {
+        return { valid: false, message: "Bio deve ter no máximo 280 caracteres" };
+      }
+      data.bio = trimmed.length === 0 ? null : trimmed;
+    }
+    hasField = true;
+  }
   if (segments !== undefined) {
     data.segments = validateStringArray(segments, 10);
     hasField = true;

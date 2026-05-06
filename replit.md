@@ -53,6 +53,27 @@ RAIO is a digital platform designed to strengthen families through transformativ
   (`POST /api/home/today/complete`) is idempotent (UNIQUE on
   `home_today_completions(user_id, completed_date)`) and awards
   `+15 XP` plus a streak bump on first claim only.
+- **Perfil aprimorado (Task #45)**: `users` ganhou `avatar_url TEXT` e
+  `bio TEXT` (ALTER idempotente em `server/db/schema.ts`).
+  Endpoints novos: `POST /api/auth/change-password` (verifica senha
+  atual via bcrypt antes de trocar), `POST /api/users/avatar` (multer
+  dedicado, cap 2 MB, JPG/PNG/WebP, salva em `uploads/avatar/`,
+  retorna `user`), `PATCH /api/users/preferences` (merge raso na JSONB
+  `notification_preferences`, allowlist `push|email|missions|community`),
+  `GET /api/users/me/activity-stats` (cursos/biblioteca/comunidades
+  distintas/posts criados — usa `is_hidden = FALSE`). `PATCH
+  /api/users/profile` agora aceita `name` (2–100) e `bio` (≤280, "" → null).
+  `GET /api/users/:id/public` devolve `bio` + `avatar_url`.
+  Frontend: `PerfilPage` consome tudo isso, mostra avatar com botão de
+  câmera, exibe bio no hero, lista "Missões da semana" com botão
+  Resgatar (`POST /api/gamification/missions/:id/claim`), e os
+  modais ficam em `src/components/perfil/PerfilModals.tsx`
+  (EditProfile, ChangePassword, Language). Toggle de Notificações
+  persiste via `updatePreferences`. Idioma é local
+  (`localStorage["raio-language"]`, i18n real fora de escopo).
+  **Regra "no Em breve"**: nenhum item de menu pode disparar
+  `toast.info("Em breve!")` — ou faz algo real, ou é removido. "Sessões
+  Conselheiro" foi removido do grid (sem fonte de dados).
 - **Stats clicáveis + Continue unificado + Busca mobile (Task #44)**:
   Os 3 cards de stats da Home (Sequência, Nível, XP semanal) viraram
   `<button>` reais e abrem modais informativos:

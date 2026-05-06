@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { 
-  User, Settings, Bell, Heart, Trophy, Zap, 
+  User, Bell, Heart, Trophy, Zap, 
   ChevronRight, LogOut, Moon, Sun, Globe, 
-  Shield, HelpCircle, MessageSquare, Star,
-  Award, Target, TrendingUp, Calendar, Crown,
-  BookOpen, Users, Sparkles, Download, Trash2, FileText,
+  Shield, MessageSquare,
+  Award, Target, Crown, Camera, Share2, CheckCircle2,
+  BookOpen, Users, Download, Trash2,
   ShieldAlert
 } from "lucide-react";
 import { Button } from "./ui/button";
@@ -22,6 +22,12 @@ import { FavoritosPage } from "./youtube/FavoritosPage";
 import { BibliotecaWithBookReader } from "./BibliotecaWithBookReader";
 import { useVideoProgress } from "./hooks/useVideoProgress";
 import { api } from "../lib/api";
+import { EditProfileModal, ChangePasswordModal, LanguageModal } from "./perfil/PerfilModals";
+
+const LANGUAGE_LABELS: Record<string, string> = {
+  "pt-BR": "Português",
+  "en": "Inglês",
+};
 
 interface PerfilPageProps {
   /** Optional navigator so producer+ can jump to the Admin shell from
@@ -34,12 +40,131 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const { userData, books } = useApp();
   const { settings } = useAccessibility();
   const { theme, toggleTheme } = useTheme();
-  const { logout, user } = useAuth();
+  const { logout, user, updatePreferences, uploadAvatar } = useAuth();
   const canAccessAdmin = userHasRole(user, "producer");
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const notificationsEnabled = user?.notification_preferences?.push ?? true;
   const [showFavoritos, setShowFavoritos] = useState(false);
   const [showBiblioteca, setShowBiblioteca] = useState(false);
   const { favoriteVideos } = useVideoProgress();
+  // Task #45 — modais e estados auxiliares.
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showLanguage, setShowLanguage] = useState(false);
+  const [language, setLanguage] = useState<string>(() => {
+    if (typeof window === "undefined") return "pt-BR";
+    return window.localStorage.getItem("raio-language") || "pt-BR";
+  });
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  interface ActivityStats {
+    coursesEnrolled: number;
+    libraryCount: number;
+    communitiesActive: number;
+    postsCreated: number;
+  }
+  const [activity, setActivity] = useState<ActivityStats | null>(null);
+
+  interface MissionData {
+    id: number;
+    title: string;
+    description: string;
+    type: "daily" | "weekly";
+    currentProgress: number;
+    targetProgress: number;
+    completed: boolean;
+    rewardClaimed: boolean;
+    xpReward: number;
+  }
+  const [missions, setMissions] = useState<MissionData[]>([]);
+  const [claimingMissionId, setClaimingMissionId] = useState<number | null>(null);
+
+  const reloadMissions = useCallback(async () => {
+    const res = await api.get<{ missions: MissionData[] }>("/api/gamification/missions");
+    if (res.success && res.data) setMissions(res.data.missions);
+  }, []);
+
+  useEffect(() => {
+    api
+      .get<{ stats: ActivityStats }>("/api/users/me/activity-stats")
+      .then((res) => {
+        if (res.success && res.data) setActivity(res.data.stats);
+      });
+    void reloadMissions();
+  }, [reloadMissions]);
+
+  const handleSelectLanguage = useCallback((lang: string) => {
+    setLanguage(lang);
+    try {
+      window.localStorage.setItem("raio-language", lang);
+    } catch {
+      /* ignore */
+    }
+    toast.success(`Idioma definido: ${LANGUAGE_LABELS[lang] || lang}`);
+  }, []);
+
+  const handleAvatarPick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleAvatarFile = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("Imagem muito grande (máx. 2 MB).");
+        return;
+      }
+      setUploadingAvatar(true);
+      const res = await uploadAvatar(file);
+      setUploadingAvatar(false);
+      if (res.success) toast.success("Foto de perfil atualizada!");
+      else toast.error(res.error || "Erro ao enviar foto");
+    },
+    [uploadAvatar],
+  );
+
+  const handleToggleNotifications = useCallback(
+    async (checked: boolean) => {
+      const res = await updatePreferences({ push: checked });
+      if (res.success) {
+        toast.success(checked ? "Notificações ativadas" : "Notificações desativadas");
+      } else {
+        toast.error(res.error || "Erro ao salvar preferência");
+      }
+    },
+    [updatePreferences],
+  );
+
+  const handleShareProfile = useCallback(async () => {
+    if (!user) return;
+    const baseUrl = window.location.origin;
+    const url = `${baseUrl}/?u=${user.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copiado para a área de transferência!");
+    } catch {
+      toast.error("Não foi possível copiar o link.");
+    }
+  }, [user]);
+
+  const handleClaimMission = useCallback(
+    async (missionId: number) => {
+      setClaimingMissionId(missionId);
+      const res = await api.post<{ success: boolean; xpAwarded: number }>(
+        `/api/gamification/missions/${missionId}/claim`,
+      );
+      setClaimingMissionId(null);
+      if (res.success && res.data) {
+        toast.success(`+${res.data.xpAwarded} XP!`);
+        await reloadMissions();
+      } else {
+        toast.error(res.error?.message || "Recompensa indisponível");
+      }
+    },
+    [reloadMissions],
+  );
 
   interface GamificationProfile {
     xp: number;
@@ -157,7 +282,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   
   // Se está mostrando biblioteca, renderiza a página de biblioteca
   if (showBiblioteca) {
-    return <BibliotecaPage onBack={() => setShowBiblioteca(false)} />;
+    return <BibliotecaWithBookReader onBack={() => setShowBiblioteca(false)} />;
   }
 
   const stats = [
@@ -195,24 +320,47 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     },
   ];
 
+  // Task #45 — só estatísticas com fonte real. "Sessões Conselheiro" foi
+  // removido (não existe persistência) e Comunidades vem do backend
+  // (count distinct forum_id em posts do usuário).
   const activityStats: Array<{
     icon: any;
     label: string;
     value: number;
     onClick?: () => void;
   }> = [
-    { icon: BookOpen, label: "Biblioteca", value: totalLibraryItems, onClick: () => setShowBiblioteca(true) },
-    { icon: Users, label: "Comunidades", value: 5 },
-    { icon: Heart, label: "Vídeos Favoritos", value: favoriteVideos.length, onClick: () => setShowFavoritos(true) },
-    { icon: Sparkles, label: "Sessões Conselheiro", value: 8 },
+    {
+      icon: BookOpen,
+      label: "Biblioteca",
+      value: activity?.libraryCount ?? totalLibraryItems,
+      onClick: () => setShowBiblioteca(true),
+    },
+    {
+      icon: Users,
+      label: "Comunidades",
+      value: activity?.communitiesActive ?? 0,
+    },
+    {
+      icon: Heart,
+      label: "Vídeos Favoritos",
+      value: favoriteVideos.length,
+      onClick: () => setShowFavoritos(true),
+    },
+    {
+      icon: MessageSquare,
+      label: "Posts criados",
+      value: activity?.postsCreated ?? 0,
+    },
   ];
 
+  // Task #45 — toda ação aqui é real (editar, alternar tema, idioma local,
+  // mailto suporte, troca de senha). "Em breve!" foi banido.
   const menuSections = [
     {
       title: "Conta",
       items: [
-        { icon: User, label: "Editar Perfil", onClick: () => toast.info("Em breve!") },
-        { icon: Settings, label: "Configurações", onClick: () => toast.info("Em breve!") },
+        { icon: User, label: "Editar Perfil", onClick: () => setShowEditProfile(true) },
+        { icon: Share2, label: "Compartilhar perfil", onClick: handleShareProfile },
         { icon: Bell, label: "Notificações", hasSwitch: true },
         ...(canAccessAdmin && onNavigate
           ? [{ icon: ShieldAlert, label: "Painel Admin", onClick: () => onNavigate("admin") }]
@@ -223,15 +371,25 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       title: "Preferências",
       items: [
         { icon: theme === 'dark' ? Moon : Sun, label: "Modo Escuro", hasSwitch: true, switchValue: theme === 'dark', onSwitchChange: toggleTheme },
-        { icon: Globe, label: "Idioma", value: "Português", onClick: () => toast.info("Em breve!") },
+        {
+          icon: Globe,
+          label: "Idioma",
+          value: LANGUAGE_LABELS[language] || "Português",
+          onClick: () => setShowLanguage(true),
+        },
       ]
     },
     {
       title: "Suporte",
       items: [
-        { icon: HelpCircle, label: "Central de Ajuda", onClick: () => toast.info("Em breve!") },
-        { icon: MessageSquare, label: "Falar com Suporte", onClick: () => toast.info("Em breve!") },
-        { icon: Shield, label: "Privacidade e Segurança", onClick: () => toast.info("Em breve!") },
+        {
+          icon: MessageSquare,
+          label: "Falar com Suporte",
+          onClick: () => {
+            window.location.href = "mailto:suporte@raio.app?subject=Suporte%20RAIO";
+          },
+        },
+        { icon: Shield, label: "Trocar senha", onClick: () => setShowChangePassword(true) },
       ]
     }
   ];
@@ -378,23 +536,48 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
               <div className="relative pt-12 pb-20 lg:pb-16 px-6">
                 {/* Mobile/Desktop Layout */}
                 <div className="lg:flex lg:items-start lg:gap-6 max-w-md lg:max-w-none mx-auto">
-                  {/* Avatar - Centralizado no mobile, esquerda no desktop */}
+                  {/* Avatar com botão de câmera para upload */}
                   <div className="text-center lg:text-left lg:flex-shrink-0">
-                    <Avatar 
-                      className="w-24 h-24 lg:w-32 lg:h-32 mx-auto lg:mx-0 mb-4 lg:mb-0 ring-4 shadow-xl"
-                      style={{ ringColor: 'var(--raio-bg-primary)' }}
-                    >
-                      <AvatarImage src="/placeholder-avatar.jpg" alt={userData.name} />
-                      <AvatarFallback 
-                        className="text-2xl lg:text-4xl"
-                        style={{ 
-                          background: 'var(--raio-bg-primary)',
-                          color: 'var(--raio-accent-primary)'
+                    <div className="relative inline-block mx-auto lg:mx-0 mb-4 lg:mb-0">
+                      <Avatar
+                        className="w-24 h-24 lg:w-32 lg:h-32 ring-4 shadow-xl"
+                        style={{ ringColor: 'var(--raio-bg-primary)' }}
+                      >
+                        {user?.avatar_url && (
+                          <AvatarImage src={user.avatar_url} alt={user.name} />
+                        )}
+                        <AvatarFallback
+                          className="text-2xl lg:text-4xl"
+                          style={{
+                            background: 'var(--raio-bg-primary)',
+                            color: 'var(--raio-accent-primary)'
+                          }}
+                        >
+                          {(user?.name || userData.name)?.[0] || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <button
+                        type="button"
+                        onClick={handleAvatarPick}
+                        disabled={uploadingAvatar}
+                        aria-label="Alterar foto de perfil"
+                        className="absolute bottom-0 right-0 w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 disabled:opacity-60"
+                        style={{
+                          background: 'var(--raio-accent-primary)',
+                          color: '#fff',
+                          border: '2px solid var(--raio-bg-primary)',
                         }}
                       >
-                        {userData.name?.[0] || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
+                        <Camera className="w-4 h-4" />
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={handleAvatarFile}
+                      />
+                    </div>
                   </div>
                   
                   {/* Info */}
@@ -420,6 +603,16 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                         Nível {currentLevel}
                       </Badge>
                     </div>
+
+                    {/* Task #45 — bio editável (renderiza só se preenchida) */}
+                    {user?.bio && (
+                      <p
+                        className="text-white/85 text-sm lg:text-base mb-4 lg:mb-6 mx-auto lg:mx-0 max-w-md"
+                        style={{ lineHeight: 1.5 }}
+                      >
+                        {user.bio}
+                      </p>
+                    )}
 
                     {/* Progress Bar - Desktop Only */}
                     <div className="hidden lg:block bg-white/10 backdrop-blur-sm rounded-lg p-4">
@@ -550,6 +743,104 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                           >
                             {badge.title}
                           </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* Task #45 — Missões da semana (consome /api/gamification/missions) */}
+            {missions.length > 0 && (
+              <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
+                <Card
+                  className="p-4 lg:p-6 border-0 shadow-md"
+                  style={{ background: 'var(--raio-bg-secondary)' }}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3
+                      className="text-lg"
+                      style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                    >
+                      Missões da semana
+                    </h3>
+                    <span className="text-xs" style={{ color: 'var(--raio-text-tertiary)' }}>
+                      {missions.filter((m) => m.completed).length}/{missions.length} concluídas
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {missions.map((mission) => {
+                      const pct = Math.min(
+                        100,
+                        Math.round((mission.currentProgress / Math.max(mission.targetProgress, 1)) * 100),
+                      );
+                      const canClaim = mission.completed && !mission.rewardClaimed;
+                      return (
+                        <div
+                          key={mission.id}
+                          className="p-3 lg:p-4 rounded-lg"
+                          style={{
+                            background: 'var(--raio-bg-tertiary)',
+                            border: '1px solid var(--raio-border-default)',
+                          }}
+                        >
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                {mission.rewardClaimed && (
+                                  <CheckCircle2
+                                    className="w-4 h-4 flex-shrink-0"
+                                    style={{ color: 'var(--raio-accent-primary)' }}
+                                  />
+                                )}
+                                <p
+                                  className="text-sm"
+                                  style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                                >
+                                  {mission.title}
+                                </p>
+                              </div>
+                              <p className="text-xs" style={{ color: 'var(--raio-text-secondary)' }}>
+                                {mission.description}
+                              </p>
+                            </div>
+                            <Badge
+                              className="flex-shrink-0"
+                              style={{
+                                background: 'var(--raio-bg-secondary)',
+                                color: 'var(--raio-accent-primary)',
+                                border: '1px solid var(--raio-border-default)',
+                              }}
+                            >
+                              +{mission.xpReward} XP
+                            </Badge>
+                          </div>
+                          <Progress value={pct} className="h-1.5 mb-2" />
+                          <div className="flex items-center justify-between gap-3">
+                            <span
+                              className="text-xs"
+                              style={{ color: 'var(--raio-text-tertiary)' }}
+                            >
+                              {mission.currentProgress}/{mission.targetProgress}
+                            </span>
+                            {canClaim ? (
+                              <Button
+                                size="sm"
+                                onClick={() => handleClaimMission(mission.id)}
+                                disabled={claimingMissionId === mission.id}
+                              >
+                                {claimingMissionId === mission.id ? "Resgatando..." : "Resgatar"}
+                              </Button>
+                            ) : mission.rewardClaimed ? (
+                              <span
+                                className="text-xs"
+                                style={{ color: 'var(--raio-text-tertiary)' }}
+                              >
+                                Resgatada
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
                       );
                     })}
@@ -736,8 +1027,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                                   if (item.onSwitchChange) {
                                     item.onSwitchChange();
                                   } else if (item.label === "Notificações") {
-                                    setNotificationsEnabled(checked);
-                                    toast.success(checked ? "Notificações ativadas" : "Notificações desativadas");
+                                    void handleToggleNotifications(checked);
                                   }
                                 }}
                               />
@@ -937,8 +1227,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                                 if (item.onSwitchChange) {
                                   item.onSwitchChange();
                                 } else if (item.label === "Notificações") {
-                                  setNotificationsEnabled(checked);
-                                  toast.success(checked ? "Notificações ativadas" : "Notificações desativadas");
+                                  void handleToggleNotifications(checked);
                                 }
                               }}
                             />
@@ -1127,6 +1416,16 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
           </Card>
         </div>
       )}
+
+      {/* Task #45 — modais de edição/segurança/idioma */}
+      <EditProfileModal open={showEditProfile} onOpenChange={setShowEditProfile} />
+      <ChangePasswordModal open={showChangePassword} onOpenChange={setShowChangePassword} />
+      <LanguageModal
+        open={showLanguage}
+        onOpenChange={setShowLanguage}
+        current={language}
+        onSelect={handleSelectLanguage}
+      />
     </div>
   );
 }

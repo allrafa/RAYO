@@ -31,14 +31,24 @@ function hashToken(token: string): string {
 
 export type UserRole = "client" | "producer" | "moderator" | "admin";
 
+export interface NotificationPreferences {
+  push?: boolean;
+  email?: boolean;
+  missions?: boolean;
+  community?: boolean;
+}
+
 export interface SafeUser {
   id: number;
   email: string;
   name: string;
+  bio: string | null;
+  avatar_url: string | null;
   segments: string[];
   interests: string[];
   goals: string[];
   content_preferences: string[];
+  notification_preferences: NotificationPreferences;
   level: number;
   xp: number;
   streak: number;
@@ -46,6 +56,11 @@ export interface SafeUser {
   role: UserRole;
   created_at: string;
 }
+
+// Standard column list for SELECTs that hydrate a SafeUser. Keep all queries
+// in sync with this list so the /me payload is consistent.
+export const USER_SAFE_COLUMNS =
+  "id, email, name, bio, avatar_url, segments, interests, goals, content_preferences, notification_preferences, level, xp, streak, is_premium, role, created_at";
 
 function toSafeUser(row: Record<string, unknown>): SafeUser {
   const createdAt = row.created_at instanceof Date
@@ -58,14 +73,23 @@ function toSafeUser(row: Record<string, unknown>): SafeUser {
       ? rawRole
       : "client";
 
+  const rawPrefs = row.notification_preferences;
+  const notification_preferences: NotificationPreferences =
+    rawPrefs && typeof rawPrefs === "object" && !Array.isArray(rawPrefs)
+      ? (rawPrefs as NotificationPreferences)
+      : {};
+
   return {
     id: row.id as number,
     email: row.email as string,
     name: row.name as string,
+    bio: (row.bio as string | null) ?? null,
+    avatar_url: (row.avatar_url as string | null) ?? null,
     segments: (row.segments as string[]) || [],
     interests: (row.interests as string[]) || [],
     goals: (row.goals as string[]) || [],
     content_preferences: (row.content_preferences as string[]) || [],
+    notification_preferences,
     level: row.level as number,
     xp: row.xp as number,
     streak: row.streak as number,
@@ -228,7 +252,7 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
   const result = await query(
     `INSERT INTO users (email, password_hash, name, segments, interests)
      VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, email, name, segments, interests, goals, content_preferences, level, xp, streak, is_premium, role, created_at`,
+     RETURNING ${USER_SAFE_COLUMNS}`,
     [input.email, passwordHash, input.name, segments, interests]
   );
 
@@ -246,7 +270,7 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
 
 export async function loginUser(input: LoginInput, ip?: string, userAgent?: string): Promise<{ user: SafeUser; token: string }> {
   const result = await query(
-    "SELECT id, email, name, segments, interests, goals, content_preferences, password_hash, level, xp, streak, is_premium, role, created_at FROM users WHERE email = $1",
+    `SELECT ${USER_SAFE_COLUMNS}, password_hash FROM users WHERE email = $1`,
     [input.email]
   );
 
@@ -295,7 +319,7 @@ export async function validateSession(token: string): Promise<SafeUser | null> {
   const tokenHash = hashToken(token);
 
   const result = await query(
-    `SELECT u.id, u.email, u.name, u.segments, u.interests, u.goals, u.content_preferences, u.level, u.xp, u.streak, u.is_premium, u.role, u.created_at
+    `SELECT u.id, u.email, u.name, u.bio, u.avatar_url, u.segments, u.interests, u.goals, u.content_preferences, u.notification_preferences, u.level, u.xp, u.streak, u.is_premium, u.role, u.created_at
      FROM sessions s
      JOIN users u ON s.user_id = u.id
      WHERE s.token_hash = $1 AND s.expires_at > NOW()`,
@@ -462,12 +486,33 @@ export async function resetPassword(token: string, newPassword: string): Promise
 
 export async function updateUserProfile(
   userId: number,
-  updates: { segments?: string[]; interests?: string[]; goals?: string[]; content_preferences?: string[] }
+  updates: {
+    name?: string;
+    bio?: string | null;
+    avatar_url?: string | null;
+    segments?: string[];
+    interests?: string[];
+    goals?: string[];
+    content_preferences?: string[];
+    notification_preferences?: NotificationPreferences;
+  }
 ): Promise<SafeUser> {
   const setClauses: string[] = [];
   const values: unknown[] = [];
   let paramIndex = 1;
 
+  if (updates.name !== undefined) {
+    setClauses.push(`name = $${paramIndex++}`);
+    values.push(updates.name);
+  }
+  if (updates.bio !== undefined) {
+    setClauses.push(`bio = $${paramIndex++}`);
+    values.push(updates.bio);
+  }
+  if (updates.avatar_url !== undefined) {
+    setClauses.push(`avatar_url = $${paramIndex++}`);
+    values.push(updates.avatar_url);
+  }
   if (updates.segments !== undefined) {
     setClauses.push(`segments = $${paramIndex++}`);
     values.push(updates.segments);
@@ -484,13 +529,17 @@ export async function updateUserProfile(
     setClauses.push(`content_preferences = $${paramIndex++}`);
     values.push(updates.content_preferences);
   }
+  if (updates.notification_preferences !== undefined) {
+    setClauses.push(`notification_preferences = $${paramIndex++}::jsonb`);
+    values.push(JSON.stringify(updates.notification_preferences));
+  }
 
   setClauses.push(`updated_at = NOW()`);
   values.push(userId);
 
   const result = await query(
     `UPDATE users SET ${setClauses.join(", ")} WHERE id = $${paramIndex}
-     RETURNING id, email, name, segments, interests, goals, content_preferences, level, xp, streak, is_premium, role, created_at`,
+     RETURNING ${USER_SAFE_COLUMNS}`,
     values
   );
 
@@ -502,4 +551,52 @@ export async function updateUserProfile(
   }
 
   return toSafeUser(result.rows[0]);
+}
+
+// Task #45 — troca de senha autenticada (usuário logado, sabe a senha atual).
+// Distinto do reset-password (esquecimento via email).
+export async function changePassword(
+  userId: number,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  if (!newPassword || typeof newPassword !== "string" || newPassword.length < 8) {
+    const err = new Error("A nova senha deve ter pelo menos 8 caracteres.") as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "WEAK_PASSWORD";
+    throw err;
+  }
+  if (newPassword.length > 128) {
+    const err = new Error("A nova senha deve ter no máximo 128 caracteres.") as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "WEAK_PASSWORD";
+    throw err;
+  }
+
+  const { rows } = await query(
+    "SELECT password_hash FROM users WHERE id = $1",
+    [userId],
+  );
+  if (rows.length === 0) {
+    const err = new Error("Usuário não encontrado") as Error & { statusCode: number; code: string };
+    err.statusCode = 404;
+    err.code = "USER_NOT_FOUND";
+    throw err;
+  }
+
+  const ok = await bcrypt.compare(currentPassword, rows[0].password_hash);
+  if (!ok) {
+    const err = new Error("Senha atual incorreta.") as Error & { statusCode: number; code: string };
+    err.statusCode = 401;
+    err.code = "INVALID_CURRENT_PASSWORD";
+    throw err;
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await query(
+    "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
+    [passwordHash, userId],
+  );
+
+  trackEvent(userId, "password_changed", {});
 }

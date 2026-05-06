@@ -4,14 +4,24 @@ import { markDeviceAsReturning } from "../lib/deviceMemory";
 
 export type UserRole = "client" | "producer" | "moderator" | "admin";
 
+export interface NotificationPreferences {
+  push?: boolean;
+  email?: boolean;
+  missions?: boolean;
+  community?: boolean;
+}
+
 export interface User {
   id: number;
   email: string;
   name: string;
+  bio: string | null;
+  avatar_url: string | null;
   segments: string[];
   interests: string[];
   goals: string[];
   content_preferences: string[];
+  notification_preferences: NotificationPreferences;
   level: number;
   xp: number;
   streak: number;
@@ -47,7 +57,22 @@ interface AuthContextType {
   verifyEmailCode: (email: string, code: string) => Promise<{ success: boolean; error?: string }>;
   requestPasswordReset: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   resetPassword: (token: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  updateProfile: (updates: { segments?: string[]; interests?: string[]; goals?: string[]; content_preferences?: string[] }) => Promise<{ success: boolean; error?: string }>;
+  updateProfile: (updates: {
+    name?: string;
+    bio?: string | null;
+    segments?: string[];
+    interests?: string[];
+    goals?: string[];
+    content_preferences?: string[];
+  }) => Promise<{ success: boolean; error?: string }>;
+  updatePreferences: (
+    prefs: Partial<NotificationPreferences>,
+  ) => Promise<{ success: boolean; error?: string }>;
+  uploadAvatar: (file: File) => Promise<{ success: boolean; error?: string }>;
+  changePassword: (
+    currentPassword: string,
+    newPassword: string,
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -131,7 +156,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error: res.error?.message || "Erro ao redefinir senha" };
   }, []);
 
-  const updateProfile = useCallback(async (updates: { segments?: string[]; interests?: string[]; goals?: string[]; content_preferences?: string[] }) => {
+  const updateProfile = useCallback(async (updates: {
+    name?: string;
+    bio?: string | null;
+    segments?: string[];
+    interests?: string[];
+    goals?: string[];
+    content_preferences?: string[];
+  }) => {
     const res = await api.patch<{ user: User }>("/api/users/profile", updates);
     if (res.success && res.data) {
       setUser(res.data.user);
@@ -140,13 +172,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error: res.error?.message || "Erro ao atualizar perfil" };
   }, []);
 
+  const updatePreferences = useCallback(async (prefs: Partial<NotificationPreferences>) => {
+    const res = await api.patch<{ user: User }>("/api/users/preferences", prefs);
+    if (res.success && res.data) {
+      setUser(res.data.user);
+      return { success: true };
+    }
+    return { success: false, error: res.error?.message || "Erro ao salvar preferências" };
+  }, []);
+
+  const uploadAvatar = useCallback(async (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const r = await fetch("/api/users/avatar", {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+      const json = (await r.json()) as { success: boolean; data: { user: User } | null; error: { message: string } | null };
+      if (json.success && json.data) {
+        setUser(json.data.user);
+        return { success: true };
+      }
+      return { success: false, error: json.error?.message || "Erro ao enviar avatar" };
+    } catch {
+      return { success: false, error: "Erro de conexão. Tente novamente." };
+    }
+  }, []);
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const res = await api.post<{ message: string }>("/api/auth/change-password", {
+      currentPassword,
+      newPassword,
+    });
+    if (res.success) return { success: true };
+    return { success: false, error: res.error?.message || "Erro ao alterar senha" };
+  }, []);
+
   const logout = useCallback(async () => {
     await api.post("/api/auth/logout");
     setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, sendVerificationCode, verifyEmailCode, requestPasswordReset, resetPassword, updateProfile, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, sendVerificationCode, verifyEmailCode, requestPasswordReset, resetPassword, updateProfile, updatePreferences, uploadAvatar, changePassword, logout }}>
       {children}
     </AuthContext.Provider>
   );
