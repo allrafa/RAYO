@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import {
   ArrowRight, BookOpen, Clock, Heart, MessageCircle,
-  Target, Trophy, Flame, Zap, MessagesSquare, Mail, Play,
+  Target, Trophy, Flame, MessagesSquare, Play,
 } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { PullToRefresh } from "./PullToRefresh";
@@ -301,26 +301,23 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
       <div className="rh-root">
         <div className="rh-content">
 
-          {/* ── HERO ────────────────────────────────────────── */}
+          {/* ── HERO (faixa editorial sand-100, conforme task #57) ─ */}
           <section className="rh-hero">
-            <div className="rh-hero-photo" />
-            <div className="rh-hero-overlay" />
-            <div className="rh-hero-tag">
-              <span className="rh-hero-tag-dot" />
-              {getGreeting()}{authUser ? `, ${displayName}` : ""}
-            </div>
             <div className="rh-hero-content">
-              <span className="rh-hero-eyebrow">Ecossistema RAYO</span>
-              <div>
-                <h1 className="rh-hero-title">
-                  Sua família,<br />
-                  mais <span className="rh-light">forte</span> a cada dia.
-                </h1>
-                <p className="rh-hero-subtitle">
-                  Conteúdo, comunidade e práticas para iluminar todas as fases —
-                  Solteiro, Namoro, Noivos, Casados e Pais.
-                </p>
-              </div>
+              <span className="rh-hero-eyebrow">
+                {getGreeting()}
+                {authUser ? ` · ${displayName}` : ""}
+                {dashboard ? ` · Nível ${dashboard.gamification.level}` : ""}
+                {primarySegment ? ` · ${primarySegment}` : ""}
+              </span>
+              <h1 className="rh-hero-title">
+                Sua família,<br />
+                mais <span className="rh-light">forte</span> a cada dia.
+              </h1>
+              <p className="rh-hero-subtitle">
+                Conteúdo, comunidade e práticas para iluminar todas as fases —
+                Solteiro, Namoro, Noivos, Casados e Pais.
+              </p>
               <div className="rh-hero-cta-row">
                 <button
                   type="button"
@@ -393,28 +390,14 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
 
               <button
                 type="button"
-                className="rh-stat terra"
-                onClick={() => { if ("vibrate" in navigator) navigator.vibrate(10); setStatsModal("xp"); }}
-                aria-label={`${dashboard.weeklyXP} XP nesta semana.`}
-              >
-                <div className="rh-stat-icon"><Zap className="w-4 h-4" /></div>
-                <div>
-                  <div className="rh-stat-value">{dashboard.weeklyXP}</div>
-                  <div className="rh-stat-label">XP esta semana</div>
-                </div>
-                <div className="rh-stat-meta"><span>+{dashboard.weeklyXP} GANHOS</span></div>
-              </button>
-
-              <button
-                type="button"
-                className="rh-stat"
+                className="rh-stat sage"
                 onClick={() => { if ("vibrate" in navigator) navigator.vibrate(10); setStatsModal("badges"); }}
                 aria-label={`${dashboard.completedCoursesCount} conquistas.`}
               >
                 <div className="rh-stat-icon"><Target className="w-4 h-4" /></div>
                 <div>
                   <div className="rh-stat-value">{dashboard.completedCoursesCount}</div>
-                  <div className="rh-stat-label">Cursos concluídos</div>
+                  <div className="rh-stat-label">Conquistas</div>
                 </div>
                 <div className="rh-stat-meta"><span>VER CONQUISTAS →</span></div>
               </button>
@@ -436,38 +419,39 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                   onCompleted={() => { void loadDashboard(); }}
                   onVisibilityChange={setHojeVisible}
                 />
+                {/* Aside: agenda do dia (sage = roda de conversa, ochre = desafio) */}
                 <div className="rh-hoje-aside">
                   <button
                     type="button"
                     className="rh-hoje-tile sage"
-                    onClick={() => setIsInOrbChat(true)}
+                    onClick={() => onNavigate?.("comunidade")}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div className="rh-hoje-tile-icon"><MessagesSquare className="w-4 h-4" /></div>
-                      <span className="rh-hoje-tile-eyebrow">Conselheiro</span>
+                      <span className="rh-hoje-tile-eyebrow">Agenda · hoje</span>
                     </div>
                     <div>
-                      <div className="rh-hoje-tile-title">Converse com o conselheiro RAYO</div>
+                      <div className="rh-hoje-tile-title">Roda de conversa: limites no namoro</div>
                       <div className="rh-hoje-tile-foot">
-                        <span>Sempre disponível</span>
-                        <span className="rh-arrow">Iniciar →</span>
+                        <span>20h · Comunidade</span>
+                        <span className="rh-arrow">Entrar →</span>
                       </div>
                     </div>
                   </button>
                   <button
                     type="button"
-                    className="rh-hoje-tile"
-                    onClick={() => setIsInCentralConversas(true)}
+                    className="rh-hoje-tile ochre"
+                    onClick={() => onNavigate?.("perfil")}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div className="rh-hoje-tile-icon"><Mail className="w-4 h-4" /></div>
-                      <span className="rh-hoje-tile-eyebrow">Central</span>
+                      <div className="rh-hoje-tile-icon"><Target className="w-4 h-4" /></div>
+                      <span className="rh-hoje-tile-eyebrow">Desafio · 7 dias</span>
                     </div>
                     <div>
-                      <div className="rh-hoje-tile-title">Suas conversas anteriores estão aqui</div>
+                      <div className="rh-hoje-tile-title">Uma palavra de afeto antes de dormir</div>
                       <div className="rh-hoje-tile-foot">
-                        <span>Histórico</span>
-                        <span className="rh-arrow">Abrir →</span>
+                        <span>Dia {Math.min(7, (dashboard?.gamification.streak ?? 0) % 8 || 1)} de 7</span>
+                        <span className="rh-arrow">Acompanhar →</span>
                       </div>
                     </div>
                   </button>
