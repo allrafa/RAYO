@@ -1,32 +1,26 @@
-import { Play, Users, Star, Clock, Heart, MessageCircle, Target, Brain, Flame, Zap, Trophy, CheckCircle2 } from "lucide-react";
-import { Button } from "./ui/button";
-import { Card, CardContent } from "./ui/card";
-import { Badge } from "./ui/badge";
+// HomePage — recriada 1:1 com o mock attached_assets/RAYO_(1)/Home.html
+// (Task #57). 11 seções editoriais, ordem fixa, todos os dados reais
+// preservados (dashboard, homeFeed CMS, youtubeData, missões, posts).
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
+import {
+  ArrowRight, BookOpen, Clock, Heart, MessageCircle,
+  Target, Trophy, Flame, Zap, MessagesSquare, Mail, Play,
+} from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { PullToRefresh } from "./PullToRefresh";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { enhancedToast } from "./EnhancedToast";
 import { useApp } from "./AppContext";
-import { CreatePlaylistModal } from "./CreatePlaylistModal";
 import { TrilhaTransformacaoChat } from "./TrilhaTransformacao/TrilhaTransformacaoChat";
 import { CentralConversasPage } from "./TrilhaTransformacao/CentralConversasPage";
-import { SmartRecommendations } from "./SmartRecommendations";
-import { QuizPage } from "./QuizPage";
 import { SimpleQuizTest } from "./SimpleQuizTest";
 import { MusicPage } from "./MusicPage";
 import { PlaylistsExpandedPage } from "./PlaylistsExpandedPage";
-import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { HojeNoRaio } from "./home/HojeNoRaio";
-import { UnifiedContinue } from "./home/UnifiedContinue";
 import {
-  StreakCalendarModal,
-  BadgesModal,
-  XPHistoryModal,
+  StreakCalendarModal, BadgesModal, XPHistoryModal,
 } from "./home/StatsModals";
-import raioLogoFull from "figma:asset/91df98d68db1bbd58de3db20caeed5acda1da6fc.png";
 import { useYouTubeData } from "./hooks/useYouTubeData";
-import { YouTubeVideoCard } from "./youtube/YouTubeVideoCard";
-import { YouTubePlaylistCard } from "./youtube/YouTubePlaylistCard";
 import { YouTubeShortCard } from "./youtube/YouTubeShortCard";
 import { YouTubePlayerWithPlaylist } from "./youtube/YouTubePlayerWithPlaylist";
 import { YouTubeMockBanner } from "./youtube/YouTubeMockBanner";
@@ -35,161 +29,124 @@ import { YouTubeVideo, YouTubePlaylist, YouTubeShort } from "./youtube/YouTubeTy
 import { fetchPlaylistVideos } from "./youtube/YouTubeService";
 import { api } from "../lib/api";
 import { useAuth } from "./AuthContext";
+import "../styles/home-rayo.css";
 
 interface DashboardData {
   greeting: { name: string; segments: string[] };
   recommendedSectionOrder?: string[];
   gamification: {
-    level: number;
-    levelTitle: string;
-    xp: number;
-    streak: number;
-    longestStreak: number;
-    xpForNextLevel: number;
-    levelProgress: number;
+    level: number; levelTitle: string;
+    xp: number; streak: number; longestStreak: number;
+    xpForNextLevel: number; levelProgress: number;
   };
   weeklyXP: number;
   completedCoursesCount: number;
   coursesInProgress: Array<{
-    id: number;
-    title: string;
-    thumbnail: string;
-    category: string;
-    instructor: string;
-    duration: string;
-    progress: number;
-    completedLessons: number;
-    totalLessons: number;
+    id: number; title: string; thumbnail: string; category: string;
+    instructor: string; duration: string; progress: number;
+    completedLessons: number; totalLessons: number;
   }>;
   enrolledNotStarted: Array<{
-    id: number;
-    title: string;
-    thumbnail: string;
-    category: string;
-    instructor: string;
-    duration: string;
-    progress: number;
-    completedLessons: number;
-    totalLessons: number;
+    id: number; title: string; thumbnail: string; category: string;
+    instructor: string; duration: string; progress: number;
+    completedLessons: number; totalLessons: number;
   }>;
   recommendedCourses: Array<{
-    id: number;
-    title: string;
-    description: string;
-    thumbnail: string;
-    category: string;
-    lifeContext: string;
-    level: string;
-    duration: string;
-    totalLessons: number;
-    rating: number;
-    students: number;
-    instructor: string;
+    id: number; title: string; description: string; thumbnail: string;
+    category: string; lifeContext: string; level: string; duration: string;
+    totalLessons: number; rating: number; students: number; instructor: string;
     isPremium: boolean;
   }>;
   recentPosts: Array<{
-    id: number;
-    content: string;
-    category: string;
-    likeCount: number;
-    commentCount: number;
-    createdAt: string;
-    authorName: string;
-    forumName: string;
-    forumIcon: string;
+    id: number; content: string; category: string;
+    likeCount: number; commentCount: number; createdAt: string;
+    authorName: string; forumName: string; forumIcon: string;
   }>;
   missions: Array<{
-    id: number;
-    title: string;
-    description: string;
-    type: string;
-    actionCount: number;
-    currentProgress: number;
-    completed: boolean;
-    rewardClaimed: boolean;
-    rewardXP: number;
-    icon: string;
+    id: number; title: string; description: string; type: string;
+    actionCount: number; currentProgress: number; completed: boolean;
+    rewardClaimed: boolean; rewardXP: number; icon: string;
   }>;
 }
 
 interface HomePageProps {
   userSegment: string;
-  // Task #44 — usado pelo estado vazio do "Continue de onde parou"
-  // pra mandar o usuário para a Academia.
   onNavigate?: (tab: string) => void;
   userName: string;
-  userLevel: number;
+  /** @deprecated mantido por compat com App.tsx; valor real vem do dashboard. */
+  userLevel?: number;
 }
 
-// ── Home Feed (CMS-managed rails) ────────────────────────────────────
-// Mirrors server/features/home-feed/service.ts. Rows are mapped to the
-// shape consumed by the local <ContentCard /> (image/duration/chart/etc).
-type HomeFeedSectionKey =
-  | "recently_played"
-  | "made_for_you"
-  | "trending"
-  | "podcasts";
-
+// CMS-managed home rails. Mirrors server/features/home-feed/service.ts.
+type HomeFeedSectionKey = "recently_played" | "made_for_you" | "trending" | "podcasts";
 interface HomeFeedRow {
-  id: number;
-  section: HomeFeedSectionKey;
-  title: string;
-  subtitle: string | null;
-  image_url: string | null;
-  gradient: string | null;
-  badge_text: string | null;
-  meta_text: string | null;
-  progress: number | null;
-  sort_order: number;
+  id: number; section: HomeFeedSectionKey;
+  title: string; subtitle: string | null;
+  image_url: string | null; gradient: string | null;
+  badge_text: string | null; meta_text: string | null;
+  progress: number | null; sort_order: number;
 }
-
 type HomeFeedSections = Record<HomeFeedSectionKey, HomeFeedRow[]>;
 
-interface HomeCard {
-  title: string;
-  subtitle: string;
-  image: string;
-  gradient?: string;
-  duration?: string;
-  progress?: number;
-  chart?: string;
-  views?: string;
-  type?: string;
-  episodes?: string;
+// ── Helpers ──────────────────────────────────────────────────────
+function formatDateBR(): string {
+  const months = [
+    "jan", "fev", "mar", "abr", "mai", "jun",
+    "jul", "ago", "set", "out", "nov", "dez",
+  ];
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, "0")} ${months[d.getMonth()]}`;
 }
 
-function mapRowToCard(row: HomeFeedRow): HomeCard {
-  const card: HomeCard = {
-    title: row.title,
-    subtitle: row.subtitle ?? "",
-    image: row.image_url ?? "",
-  };
-  if (row.gradient) card.gradient = row.gradient;
-  if (row.progress !== null) card.progress = row.progress;
-  switch (row.section) {
-    case "recently_played":
-      if (row.badge_text) card.duration = row.badge_text;
-      break;
-    case "trending":
-      if (row.badge_text) card.chart = row.badge_text;
-      if (row.meta_text) card.views = row.meta_text;
-      break;
-    case "podcasts":
-      if (row.badge_text) card.type = row.badge_text;
-      if (row.meta_text) card.episodes = row.meta_text;
-      break;
-    case "made_for_you":
-    default:
-      if (row.badge_text) card.duration = row.badge_text;
-      break;
-  }
-  return card;
+function timeAgo(iso: string): string {
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return "AGORA";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `HÁ ${minutes}MIN`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `HÁ ${hours}H`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `HÁ ${days}D`;
+  return `HÁ ${Math.floor(days / 7)}SEM`;
 }
 
-export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomePageProps) {
+function avatarInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] || "") + (parts[1]?.[0] || "")).toUpperCase() || "·";
+}
+
+// Round-robin fallback gradient class for cards without image_url.
+function fallbackClass(prefix: string, idx: number, options: string[]): string {
+  return `${prefix}-${options[idx % options.length]}`;
+}
+
+// ── Section header ───────────────────────────────────────────────
+function SecHead({
+  eyebrow, title, action,
+}: {
+  eyebrow: string;
+  title: ReactNode;
+  action?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div className="rh-sec-head">
+      <div>
+        <div className="rh-sec-eyebrow">{eyebrow}</div>
+        <h2 className="rh-sec-title">{title}</h2>
+      </div>
+      {action && (
+        <button type="button" className="rh-sec-action" onClick={action.onClick}>
+          {action.label}
+          <ArrowRight className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
-  const [currentQuiz, setCurrentQuiz] = useState<'communication' | 'conflict' | null>(null);
+  const [currentQuiz, setCurrentQuiz] = useState<"communication" | "conflict" | null>(null);
   const [isInMusicPage, setIsInMusicPage] = useState(false);
   const [isInPlaylistsExpanded, setIsInPlaylistsExpanded] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<YouTubeVideo | YouTubeShort | null>(null);
@@ -199,32 +156,27 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
   const [playerPlaylist, setPlayerPlaylist] = useState<YouTubePlaylist | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
-  // Bumped on PullToRefresh and on "Hoje no RAYO" completion so the
-  // HojeNoRaio child re-fetches its state alongside the dashboard.
   const [todayRefreshKey, setTodayRefreshKey] = useState(0);
-  // Task #44: stats da Home agora abrem modais informativos.
-  const [statsModal, setStatsModal] = useState<
-    "streak" | "badges" | "xp" | null
-  >(null);
-  // Home rails (Tocados recentemente / Feito para você / Em alta / Podcasts)
-  // are sourced from the CMS via /api/home-feed (Task #20). Producers manage
-  // these cards in Admin → Home / Destaques.
+  // Hoje no RAYO: undefined enquanto não soubermos; false esconde a section
+  // inteira (incluindo aside) quando o item é nulo/skipped.
+  const [hojeVisible, setHojeVisible] = useState<boolean>(true);
+  const [statsModal, setStatsModal] = useState<"streak" | "badges" | "xp" | null>(null);
   const [homeFeed, setHomeFeed] = useState<HomeFeedSections | null>(null);
-  const [homeFeedLoading, setHomeFeedLoading] = useState(true);
   const { user: authUser } = useAuth();
-  
   const { data: youtubeData, loading: youtubeLoading } = useYouTubeData();
 
+  const {
+    isInOrbChat, setIsInOrbChat,
+    isInCentralConversas, setIsInCentralConversas,
+    setCurrentCourseId, setIsInCourseDetail,
+  } = useApp();
+
+  // ── Data loaders ───────────────────────────────────────────────
   const loadDashboard = useCallback(async () => {
-    if (!authUser) {
-      setDashboardLoading(false);
-      return;
-    }
+    if (!authUser) { setDashboardLoading(false); return; }
     try {
       const res = await api.get<DashboardData>("/api/dashboard");
-      if (res.success && res.data) {
-        setDashboard(res.data);
-      }
+      if (res.success && res.data) setDashboard(res.data);
     } catch (err) {
       console.error("[HomePage] Failed to load dashboard:", err);
     } finally {
@@ -232,72 +184,34 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
     }
   }, [authUser]);
 
-  useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
-
   const loadHomeFeed = useCallback(async () => {
-    setHomeFeedLoading(true);
     try {
       const res = await api.get<{ sections: HomeFeedSections }>("/api/home-feed");
-      if (res.success && res.data) {
-        setHomeFeed(res.data.sections);
-      } else {
-        setHomeFeed(null);
-      }
+      if (res.success && res.data) setHomeFeed(res.data.sections);
+      else setHomeFeed(null);
     } catch (err) {
       console.error("[HomePage] Failed to load home feed:", err);
       setHomeFeed(null);
-    } finally {
-      setHomeFeedLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void loadHomeFeed();
-  }, [loadHomeFeed]);
+  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+  useEffect(() => { void loadHomeFeed(); }, [loadHomeFeed]);
 
   useEffect(() => {
     if (currentQuiz) {
-      window.scrollTo({ top: 0, behavior: 'instant' });
-      document.body.style.overflow = 'hidden';
+      window.scrollTo({ top: 0, behavior: "instant" });
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
-    return () => { document.body.style.overflow = 'unset'; };
+    return () => { document.body.style.overflow = "unset"; };
   }, [currentQuiz]);
-
-
-
-
-  const { 
-    userData, 
-    courses, 
-    startCourse, 
-    isInOrbChat, 
-    setIsInOrbChat, 
-    isInCentralConversas, 
-    setIsInCentralConversas,
-    setCurrentVideoId,
-    setIsInVideoPage,
-    setCurrentCourseId,
-    setIsInCourseDetail
-  } = useApp();
-  
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Bom dia";
-    if (hour < 18) return "Boa tarde";
-    return "Boa noite";
-  };
 
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
       await Promise.all([loadDashboard(), loadHomeFeed()]);
-      // Bump after parallel fetches so HojeNoRaio also reloads (and
-      // re-evaluates the local "skipped today" flag — useful when the
-      // tab has been open across midnight).
       setTodayRefreshKey((k) => k + 1);
     } catch (error) {
       console.error("Erro na atualização:", error);
@@ -309,7 +223,6 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
   const handlePlaylistClick = async (playlist: YouTubePlaylist) => {
     setSelectedPlaylist(playlist);
     setLoadingPlaylist(true);
-    
     try {
       const videos = await fetchPlaylistVideos(playlist.id);
       setPlaylistVideos(videos);
@@ -321,715 +234,562 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
     }
   };
 
-  // CMS-managed home rails. Empty arrays render as honest empty states
-  // (or skeletons while loading); legacy mocks were removed in Task #20.
-  const homeCategories = useMemo(() => {
-    const sections = homeFeed ?? {
-      recently_played: [],
-      made_for_you: [],
-      trending: [],
-      podcasts: [],
-    };
-    return {
-      recentlyPlayed: sections.recently_played.map(mapRowToCard),
-      madeForYou: sections.made_for_you.map(mapRowToCard),
-      trending: sections.trending.map(mapRowToCard),
-      podcasts: sections.podcasts.map(mapRowToCard),
-    };
-  }, [homeFeed]);
+  const homeCategories = useMemo(() => ({
+    madeForYou: homeFeed?.made_for_you ?? [],
+    trending: homeFeed?.trending ?? [],
+    podcasts: homeFeed?.podcasts ?? [],
+  }), [homeFeed]);
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6 p-4 max-w-6xl mx-auto">
-        <SkeletonLoader type="card" count={4} />
-      </div>
-    );
-  }
-
-  const handlePlayVideo = () => {
-    setCurrentVideoId("1");
-    setIsInVideoPage(true);
+  // ── Greeting / hero copy ───────────────────────────────────────
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Bom dia";
+    if (hour < 18) return "Boa tarde";
+    return "Boa noite";
   };
+  const displayName = dashboard?.greeting.name ?? userName;
+  const primarySegment = dashboard?.greeting.segments?.[0] ?? userSegment;
 
-  // Renders a horizontal rail of CMS-managed home cards. Handles loading
-  // (skeletons) and empty (honest empty state) states so producers know
-  // when a section needs content.
-  const HomeFeedRail = ({
-    items,
-    size = "medium",
-    emptyHint,
-  }: {
-    items: HomeCard[];
-    size?: "small" | "medium" | "large";
-    // Optional now (Task #43): rails that omit themselves when empty
-    // pass nothing; only legacy callers that want to render an empty
-    // dashed placeholder still pass a hint.
-    emptyHint?: string;
-  }) => {
-    const cardWidth = size === "large" ? "w-60" : size === "small" ? "w-40" : "w-48";
-    const cardHeight = size === "large" ? "h-60" : size === "small" ? "h-40" : "h-48";
+  // ── Derived data for sections ──────────────────────────────────
+  const courseFallbacks = ["finance", "couple", "kids", "communication"];
+  const colFallbacks = ["a", "b", "c"];
+  const altaFallbacks = ["a", "b", "c"];
+  const podFallbacks = ["a", "b", "c", "d"];
 
-    if (homeFeedLoading) {
-      return (
-        <div className="overflow-x-auto scrollbar-hide">
-          <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
-            {[1, 2, 3].map((i) => (
-              <div key={i} className={`${cardWidth} shrink-0`}>
-                <div className={`${cardHeight} rounded-lg bg-muted animate-pulse mb-3`} />
-                <div className="h-4 bg-muted rounded w-3/4 animate-pulse mb-1" />
-                <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    }
+  // Recommendation cards (top 5 from dashboard + youtubeData.playlists)
+  const recommendedCourses = dashboard?.recommendedCourses?.slice(0, 5) ?? [];
+  const discussions = dashboard?.recentPosts?.slice(0, 3) ?? [];
+  const trending = homeCategories.trending.slice(0, 3);
+  const podcasts = homeCategories.podcasts.slice(0, 4);
+  const collections = (
+    youtubeData?.playlists?.length
+      ? youtubeData.playlists.slice(0, 3).map((p, i) => ({
+          id: `yt-${p.id}`,
+          title: p.title,
+          subtitle: p.description ?? "",
+          image_url: p.thumbnail?.high ?? null,
+          badge_text: `${p.itemCount ?? 0} vídeos`,
+          eyebrow: p.title,
+          fallbackIdx: i,
+          onClick: () => handlePlaylistClick(p),
+        }))
+      : homeCategories.madeForYou.slice(0, 3).map((row, i) => ({
+          id: `cms-${row.id}`,
+          title: row.title,
+          subtitle: row.subtitle ?? "",
+          image_url: row.image_url,
+          badge_text: row.badge_text ?? "",
+          eyebrow: row.subtitle ?? row.title,
+          fallbackIdx: i,
+          onClick: () => {},
+        }))
+  );
+  const shorts = youtubeData?.shorts?.slice(0, 5) ?? [];
+  const dailyMissions = dashboard?.missions?.filter((m) => m.type === "daily") ?? [];
+  const completedDaily = dailyMissions.filter((m) => m.completed).length;
+  const totalDailyXP = dailyMissions
+    .filter((m) => m.completed)
+    .reduce((s, m) => s + m.rewardXP, 0);
 
-    if (items.length === 0) {
-      // Without a hint, render nothing — the parent rail wrapper has
-      // already decided whether to show itself.
-      if (!emptyHint) return null;
-      return (
-        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          {emptyHint}
-        </div>
-      );
-    }
+  // Color rotation for discussion avatars
+  const avatarColors: Array<"sage" | "terra" | "forest" | "ochre"> =
+    ["sage", "terra", "forest", "ochre"];
 
-    return (
-      <div className="overflow-x-auto scrollbar-hide">
-        <div className="flex gap-4 pb-2 transition-all duration-300 ease-out" style={{ width: 'max-content' }}>
-          {items.map((item, index) => (
-            <div key={index} className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
-              <ContentCard item={item} size={size} />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const ContentCard = ({ item, size = "medium" }: { item: any, size?: "small" | "medium" | "large" }) => {
-    const cardClass = size === "large" ? "w-60" : size === "small" ? "w-40" : "w-48";
-    const heightClass = size === "large" ? "h-60" : size === "small" ? "h-40" : "h-48";
-    
-    const handlePlayClick = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      if ('vibrate' in navigator) {
-        navigator.vibrate([30, 50, 100]);
-      }
-      handlePlayVideo();
-    };
-    
-    return (
-      <div className={`${cardClass} shrink-0 group cursor-pointer`}>
-        <div className={`relative ${heightClass} rounded-lg overflow-hidden mb-3 bg-muted shadow-lg hover:shadow-xl transition-all duration-300`}>
-          {item.gradient ? (
-            <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient}`} />
-          ) : (
-            <ImageWithFallback
-              src={item.image}
-              alt={item.title}
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          )}
-          
-          {/* Dark overlay gradient */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          
-          {/* Play button overlay */}
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-90 transition-all duration-300 scale-0 group-hover:scale-100">
-            <button
-              onClick={handlePlayClick}
-              className="h-14 w-14 rounded-full bg-white/90 hover:bg-white text-black hover:text-black p-0 shadow-xl backdrop-blur-sm hover:scale-110 transition-all duration-200 flex items-center justify-center"
-            >
-              <Play className="h-5 w-5 ml-0.5" fill="currentColor" />
-            </button>
-          </div>
-
-          {/* Progress bar for recently played */}
-          {item.progress !== undefined && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
-              <div 
-                className="h-full bg-primary"
-                style={{ width: `${item.progress}%` }}
-              />
-            </div>
-          )}
-
-          {/* Chart position */}
-          {item.chart && (
-            <div className="absolute top-2 left-2">
-              <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
-                {item.chart}
-              </div>
-            </div>
-          )}
-
-          {/* Duration or type badge */}
-          {(item.duration || item.type) && (
-            <div className="absolute top-2 right-2">
-              <Badge className="bg-black/70 text-white text-xs px-2 py-1">
-                {item.duration || item.type}
-              </Badge>
-            </div>
-          )}
-
-          {/* Hover glow effect */}
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-primary/20 via-transparent to-transparent"></div>
-        </div>
-        
-        <div className="px-1">
-          <h3 className="font-body font-medium text-sm mb-1 line-clamp-1 group-hover:text-primary transition-colors">
-            {item.title}
-          </h3>
-          <p className="font-body text-xs text-muted-foreground line-clamp-1">
-            {item.subtitle || item.views || item.episodes}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
+  // ── Render ─────────────────────────────────────────────────────
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-      <div className="min-h-screen bg-background">
-        {/* Hero — single editorial layer (Task #42, Faxina). Substitui as
-            três camadas sobrepostas (mosaico colorido + grid 3D rotacionado +
-            foto de aconselhamento) por uma única composição editorial:
-            imagem + overlay + saudação + headline + CTA. */}
-        <div className="relative h-[22rem] md:h-[26rem] overflow-hidden">
-          {/* Background editorial */}
-          <ImageWithFallback
-            src="https://images.unsplash.com/photo-1758273240403-052b3c99f636?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3Vuc2VsaW5nJTIwdGhlcmFweSUyMHNlc3Npb24lMjBjYWxtfGVufDF8fHx8MTc1OTY0NDg1MXww&ixlib=rb-4.1.0&q=80&w=1080"
-            alt="Família caminhando junto em direção à transformação"
-            className="absolute inset-0 w-full h-full object-cover"
-            loading="eager"
-          />
-          {/* Overlay legível em qualquer tema (texto sempre branco) */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/55 to-black/90" />
-          {/* Brilho sutil de marca (token RAYO accent) */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                'radial-gradient(60% 50% at 80% 20%, var(--raio-accent-glow-soft), transparent 70%)',
-            }}
-          />
+      <div className="rh-root">
+        <div className="rh-content">
 
-          {/* Conteúdo */}
-          <div className="relative z-10 h-full flex flex-col justify-between p-6 max-w-2xl mx-auto">
-            {/* Topo: logo + saudação personalizada */}
-            <div className="flex items-center gap-3 pt-1">
-              <img
-                src={raioLogoFull}
-                alt="RAYO"
-                className="h-7 w-auto object-contain"
-                style={{ filter: 'brightness(0) invert(1)' }}
-              />
-              <span className="text-white/85 text-xs font-medium pl-3 border-l border-white/30">
-                {getGreeting()}
-                {authUser ? `, ${dashboard?.greeting.name ?? userName}` : ''}
-              </span>
+          {/* ── HERO ────────────────────────────────────────── */}
+          <section className="rh-hero">
+            <div className="rh-hero-photo" />
+            <div className="rh-hero-overlay" />
+            <div className="rh-hero-tag">
+              <span className="rh-hero-tag-dot" />
+              {getGreeting()}{authUser ? `, ${displayName}` : ""}
             </div>
-
-            {/* Base: copy + CTA */}
-            <div className="space-y-3 max-w-md">
-              <h1 className="font-display-serif text-white text-3xl sm:text-4xl leading-[1.1]">
-                Sua família, mais forte a cada dia.
-              </h1>
-              <p className="font-body text-white/80 text-sm sm:text-base leading-relaxed">
-                Conteúdo, comunidade e práticas para iluminar todas as fases — Solteiro,
-                Namoro, Noivos, Casados e Pais.
-              </p>
-              <Button
-                size="lg"
-                className="font-body bg-raio-gold-500 text-black hover:bg-raio-gold-600 rounded-3xl font-medium px-7 py-4 text-base shadow-lg transition-all duration-200 mt-2"
-                onClick={() => {
-                  if ('vibrate' in navigator) {
-                    navigator.vibrate([50, 50, 100]);
-                  }
-                  setIsInOrbChat(true);
-                }}
-              >
-                Falar com o conselheiro
-              </Button>
+            <div className="rh-hero-content">
+              <span className="rh-hero-eyebrow">Ecossistema RAYO</span>
+              <div>
+                <h1 className="rh-hero-title">
+                  Sua família,<br />
+                  mais <span className="rh-light">forte</span> a cada dia.
+                </h1>
+                <p className="rh-hero-subtitle">
+                  Conteúdo, comunidade e práticas para iluminar todas as fases —
+                  Solteiro, Namoro, Noivos, Casados e Pais.
+                </p>
+              </div>
+              <div className="rh-hero-cta-row">
+                <button
+                  type="button"
+                  className="rh-hero-cta"
+                  onClick={() => {
+                    if ("vibrate" in navigator) navigator.vibrate([50, 50, 100]);
+                    setIsInOrbChat(true);
+                  }}
+                >
+                  Falar com o conselheiro
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  className="rh-hero-cta-ghost"
+                  onClick={() => onNavigate?.("academia")}
+                >
+                  Ver minha trilha
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
+          </section>
 
-        {/* Dashboard Loading State */}
-        {dashboardLoading && authUser && (
-          <div className="px-4 mt-8 mb-6">
+          {/* ── STATS ───────────────────────────────────────── */}
+          {dashboardLoading && authUser && (
             <SkeletonLoader type="card" count={1} />
-          </div>
-        )}
+          )}
+          {dashboard && (
+            <section className="rh-stats">
+              <button
+                type="button"
+                className="rh-stat sage"
+                onClick={() => { if ("vibrate" in navigator) navigator.vibrate(10); setStatsModal("streak"); }}
+                aria-label={`Sequência: ${dashboard.gamification.streak} dias.`}
+              >
+                <div className="rh-stat-icon"><Flame className="w-4 h-4" /></div>
+                <div>
+                  <div className="rh-stat-value">{dashboard.gamification.streak}</div>
+                  <div className="rh-stat-label">Sequência · dias</div>
+                </div>
+                <div className="rh-stat-meta">
+                  <span>RECORDE · {dashboard.gamification.longestStreak}</span>
+                </div>
+              </button>
 
-        {/* Dashboard Stats Cards */}
-        {dashboard && (
-          <div className="px-4 mt-6 mb-6">
-            {/* Saudação foi promovida para o hero (Task #42); aqui ficam só os stats. */}
-            {/* Stats com gradientes de marca RAYO (Task #42).
-                Os 3 ângulos da identidade: gold (sequência/calor),
-                gold-mais-escuro (nível/conquista) e coral (energia semanal). */}
-            {/* Task #44 — cada stat agora abre um modal com mais
-                detalhe (calendário de hábitos, conquistas, histórico
-                de XP). Os cards viram <button> reais para garantir
-                semântica e acessibilidade via teclado. */}
-            <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
-                onClick={() => {
-                  if ("vibrate" in navigator) navigator.vibrate(10);
-                  setStatsModal("streak");
-                }}
-                aria-label={`Sequência: ${dashboard.gamification.streak} dias. Toque para ver o calendário.`}
-                className="text-left rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-primary)]"
+                className="rh-stat forest"
+                onClick={() => { if ("vibrate" in navigator) navigator.vibrate(10); setStatsModal("badges"); }}
+                aria-label={`Nível ${dashboard.gamification.level} — ${dashboard.gamification.levelTitle}.`}
               >
-                <Card
-                  className="p-3 text-center border-[var(--raio-border-default)]"
-                  style={{
-                    background:
-                      'linear-gradient(135deg, var(--raio-gold-50), var(--raio-gold-100))',
-                  }}
-                >
-                  <div className="flex flex-col items-center gap-1">
-                    <Flame className="w-5 h-5" style={{ color: 'var(--raio-gold-500)' }} />
-                    <span
-                      className="text-2xl font-bold"
-                      style={{ color: 'var(--raio-gold-700)' }}
-                    >
-                      {dashboard.gamification.streak}
-                    </span>
-                    <span className="text-xs text-muted-foreground">Sequência</span>
+                <div className="rh-stat-icon"><Trophy className="w-4 h-4" /></div>
+                <div>
+                  <div className="rh-stat-value">{dashboard.gamification.levelTitle}</div>
+                  <div className="rh-stat-label">
+                    Nível {dashboard.gamification.level}{primarySegment ? ` · ${primarySegment}` : ""}
                   </div>
-                </Card>
+                </div>
+                <div className="rh-stat-progress">
+                  <div className="rh-stat-progress-bar"
+                    style={{ width: `${Math.min(100, dashboard.gamification.levelProgress)}%` }} />
+                </div>
+                <div className="rh-stat-meta">
+                  <span style={{ color: "var(--rayo-ochre-300)" }}>
+                    {dashboard.gamification.xp} / {dashboard.gamification.xpForNextLevel} XP
+                  </span>
+                  <span>NÍVEL {dashboard.gamification.level + 1} →</span>
+                </div>
               </button>
+
               <button
                 type="button"
-                onClick={() => {
-                  if ("vibrate" in navigator) navigator.vibrate(10);
-                  setStatsModal("badges");
-                }}
-                aria-label={`Nível ${dashboard.gamification.level} — ${dashboard.gamification.levelTitle}. Toque para ver suas conquistas.`}
-                className="text-left rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-primary)]"
+                className="rh-stat terra"
+                onClick={() => { if ("vibrate" in navigator) navigator.vibrate(10); setStatsModal("xp"); }}
+                aria-label={`${dashboard.weeklyXP} XP nesta semana.`}
               >
-                <Card
-                  className="p-3 text-center border-[var(--raio-border-default)]"
-                  style={{
-                    background:
-                      'linear-gradient(135deg, var(--raio-gold-100), var(--raio-gold-200))',
-                  }}
-                >
-                  <div className="flex flex-col items-center gap-1">
-                    <Trophy className="w-5 h-5" style={{ color: 'var(--raio-gold-600)' }} />
-                    <span
-                      className="text-2xl font-bold"
-                      style={{ color: 'var(--raio-gold-800)' }}
-                    >
-                      {dashboard.gamification.level}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{dashboard.gamification.levelTitle}</span>
-                  </div>
-                </Card>
+                <div className="rh-stat-icon"><Zap className="w-4 h-4" /></div>
+                <div>
+                  <div className="rh-stat-value">{dashboard.weeklyXP}</div>
+                  <div className="rh-stat-label">XP esta semana</div>
+                </div>
+                <div className="rh-stat-meta"><span>+{dashboard.weeklyXP} GANHOS</span></div>
               </button>
+
               <button
                 type="button"
-                onClick={() => {
-                  if ("vibrate" in navigator) navigator.vibrate(10);
-                  setStatsModal("xp");
-                }}
-                aria-label={`${dashboard.weeklyXP} XP nesta semana. Toque para ver o histórico.`}
-                className="text-left rounded-xl transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--raio-accent-primary)]"
+                className="rh-stat"
+                onClick={() => { if ("vibrate" in navigator) navigator.vibrate(10); setStatsModal("badges"); }}
+                aria-label={`${dashboard.completedCoursesCount} conquistas.`}
               >
-                <Card
-                  className="p-3 text-center border-[var(--raio-border-default)]"
-                  style={{
-                    background:
-                      'linear-gradient(135deg, var(--raio-coral-50), var(--raio-coral-100))',
-                  }}
-                >
-                  <div className="flex flex-col items-center gap-1">
-                    <Zap className="w-5 h-5" style={{ color: 'var(--raio-coral-500)' }} />
-                    <span
-                      className="text-2xl font-bold"
-                      style={{ color: 'var(--raio-coral-700)' }}
-                    >
-                      {dashboard.weeklyXP}
-                    </span>
-                    <span className="text-xs text-muted-foreground">XP semanal</span>
-                  </div>
-                </Card>
+                <div className="rh-stat-icon"><Target className="w-4 h-4" /></div>
+                <div>
+                  <div className="rh-stat-value">{dashboard.completedCoursesCount}</div>
+                  <div className="rh-stat-label">Cursos concluídos</div>
+                </div>
+                <div className="rh-stat-meta"><span>VER CONQUISTAS →</span></div>
               </button>
-            </div>
-            <div className="mt-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                <span>Nível {dashboard.gamification.level} → {dashboard.gamification.level + 1}</span>
-                <span>{dashboard.gamification.xp} / {dashboard.gamification.xpForNextLevel} XP</span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${dashboard.gamification.levelProgress}%`,
-                    background:
-                      'linear-gradient(90deg, var(--raio-gold-500), var(--raio-gold-600))',
-                  }}
+            </section>
+          )}
+
+          {/* ── HOJE NO RAYO ────────────────────────────────── */}
+          {authUser && hojeVisible && (
+            <section className="rh-sec">
+              <SecHead
+                eyebrow={`Editorial · ${formatDateBR()}`}
+                title={<>Hoje <span className="rh-light">no</span> RAYO</>}
+                action={{ label: "Arquivo editorial", onClick: () => onNavigate?.("academia") }}
+              />
+              <div className="rh-hoje">
+                <HojeNoRaio
+                  refreshKey={todayRefreshKey}
+                  userId={authUser.id}
+                  onCompleted={() => { void loadDashboard(); }}
+                  onVisibilityChange={setHojeVisible}
                 />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* "Hoje no RAYO" — bloco fixo entre stats e rails (Task #43).
-            Usa um endpoint próprio (/api/home/today) e bumpa
-            todayRefreshKey após completar para forçar refetch do
-            dashboard (XP/streak atualizados). */}
-        {authUser && (
-          <HojeNoRaio
-            refreshKey={todayRefreshKey}
-            userId={authUser.id}
-            onCompleted={() => {
-              void loadDashboard();
-            }}
-          />
-        )}
-
-        {/* ── Rails dinâmicas (Task #43) ────────────────────────────
-            A ordem das rails é definida pelo backend
-            (dashboard.recommendedSectionOrder) e varia por segmento
-            primário do usuário. Cada rail é um sub-componente
-            nomeado por id; ids desconhecidos são ignorados
-            silenciosamente para tolerar deploys parciais. */}
-        {(() => {
-          // Task #44 — renderContinue/renderYouTubeContinue/
-          // renderRecentlyPlayed foram fundidos em um único rail
-          // alimentado por /api/home/continue + progresso local de YT.
-          // Mantemos os ids antigos (youtube_continue, recently_played)
-          // como aliases que retornam null para tolerar payloads
-          // antigos do recommendedSectionOrder.
-          const renderContinue = (): ReactNode => (
-            <UnifiedContinue
-              key="continue"
-              onOpenAcademia={() => onNavigate?.("academia")}
-            />
-          );
-
-          const renderRecommended = (): ReactNode =>
-            dashboard && dashboard.recommendedCourses.length > 0 ? (
-              <div key="recommended" className="px-4 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Recomendado para você</h2>
-                </div>
-                <div className="overflow-x-auto scrollbar-hide">
-                  <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
-                    {dashboard.recommendedCourses.map((course) => (
-                      <Card
-                        key={course.id}
-                        className="w-52 shrink-0 cursor-pointer hover:shadow-lg transition-shadow overflow-hidden group"
-                        onClick={() => {
-                          setCurrentCourseId(course.id);
-                          setIsInCourseDetail(true);
-                        }}
-                      >
-                        <div className="relative h-32 overflow-hidden">
-                          <ImageWithFallback
-                            src={course.thumbnail}
-                            alt={course.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          {course.isPremium && (
-                            <Badge className="absolute top-2 left-2 bg-yellow-500 text-black text-xs">Premium</Badge>
-                          )}
-                          <Badge className="absolute top-2 right-2 bg-black/70 text-white text-xs">{course.duration}</Badge>
-                        </div>
-                        <CardContent className="p-3">
-                          <h3 className="font-medium text-sm line-clamp-2 mb-1">{course.title}</h3>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                            <span>{course.rating.toFixed(1)}</span>
-                            <span className="mx-1">·</span>
-                            <span>{course.totalLessons} aulas</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : null;
-
-          const renderMissions = (): ReactNode =>
-            dashboard && dashboard.missions.length > 0 ? (
-              <div key="missions" className="px-4 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Missões do dia</h2>
-                </div>
-                <div className="space-y-2">
-                  {dashboard.missions.filter(m => m.type === 'daily').slice(0, 3).map((mission) => (
-                    <Card key={mission.id} className={`p-3 ${mission.completed ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200/50' : ''}`}>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">{mission.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm line-clamp-1">{mission.title}</span>
-                            {mission.completed && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
-                          </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all ${mission.completed ? 'bg-emerald-500' : 'bg-primary'}`}
-                                style={{ width: `${Math.min(100, (mission.currentProgress / mission.actionCount) * 100)}%` }}
-                              />
-                            </div>
-                            <span className="text-xs text-muted-foreground shrink-0">{mission.currentProgress}/{mission.actionCount}</span>
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="text-xs shrink-0">+{mission.rewardXP} XP</Badge>
+                <div className="rh-hoje-aside">
+                  <button
+                    type="button"
+                    className="rh-hoje-tile sage"
+                    onClick={() => setIsInOrbChat(true)}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div className="rh-hoje-tile-icon"><MessagesSquare className="w-4 h-4" /></div>
+                      <span className="rh-hoje-tile-eyebrow">Conselheiro</span>
+                    </div>
+                    <div>
+                      <div className="rh-hoje-tile-title">Converse com o conselheiro RAYO</div>
+                      <div className="rh-hoje-tile-foot">
+                        <span>Sempre disponível</span>
+                        <span className="rh-arrow">Iniciar →</span>
                       </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ) : null;
-
-          const renderDiscussoes = (): ReactNode =>
-            dashboard && dashboard.recentPosts.length > 0 ? (
-              <div key="discussoes" className="px-4 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Discussões ativas</h2>
-                </div>
-                <div className="space-y-2">
-                  {dashboard.recentPosts.slice(0, 3).map((post) => (
-                    <Card key={post.id} className="p-3 cursor-pointer hover:shadow-md transition-shadow">
-                      <div className="flex gap-3">
-                        <span className="text-xl shrink-0">{post.forumIcon}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm line-clamp-2 mb-1">{post.content}</p>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span>{post.authorName}</span>
-                            <span className="flex items-center gap-1"><Heart className="w-3 h-3" /> {post.likeCount}</span>
-                            <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> {post.commentCount}</span>
-                          </div>
-                        </div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className="rh-hoje-tile"
+                    onClick={() => setIsInCentralConversas(true)}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div className="rh-hoje-tile-icon"><Mail className="w-4 h-4" /></div>
+                      <span className="rh-hoje-tile-eyebrow">Central</span>
+                    </div>
+                    <div>
+                      <div className="rh-hoje-tile-title">Suas conversas anteriores estão aqui</div>
+                      <div className="rh-hoje-tile-foot">
+                        <span>Histórico</span>
+                        <span className="rh-arrow">Abrir →</span>
                       </div>
-                    </Card>
-                  ))}
+                    </div>
+                  </button>
                 </div>
               </div>
-            ) : null;
+            </section>
+          )}
 
-          // Task #44 — alias legado, fundido em "continue".
-          const renderYouTubeContinue = (): ReactNode => null;
-
-          const renderShorts = (): ReactNode =>
-            !youtubeLoading && youtubeData && youtubeData.shorts.length > 0 ? (
-              <div key="shorts" className="px-4 mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Shorts RAYO</h2>
-                </div>
-                <div className="overflow-x-auto scrollbar-hide">
-                  <div className="flex gap-3 pb-2" style={{ width: 'max-content' }}>
-                    {youtubeData.shorts.map((short) => (
-                      <YouTubeShortCard
-                        key={short.id}
-                        short={short}
-                        onClick={setSelectedVideo}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : null;
-
-          // Task #44 — alias legado, fundido em "continue".
-          const renderRecentlyPlayed = (): ReactNode => null;
-          // CMS-backed rails (trending / podcasts / made_for_you
-          // fallback) return null when empty so the home doesn't show
-          // empty placeholders (Task #43).
-
-          const renderMadeForYou = (): ReactNode => {
-            const hasPlaylists =
-              !youtubeLoading && youtubeData && youtubeData.playlists.length > 0;
-            const hasFallback =
-              !youtubeLoading && homeCategories.madeForYou.length > 0;
-            // Skeleton while YT loads; nothing once we know there's no
-            // data on either source.
-            if (!youtubeLoading && !hasPlaylists && !hasFallback) return null;
-            return (
-              <div key="made_for_you" className="px-4 mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Feito para você</h2>
-                </div>
-                {youtubeLoading ? (
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="space-y-3">
-                        <div className="aspect-square bg-muted rounded-lg animate-pulse" />
-                        <div className="h-4 bg-muted rounded w-3/4 animate-pulse" />
-                        <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
-                      </div>
-                    ))}
-                  </div>
-                ) : hasPlaylists ? (
-                  <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {youtubeData!.playlists.map((playlist) => (
-                      <YouTubePlaylistCard
-                        key={playlist.id}
-                        playlist={playlist}
-                        onClick={handlePlaylistClick}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <HomeFeedRail items={homeCategories.madeForYou} size="large" />
-                )}
-              </div>
-            );
-          };
-
-          const renderTrending = (): ReactNode =>
-            homeCategories.trending.length > 0 ? (
-              <div key="trending" className="px-4 mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Em alta no RAYO</h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+          {/* ── RECOMENDADO ─────────────────────────────────── */}
+          {recommendedCourses.length > 0 && (
+            <section className="rh-sec">
+              <SecHead
+                eyebrow={primarySegment ? `Para você · ${primarySegment}` : "Para você"}
+                title={<>Recomendado <span className="rh-light">para você</span></>}
+                action={{ label: "Ver todos", onClick: () => onNavigate?.("academia") }}
+              />
+              <div className="rh-course-grid">
+                {recommendedCourses.map((course, i) => (
+                  <button
+                    key={course.id}
+                    type="button"
+                    className="rh-course"
                     onClick={() => {
-                      setIsInPlaylistsExpanded(true);
+                      setCurrentCourseId(course.id);
+                      setIsInCourseDetail(true);
                     }}
                   >
-                    Ver tudo
-                  </Button>
-                </div>
-                <HomeFeedRail items={homeCategories.trending} size="medium" />
+                    <div className={`rh-course-img ${course.thumbnail ? "" : fallbackClass("fallback", i, courseFallbacks)}`}>
+                      {course.thumbnail && (
+                        <ImageWithFallback src={course.thumbnail} alt="" loading="lazy" />
+                      )}
+                      {course.isPremium && <span className="rh-course-tag premium">Premium</span>}
+                      {course.duration && <span className="rh-course-tag dur">{course.duration}</span>}
+                    </div>
+                    <div className="rh-course-body">
+                      <div className="rh-course-title">{course.title}</div>
+                      <div className="rh-course-meta">
+                        <span className="rh-star">★</span>
+                        {course.rating.toFixed(1)} · {course.totalLessons} AULAS
+                      </div>
+                    </div>
+                  </button>
+                ))}
               </div>
-            ) : null;
+            </section>
+          )}
 
-          const renderQuizzes = (): ReactNode => (
-            <div key="quizzes" className="px-4 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-display text-xl font-semibold">Descubra seu perfil</h2>
+          {/* ── DISCUSSÕES ATIVAS ───────────────────────────── */}
+          {discussions.length > 0 && (
+            <section className="rh-sec">
+              <SecHead
+                eyebrow="Comunidade · em tempo real"
+                title={<>Discussões <span className="rh-light">ativas</span></>}
+                action={{ label: "Ver feed completo", onClick: () => onNavigate?.("comunidade") }}
+              />
+              <div className="rh-disc-list">
+                {discussions.map((post, i) => {
+                  const color = avatarColors[i % avatarColors.length];
+                  return (
+                    <button
+                      key={post.id}
+                      type="button"
+                      className="rh-disc"
+                      onClick={() => onNavigate?.("comunidade")}
+                    >
+                      <div className={`rh-disc-avatar ${color}`}>
+                        {avatarInitials(post.authorName || "·")}
+                      </div>
+                      <div className="rh-disc-body">
+                        <div className="rh-disc-text">{post.content}</div>
+                        <div className="rh-disc-meta">
+                          <span>{(post.authorName || "ANÔNIMO").toUpperCase()}</span>
+                          <span className="rh-disc-meta-divider" />
+                          <span>{timeAgo(post.createdAt)}</span>
+                          {post.forumName && (
+                            <>
+                              <span className="rh-disc-meta-divider" />
+                              <span style={{ color: "var(--rayo-sage-700)" }}>
+                                #{post.forumName.toUpperCase()}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="rh-disc-stats">
+                        <div className={`rh-disc-stat${post.likeCount > 0 ? " liked" : ""}`}>
+                          <Heart className="w-3.5 h-3.5" fill={post.likeCount > 0 ? "currentColor" : "none"} />
+                          {post.likeCount}
+                        </div>
+                        <div className="rh-disc-stat">
+                          <MessageCircle className="w-3.5 h-3.5" />
+                          {post.commentCount}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-              <div className="overflow-x-auto scrollbar-hide">
-                <div className="flex gap-4 pb-2 transition-all duration-300 ease-out" style={{ width: 'max-content' }}>
-                  <div className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
-                    <Card
-                      className="w-48 cursor-pointer border-0 bg-gradient-to-br from-raio-coral-500 to-raio-coral-600 text-white overflow-hidden"
-                      onClick={() => { setCurrentQuiz('communication'); }}
-                    >
-                      <div className="relative p-4 h-28">
-                        <div className="absolute top-2 right-2">
-                          <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                            <Brain className="w-3 h-3 mr-1" />
-                            Quiz
-                          </Badge>
-                        </div>
-                        <div className="flex flex-col justify-end h-full">
-                          <h3 className="font-semibold text-sm mb-1">Comunicação no Relacionamento</h3>
-                          <div className="flex items-center text-xs opacity-90">
-                            <Clock className="w-3 h-3 mr-1" />
-                            5 perguntas
-                          </div>
-                        </div>
-                        <div className="absolute -bottom-2 -right-2 w-12 h-12 bg-white/10 rounded-full" />
+            </section>
+          )}
+
+          {/* ── FEITO PARA VOCÊ ─────────────────────────────── */}
+          {collections.length > 0 && (
+            <section className="rh-sec">
+              <SecHead
+                eyebrow="Coleções · curadoria"
+                title={<>Feito <span className="rh-light">para você</span></>}
+                action={{ label: "Ver coleções", onClick: () => setIsInPlaylistsExpanded(true) }}
+              />
+              <div className="rh-col-grid">
+                {collections.map((col, i) => (
+                  <button
+                    key={col.id}
+                    type="button"
+                    className="rh-col"
+                    onClick={col.onClick}
+                  >
+                    <div className={`rh-col-img ${col.image_url ? "" : fallbackClass("fallback", i, colFallbacks)}`}>
+                      {col.image_url && <img src={col.image_url} alt="" loading="lazy" />}
+                      {col.badge_text && <span className="rh-col-img-tag">{col.badge_text}</span>}
+                      {col.eyebrow && <span className="rh-col-img-eyebrow">{col.eyebrow}</span>}
+                    </div>
+                    <div className="rh-col-body">
+                      <div className="rh-col-title">{col.title}</div>
+                      {col.subtitle && <div className="rh-col-desc">{col.subtitle}</div>}
+                      <div className="rh-col-foot">
+                        <span className="rh-col-author">Curadoria · RAYO</span>
+                        <span className="rh-col-action">Iniciar →</span>
                       </div>
-                    </Card>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── EM ALTA ─────────────────────────────────────── */}
+          {trending.length > 0 && (
+            <section className="rh-sec">
+              <SecHead
+                eyebrow="Trending · esta semana"
+                title={<>Em alta <span className="rh-light">no</span> RAYO</>}
+                action={{ label: "Ver tudo", onClick: () => setIsInPlaylistsExpanded(true) }}
+              />
+              <div className="rh-alta-grid">
+                {trending.map((row, i) => (
+                  <button
+                    key={row.id}
+                    type="button"
+                    className="rh-alta"
+                    onClick={() => setIsInPlaylistsExpanded(true)}
+                  >
+                    <div className={`rh-alta-img ${row.image_url ? "" : fallbackClass("fallback", i, altaFallbacks)}`}>
+                      {row.image_url && <img src={row.image_url} alt="" loading="lazy" />}
+                    </div>
+                    <div className="rh-alta-rank">{String(i + 1).padStart(2, "0")}</div>
+                    <div className="rh-alta-body">
+                      <div className="rh-alta-title">{row.title}</div>
+                      {row.subtitle && <div className="rh-alta-desc">{row.subtitle}</div>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── PODCASTS ────────────────────────────────────── */}
+          {podcasts.length > 0 && (
+            <section className="rh-sec">
+              <SecHead
+                eyebrow="Áudio · sob demanda"
+                title={<>Podcasts <span className="rh-light">para você</span></>}
+                action={{ label: "Toda a biblioteca", onClick: () => setIsInMusicPage(true) }}
+              />
+              <div className="rh-pod-grid">
+                {podcasts.map((row, i) => (
+                  <button
+                    key={row.id}
+                    type="button"
+                    className="rh-pod"
+                    onClick={() => setIsInMusicPage(true)}
+                  >
+                    <div className={`rh-pod-img ${row.image_url ? "" : fallbackClass("fallback", i, podFallbacks)}`}>
+                      {row.image_url && <img src={row.image_url} alt="" loading="lazy" />}
+                      {row.badge_text && <span className="rh-pod-tag">{row.badge_text}</span>}
+                      <span className="rh-pod-play"><Play className="w-3.5 h-3.5" fill="currentColor" /></span>
+                    </div>
+                    <div className="rh-pod-title">{row.title}</div>
+                    {(row.subtitle || row.meta_text) && (
+                      <div className="rh-pod-desc">{row.subtitle || row.meta_text}</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── SHORTS ──────────────────────────────────────── */}
+          {!youtubeLoading && shorts.length > 0 && (
+            <section className="rh-sec">
+              <SecHead
+                eyebrow="Pílulas · 60 segundos"
+                title={<>Shorts <span className="rh-light">RAYO</span></>}
+                action={{ label: "Ver tudo", onClick: () => setIsInPlaylistsExpanded(true) }}
+              />
+              <div className="rh-shorts-grid">
+                {shorts.map((short) => (
+                  <YouTubeShortCard
+                    key={short.id}
+                    short={short}
+                    onClick={setSelectedVideo}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* ── QUIZZES ─────────────────────────────────────── */}
+          <section className="rh-sec">
+            <SecHead
+              eyebrow="Quizzes · perfil & missões"
+              title={<>Descubra <span className="rh-light">seu</span> perfil</>}
+            />
+            <div className="rh-quiz-grid">
+              <button
+                type="button"
+                className="rh-quiz terra"
+                onClick={() => setCurrentQuiz("communication")}
+              >
+                <span className="rh-quiz-tag">
+                  <Clock className="w-3 h-3" /> Quiz · 2 min
+                </span>
+                <div className="rh-quiz-body">
+                  <div className="rh-quiz-title">
+                    Comunicação <span className="rh-light">no</span><br />relacionamento
                   </div>
-                  <div className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
-                    <Card
-                      className="w-48 cursor-pointer border-0 bg-gradient-to-br from-raio-gold-500 to-raio-gold-600 text-white overflow-hidden"
-                      onClick={() => { setCurrentQuiz('conflict'); }}
-                    >
-                      <div className="relative p-4 h-28">
-                        <div className="absolute top-2 right-2">
-                          <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                            <Target className="w-3 h-3 mr-1" />
-                            Quiz
-                          </Badge>
-                        </div>
-                        <div className="flex flex-col justify-end h-full">
-                          <h3 className="font-semibold text-sm mb-1">Gestão de Conflitos</h3>
-                          <div className="flex items-center text-xs opacity-90">
-                            <Users className="w-3 h-3 mr-1" />
-                            5 perguntas
-                          </div>
-                        </div>
-                        <div className="absolute -top-2 -left-2 w-10 h-10 bg-white/10 rounded-full" />
-                      </div>
-                    </Card>
-                  </div>
+                  <div className="rh-quiz-meta">5 perguntas · +20 XP</div>
                 </div>
-              </div>
+              </button>
+              <button
+                type="button"
+                className="rh-quiz forest"
+                onClick={() => setCurrentQuiz("conflict")}
+              >
+                <span className="rh-quiz-tag">
+                  <Target className="w-3 h-3" /> Quiz · 2 min
+                </span>
+                <div className="rh-quiz-body">
+                  <div className="rh-quiz-title">
+                    Gestão <span className="rh-light">de</span><br />conflitos
+                  </div>
+                  <div className="rh-quiz-meta">5 perguntas · +20 XP</div>
+                </div>
+              </button>
             </div>
-          );
+          </section>
 
-          const renderPodcasts = (): ReactNode =>
-            homeCategories.podcasts.length > 0 ? (
-              <div key="podcasts" className="px-4 mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-xl font-semibold">Podcasts para você</h2>
+          {/* ── MISSÕES ─────────────────────────────────────── */}
+          {dailyMissions.length > 0 && (
+            <section>
+              <div className="rh-missions">
+                <div className="rh-missions-head">
+                  <div>
+                    <div className="rh-sec-eyebrow" style={{ marginBottom: 6 }}>
+                      Missões do dia · Renovam à 00h
+                    </div>
+                    <h2 className="rh-missions-head-title">
+                      Mantenha <span className="rh-light">a chama</span> acesa
+                    </h2>
+                  </div>
+                  <div className="rh-missions-head-progress">
+                    {completedDaily} / {dailyMissions.length} CONCLUÍDAS · +{totalDailyXP} XP HOJE
+                  </div>
                 </div>
-                <HomeFeedRail items={homeCategories.podcasts} size="medium" />
+                {dailyMissions.slice(0, 5).map((mission, i) => {
+                  const variant = (["", "terra", "ochre"] as const)[i % 3];
+                  const pct = mission.actionCount > 0
+                    ? Math.min(100, (mission.currentProgress / mission.actionCount) * 100)
+                    : 0;
+                  return (
+                    <div key={mission.id} className="rh-mission">
+                      <div className={`rh-mission-icon${variant ? ` ${variant}` : ""}`}>
+                        <BookOpen className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="rh-mission-title">{mission.title}</div>
+                        {mission.description && (
+                          <div className="rh-mission-desc">{mission.description}</div>
+                        )}
+                      </div>
+                      <div className="rh-mission-progress">
+                        <div className="rh-mission-progress-bar">
+                          <div
+                            className={mission.completed ? "done" : ""}
+                            style={{ width: `${mission.completed ? 100 : pct}%` }}
+                          />
+                        </div>
+                        <div className={`rh-mission-progress-text${mission.completed ? " done" : ""}`}>
+                          {mission.completed
+                            ? "CONCLUÍDA ✓"
+                            : `${mission.currentProgress} / ${mission.actionCount}`}
+                        </div>
+                      </div>
+                      <div className={`rh-mission-xp${mission.completed ? " done" : ""}`}>
+                        +{mission.rewardXP} XP
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ) : null;
+            </section>
+          )}
 
-          const RAIL_RENDERERS: Record<string, () => ReactNode> = {
-            continue: renderContinue,
-            recommended: renderRecommended,
-            missions: renderMissions,
-            discussoes: renderDiscussoes,
-            youtube_continue: renderYouTubeContinue,
-            shorts: renderShorts,
-            recently_played: renderRecentlyPlayed,
-            made_for_you: renderMadeForYou,
-            trending: renderTrending,
-            quizzes: renderQuizzes,
-            podcasts: renderPodcasts,
-          };
-
-          // Fallback order mirrors the legacy hardcoded layout when the
-          // backend hasn't shipped recommendedSectionOrder yet (or for
-          // anonymous visitors with no dashboard payload).
-          const DEFAULT_ORDER = [
-            "continue", "recommended", "missions", "discussoes",
-            "youtube_continue", "shorts", "recently_played",
-            "made_for_you", "trending", "quizzes", "podcasts",
-          ];
-
-          const order = dashboard?.recommendedSectionOrder?.length
-            ? dashboard.recommendedSectionOrder
-            : DEFAULT_ORDER;
-
-          // Dedupe defensively — backend should never send dupes, but a
-          // bad config would otherwise yield duplicate React keys.
-          const seen = new Set<string>();
-          return order
-            .filter((id) => {
-              if (seen.has(id)) return false;
-              seen.add(id);
-              return true;
-            })
-            .map((id) => RAIL_RENDERERS[id]?.() ?? null);
-        })()}
-
-        {/* Espaço para a navbar mobile não cobrir o último rail (Task #42) */}
-        <div className="h-20" aria-hidden="true" />
+          {/* Espaço pra navbar mobile */}
+          <div className="h-16" aria-hidden />
+        </div>
       </div>
 
-      {/* Create Playlist Modal */}
-      <CreatePlaylistModal 
-        open={showCreatePlaylist} 
-        onOpenChange={setShowCreatePlaylist} 
-      />
-
-      {/* Trilha da Transformação Chat - Full Screen */}
+      {/* ── Modais & full-screen overlays ───────────────────── */}
       {isInOrbChat && (
         <div className="fixed inset-0 z-50">
-          <TrilhaTransformacaoChat 
+          <TrilhaTransformacaoChat
             onClose={() => setIsInOrbChat(false)}
             onOpenCentralConversas={() => {
               setIsInOrbChat(false);
@@ -1039,24 +799,18 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
         </div>
       )}
 
-      {/* Quiz Page - Full Screen Modal */}
       {currentQuiz && (
         <div className="fixed inset-0 z-[100] bg-background overflow-y-auto">
-          <SimpleQuizTest
-            quizType={currentQuiz}
-            onBack={() => setCurrentQuiz(null)}
-          />
+          <SimpleQuizTest quizType={currentQuiz} onBack={() => setCurrentQuiz(null)} />
         </div>
       )}
 
-      {/* Music Page - Full Screen */}
       {isInMusicPage && (
         <div className="fixed inset-0 z-50 bg-background">
           <MusicPage onBack={() => setIsInMusicPage(false)} />
         </div>
       )}
 
-      {/* Central de Conversas - Full Screen */}
       {isInCentralConversas && (
         <div className="fixed inset-0 z-50">
           <CentralConversasPage
@@ -1065,7 +819,7 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
               setIsInCentralConversas(false);
               setIsInOrbChat(true);
             }}
-            onContinueConversation={(sessionId) => {
+            onContinueConversation={() => {
               setIsInCentralConversas(false);
               setIsInOrbChat(true);
             }}
@@ -1073,13 +827,11 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
         </div>
       )}
 
-      {/* Playlists Expandidas - Full Screen */}
       <PlaylistsExpandedPage
         isOpen={isInPlaylistsExpanded}
         onClose={() => setIsInPlaylistsExpanded(false)}
       />
 
-      {/* YouTube Player - Full Screen */}
       {selectedVideo && (
         <YouTubePlayerWithPlaylist
           video={selectedVideo}
@@ -1090,14 +842,11 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
             setPlayerPlaylist(null);
             setPlaylistVideos([]);
           }}
-          onVideoChange={(newVideo) => {
-            setSelectedVideo(newVideo);
-          }}
-          autoplay={true}
+          onVideoChange={(newVideo) => setSelectedVideo(newVideo)}
+          autoplay
         />
       )}
 
-      {/* YouTube Playlist Modal */}
       <YouTubePlaylistModal
         playlist={selectedPlaylist}
         videos={playlistVideos}
@@ -1107,8 +856,6 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
           setPlaylistVideos([]);
         }}
         onVideoClick={(video) => {
-          // Quando clicar em um vídeo do modal da playlist, 
-          // abre o player com a playlist completa
           setSelectedVideo(video);
           setPlayerPlaylist(selectedPlaylist);
           setSelectedPlaylist(null);
@@ -1116,22 +863,14 @@ export function HomePage({ userSegment, userName, userLevel, onNavigate }: HomeP
         loading={loadingPlaylist}
       />
 
-      {/* YouTube Mock Banner - Informativo */}
       <YouTubeMockBanner />
 
-      {/* Task #44 — Modais ativados pelos cards de stats. */}
-      <StreakCalendarModal
-        open={statsModal === "streak"}
-        onOpenChange={(o) => setStatsModal(o ? "streak" : null)}
-      />
-      <BadgesModal
-        open={statsModal === "badges"}
-        onOpenChange={(o) => setStatsModal(o ? "badges" : null)}
-      />
-      <XPHistoryModal
-        open={statsModal === "xp"}
-        onOpenChange={(o) => setStatsModal(o ? "xp" : null)}
-      />
+      <StreakCalendarModal open={statsModal === "streak"} onOpenChange={(o) => setStatsModal(o ? "streak" : null)} />
+      <BadgesModal open={statsModal === "badges"} onOpenChange={(o) => setStatsModal(o ? "badges" : null)} />
+      <XPHistoryModal open={statsModal === "xp"} onOpenChange={(o) => setStatsModal(o ? "xp" : null)} />
+
+      {/* isLoading state suppressed in JSX (PullToRefresh handles its own indicator) */}
+      {isLoading && null}
     </PullToRefresh>
   );
 }
