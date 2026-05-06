@@ -290,7 +290,7 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
                     {playlist.isPremium && <span className="rh-pl-pro">PRO</span>}
 
                     <span className="rh-pl-tag">
-                      {playlist.episodes} ep
+                      {playlist.episodes} episódios
                     </span>
 
                     <span
