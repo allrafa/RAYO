@@ -63,7 +63,7 @@ RAIO is a digital platform designed to strengthen families through transformativ
 - **Object-Level Authorization**: Producers can only modify their own content; `moderator+` roles override.
 - **Content Card Mapping**: `badge_text`, `meta_text`, `progress`, and `gradient` fields have contextual meanings.
 - **No Fake Discounts**: Course pricing displays `course.price` directly; promotions must come from backend data.
-- **Rate Limiter**: Custom rate limiter with per-instance buckets, `keyByCookie` option, and `trust proxy` configuration.
+- **Rate Limiter (Task #51)**: `rateLimiter(max, windowMs, opts)` em `server/middleware/security.ts` tem bucket próprio por instância, `opts.keyByUser` (chaveia por `req.user.id`, cai pra IP quando anônimo) e `opts.skip(req)`. `optionalAuth` roda antes de cada limiter autenticado em `server/index.ts` para hidratar `req.user`; `requireAuth` reaproveita o user já validado. `app.set("trust proxy", 1)`. `/api/auth` POSTs sensíveis: 20/15min por IP. `/api/auth` resto: 60/15min keyByUser, com `GET /me` skipado. LGPD vive em `/api/lgpd` (não mais montado em `/api/users`). Demais rotas autenticadas: 120–600/15min keyByUser.
 - **Idempotent Daily Completions**: `POST /api/home/today/complete` uses `ON CONFLICT DO NOTHING` to prevent duplicate XP/streak awards.
 
 ## Pointers

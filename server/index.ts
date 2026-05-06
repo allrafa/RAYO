@@ -84,38 +84,42 @@ app.use(
   "/api/auth",
   // Strict per-IP limiter that ONLY applies to sensitive write endpoints
   // (login/register/password reset/code verification). This is the
-  // brute-force guard.
+  // brute-force guard. Intentionally keyed by IP — authenticated user
+  // keying does not apply here because most of these endpoints are hit
+  // before the user has a session.
   rateLimiter(20, 15 * 60 * 1000, {
     skip: (req) => !isSensitiveAuthPost(req),
   }),
-  // General limiter for the rest of /api/auth (logout, etc). Keyed by
-  // session cookie so each user has their own budget. Skips both the
-  // sensitive POSTs (already covered above) and GET /me, which is
+  // Hydrate req.user (when a session cookie exists) so the next limiter
+  // can bucket by user id instead of IP.
+  optionalAuth,
+  // General limiter for the rest of /api/auth (logout, etc). Skips both
+  // the sensitive POSTs (already covered above) and GET /me, which is
   // called on every app boot/refresh and is not an abuse vector.
   rateLimiter(60, 15 * 60 * 1000, {
-    keyByCookie: true,
+    keyByUser: true,
     skip: (req) => isSensitiveAuthPost(req) || isAuthMe(req),
   }),
   authRoutes,
 );
-app.use("/api/users", rateLimiter(120, 15 * 60 * 1000, { keyByCookie: true }), userRoutes);
-app.use("/api/gamification", rateLimiter(120, 15 * 60 * 1000, { keyByCookie: true }), gamificationRoutes);
-app.use("/api/courses", rateLimiter(120, 15 * 60 * 1000, { keyByCookie: true }), academiaRoutes);
-app.use("/api/community", rateLimiter(120, 15 * 60 * 1000, { keyByCookie: true }), optionalAuth, communityRoutes);
-app.use("/api/dashboard", rateLimiter(120, 15 * 60 * 1000, { keyByCookie: true }), dashboardRoutes);
-app.use("/api/home", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), homeRoutes);
-app.use("/api/search", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), searchRoutes);
-app.use("/api/lgpd", rateLimiter(20, 15 * 60 * 1000, { keyByCookie: true }), lgpdRoutes);
+app.use("/api/users", optionalAuth, rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }), userRoutes);
+app.use("/api/gamification", optionalAuth, rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }), gamificationRoutes);
+app.use("/api/courses", optionalAuth, rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }), academiaRoutes);
+app.use("/api/community", optionalAuth, rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }), communityRoutes);
+app.use("/api/dashboard", optionalAuth, rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }), dashboardRoutes);
+app.use("/api/home", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), homeRoutes);
+app.use("/api/search", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), searchRoutes);
+app.use("/api/lgpd", optionalAuth, rateLimiter(20, 15 * 60 * 1000, { keyByUser: true }), lgpdRoutes);
 // Higher cap because the DM UI polls (messages every 10s, conversations every 30s,
 // unread-count every 20s); each authenticated user must comfortably fit a 15-min
 // active session without hitting 429.
-app.use("/api/messages", rateLimiter(600, 15 * 60 * 1000, { keyByCookie: true }), messagesRoutes);
-app.use("/api/admin", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), adminRoutes);
-app.use("/api/admin/cms", rateLimiter(300, 15 * 60 * 1000, { keyByCookie: true }), adminCmsRouter);
-app.use("/api/content", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), publicCmsRouter);
-app.use("/api/admin/home-feed", rateLimiter(300, 15 * 60 * 1000, { keyByCookie: true }), adminHomeFeedRouter);
-app.use("/api/home-feed", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), publicHomeFeedRouter);
-app.use("/api/bundles", rateLimiter(240, 15 * 60 * 1000, { keyByCookie: true }), bundlesRoutes);
+app.use("/api/messages", optionalAuth, rateLimiter(600, 15 * 60 * 1000, { keyByUser: true }), messagesRoutes);
+app.use("/api/admin", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), adminRoutes);
+app.use("/api/admin/cms", optionalAuth, rateLimiter(300, 15 * 60 * 1000, { keyByUser: true }), adminCmsRouter);
+app.use("/api/content", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), publicCmsRouter);
+app.use("/api/admin/home-feed", optionalAuth, rateLimiter(300, 15 * 60 * 1000, { keyByUser: true }), adminHomeFeedRouter);
+app.use("/api/home-feed", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), publicHomeFeedRouter);
+app.use("/api/bundles", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), bundlesRoutes);
 
 // Task #48 — `/uploads/*` is now backed by Replit Object Storage. The
 // URL contract is unchanged so `users.avatar_url` /

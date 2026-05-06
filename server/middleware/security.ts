@@ -2,19 +2,29 @@ import helmet from "helmet";
 import cors from "cors";
 import type { Request, Response, NextFunction } from "express";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 export const securityMiddleware = helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
+  frameguard: isDev ? false : { action: "sameorigin" },
 });
+
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : [];
 
 function isReplitOrigin(origin: string): boolean {
   try {
-    const url = new URL(origin);
+    const hostname = new URL(origin).hostname;
+    // `.replit.app` covers published deployments (same-origin in prod),
+    // `.replit.dev` / `.repl.co` cover dev/preview iframes,
+    // `.replit.com` covers workspace tooling.
     return (
-      url.hostname.endsWith(".replit.dev") ||
-      url.hostname.endsWith(".repl.co") ||
-      url.hostname.endsWith(".replit.app") ||
-      url.hostname.endsWith(".replit.com")
+      hostname.endsWith(".replit.app") ||
+      hostname.endsWith(".replit.dev") ||
+      hostname.endsWith(".repl.co") ||
+      hostname.endsWith(".replit.com")
     );
   } catch {
     return false;
@@ -24,6 +34,11 @@ function isReplitOrigin(origin: string): boolean {
 export const corsMiddleware = cors({
   origin: (origin, callback) => {
     if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
       return;
     }
@@ -41,11 +56,13 @@ export const corsMiddleware = cors({
 });
 
 export type RateLimiterOptions = {
-  // When true and a session_token cookie is present, the bucket is keyed by
-  // the session token instead of the client IP. This prevents users behind a
-  // shared proxy / NAT (e.g. the Replit preview iframe) from exhausting each
-  // other's quota, and avoids one user's tabs piling onto a single IP bucket.
-  keyByCookie?: boolean;
+  // When true and the request has been authenticated (req.user populated by
+  // optionalAuth/requireAuth running earlier), the bucket is keyed by the
+  // user id. This prevents users behind a shared proxy / NAT (e.g. the
+  // Replit preview iframe) from exhausting each other's quota, and stops a
+  // user with multiple sessions from multiplying their quota by N tokens.
+  // Falls back to req.ip when there is no authenticated user.
+  keyByUser?: boolean;
   // Predicate to exclude specific requests from counting. Returning true
   // bypasses the limiter for that request entirely.
   skip?: (req: Request) => boolean;
@@ -60,7 +77,7 @@ export function rateLimiter(
   // every limiter instance would mean one route's traffic eating another
   // route's quota — defeating the per-prefix limits configured in index.ts.
   const requestCounts = new Map<string, { count: number; resetAt: number }>();
-  const { keyByCookie = false, skip } = options;
+  const { keyByUser = false, skip } = options;
 
   // Periodic GC for this limiter's bucket only.
   setInterval(() => {
@@ -74,9 +91,9 @@ export function rateLimiter(
     if (skip && skip(req)) return next();
 
     let key: string;
-    const sessionToken = keyByCookie ? req.cookies?.session_token : undefined;
-    if (sessionToken && typeof sessionToken === "string") {
-      key = `sess:${sessionToken}`;
+    const userId = keyByUser ? req.user?.id : undefined;
+    if (typeof userId === "number") {
+      key = `user:${userId}`;
     } else {
       key = `ip:${req.ip || "unknown"}`;
     }

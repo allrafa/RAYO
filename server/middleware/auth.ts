@@ -69,6 +69,14 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // Reuse the user populated by an earlier optionalAuth (e.g. mounted before
+  // the rate limiter so it can key buckets by user id). Avoids a redundant
+  // session validation per request.
+  if (req.user) {
+    next();
+    return;
+  }
+
   const token = req.cookies?.session_token;
 
   if (!token) {
