@@ -119,6 +119,9 @@
 .rh-stat-progress-bar { height: 100%; background: var(--rayo-terra-500); transition: width 0.5s ease; }
 .rh-stat.forest .rh-stat-progress-bar { background: var(--rayo-ochre-500); }
 .rh-stat-progress-bar.sage { background: var(--rayo-sage-500); }
+/* Sage card (conquistas) usa barra sage-500; sage card streak usa
+   terra-500 (default). Diferenciamos pelo aria-label do botão pai. */
+.rh-stat.sage[aria-label*="conquistas"] .rh-stat-progress-bar { background: var(--rayo-sage-500); }
 .rh-stat-meta {
   display: flex; justify-content: space-between; align-items: center;
   font-size: 11px; font-family: ui-monospace, monospace;

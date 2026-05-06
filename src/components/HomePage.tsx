@@ -11,6 +11,7 @@ import { PullToRefresh } from "./PullToRefresh";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { enhancedToast } from "./EnhancedToast";
 import { useApp } from "./AppContext";
+import { CreatePlaylistModal } from "./CreatePlaylistModal";
 import { TrilhaTransformacaoChat } from "./TrilhaTransformacao/TrilhaTransformacaoChat";
 import { CentralConversasPage } from "./TrilhaTransformacao/CentralConversasPage";
 import { SimpleQuizTest } from "./SimpleQuizTest";
@@ -146,6 +147,7 @@ function SecHead({
 
 export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [showCreatePlaylist, setShowCreatePlaylist] = useState(false);
   const [currentQuiz, setCurrentQuiz] = useState<"communication" | "conflict" | null>(null);
   const [isInMusicPage, setIsInMusicPage] = useState(false);
   const [isInPlaylistsExpanded, setIsInPlaylistsExpanded] = useState(false);
@@ -358,7 +360,12 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                   <div className="rh-stat-value">{dashboard.gamification.streak}</div>
                   <div className="rh-stat-label">Sequência · dias</div>
                 </div>
+                <div className="rh-stat-progress">
+                  <div className="rh-stat-progress-bar"
+                    style={{ width: `${Math.min(100, (dashboard.gamification.streak / 30) * 100)}%` }} />
+                </div>
                 <div className="rh-stat-meta">
+                  <span>{dashboard.gamification.streak} dias · meta 30</span>
                   <span>RECORDE · {dashboard.gamification.longestStreak}</span>
                 </div>
               </button>
@@ -396,17 +403,33 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
               >
                 <div className="rh-stat-icon"><Target className="w-4 h-4" /></div>
                 <div>
-                  <div className="rh-stat-value">{dashboard.completedCoursesCount}</div>
+                  <div className="rh-stat-value">
+                    {dashboard.completedCoursesCount}
+                    <span style={{ opacity: 0.55, fontWeight: 400, fontSize: "0.6em" }}>
+                      {" "}/ {Math.max(dashboard.completedCoursesCount + 3, 12)}
+                    </span>
+                  </div>
                   <div className="rh-stat-label">Conquistas</div>
                 </div>
-                <div className="rh-stat-meta"><span>VER CONQUISTAS →</span></div>
+                <div className="rh-stat-progress">
+                  <div className="rh-stat-progress-bar"
+                    style={{ width: `${Math.min(100, (dashboard.completedCoursesCount / Math.max(dashboard.completedCoursesCount + 3, 12)) * 100)}%` }} />
+                </div>
+                <div className="rh-stat-meta"><span>PRÓX · VER CONQUISTAS →</span></div>
               </button>
             </section>
           )}
 
           {/* ── HOJE NO RAYO ────────────────────────────────── */}
-          {authUser && hojeVisible && (
-            <section className="rh-sec">
+          {/* Mantém HojeNoRaio SEMPRE montado pra preservar lifecycle
+              (refreshKey/skip/day rollover). A section toda some via
+              `display:none` quando o filho avisa que não há item. */}
+          {authUser && (
+            <section
+              className="rh-sec"
+              style={hojeVisible ? undefined : { display: "none" }}
+              aria-hidden={!hojeVisible}
+            >
               <SecHead
                 eyebrow={`Editorial · ${formatDateBR()}`}
                 title={<>Hoje <span className="rh-light">no</span> RAYO</>}
@@ -771,6 +794,10 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
       </div>
 
       {/* ── Modais & full-screen overlays ───────────────────── */}
+      {/* CreatePlaylistModal preservado — usado por PlaylistsExpanded e
+          YouTubePlayerWithPlaylist via context shared. */}
+      <CreatePlaylistModal open={showCreatePlaylist} onOpenChange={setShowCreatePlaylist} />
+
       {isInOrbChat && (
         <div className="fixed inset-0 z-50">
           <TrilhaTransformacaoChat
