@@ -286,6 +286,12 @@ export async function listPublicContent(opts: {
 
   const whereClause = `WHERE ${where.join(" AND ")}`;
 
+  const { rows: countRows } = await query(
+    `SELECT COUNT(*)::int AS total FROM content_items ${whereClause}`,
+    params
+  );
+  const total = countRows[0]?.total ?? 0;
+
   const { rows } = await query(
     `SELECT id, kind, title, slug, short_description, cover_url, segments, interests,
             tags, is_premium, price, duration_seconds, hook, author, pages, view_count,
@@ -297,7 +303,10 @@ export async function listPublicContent(opts: {
     [...params, limit, offset]
   );
 
-  return { items: rows, pagination: { page, limit } };
+  return {
+    items: rows,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  };
 }
 
 export async function getAdminContentDetail(id: number) {

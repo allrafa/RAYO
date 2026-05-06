@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "QBW4_ivemC7O8K0f7J4rv"
+uri = "file://src/assets/marketplace-hero-family.png"
+type = "image"
+title = "marketplace hero family bench"

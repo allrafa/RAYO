@@ -25,7 +25,7 @@ RAIO is a digital platform designed to strengthen families through transformativ
     - `index.ts`: Entry point (Express app).
     - `db/`: Database connection + schema.
     - `middleware/`: Security, auth, error handling.
-    - `features/`: Feature folders (routes + service + validation).
+    - `features/`: Feature folders (routes + service + validation). Includes `bundles/` (curated marketplace trilhas, `GET /api/bundles?segment=...`).
 - `src/`: Frontend (React)
     - `App.tsx`: Root component.
     - `components/`: UI components.
@@ -69,6 +69,7 @@ RAIO is a digital platform designed to strengthen families through transformativ
 - **Object-Level Authorization**: Producers can only modify content they created, unless overridden by `moderator+` roles.
 - **Content Card Mapping**: `badge_text`, `meta_text`, `progress`, and `gradient` fields in Home Feed cards have specific contextual meanings depending on the section.
 - **Static Assets**: Uploaded media is served statically via `/uploads/*` and relies on `multer` disk storage; future plans include object storage.
+- **No fake discounts**: Course pricing displays `course.price` directly. Never reintroduce a hardcoded `* 0.5` "50% OFF" — there is no `original_price` field. Promotions must come from real backend data.
 
 ## Pointers
 - **Development Protocol**: `architecture.md`

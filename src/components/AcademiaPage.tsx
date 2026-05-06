@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { Search, Star, Users, ArrowRight, Play, ChevronLeft, ChevronRight, Trophy, Clock, BookOpen, Lock, CheckCircle, ShoppingCart, ChevronUp, Sparkles, Book } from "lucide-react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { Search, Star, Users, ArrowRight, Play, ChevronLeft, ChevronRight, Trophy, Clock, BookOpen, Lock, CheckCircle, ShoppingCart, ChevronUp, Sparkles, Book, Headphones, Video, Film, Layers, GraduationCap, Package, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -13,7 +13,7 @@ import { toast } from "sonner@2.0.3";
 import { smartSearch, getSearchResultMessage } from "./SmartSearchEngine";
 import { useTheme } from "./ThemeProvider";
 import { BookCard } from "./BookCard";
-import heroImage from "figma:asset/ea9ad589377749103929b7dc6624939347a69a09.png";
+import heroImage from "../assets/marketplace-hero-family.png";
 
 export function AcademiaPage() {
   const { courses, books, setCurrentCourseId, setIsInCourseDetail, setCurrentBookId, setIsInBookDetail, startCourse, enrollInCourse, enrollInBook, toggleBookFavorite, userData } = useApp();
@@ -148,7 +148,7 @@ export function AcademiaPage() {
         <MarketplaceView
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          totalCourses={totalCourses}
+          courses={courses}
           mostPopularCourses={mostPopularCourses}
           bestRatedCourses={bestRatedCourses}
           filteredCourses={filteredCourses}
@@ -158,6 +158,7 @@ export function AcademiaPage() {
           showAllPopular={showAllPopular}
           setShowAllPopular={setShowAllPopular}
           totalPopularCourses={totalPopularCourses}
+          userSegments={userData.segments || []}
         />
       )}
     </div>
@@ -753,11 +754,11 @@ function LessonCard({ lesson, lessonNumber, onClick, isLocked }: LessonCardProps
   );
 }
 
-// MARKETPLACE VIEW - Hotmart Style
+// MARKETPLACE VIEW — Editorial RAIO style
 interface MarketplaceViewProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  totalCourses: number;
+  courses: any[];
   mostPopularCourses: any[];
   bestRatedCourses: any[];
   filteredCourses: any[];
@@ -767,12 +768,47 @@ interface MarketplaceViewProps {
   showAllPopular: boolean;
   setShowAllPopular: (value: boolean) => void;
   totalPopularCourses: number;
+  userSegments: string[];
+}
+
+const SEGMENTS: Array<{ value: string; label: string }> = [
+  { value: "solteiro", label: "Solteiro" },
+  { value: "namoro",   label: "Namoro" },
+  { value: "noivos",   label: "Noivos" },
+  { value: "casados",  label: "Casados" },
+  { value: "pais",     label: "Pais" },
+];
+
+const FORMAT_KINDS: Array<{
+  kind: string;
+  label: string;
+  description: string;
+  Icon: React.ComponentType<{ className?: string }>;
+}> = [
+  { kind: "curso",  label: "Cursos",  description: "Estude no seu ritmo",      Icon: GraduationCap },
+  { kind: "livro",  label: "Livros",  description: "Leituras essenciais",      Icon: Book },
+  { kind: "audio",  label: "Áudios",  description: "Para ouvir no caminho",    Icon: Headphones },
+  { kind: "video",  label: "Vídeos",  description: "Conteúdo em movimento",    Icon: Video },
+  { kind: "serie",  label: "Séries",  description: "Jornadas em episódios",    Icon: Layers },
+  { kind: "reels",  label: "Reels",   description: "Inspiração rápida",        Icon: Film },
+];
+
+interface BundleAPI {
+  id: number;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  description: string | null;
+  segment: string;
+  cover_url: string | null;
+  accent_color: string | null;
+  item_count: number;
 }
 
 function MarketplaceView({
   searchQuery,
   setSearchQuery,
-  totalCourses,
+  courses,
   mostPopularCourses,
   bestRatedCourses,
   filteredCourses,
@@ -782,106 +818,252 @@ function MarketplaceView({
   showAllPopular,
   setShowAllPopular,
   totalPopularCourses,
+  userSegments,
 }: MarketplaceViewProps) {
   const popularSectionRef = useRef<HTMLDivElement>(null);
+  const allCoursesRef = useRef<HTMLDivElement>(null);
 
-  // Scroll suave quando expandir
+  // Default selected segment = first one in user's onboarding profile (or "all")
+  const initialSegment = userSegments.length > 0 ? userSegments[0] : "all";
+  const [selectedSegment, setSelectedSegment] = useState<string>(initialSegment);
+
+  // Format counts (loaded from CMS public endpoint, one request per kind).
+  const [formatCounts, setFormatCounts] = useState<Record<string, number>>({});
+  const [formatCountsLoading, setFormatCountsLoading] = useState<boolean>(true);
+
+  // Curated bundles (loaded from /api/bundles, optionally filtered by segment)
+  const [bundles, setBundles] = useState<BundleAPI[]>([]);
+  const [bundlesLoading, setBundlesLoading] = useState<boolean>(true);
+  const [bundlesError, setBundlesError] = useState<string | null>(null);
+
+  // Re-sync segment if onboarding changes after mount
+  useEffect(() => {
+    if (userSegments.length > 0 && selectedSegment === "all") {
+      setSelectedSegment(userSegments[0]);
+    }
+  }, [userSegments, selectedSegment]);
+
+  // Smooth scroll when expanding popular grid
   useEffect(() => {
     if (showAllPopular && popularSectionRef.current) {
       setTimeout(() => {
-        popularSectionRef.current?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start' 
+        popularSectionRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
         });
       }, 100);
     }
   }, [showAllPopular]);
 
+  // Fetch format counts (one cheap call per kind, cached for the session)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setFormatCountsLoading(true);
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        FORMAT_KINDS.map(async (f) => {
+          try {
+            const res = await api.get<{ items: unknown[]; total?: number }>(
+              `/api/content?kind=${encodeURIComponent(f.kind)}&limit=1`
+            );
+            if (res.success && res.data) {
+              const total =
+                typeof res.data.total === "number"
+                  ? res.data.total
+                  : Array.isArray(res.data.items)
+                  ? res.data.items.length
+                  : 0;
+              counts[f.kind] = total;
+            } else {
+              counts[f.kind] = 0;
+            }
+          } catch {
+            counts[f.kind] = 0;
+          }
+        })
+      );
+      // Curso count comes from local courses array (CMS-authored + legacy)
+      counts.curso = Math.max(counts.curso || 0, courses.length);
+      if (!cancelled) {
+        setFormatCounts(counts);
+        setFormatCountsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [courses.length]);
+
+  // Fetch curated bundles (filtered by selected segment when not "all")
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setBundlesLoading(true);
+      setBundlesError(null);
+      try {
+        const qs = selectedSegment !== "all"
+          ? `?segment=${encodeURIComponent(selectedSegment)}`
+          : "";
+        const res = await api.get<{ bundles: BundleAPI[] }>(`/api/bundles${qs}`);
+        if (cancelled) return;
+        if (res.success && res.data) {
+          setBundles(res.data.bundles || []);
+        } else {
+          setBundles([]);
+          setBundlesError(res.error?.message || "Não foi possível carregar as trilhas.");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setBundles([]);
+          setBundlesError("Não foi possível carregar as trilhas.");
+        }
+      } finally {
+        if (!cancelled) setBundlesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedSegment]);
+
+  // Apply segment filter on top of search-filtered courses
+  const segmentFilteredCourses = useMemo(() => {
+    if (selectedSegment === "all") return filteredCourses;
+    return filteredCourses.filter((c) => c?.life_context === selectedSegment);
+  }, [filteredCourses, selectedSegment]);
+
+  const segmentLabel = SEGMENTS.find((s) => s.value === selectedSegment)?.label;
+
   return (
     <div>
-      {/* HERO SECTION - Hotmart Style */}
-      <section 
-        className="overflow-hidden"
-        style={{ background: 'var(--raio-bg-secondary)' }}
+      {/* HERO — Editorial RAIO */}
+      <section
+        className="relative overflow-hidden"
+        style={{ background: 'var(--raio-bg-warm-cream)' }}
       >
-        <div className="max-w-7xl mx-auto px-6 py-8 md:py-12">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
-            {/* Left Content */}
-            <div className="space-y-6">
-              {/* Main Heading */}
+        <div className="max-w-7xl mx-auto px-6 py-10 md:py-16">
+          <div className="grid md:grid-cols-2 gap-10 md:gap-12 items-center">
+            {/* Left — editorial copy + search */}
+            <div className="space-y-6 order-2 md:order-1">
               <div>
-                <h1 
-                  className="text-[40px] md:text-[56px] leading-[1.1] tracking-tight mb-4" 
-                  style={{ 
-                    fontWeight: 700,
-                    color: 'var(--raio-text-primary)'
+                <p
+                  className="font-display-serif italic text-[14px] mb-3"
+                  style={{ color: 'var(--raio-accent-hover)', letterSpacing: '0.02em' }}
+                >
+                  Conteúdo para a sua família
+                </p>
+                <h1
+                  className="font-display-serif"
+                  style={{
+                    fontSize: 'clamp(40px, 6vw, 64px)',
+                    lineHeight: 1.0,
+                    color: 'var(--raio-text-primary)',
+                    letterSpacing: '-0.02em',
+                    fontWeight: 400,
                   }}
                 >
-                  O que você quer{" "}
-                  <span style={{ color: 'var(--raio-accent-primary)' }}>aprender</span>{" "}
+                  O que vocês{' '}
+                  <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>
+                    vão construir
+                  </span>{' '}
                   hoje?
                 </h1>
-                <p 
-                  className="text-[18px] leading-relaxed"
-                  style={{ color: 'var(--raio-text-secondary)' }}
+                <p
+                  className="text-[16px] md:text-[17px] mt-5 leading-relaxed max-w-[480px]"
+                  style={{ color: 'var(--raio-text-strong)', lineHeight: 1.65 }}
                 >
-                  Busque por um tema e escolha o curso perfeito para você
+                  Cursos, livros, áudios e trilhas pensados para cada momento — do solteiro aos pais — tudo em um só lugar.
                 </p>
               </div>
 
-              {/* Search Input */}
-              <div className="relative">
+              {/* Search */}
+              <div className="relative max-w-[520px]">
                 <Input
-                  placeholder='Tente buscar por "comunicação" ou "finanças"'
+                  placeholder='Busque por "comunicação", "filhos" ou "finanças"'
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-[56px] pl-6 pr-16 text-[16px] rounded-full border-2 shadow-sm focus:ring-0"
-                  style={{ 
+                  className="h-[56px] pl-6 pr-16 text-[16px] rounded-full border focus:ring-0"
+                  style={{
                     fontSize: '16px',
                     background: 'var(--raio-bg-primary)',
                     borderColor: 'var(--raio-border-default)',
                     color: 'var(--raio-text-primary)',
                   }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--raio-accent-primary)';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--raio-border-default)';
-                  }}
                 />
                 <Button
                   size="icon"
                   className="absolute right-2 top-1/2 transform -translate-y-1/2 h-[44px] w-[44px] rounded-full"
-                  style={{
-                    background: 'var(--raio-accent-primary)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--raio-accent-hover)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'var(--raio-accent-primary)';
-                  }}
+                  style={{ background: 'var(--raio-accent-primary)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--raio-accent-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--raio-accent-primary)'; }}
                   onClick={() => {
-                    // Handle search
+                    if (allCoursesRef.current) {
+                      allCoursesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
                   }}
+                  aria-label="Buscar"
                 >
-                  <Search 
-                    className="w-5 h-5"
-                    style={{ color: '#FFFFFF' }}
-                  />
+                  <Search className="w-5 h-5" style={{ color: '#FFFFFF' }} />
                 </Button>
               </div>
             </div>
 
-            {/* Right Image */}
-            <div className="hidden md:block">
-              <div className="relative">
+            {/* Right — editorial photo (visible on mobile too) */}
+            <div className="order-1 md:order-2">
+              <div
+                className="relative rounded-[24px] overflow-hidden shadow-lg"
+                style={{ aspectRatio: '4 / 3' }}
+              >
                 <ImageWithFallback
                   src={heroImage}
-                  alt="Aprenda com a RAIO"
-                  className="w-full h-auto"
+                  alt="Família lendo junta em um banco de praça ao entardecer"
+                  className="w-full h-full object-cover"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Segment chips */}
+          <div className="mt-10 md:mt-12">
+            <div className="flex items-center gap-2 mb-3">
+              <span
+                className="text-[12px] uppercase tracking-wider"
+                style={{ color: 'var(--raio-text-secondary)', letterSpacing: '0.12em', fontWeight: 600 }}
+              >
+                Para o seu momento
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[{ value: 'all', label: 'Todos' }, ...SEGMENTS].map((seg) => {
+                const isActive = selectedSegment === seg.value;
+                const isUserSegment = userSegments.includes(seg.value);
+                return (
+                  <button
+                    key={seg.value}
+                    type="button"
+                    onClick={() => setSelectedSegment(seg.value)}
+                    className="px-4 py-2 rounded-full text-[14px] transition-all"
+                    style={{
+                      background: isActive
+                        ? 'var(--raio-text-primary)'
+                        : 'var(--raio-bg-primary)',
+                      color: isActive
+                        ? 'var(--raio-text-inverse)'
+                        : 'var(--raio-text-strong)',
+                      border: `1px solid ${
+                        isActive ? 'var(--raio-text-primary)' : 'var(--raio-border-default)'
+                      }`,
+                      fontWeight: isActive ? 600 : 500,
+                    }}
+                  >
+                    {seg.label}
+                    {isUserSegment && !isActive && (
+                      <span
+                        className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full align-middle"
+                        style={{ background: 'var(--raio-accent-hover)' }}
+                        aria-label="Seu perfil"
+                      />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -896,191 +1078,483 @@ function MarketplaceView({
               <div className="flex items-start gap-3 mb-4 bg-muted/30 rounded-lg p-4 border border-border">
                 <Sparkles className="w-6 h-6 text-primary shrink-0 mt-1" />
                 <div>
-                  <h2 
-                    className="text-[24px] mb-2" 
-                    style={{ 
-                      fontWeight: 700, 
-                      color: 'var(--raio-text-primary)' 
-                    }}
+                  <h2
+                    className="text-[24px] mb-2"
+                    style={{ fontWeight: 700, color: 'var(--raio-text-primary)' }}
                   >
-                    {getSearchResultMessage(searchQuery, filteredCourses.length, courses)}
+                    {getSearchResultMessage(searchQuery, segmentFilteredCourses.length, courses)}
                   </h2>
-                  <p 
-                    className="text-[16px]" 
-                    style={{ color: 'var(--raio-text-secondary)' }}
-                  >
-                    {filteredCourses.length} {filteredCourses.length === 1 ? 'curso encontrado' : 'cursos encontrados'}
+                  <p className="text-[16px]" style={{ color: 'var(--raio-text-secondary)' }}>
+                    {segmentFilteredCourses.length}{' '}
+                    {segmentFilteredCourses.length === 1 ? 'curso encontrado' : 'cursos encontrados'}
+                    {selectedSegment !== 'all' && segmentLabel ? ` em ${segmentLabel}` : ''}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {filteredCourses.map((course) => (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  onClick={() => {
-                    setCurrentCourseId(course.id);
-                    setIsInCourseDetail(true);
-                  }}
-                  enrollInCourse={enrollInCourse}
-                />
-              ))}
-            </div>
+            {segmentFilteredCourses.length === 0 ? (
+              <EmptyMarketplaceState
+                title="Nenhum curso bate com essa busca"
+                description={
+                  selectedSegment !== 'all'
+                    ? `Tente buscar em outro segmento ou limpe o filtro "${segmentLabel}".`
+                    : 'Tente outras palavras-chave ou explore os formatos abaixo.'
+                }
+                actionLabel={selectedSegment !== 'all' ? 'Ver todos os segmentos' : undefined}
+                onAction={selectedSegment !== 'all' ? () => setSelectedSegment('all') : undefined}
+              />
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                {segmentFilteredCourses.map((course) => (
+                  <CourseCard
+                    key={course.id}
+                    course={course}
+                    onClick={() => {
+                      setCurrentCourseId(course.id);
+                      setIsInCourseDetail(true);
+                    }}
+                    enrollInCourse={enrollInCourse}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         ) : (
           <>
-            {/* MOST POPULAR - Hotmart Style */}
-            <section ref={popularSectionRef}>
-              <div className="flex items-center justify-between mb-8">
+            {/* FORMAT EXPLORER — 6 CMS kinds */}
+            <section>
+              <div className="mb-6 md:mb-8">
+                <h2
+                  className="font-display-serif"
+                  style={{
+                    fontSize: 'clamp(26px, 3vw, 32px)',
+                    lineHeight: 1.1,
+                    color: 'var(--raio-text-primary)',
+                    fontWeight: 400,
+                  }}
+                >
+                  Explore por{' '}
+                  <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>
+                    formato
+                  </span>
+                </h2>
+                <p className="text-[15px] mt-2" style={{ color: 'var(--raio-text-secondary)' }}>
+                  Escolha como você prefere consumir hoje.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+                {FORMAT_KINDS.map((f) => {
+                  const count = formatCounts[f.kind] ?? 0;
+                  const Icon = f.Icon;
+                  const handleClick = () => {
+                    if (f.kind === 'curso' && allCoursesRef.current) {
+                      allCoursesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                      toast.info(`${f.label} disponíveis na aba Início.`);
+                    }
+                  };
+                  return (
+                    <button
+                      key={f.kind}
+                      type="button"
+                      onClick={handleClick}
+                      className="text-left rounded-2xl p-4 md:p-5 transition-all hover:-translate-y-0.5"
+                      style={{
+                        background: 'var(--raio-bg-secondary)',
+                        border: '1px solid var(--raio-border-default)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--raio-accent-primary)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--raio-border-default)';
+                      }}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                        style={{ background: 'var(--raio-bg-warm-cream)' }}
+                      >
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="text-[15px]" style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}>
+                        {f.label}
+                      </div>
+                      <div className="text-[12px] mt-0.5" style={{ color: 'var(--raio-text-secondary)' }}>
+                        {f.description}
+                      </div>
+                      <div className="text-[12px] mt-2" style={{ color: 'var(--raio-text-tertiary)' }}>
+                        {formatCountsLoading ? '—' : `${count} ${count === 1 ? 'item' : 'itens'}`}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* CURATED BUNDLES — trilhas */}
+            <section>
+              <div className="flex items-end justify-between gap-4 mb-6 md:mb-8">
                 <div>
-                  <h2 
-                    className="text-[32px]" 
-                    style={{ 
-                      fontWeight: 700, 
-                      color: 'var(--raio-text-primary)' 
+                  <h2
+                    className="font-display-serif"
+                    style={{
+                      fontSize: 'clamp(26px, 3vw, 32px)',
+                      lineHeight: 1.1,
+                      color: 'var(--raio-text-primary)',
+                      fontWeight: 400,
                     }}
                   >
-                    Mais populares
+                    Trilhas{' '}
+                    <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>
+                      curadas
+                    </span>
+                  </h2>
+                  <p className="text-[15px] mt-2" style={{ color: 'var(--raio-text-secondary)' }}>
+                    {selectedSegment === 'all'
+                      ? 'Combinações pensadas para cada momento da sua família.'
+                      : `Selecionadas para ${segmentLabel}.`}
+                  </p>
+                </div>
+              </div>
+
+              {bundlesLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--raio-accent-primary)' }} />
+                </div>
+              ) : bundlesError ? (
+                <EmptyMarketplaceState
+                  title="Não conseguimos carregar as trilhas"
+                  description={bundlesError}
+                />
+              ) : bundles.length === 0 ? (
+                <EmptyMarketplaceState
+                  title="Nenhuma trilha para este segmento ainda"
+                  description="Em breve novas trilhas curadas. Enquanto isso, explore outros segmentos."
+                  actionLabel="Ver todos os segmentos"
+                  onAction={() => setSelectedSegment('all')}
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                  {bundles.map((b) => (
+                    <BundleCard key={b.id} bundle={b} />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* MOST POPULAR */}
+            <section ref={popularSectionRef}>
+              <div className="flex items-center justify-between mb-6 md:mb-8 gap-4">
+                <div>
+                  <h2
+                    className="font-display-serif"
+                    style={{
+                      fontSize: 'clamp(26px, 3vw, 32px)',
+                      lineHeight: 1.1,
+                      color: 'var(--raio-text-primary)',
+                      fontWeight: 400,
+                    }}
+                  >
+                    Mais{' '}
+                    <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>
+                      populares
+                    </span>
                   </h2>
                   {!showAllPopular && totalPopularCourses > 4 && (
-                    <p 
-                      className="text-[14px] mt-1" 
-                      style={{ color: 'var(--raio-text-secondary)' }}
-                    >
+                    <p className="text-[14px] mt-1" style={{ color: 'var(--raio-text-secondary)' }}>
                       {totalPopularCourses} cursos disponíveis
                     </p>
                   )}
                 </div>
-                <Button 
-                  variant="ghost" 
-                  className="gap-2 hover:bg-transparent transition-all"
-                  style={{ color: 'var(--raio-accent-primary)' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = 'var(--raio-accent-hover)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = 'var(--raio-accent-primary)';
-                  }}
-                  onClick={() => {
-                    const newValue = !showAllPopular;
-                    setShowAllPopular(newValue);
-                    if (newValue) {
-                      toast.success(`Mostrando todos os ${totalPopularCourses} cursos populares`);
-                    }
-                  }}
-                >
-                  <span style={{ fontWeight: 600 }}>
-                    {showAllPopular ? 'Mostrar menos' : 'Explorar tudo'}
-                  </span>
-                  {showAllPopular ? (
-                    <ChevronUp className="w-5 h-5 transition-transform" />
-                  ) : (
-                    <ArrowRight className="w-5 h-5 transition-transform" />
-                  )}
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 transition-all duration-500">
-                {mostPopularCourses.map((course, index) => (
-                  <div
-                    key={course.id}
-                    className="animate-in fade-in slide-in-from-bottom-4"
-                    style={{ 
-                      animationDelay: `${index * 50}ms`,
-                      animationFillMode: 'backwards'
+                {totalPopularCourses > 4 && (
+                  <Button
+                    variant="ghost"
+                    className="gap-2 hover:bg-transparent transition-all shrink-0"
+                    style={{ color: 'var(--raio-accent-primary)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--raio-accent-hover)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--raio-accent-primary)'; }}
+                    onClick={() => {
+                      const newValue = !showAllPopular;
+                      setShowAllPopular(newValue);
+                      if (newValue) {
+                        toast.success(`Mostrando todos os ${totalPopularCourses} cursos populares`);
+                      }
                     }}
                   >
-                    <PopularCard
+                    <span style={{ fontWeight: 600 }}>
+                      {showAllPopular ? 'Mostrar menos' : 'Explorar tudo'}
+                    </span>
+                    {showAllPopular ? (
+                      <ChevronUp className="w-5 h-5" />
+                    ) : (
+                      <ArrowRight className="w-5 h-5" />
+                    )}
+                  </Button>
+                )}
+              </div>
+              {mostPopularCourses.length === 0 ? (
+                <EmptyMarketplaceState
+                  title="Sem cursos populares ainda"
+                  description="Em breve novos lançamentos no marketplace."
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-500">
+                  {mostPopularCourses.map((course, index) => (
+                    <div
+                      key={course.id}
+                      className="animate-in fade-in slide-in-from-bottom-4"
+                      style={{
+                        animationDelay: `${index * 50}ms`,
+                        animationFillMode: 'backwards',
+                      }}
+                    >
+                      <PopularCard
+                        course={course}
+                        onClick={() => {
+                          setCurrentCourseId(course.id);
+                          setIsInCourseDetail(true);
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* BEST RATED */}
+            {bestRatedCourses.length > 0 && (
+              <section>
+                <div className="mb-6 md:mb-8">
+                  <h2
+                    className="font-display-serif"
+                    style={{
+                      fontSize: 'clamp(26px, 3vw, 32px)',
+                      lineHeight: 1.1,
+                      color: 'var(--raio-text-primary)',
+                      fontWeight: 400,
+                    }}
+                  >
+                    Cursos com{' '}
+                    <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>
+                      boas avaliações
+                    </span>
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                  {bestRatedCourses.slice(0, 8).map((course) => (
+                    <CourseCard
+                      key={course.id}
                       course={course}
                       onClick={() => {
                         setCurrentCourseId(course.id);
                         setIsInCourseDetail(true);
                       }}
+                      enrollInCourse={enrollInCourse}
                     />
-                  </div>
-                ))}
-              </div>
-              
-              {/* Mostrar contador quando expandido */}
-              {showAllPopular && mostPopularCourses.length > 4 && (
-                <div className="mt-6 text-center">
-                  <p 
-                    className="text-[14px]" 
-                    style={{ color: 'var(--raio-text-secondary)' }}
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ALL COURSES — segment-filtered */}
+            <section ref={allCoursesRef}>
+              <div className="mb-6 md:mb-8 flex items-end justify-between gap-4 flex-wrap">
+                <div>
+                  <h2
+                    className="font-display-serif"
+                    style={{
+                      fontSize: 'clamp(26px, 3vw, 32px)',
+                      lineHeight: 1.1,
+                      color: 'var(--raio-text-primary)',
+                      fontWeight: 400,
+                    }}
                   >
-                    Mostrando {mostPopularCourses.length} cursos populares
+                    {selectedSegment === 'all' ? (
+                      <>Todos os <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>cursos</span></>
+                    ) : (
+                      <>Cursos para <span style={{ fontStyle: 'italic', color: 'var(--raio-accent-hover)' }}>{segmentLabel}</span></>
+                    )}
+                  </h2>
+                  <p className="text-[14px] mt-1" style={{ color: 'var(--raio-text-secondary)' }}>
+                    {segmentFilteredCourses.length}{' '}
+                    {segmentFilteredCourses.length === 1 ? 'curso' : 'cursos'}
                   </p>
                 </div>
+                {selectedSegment !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSegment('all')}
+                    className="text-[14px] underline-offset-4 hover:underline"
+                    style={{ color: 'var(--raio-accent-primary)', fontWeight: 600 }}
+                  >
+                    Ver todos os segmentos
+                  </button>
+                )}
+              </div>
+
+              {segmentFilteredCourses.length === 0 ? (
+                <EmptyMarketplaceState
+                  title={`Sem cursos para ${segmentLabel || 'este segmento'} ainda`}
+                  description="Em breve novos cursos para este momento. Enquanto isso, explore os outros segmentos."
+                  actionLabel="Ver todos os segmentos"
+                  onAction={() => setSelectedSegment('all')}
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                  {segmentFilteredCourses.map((course) => (
+                    <CourseCard
+                      key={course.id}
+                      course={course}
+                      onClick={() => {
+                        setCurrentCourseId(course.id);
+                        setIsInCourseDetail(true);
+                      }}
+                      enrollInCourse={enrollInCourse}
+                    />
+                  ))}
+                </div>
               )}
-            </section>
-
-            {/* PRODUCTS WITH GOOD REVIEWS */}
-            <section>
-              <div className="mb-8">
-                <h2 
-                  className="text-[32px] mb-2" 
-                  style={{ 
-                    fontWeight: 700, 
-                    color: 'var(--raio-text-primary)' 
-                  }}
-                >
-                  Cursos com boas avaliações
-                </h2>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {bestRatedCourses.slice(0, 8).map((course) => (
-                  <CourseCard
-                    key={course.id}
-                    course={course}
-                    onClick={() => {
-                      setCurrentCourseId(course.id);
-                      setIsInCourseDetail(true);
-                    }}
-                    enrollInCourse={enrollInCourse}
-                  />
-                ))}
-              </div>
-            </section>
-
-            {/* ALL PRODUCTS */}
-            <section>
-              <div className="mb-8">
-                <h2 
-                  className="text-[32px] mb-2" 
-                  style={{ 
-                    fontWeight: 700, 
-                    color: 'var(--raio-text-primary)' 
-                  }}
-                >
-                  Todos os cursos
-                </h2>
-                <p 
-                  className="text-[16px]" 
-                  style={{ color: 'var(--raio-text-secondary)' }}
-                >
-                  {filteredCourses.length} {filteredCourses.length === 1 ? 'curso' : 'cursos'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {filteredCourses.map((course) => (
-                  <CourseCard
-                    key={course.id}
-                    course={course}
-                    onClick={() => {
-                      setCurrentCourseId(course.id);
-                      setIsInCourseDetail(true);
-                    }}
-                    enrollInCourse={enrollInCourse}
-                  />
-                ))}
-              </div>
             </section>
           </>
         )}
       </div>
     </div>
+  );
+}
+
+// Empty state for marketplace sections
+interface EmptyMarketplaceStateProps {
+  title: string;
+  description?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}
+
+function EmptyMarketplaceState({ title, description, actionLabel, onAction }: EmptyMarketplaceStateProps) {
+  return (
+    <div
+      className="rounded-2xl py-12 px-6 text-center"
+      style={{
+        background: 'var(--raio-bg-secondary)',
+        border: '1px dashed var(--raio-border-default)',
+      }}
+    >
+      <div
+        className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+        style={{ background: 'var(--raio-bg-warm-cream)' }}
+      >
+        <Sparkles className="w-6 h-6" style={{ color: 'var(--raio-accent-hover)' }} />
+      </div>
+      <h3
+        className="text-[18px] mb-2"
+        style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+      >
+        {title}
+      </h3>
+      {description && (
+        <p
+          className="text-[14px] max-w-[420px] mx-auto"
+          style={{ color: 'var(--raio-text-secondary)', lineHeight: 1.55 }}
+        >
+          {description}
+        </p>
+      )}
+      {actionLabel && onAction && (
+        <button
+          type="button"
+          onClick={onAction}
+          className="mt-5 text-[14px]"
+          style={{ color: 'var(--raio-accent-primary)', fontWeight: 600 }}
+        >
+          {actionLabel} →
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Curated bundle card
+interface BundleCardProps {
+  bundle: BundleAPI;
+}
+
+function BundleCard({ bundle }: BundleCardProps) {
+  const accent = bundle.accent_color || 'var(--raio-accent-primary)';
+  const segLabel = SEGMENTS.find((s) => s.value === bundle.segment)?.label || bundle.segment;
+
+  return (
+    <button
+      type="button"
+      onClick={() => toast.info(`Em breve: trilha "${bundle.title}"`)}
+      className="text-left rounded-2xl overflow-hidden transition-all hover:-translate-y-0.5 group"
+      style={{
+        background: 'var(--raio-bg-secondary)',
+        border: '1px solid var(--raio-border-default)',
+      }}
+    >
+      <div
+        className="relative h-[120px] flex items-end p-5"
+        style={{
+          background: `linear-gradient(135deg, ${accent}, var(--raio-text-primary))`,
+        }}
+      >
+        <div
+          className="absolute top-4 right-4 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px]"
+          style={{
+            background: 'rgba(255,255,255,0.18)',
+            backdropFilter: 'blur(6px)',
+            color: '#FFFFFF',
+            fontWeight: 600,
+          }}
+        >
+          <Package className="w-3 h-3" />
+          {bundle.item_count} itens
+        </div>
+        <div
+          className="text-[11px] uppercase tracking-wider"
+          style={{ color: 'rgba(255,255,255,0.85)', letterSpacing: '0.12em', fontWeight: 600 }}
+        >
+          {segLabel}
+        </div>
+      </div>
+      <div className="p-5 space-y-2">
+        <h3
+          className="font-display-serif"
+          style={{
+            fontSize: '22px',
+            lineHeight: 1.15,
+            color: 'var(--raio-text-primary)',
+            fontWeight: 400,
+          }}
+        >
+          {bundle.title}
+        </h3>
+        {bundle.subtitle && (
+          <p
+            className="text-[13px]"
+            style={{ color: 'var(--raio-accent-hover)', fontStyle: 'italic' }}
+          >
+            {bundle.subtitle}
+          </p>
+        )}
+        {bundle.description && (
+          <p
+            className="text-[14px] line-clamp-2"
+            style={{ color: 'var(--raio-text-secondary)', lineHeight: 1.55 }}
+          >
+            {bundle.description}
+          </p>
+        )}
+        <div
+          className="text-[13px] pt-2 inline-flex items-center gap-1.5"
+          style={{ color: 'var(--raio-accent-primary)', fontWeight: 600 }}
+        >
+          Ver trilha <ArrowRight className="w-4 h-4" />
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -1133,8 +1607,6 @@ interface CourseCardProps {
 }
 
 function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
-  const discountedPrice = course.price > 0 ? course.price * 0.5 : 0;
-
   const handleEnroll = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
     enrollInCourse(course.id);
@@ -1229,23 +1701,15 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
           {/* Price */}
           <div className="flex items-baseline gap-2 pt-2">
             {course.price > 0 ? (
-              <>
-                <span 
-                  className="text-[20px]" 
-                  style={{ 
-                    fontWeight: 700, 
-                    color: 'var(--raio-text-primary)' 
-                  }}
-                >
-                  R$ {discountedPrice.toFixed(0)}
-                </span>
-                <span 
-                  className="text-[14px] line-through" 
-                  style={{ color: 'var(--raio-text-tertiary)' }}
-                >
-                  R$ {course.price}
-                </span>
-              </>
+              <span
+                className="text-[20px]"
+                style={{
+                  fontWeight: 700,
+                  color: 'var(--raio-text-primary)'
+                }}
+              >
+                R$ {Number(course.price).toFixed(2).replace('.', ',')}
+              </span>
             ) : (
               <span 
                 className="text-[20px]" 

@@ -18,6 +18,7 @@ import adminRoutes from "./features/admin/routes.js";
 import { bootstrapAdminsFromEnv } from "./features/admin/bootstrap.js";
 import { adminCmsRouter, publicCmsRouter } from "./features/cms/routes.js";
 import { adminHomeFeedRouter, publicHomeFeedRouter } from "./features/home-feed/routes.js";
+import bundlesRoutes from "./features/bundles/routes.js";
 import { UPLOAD_ROOT } from "./features/cms/upload.js";
 import { optionalAuth } from "./middleware/auth.js";
 import { createServer as createViteServer } from "vite";
@@ -57,6 +58,7 @@ app.use("/api/admin/cms", rateLimiter(300, 15 * 60 * 1000), adminCmsRouter);
 app.use("/api/content", rateLimiter(120, 15 * 60 * 1000), publicCmsRouter);
 app.use("/api/admin/home-feed", rateLimiter(300, 15 * 60 * 1000), adminHomeFeedRouter);
 app.use("/api/home-feed", rateLimiter(120, 15 * 60 * 1000), publicHomeFeedRouter);
+app.use("/api/bundles", rateLimiter(120, 15 * 60 * 1000), bundlesRoutes);
 
 // Static media uploads (CMS). Served outside of the /api prefix so the
 // frontend can reference URLs like `/uploads/audio/...mp3` directly.

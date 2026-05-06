@@ -675,6 +675,8 @@ export async function initializeSchema() {
   await migrateCmsContent();
   const { migrateHomeFeed } = await import("../features/home-feed/migrate.js");
   await migrateHomeFeed();
+  const { migrateBundles } = await import("../features/bundles/migrate.js");
+  await migrateBundles();
 
   console.log("[DB] Schema initialized successfully.");
 }

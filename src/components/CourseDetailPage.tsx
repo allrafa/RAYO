@@ -102,7 +102,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
     }
   };
 
-  const discountedPrice = course.price * 0.5;
+  const displayPrice = course.price;
 
   const [modules, setModules] = useState<DetailModule[]>([]);
   const [lessonProgressMap, setLessonProgressMap] = useState<Record<number, string>>({});
@@ -230,14 +230,6 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                 )}
               </div>
 
-              {/* Discount badge */}
-              {course.price > 0 && (
-                <div className="absolute top-4 right-4">
-                  <Badge className="bg-red-500 text-white font-bold">
-                    50% OFF
-                  </Badge>
-                </div>
-              )}
             </div>
           </div>
 
@@ -305,14 +297,11 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                   <div className="space-y-3">
                     {course.price > 0 ? (
                       <div className="text-center">
-                        <div className="text-sm text-muted-foreground line-through">
-                          De R$ {course.price}
-                        </div>
                         <div className="text-3xl font-bold text-green-600">
-                          R$ {discountedPrice.toFixed(0)}
+                          R$ {displayPrice.toFixed(2).replace('.', ',')}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          ou 12x de R$ {(discountedPrice / 12).toFixed(2)}
+                          ou 12x de R$ {(displayPrice / 12).toFixed(2).replace('.', ',')}
                         </div>
                       </div>
                     ) : (
@@ -368,7 +357,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                         {course.price > 0 && (
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground">
-                              ⚡ Oferta por tempo limitado • 30 dias de garantia
+                              30 dias de garantia
                             </p>
                           </div>
                         )}
