@@ -24,8 +24,10 @@ import { ConsentBanner } from "./components/ConsentBanner";
 import { LandingPage } from "./components/LandingPage";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
 import { analytics } from "./lib/analytics/mixpanel";
+import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
 
 type PreAuthStage = "welcome" | "onboarding" | "auth";
+type AuthStartMode = "login" | "register";
 
 interface OnboardingData {
   name: string;
@@ -48,10 +50,22 @@ function AppContent() {
   const { user, isLoading, logout } = useAuth();
   const [currentTab, setCurrentTab] = useState("home");
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
-  const [preAuthStage, setPreAuthStage] = useState<PreAuthStage>("welcome");
+  const [resetToken, setResetToken] = useState<string | null>(() => getResetTokenFromUrl());
+  // Returning visitors (anyone who has logged in or registered on this device
+  // before) skip the Welcome + 3-step Onboarding and land directly on the
+  // login form. The flag lives in localStorage and is set by AuthContext on
+  // any successful auth (login, register, or session restore).
+  // A reset_token in the URL always wins so password-reset deep links land
+  // straight on the reset form, never on welcome/onboarding.
+  const [preAuthStage, setPreAuthStage] = useState<PreAuthStage>(() => {
+    if (getResetTokenFromUrl()) return "auth";
+    return isReturningDevice() ? "auth" : "welcome";
+  });
+  const [authStartMode, setAuthStartMode] = useState<AuthStartMode>(() =>
+    isReturningDevice() ? "login" : "register",
+  );
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [showPrivacyOverlay, setShowPrivacyOverlay] = useState(false);
-  const [resetToken, setResetToken] = useState<string | null>(() => getResetTokenFromUrl());
 
   const appContext = useApp();
   const isInBookReader = appContext?.isInBookReader || false;
@@ -117,7 +131,17 @@ function AppContent() {
     if (preAuthStage === "welcome") {
       preAuthContent = (
         <WelcomeScreen
-          onStart={() => setPreAuthStage("onboarding")}
+          onStart={() => {
+            setAuthStartMode("register");
+            setPreAuthStage("onboarding");
+          }}
+          onSkipToLogin={() => {
+            // First-time visitor who already has an account elsewhere.
+            // Remember the choice so future visits skip the welcome too.
+            markDeviceAsReturning();
+            setAuthStartMode("login");
+            setPreAuthStage("auth");
+          }}
         />
       );
     } else if (preAuthStage === "onboarding") {
@@ -125,18 +149,24 @@ function AppContent() {
         <Onboarding
           onComplete={(data: OnboardingData) => {
             setOnboardingData(data);
+            setAuthStartMode("register");
             setPreAuthStage("auth");
           }}
         />
       );
     } else {
+      // Returning visitors don't get a "back to welcome" button — there's
+      // nothing meaningful to go back to. They can still switch to "Criar
+      // conta" from inside AuthPage if needed.
+      const hadOnboarding = authStartMode === "register" && !!onboardingData;
+      const showGoBack = !resetToken && hadOnboarding;
       preAuthContent = (
         <AuthPage
-          defaultMode={resetToken ? "reset" : "register"}
+          defaultMode={resetToken ? "reset" : authStartMode}
           prefillName={onboardingData?.name}
           prefillSegments={onboardingData?.segments}
           prefillInterests={onboardingData?.interests}
-          onGoBack={resetToken ? undefined : () => setPreAuthStage("welcome")}
+          onGoBack={showGoBack ? () => setPreAuthStage("welcome") : undefined}
           resetToken={resetToken || undefined}
           onResetComplete={clearResetToken}
         />

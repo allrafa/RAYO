@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { api } from "../lib/api";
+import { markDeviceAsReturning } from "../lib/deviceMemory";
 
 export type UserRole = "client" | "producer" | "moderator" | "admin";
 
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.get<{ user: User }>("/api/auth/me");
         if (res.success && res.data) {
           setUser(res.data.user);
+          markDeviceAsReturning();
         }
       } catch {
       } finally {
@@ -75,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await api.post<{ user: User }>("/api/auth/login", { email, password });
     if (res.success && res.data) {
       setUser(res.data.user);
+      markDeviceAsReturning();
       return { success: true };
     }
     return { success: false, error: res.error?.message || "Erro ao fazer login" };
@@ -106,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     if (res.success && res.data) {
       setUser(res.data.user);
+      markDeviceAsReturning();
       return { success: true };
     }
     return { success: false, error: res.error?.message || "Erro ao criar conta" };

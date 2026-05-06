@@ -4,9 +4,10 @@ import logoIcon from "figma:asset/827405fdf6d360d2a9ec31dfa3facf23fe3474fb.png";
 
 interface WelcomeScreenProps {
   onStart: () => void;
+  onSkipToLogin?: () => void;
 }
 
-export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
+export function WelcomeScreen({ onStart, onSkipToLogin }: WelcomeScreenProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -185,6 +186,25 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
             />
             <span className="relative z-10">Começar agora</span>
           </motion.button>
+
+          {onSkipToLogin && (
+            <div className="mt-5 text-center">
+              <button
+                type="button"
+                onClick={onSkipToLogin}
+                className="text-[13px] tracking-wide transition-colors hover:text-[var(--raio-text-primary)]"
+                style={{ color: "var(--raio-text-strong)", fontWeight: 500 }}
+              >
+                Já tenho conta —{" "}
+                <span
+                  className="underline underline-offset-4 decoration-[0.5px]"
+                  style={{ color: "var(--raio-text-primary)" }}
+                >
+                  Entrar
+                </span>
+              </button>
+            </div>
+          )}
 
           <p
             className="mt-6 text-center text-[11px] leading-relaxed max-w-[320px] mx-auto"
