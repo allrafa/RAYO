@@ -89,8 +89,8 @@ export function CentralConversasPage({
 
   const getConsultantInfo = (consultant: ConsultantType) => {
     return consultant === 'jessica' 
-      ? { name: 'Jessica Raio', color: 'bg-pink-500', accent: 'text-pink-600 bg-pink-50' }
-      : { name: 'Rafa Raio', color: 'bg-blue-500', accent: 'text-blue-600 bg-blue-50' };
+      ? { name: 'Jessica Raio', avatarClass: 'terra' as const }
+      : { name: 'Rafa Raio', avatarClass: 'forest' as const };
   };
 
   const handleContinueSession = (sessionId: string) => {
@@ -182,139 +182,162 @@ export function CentralConversasPage({
       </div>
 
       {/* Sessions List */}
-      <div className="p-4 space-y-4">
+      <div className="ra-page-content" style={{ paddingTop: 16, gap: 16 }}>
         {filteredSessions.length === 0 ? (
-          <div className="text-center py-12">
-            <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="font-display font-medium text-gray-900 mb-2">Nenhuma conversa encontrada</h3>
-            <p className="font-body text-gray-600 mb-6">
-              {searchQuery ? 'Tente outros termos de busca' : 'Inicie sua primeira conversa na Trilha da Transformação'}
+          <div className="ra-empty">
+            <div className="ra-empty-icon">
+              <MessageCircle className="w-6 h-6" />
+            </div>
+            <h3 className="ra-empty-title">Nenhuma conversa encontrada</h3>
+            <p className="ra-empty-sub">
+              {searchQuery ? 'Tente outros termos de busca.' : 'Inicie sua primeira conversa na Trilha da Transformação.'}
             </p>
-            <Button
+            <button
+              type="button"
+              className="ra-pill-primary"
               onClick={onStartNewConversation}
-              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
+              style={{ marginTop: 4 }}
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Começar Agora
-            </Button>
+              <Plus className="w-4 h-4" />
+              Começar agora
+            </button>
           </div>
         ) : (
           filteredSessions.map(session => {
             const consultantInfo = getConsultantInfo(session.consultant);
             const isActive = !session.endTime;
-            
+
             return (
-              <Card 
-                key={session.id} 
-                className="hover:shadow-md transition-shadow cursor-pointer"
+              <article
+                key={session.id}
+                className="ra-card ra-card-hover"
                 onClick={() => setSelectedSession(session)}
+                style={{ cursor: 'pointer' }}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar className={`w-10 h-10 ${consultantInfo.color} text-white flex items-center justify-center font-medium`}>
-                        {consultantInfo.name.split(' ')[0][0]}
-                      </Avatar>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{consultantInfo.name}</span>
-                          {isActive && (
-                            <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
-                              Ativa
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {formatDate(session.startTime)}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {getSessionDuration(session)}
-                          </span>
-                        </div>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className={`ra-disc-avatar ${consultantInfo.avatarClass}`}>
+                      {consultantInfo.name.split(' ')[0][0]}
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
+                          {consultantInfo.name}
+                        </span>
+                        {isActive && <span className="ra-tag sage">Ativa</span>}
+                      </div>
+                      <div className="ra-disc-meta flex items-center gap-3 mt-1">
+                        <span className="inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatDate(session.startTime)}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {getSessionDuration(session)}
+                        </span>
                       </div>
                     </div>
-                    
-                    <Button variant="ghost" size="icon" className="w-8 h-8">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4">
-                  {/* Jornada Emocional */}
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-gray-600">Jornada:</span>
-                    <Badge variant="outline" className="text-orange-600 border-orange-200">
-                      {session.emotionalJourney.start}
-                    </Badge>
-                    <span className="text-gray-400">→</span>
-                    <Badge variant="outline" className="text-green-600 border-green-200">
-                      {session.emotionalJourney.end}
-                    </Badge>
                   </div>
 
-                  {/* Breakthrough se existir */}
-                  {session.emotionalJourney.breakthrough && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                      <div className="flex items-center gap-2 text-sm font-medium text-yellow-800">
-                        <Target className="w-4 h-4" />
-                        Insight Principal
+                  <button
+                    type="button"
+                    className="ra-action"
+                    aria-label="Mais opções"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Jornada Emocional */}
+                <div className="flex items-center gap-2 flex-wrap mb-3">
+                  <span className="ra-disc-meta">Jornada</span>
+                  <span className="ra-tag ochre">{session.emotionalJourney.start}</span>
+                  <span style={{ color: 'var(--rayo-ink-400)' }}>→</span>
+                  <span className="ra-tag sage">{session.emotionalJourney.end}</span>
+                </div>
+
+                {/* Breakthrough */}
+                {session.emotionalJourney.breakthrough && (
+                  <div
+                    style={{
+                      background: 'var(--rayo-ochre-100, var(--rayo-sand-100))',
+                      border: '1px solid var(--rayo-ochre-500)',
+                      borderRadius: 12,
+                      padding: 12,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div
+                      className="flex items-center gap-2"
+                      style={{ fontSize: 13, fontWeight: 600, color: 'var(--rayo-forest-900)' }}
+                    >
+                      <Target className="w-4 h-4" style={{ color: 'var(--rayo-ochre-500)' }} />
+                      Insight principal
+                    </div>
+                    <p style={{ fontSize: 13, color: 'var(--rayo-ink-700)', marginTop: 4 }}>
+                      {session.emotionalJourney.breakthrough}
+                    </p>
+                  </div>
+                )}
+
+                {/* Próximos Passos */}
+                <div className="mb-3">
+                  <h4 className="ra-disc-meta" style={{ marginBottom: 8 }}>
+                    Próximos passos
+                  </h4>
+                  <div className="space-y-1.5">
+                    {session.nextSteps.slice(0, 2).map((step, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-2"
+                        style={{ fontSize: 13, color: 'var(--rayo-ink-700)' }}
+                      >
+                        <span
+                          style={{
+                            width: 6, height: 6, borderRadius: '50%',
+                            background: 'var(--rayo-terra-500)',
+                            marginTop: 7, flexShrink: 0,
+                          }}
+                        />
+                        <span>{step}</span>
                       </div>
-                      <p className="text-sm text-yellow-700 mt-1">
-                        {session.emotionalJourney.breakthrough}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Próximos Passos */}
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Próximos Passos:</h4>
-                    <div className="space-y-1">
-                      {session.nextSteps.slice(0, 2).map((step, index) => (
-                        <div key={index} className="flex items-start gap-2 text-sm text-gray-700">
-                          <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-2 flex-shrink-0" />
-                          <span>{step}</span>
-                        </div>
-                      ))}
-                      {session.nextSteps.length > 2 && (
-                        <div className="text-sm text-gray-500">
-                          +{session.nextSteps.length - 2} outros passos
-                        </div>
-                      )}
-                    </div>
+                    ))}
+                    {session.nextSteps.length > 2 && (
+                      <div style={{ fontSize: 12, color: 'var(--rayo-ink-400)' }}>
+                        +{session.nextSteps.length - 2} outros passos
+                      </div>
+                    )}
                   </div>
+                </div>
 
-                  {/* Ações */}
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleContinueSession(session.id);
-                      }}
-                      className="flex-1"
-                      disabled={!isActive}
-                    >
-                      <PlayCircle className="w-4 h-4 mr-1" />
-                      {isActive ? 'Continuar' : 'Concluída'}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedSession(session);
-                      }}
-                    >
-                      Ver Detalhes
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                {/* Ações */}
+                <div className="flex gap-2 pt-2" style={{ borderTop: '1px solid var(--rayo-sand-300)' }}>
+                  <button
+                    type="button"
+                    className="ra-pill-ghost"
+                    style={{ flex: 1, justifyContent: 'center' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleContinueSession(session.id);
+                    }}
+                    disabled={!isActive}
+                  >
+                    <PlayCircle className="w-4 h-4" />
+                    {isActive ? 'Continuar' : 'Concluída'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ra-action"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSession(session);
+                    }}
+                  >
+                    Ver detalhes
+                  </button>
+                </div>
+              </article>
             );
           })
         )}
@@ -342,127 +365,194 @@ function SessionDetailModal({
   onClose: () => void; 
   onContinue: () => void; 
 }) {
-  const consultantInfo = session.consultant === 'jessica' 
-    ? { name: 'Jessica Raio', color: 'bg-pink-500' }
-    : { name: 'Rafa Raio', color: 'bg-blue-500' };
-  
+  const consultantInfo = session.consultant === 'jessica'
+    ? { name: 'Jessica Raio', avatarClass: 'terra' as const }
+    : { name: 'Rafa Raio', avatarClass: 'forest' as const };
+
   const isActive = !session.endTime;
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white rounded-t-xl sm:rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      style={{ background: 'rgba(12,59,46,0.55)' }}
+      onClick={onClose}
+    >
+      <div
+        className="max-w-2xl w-full max-h-[80vh] overflow-y-auto"
+        style={{
+          background: 'var(--rayo-sand-50)',
+          border: '1px solid var(--rayo-sand-300)',
+          borderRadius: 20,
+          fontFamily: 'Outfit, system-ui, sans-serif',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          className="sticky top-0 p-4"
+          style={{ background: 'var(--rayo-sand-50)', borderBottom: '1px solid var(--rayo-sand-300)' }}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Avatar className={`w-12 h-12 ${consultantInfo.color} text-white flex items-center justify-center font-medium`}>
+              <span className={`ra-disc-avatar ${consultantInfo.avatarClass}`} style={{ width: 48, height: 48 }}>
                 {consultantInfo.name.split(' ')[0][0]}
-              </Avatar>
+              </span>
               <div>
-                <h2 className="font-semibold">{consultantInfo.name}</h2>
-                <p className="text-sm text-gray-600">
-                  {new Date(session.startTime).toLocaleDateString('pt-BR')} • 
-                  {isActive ? ' Em andamento' : ` ${Math.floor((session.endTime!.getTime() - session.startTime.getTime()) / (1000 * 60))} min`}
+                <p className="ra-eyebrow" style={{ marginBottom: 2 }}>Sessão</p>
+                <h2 className="ra-title" style={{ fontSize: 18 }}>{consultantInfo.name}</h2>
+                <p className="ra-subtitle" style={{ fontSize: 12, marginTop: 2 }}>
+                  {new Date(session.startTime).toLocaleDateString('pt-BR')} ·{' '}
+                  {isActive ? 'Em andamento' : `${Math.floor((session.endTime!.getTime() - session.startTime.getTime()) / (1000 * 60))} min`}
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose}>
+            <button type="button" className="ra-action" onClick={onClose} aria-label="Fechar">
               <ArrowLeft className="w-5 h-5" />
-            </Button>
+            </button>
           </div>
         </div>
 
         <div className="p-4 space-y-6">
           {/* Jornada Emocional Detalhada */}
-          <div>
-            <h3 className="font-medium mb-3">Jornada Emocional</h3>
-            <div className="bg-gradient-to-r from-orange-50 to-green-50 border border-gray-200 rounded-lg p-4">
+          <section>
+            <h3 className="ra-eyebrow" style={{ marginBottom: 10 }}>Jornada Emocional</h3>
+            <div className="ra-card" style={{ padding: 16 }}>
               <div className="flex items-center justify-between">
                 <div className="text-center">
                   <div className="text-2xl mb-1">😟</div>
-                  <Badge variant="outline" className="text-orange-600 border-orange-200">
-                    {session.emotionalJourney.start}
-                  </Badge>
+                  <span className="ra-tag ochre">{session.emotionalJourney.start}</span>
                 </div>
                 <div className="flex-1 mx-4">
-                  <div className="h-0.5 bg-gradient-to-r from-orange-300 to-green-300"></div>
+                  <div
+                    style={{
+                      height: 2,
+                      background: 'linear-gradient(90deg, var(--rayo-ochre-500), var(--rayo-sage-500))',
+                      borderRadius: 2,
+                    }}
+                  />
                 </div>
                 <div className="text-center">
                   <div className="text-2xl mb-1">😊</div>
-                  <Badge variant="outline" className="text-green-600 border-green-200">
-                    {session.emotionalJourney.end}
-                  </Badge>
+                  <span className="ra-tag sage">{session.emotionalJourney.end}</span>
                 </div>
               </div>
               {session.emotionalJourney.breakthrough && (
-                <div className="mt-4 p-3 bg-white rounded border border-yellow-200">
-                  <div className="font-medium text-sm text-yellow-800 mb-1">💡 Insight Principal</div>
-                  <p className="text-sm text-gray-700">{session.emotionalJourney.breakthrough}</p>
+                <div
+                  className="mt-4 p-3"
+                  style={{
+                    background: 'var(--rayo-sand-100)',
+                    border: '1px solid var(--rayo-ochre-500)',
+                    borderRadius: 10,
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--rayo-forest-900)', marginBottom: 4 }}>
+                    💡 Insight principal
+                  </div>
+                  <p style={{ fontSize: 13, color: 'var(--rayo-ink-700)' }}>
+                    {session.emotionalJourney.breakthrough}
+                  </p>
                 </div>
               )}
             </div>
-          </div>
+          </section>
 
           {/* Insights */}
-          <div>
-            <h3 className="font-medium mb-3">Insights Descobertos</h3>
+          <section>
+            <h3 className="ra-eyebrow" style={{ marginBottom: 10 }}>Insights Descobertos</h3>
             <div className="space-y-2">
               {session.insights.map((insight, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                  <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-xs font-medium text-blue-600">{index + 1}</span>
+                <div
+                  key={index}
+                  className="flex items-start gap-3 p-3"
+                  style={{
+                    background: 'var(--rayo-sand-100)',
+                    border: '1px solid var(--rayo-sand-300)',
+                    borderRadius: 12,
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-center flex-shrink-0"
+                    style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: 'var(--rayo-terra-500)',
+                      color: 'var(--rayo-sand-50)',
+                      fontSize: 11, fontWeight: 700,
+                      marginTop: 2,
+                    }}
+                  >
+                    {index + 1}
                   </div>
-                  <p className="text-sm text-gray-700">{insight}</p>
+                  <p style={{ fontSize: 13, color: 'var(--rayo-ink-700)' }}>{insight}</p>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
 
           {/* Próximos Passos */}
-          <div>
-            <h3 className="font-medium mb-3">Plano de Ação</h3>
+          <section>
+            <h3 className="ra-eyebrow" style={{ marginBottom: 10 }}>Plano de Ação</h3>
             <div className="space-y-2">
               {session.nextSteps.map((step, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
-                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Target className="w-3 h-3 text-green-600" />
+                <div
+                  key={index}
+                  className="flex items-start gap-3 p-3"
+                  style={{
+                    background: 'var(--rayo-sand-100)',
+                    border: '1px solid var(--rayo-sand-300)',
+                    borderRadius: 12,
+                  }}
+                >
+                  <div
+                    className="flex items-center justify-center flex-shrink-0"
+                    style={{
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: 'var(--rayo-sage-300)',
+                      color: 'var(--rayo-forest-900)',
+                      marginTop: 2,
+                    }}
+                  >
+                    <Target className="w-3 h-3" />
                   </div>
-                  <p className="text-sm text-gray-700">{step}</p>
+                  <p style={{ fontSize: 13, color: 'var(--rayo-ink-700)' }}>{step}</p>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
 
           {/* Últimas Mensagens */}
-          <div>
-            <h3 className="font-medium mb-3">Última Conversa</h3>
+          <section>
+            <h3 className="ra-eyebrow" style={{ marginBottom: 10 }}>Última conversa</h3>
             <div className="space-y-3 max-h-40 overflow-y-auto">
               {session.messages.slice(-3).map(message => (
-                <div key={message.id} className={`flex gap-3 ${message.speaker === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-xs p-3 rounded-lg text-sm ${
-                    message.speaker === 'user' 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-100 text-gray-900'
-                  }`}>
+                <div
+                  key={message.id}
+                  className={`flex gap-3 ${message.speaker === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div className={`ra-chat-bubble ${message.speaker === 'user' ? 'user' : 'assistant'}`}>
                     {message.text}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
 
           {/* Ações */}
-          <div className="flex gap-3 pt-4 border-t border-gray-200">
-            <Button
+          <div
+            className="flex gap-3 pt-4"
+            style={{ borderTop: '1px solid var(--rayo-sand-300)' }}
+          >
+            <button
+              type="button"
+              className="ra-pill-primary"
+              style={{ flex: 1, justifyContent: 'center' }}
               onClick={onContinue}
               disabled={!isActive}
-              className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white"
             >
-              <PlayCircle className="w-4 h-4 mr-2" />
-              {isActive ? 'Continuar Conversa' : 'Conversa Finalizada'}
-            </Button>
-            <Button variant="outline" onClick={onClose}>
+              <PlayCircle className="w-4 h-4" />
+              {isActive ? 'Continuar conversa' : 'Conversa finalizada'}
+            </button>
+            <button type="button" className="ra-pill-ghost" onClick={onClose}>
               Fechar
-            </Button>
+            </button>
           </div>
         </div>
       </div>

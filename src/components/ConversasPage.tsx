@@ -406,7 +406,7 @@ export function ConversasPage() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] max-w-6xl mx-auto bg-background">
+    <div className="ra-page flex h-[calc(100vh-8rem)] max-w-6xl mx-auto" style={{ background: 'var(--rayo-sand-100)' }}>
       {/* Lista de Conversas */}
       <div className={`${activeId != null ? "hidden md:block" : "block"} w-full md:w-1/3 border-r border-border bg-card`}>
         <div className="p-4 border-b">

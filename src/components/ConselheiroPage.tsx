@@ -339,8 +339,8 @@ export function ConselheiroPage() {
   };
 
   return (
-    <div 
-      className="flex flex-col h-screen"
+    <div
+      className="ra-page flex flex-col h-screen"
       style={{ background: 'var(--rayo-sand-100)' }}
     >
       {/* Header Fixo com Auto-hide */}

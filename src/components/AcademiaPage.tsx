@@ -55,8 +55,8 @@ export function AcademiaPage() {
   const totalPopularCourses = allPopularCourses.length;
 
   return (
-    <div 
-      className="min-h-screen"
+    <div
+      className="ra-page min-h-screen"
       style={{ background: 'var(--rayo-sand-100)' }}
     >
       {/* NAVIGATION TABS - Above Everything */}
@@ -565,7 +565,7 @@ function CourseWithLessons({ course, onLessonClick }: CourseWithLessonsProps) {
               style={{ color: 'var(--rayo-ink-700)' }}
             >
               <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                <Star className="w-4 h-4" style={{ fill: 'var(--rayo-ochre-500)', color: 'var(--rayo-ochre-500)' }} />
                 <span>{course.rating}</span>
               </div>
               <div className="flex items-center gap-1">

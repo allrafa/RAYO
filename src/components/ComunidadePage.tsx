@@ -244,8 +244,8 @@ export function ComunidadePage() {
 
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-      <div 
-        className="min-h-screen"
+      <div
+        className="ra-page min-h-screen"
         style={{ background: 'var(--rayo-sand-100)' }}
       >
         {/* NAVIGATION TABS - Sticky */}

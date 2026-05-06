@@ -501,8 +501,8 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const xpNeededForNext = gamProfile?.xpNeededForNext ?? 100;
 
   return (
-    <div 
-      className="min-h-screen pb-24 lg:pb-8"
+    <div
+      className="ra-page min-h-screen pb-24 lg:pb-8"
       style={{ background: 'var(--rayo-sand-100)' }}
     >
       {(otherProfile || otherProfileLoading || otherProfileError) && (
