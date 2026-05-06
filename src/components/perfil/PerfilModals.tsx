@@ -64,7 +64,7 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
 
   const bioLength = bio.length;
   const bioOver = bioLength > 280;
-  const nameInvalid = name.trim().length < 2 || name.trim().length > 100;
+  const nameInvalid = name.trim().length < 2 || name.trim().length > 80;
   const segmentsInvalid = segments.length === 0;
   const formInvalid = saving || nameInvalid || bioOver || segmentsInvalid;
 
@@ -101,12 +101,12 @@ export function EditProfileModal({ open, onOpenChange }: EditProfileModalProps) 
               id="edit-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              maxLength={100}
+              maxLength={80}
               placeholder="Seu nome"
             />
             {nameInvalid && (
               <p className="text-xs" style={{ color: "rgb(220,38,38)" }}>
-                Nome deve ter entre 2 e 100 caracteres.
+                Nome deve ter entre 2 e 80 caracteres.
               </p>
             )}
           </div>

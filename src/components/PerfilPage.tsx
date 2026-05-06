@@ -39,7 +39,7 @@ interface PerfilPageProps {
 export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const { userData, books } = useApp();
   const { settings } = useAccessibility();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { logout, user, updatePreferences, uploadAvatar } = useAuth();
   const canAccessAdmin = userHasRole(user, "producer");
   // Task #45 — preferências vivem em users.notification_preferences (JSONB)
@@ -59,6 +59,11 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showLanguage, setShowLanguage] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  // Task #45 — preview otimista do avatar: criamos um objectURL local
+  // assim que o usuário escolhe um arquivo e mostramos imediatamente
+  // no header. Se o upload falhar, voltamos pro avatar do servidor.
+  // Sucesso: limpamos o preview e o user atualizado já traz a nova URL.
+  const [pendingAvatarPreview, setPendingAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   interface ActivityStats {
@@ -122,14 +127,35 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
         toast.error("Imagem muito grande (máx. 2 MB).");
         return;
       }
+      const previewUrl = URL.createObjectURL(file);
+      setPendingAvatarPreview(previewUrl);
       setUploadingAvatar(true);
       const res = await uploadAvatar(file);
       setUploadingAvatar(false);
+      // Libera o objectURL e limpa o preview — em sucesso o user
+      // recém-hidratado já traz avatar_url novo; em falha, volta para
+      // o avatar antigo do servidor.
+      URL.revokeObjectURL(previewUrl);
+      setPendingAvatarPreview(null);
       if (res.success) toast.success("Foto de perfil atualizada!");
       else toast.error(res.error || "Erro ao enviar foto");
     },
     [uploadAvatar],
   );
+
+  // Task #45 — alterna o tema localmente (ThemeProvider) e persiste no
+  // perfil para que outros dispositivos do mesmo usuário hidratem o
+  // valor no boot.
+  const handleToggleTheme = useCallback(async () => {
+    const next: "light" | "dark" = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    const res = await updatePreferences({ theme: next });
+    if (!res.success) {
+      // Reverte UI se a persistência falhar para manter coerência.
+      setTheme(theme);
+      toast.error(res.error || "Erro ao salvar tema");
+    }
+  }, [theme, setTheme, updatePreferences]);
 
   const handleToggleNotifications = useCallback(
     async (checked: boolean) => {
@@ -409,7 +435,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     {
       title: "Preferências",
       items: [
-        { icon: theme === 'dark' ? Moon : Sun, label: "Modo Escuro", hasSwitch: true, switchValue: theme === 'dark', onSwitchChange: toggleTheme },
+        { icon: theme === 'dark' ? Moon : Sun, label: "Modo Escuro", hasSwitch: true, switchValue: theme === 'dark', onSwitchChange: handleToggleTheme },
         {
           icon: Globe,
           label: "Idioma",
@@ -576,8 +602,11 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                         className="w-24 h-24 lg:w-32 lg:h-32 ring-4 shadow-xl"
                         style={{ ringColor: 'var(--raio-bg-primary)' }}
                       >
-                        {user?.avatar_url && (
-                          <AvatarImage src={user.avatar_url} alt={user.name} />
+                        {(pendingAvatarPreview || user?.avatar_url) && (
+                          <AvatarImage
+                            src={pendingAvatarPreview || user!.avatar_url!}
+                            alt={user?.name || "Avatar"}
+                          />
                         )}
                         <AvatarFallback
                           className="text-2xl lg:text-4xl"

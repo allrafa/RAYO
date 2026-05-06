@@ -15,6 +15,7 @@ export interface NotificationFlags {
 export interface NotificationPreferences {
   notifications?: NotificationFlags;
   language?: string;
+  theme?: "light" | "dark";
   // legacy flat keys (lidos mas não escritos)
   push?: boolean;
   email?: boolean;
@@ -25,6 +26,7 @@ export interface NotificationPreferences {
 export interface PreferencesPatch {
   notifications?: NotificationFlags;
   language?: "pt-BR" | "en";
+  theme?: "light" | "dark";
 }
 
 export interface User {

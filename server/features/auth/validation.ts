@@ -95,8 +95,8 @@ export function validateProfileUpdate(body: unknown): { valid: true; data: Profi
     if (trimmed.length < 2) {
       return { valid: false, message: "Nome deve ter pelo menos 2 caracteres" };
     }
-    if (trimmed.length > 100) {
-      return { valid: false, message: "Nome deve ter no máximo 100 caracteres" };
+    if (trimmed.length > 80) {
+      return { valid: false, message: "Nome deve ter no máximo 80 caracteres" };
     }
     data.name = trimmed;
     hasField = true;

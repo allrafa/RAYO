@@ -156,7 +156,17 @@ router.patch("/preferences", requireAuth, async (req: Request, res: Response, ne
       language = body.language;
     }
 
-    if (Object.keys(nextNotif).length === 0 && language === undefined) {
+    let theme: string | undefined;
+    if ((body as { theme?: unknown }).theme !== undefined) {
+      const t = (body as { theme?: unknown }).theme;
+      if (t !== "light" && t !== "dark") {
+        error(res, "Tema inválido (use light ou dark)", "VALIDATION_ERROR", 400);
+        return;
+      }
+      theme = t as string;
+    }
+
+    if (Object.keys(nextNotif).length === 0 && language === undefined && theme === undefined) {
       error(res, "Nenhuma preferência válida fornecida", "VALIDATION_ERROR", 400);
       return;
     }
@@ -177,6 +187,9 @@ router.patch("/preferences", requireAuth, async (req: Request, res: Response, ne
     }
     if (language !== undefined) {
       merged.language = language;
+    }
+    if (theme !== undefined) {
+      merged.theme = theme;
     }
 
     const updatedUser = await updateUserProfile(req.user!.id, {

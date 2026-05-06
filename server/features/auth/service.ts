@@ -47,6 +47,7 @@ export interface NotificationFlags {
 export interface NotificationPreferences {
   notifications?: NotificationFlags;
   language?: string;
+  theme?: string;
   // legacy flat keys (lidos mas não escritos)
   push?: boolean;
   email?: boolean;

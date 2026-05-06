@@ -10,7 +10,7 @@ import { AppProvider, useApp } from "./components/AppContext";
 import { AnalyticsProvider } from "./components/AnalyticsContext";
 import { AuthProvider, useAuth, userHasRole } from "./components/AuthContext";
 import { AdminShell } from "./components/admin/AdminShell";
-import { ThemeProvider } from "./components/ThemeProvider";
+import { ThemeProvider, useTheme } from "./components/ThemeProvider";
 import { UnreadMessagesProvider } from "./components/hooks/useUnreadMessages";
 import { Toaster } from "./components/ui/sonner";
 import { AuthPage } from "./components/AuthPage";
@@ -49,6 +49,18 @@ function getResetTokenFromUrl(): string | null {
 
 function AppContent() {
   const { user, isLoading, logout } = useAuth();
+  const { setTheme } = useTheme();
+
+  // Task #45 — hidrata o tema (e idioma futuro) das preferências do
+  // usuário assim que a sessão carrega. Mantemos localStorage como
+  // cache pra primeiros frames, mas o servidor é a fonte de verdade.
+  useEffect(() => {
+    const pref = user?.notification_preferences?.theme;
+    if (pref === "light" || pref === "dark") {
+      setTheme(pref);
+    }
+  }, [user, setTheme]);
+
   const [currentTab, setCurrentTab] = useState("home");
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(() => getResetTokenFromUrl());

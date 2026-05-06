@@ -76,7 +76,14 @@ RAIO is a digital platform designed to strengthen families through transformativ
   multi-select de segmentos (com validação client-side de ≥1) e chips
   de interesses; `ChangePasswordModal`; `LanguageModal` salva idioma
   via `updatePreferences({language})`. Toggle de Notificações grava em
-  `notifications.push` no JSONB. Compartilhar perfil copia
+  `notifications.push` no JSONB. Tema (`light`/`dark`) também persiste
+  via `updatePreferences({theme})` e é re-hidratado no boot por
+  `AppContent` aplicando `setTheme(user.notification_preferences.theme)`.
+  Avatar tem **preview otimista**: assim que o usuário escolhe o
+  arquivo, mostramos um `URL.createObjectURL` no header e revogamos no
+  fim (sucesso ou falha rola back pro avatar do servidor). Nome no
+  EditProfileModal segue o limite do backend (2–80 caracteres).
+  Compartilhar perfil copia
   `${VITE_APP_URL || origin}/u/<id>` — `App.tsx` detecta esse path no
   mount, troca pra aba Perfil e usa `sessionStorage["raio-pending-
   profile"]` (mesmo contrato da busca). Suporte é env-driven
