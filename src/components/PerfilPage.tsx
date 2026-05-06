@@ -42,7 +42,15 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const { theme, toggleTheme } = useTheme();
   const { logout, user, updatePreferences, uploadAvatar } = useAuth();
   const canAccessAdmin = userHasRole(user, "producer");
-  const notificationsEnabled = user?.notification_preferences?.push ?? true;
+  // Task #45 — preferências vivem em users.notification_preferences (JSONB)
+  // no formato nested `{ notifications: {...}, language }`. Fallbacks
+  // tolerantes para perfis legados que tinham flat keys.
+  const notificationsEnabled =
+    user?.notification_preferences?.notifications?.push ??
+    user?.notification_preferences?.push ??
+    true;
+  const language: "pt-BR" | "en" =
+    (user?.notification_preferences?.language as "pt-BR" | "en") || "pt-BR";
   const [showFavoritos, setShowFavoritos] = useState(false);
   const [showBiblioteca, setShowBiblioteca] = useState(false);
   const { favoriteVideos } = useVideoProgress();
@@ -50,18 +58,14 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showLanguage, setShowLanguage] = useState(false);
-  const [language, setLanguage] = useState<string>(() => {
-    if (typeof window === "undefined") return "pt-BR";
-    return window.localStorage.getItem("raio-language") || "pt-BR";
-  });
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   interface ActivityStats {
-    coursesEnrolled: number;
     libraryCount: number;
-    communitiesActive: number;
-    postsCreated: number;
+    communitiesCount: number;
+    favoritesCount: number;
+    councilSessionsCount?: number;
   }
   const [activity, setActivity] = useState<ActivityStats | null>(null);
 
@@ -93,15 +97,17 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     void reloadMissions();
   }, [reloadMissions]);
 
-  const handleSelectLanguage = useCallback((lang: string) => {
-    setLanguage(lang);
-    try {
-      window.localStorage.setItem("raio-language", lang);
-    } catch {
-      /* ignore */
-    }
-    toast.success(`Idioma definido: ${LANGUAGE_LABELS[lang] || lang}`);
-  }, []);
+  const handleSelectLanguage = useCallback(
+    async (lang: "pt-BR" | "en") => {
+      const res = await updatePreferences({ language: lang });
+      if (res.success) {
+        toast.success(`Idioma definido: ${LANGUAGE_LABELS[lang] || lang}`);
+      } else {
+        toast.error(res.error || "Erro ao salvar idioma");
+      }
+    },
+    [updatePreferences],
+  );
 
   const handleAvatarPick = useCallback(() => {
     fileInputRef.current?.click();
@@ -127,7 +133,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
 
   const handleToggleNotifications = useCallback(
     async (checked: boolean) => {
-      const res = await updatePreferences({ push: checked });
+      const res = await updatePreferences({ notifications: { push: checked } });
       if (res.success) {
         toast.success(checked ? "Notificações ativadas" : "Notificações desativadas");
       } else {
@@ -139,8 +145,13 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
 
   const handleShareProfile = useCallback(async () => {
     if (!user) return;
-    const baseUrl = window.location.origin;
-    const url = `${baseUrl}/?u=${user.id}`;
+    // Task #45 — formato `${APP_URL}/u/<id>`. Quando aberto, App.tsx
+    // detecta `/u/:id`, troca pra aba Perfil e dispara o deep-link via
+    // sessionStorage `raio-pending-profile` (mesmo contrato da busca).
+    const baseUrl =
+      (import.meta.env.VITE_APP_URL as string | undefined)?.replace(/\/$/, "") ||
+      window.location.origin;
+    const url = `${baseUrl}/u/${user.id}`;
     try {
       await navigator.clipboard.writeText(url);
       toast.success("Link copiado para a área de transferência!");
@@ -148,6 +159,29 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       toast.error("Não foi possível copiar o link.");
     }
   }, [user]);
+
+  // Task #45 — destinos de suporte vêm de env (Vite). Se nada estiver
+  // configurado, o item somem em vez de virar "Em breve".
+  const supportEmail = (import.meta.env.VITE_SUPPORT_EMAIL as string | undefined) || "";
+  const supportWhatsappUrl = (import.meta.env.VITE_SUPPORT_WHATSAPP_URL as string | undefined) || "";
+  const supportItem: { icon: any; label: string; onClick: () => void } | null =
+    supportEmail
+      ? {
+          icon: MessageSquare,
+          label: "Falar com Suporte",
+          onClick: () => {
+            window.location.href = `mailto:${supportEmail}?subject=Suporte%20RAIO`;
+          },
+        }
+      : supportWhatsappUrl
+      ? {
+          icon: MessageSquare,
+          label: "Falar com Suporte (WhatsApp)",
+          onClick: () => {
+            window.open(supportWhatsappUrl, "_blank", "noopener,noreferrer");
+          },
+        }
+      : null;
 
   const handleClaimMission = useCallback(
     async (missionId: number) => {
@@ -320,9 +354,11 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     },
   ];
 
-  // Task #45 — só estatísticas com fonte real. "Sessões Conselheiro" foi
-  // removido (não existe persistência) e Comunidades vem do backend
-  // (count distinct forum_id em posts do usuário).
+  // Task #45 — contrato: { libraryCount, communitiesCount,
+  // favoritesCount, councilSessionsCount? }. Favoritos do servidor +
+  // favoritos locais de vídeo. councilSessionsCount só aparece se o
+  // backend devolver (tabela existe).
+  const totalFavorites = (activity?.favoritesCount ?? 0) + favoriteVideos.length;
   const activityStats: Array<{
     icon: any;
     label: string;
@@ -338,23 +374,26 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     {
       icon: Users,
       label: "Comunidades",
-      value: activity?.communitiesActive ?? 0,
+      value: activity?.communitiesCount ?? 0,
     },
     {
       icon: Heart,
-      label: "Vídeos Favoritos",
-      value: favoriteVideos.length,
+      label: "Favoritos",
+      value: totalFavorites,
       onClick: () => setShowFavoritos(true),
     },
-    {
-      icon: MessageSquare,
-      label: "Posts criados",
-      value: activity?.postsCreated ?? 0,
-    },
+    ...(activity?.councilSessionsCount !== undefined
+      ? [{
+          icon: MessageSquare,
+          label: "Sessões Conselheiro",
+          value: activity.councilSessionsCount,
+        }]
+      : []),
   ];
 
-  // Task #45 — toda ação aqui é real (editar, alternar tema, idioma local,
-  // mailto suporte, troca de senha). "Em breve!" foi banido.
+  // Task #45 — toda ação aqui é real (editar, alternar tema, idioma
+  // persistido, suporte env-driven, troca de senha). "Em breve!" foi
+  // banido. Itens sem destino configurado simplesmente somem.
   const menuSections = [
     {
       title: "Conta",
@@ -382,13 +421,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     {
       title: "Suporte",
       items: [
-        {
-          icon: MessageSquare,
-          label: "Falar com Suporte",
-          onClick: () => {
-            window.location.href = "mailto:suporte@raio.app?subject=Suporte%20RAIO";
-          },
-        },
+        ...(supportItem ? [supportItem] : []),
         { icon: Shield, label: "Trocar senha", onClick: () => setShowChangePassword(true) },
       ]
     }
@@ -752,23 +785,47 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
             )}
 
             {/* Task #45 — Missões da semana (consome /api/gamification/missions) */}
-            {missions.length > 0 && (
-              <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
-                <Card
-                  className="p-4 lg:p-6 border-0 shadow-md"
-                  style={{ background: 'var(--raio-bg-secondary)' }}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3
-                      className="text-lg"
-                      style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
-                    >
-                      Missões da semana
-                    </h3>
+            <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
+              <Card
+                className="p-4 lg:p-6 border-0 shadow-md"
+                style={{ background: 'var(--raio-bg-secondary)' }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3
+                    className="text-lg"
+                    style={{ fontWeight: 600, color: 'var(--raio-text-primary)' }}
+                  >
+                    Missões da semana
+                  </h3>
+                  {missions.length > 0 && (
                     <span className="text-xs" style={{ color: 'var(--raio-text-tertiary)' }}>
                       {missions.filter((m) => m.completed).length}/{missions.length} concluídas
                     </span>
+                  )}
+                </div>
+                {missions.length === 0 ? (
+                  <div
+                    className="text-center py-6 rounded-lg"
+                    style={{
+                      background: 'var(--raio-bg-tertiary)',
+                      border: '1px dashed var(--raio-border-default)',
+                    }}
+                  >
+                    <Target
+                      className="w-8 h-8 mx-auto mb-2"
+                      style={{ color: 'var(--raio-text-tertiary)' }}
+                    />
+                    <p
+                      className="text-sm mb-1"
+                      style={{ color: 'var(--raio-text-primary)', fontWeight: 600 }}
+                    >
+                      Nenhuma missão por aqui ainda
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--raio-text-tertiary)' }}>
+                      Volte em breve — novas missões aparecem toda semana.
+                    </p>
                   </div>
+                ) : (
                   <div className="space-y-3">
                     {missions.map((mission) => {
                       const pct = Math.min(
@@ -845,9 +902,9 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                       );
                     })}
                   </div>
-                </Card>
-              </div>
-            )}
+                )}
+              </Card>
+            </div>
 
             {/* All Badges (Locked & Unlocked) */}
             {badges.length > 0 && (

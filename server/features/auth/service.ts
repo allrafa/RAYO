@@ -31,7 +31,23 @@ function hashToken(token: string): string {
 
 export type UserRole = "client" | "producer" | "moderator" | "admin";
 
+// Task #45 — formato nested do payload de preferências. Os campos
+// flat antigos (push/email/...) continuam aceitos no parse para
+// tolerar dados legados, mas a API nova grava sempre na chave
+// `notifications`. `language` fica fora do bloco notifications porque
+// não é uma notificação.
+export interface NotificationFlags {
+  push?: boolean;
+  email?: boolean;
+  weekly_digest?: boolean;
+  missions?: boolean;
+  community?: boolean;
+}
+
 export interface NotificationPreferences {
+  notifications?: NotificationFlags;
+  language?: string;
+  // legacy flat keys (lidos mas não escritos)
   push?: boolean;
   email?: boolean;
   missions?: boolean;

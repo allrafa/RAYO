@@ -58,22 +58,32 @@ RAIO is a digital platform designed to strengthen families through transformativ
   Endpoints novos: `POST /api/auth/change-password` (verifica senha
   atual via bcrypt antes de trocar), `POST /api/users/avatar` (multer
   dedicado, cap 2 MB, JPG/PNG/WebP, salva em `uploads/avatar/`,
-  retorna `user`), `PATCH /api/users/preferences` (merge raso na JSONB
-  `notification_preferences`, allowlist `push|email|missions|community`),
-  `GET /api/users/me/activity-stats` (cursos/biblioteca/comunidades
-  distintas/posts criados — usa `is_hidden = FALSE`). `PATCH
-  /api/users/profile` agora aceita `name` (2–100) e `bio` (≤280, "" → null).
-  `GET /api/users/:id/public` devolve `bio` + `avatar_url`.
-  Frontend: `PerfilPage` consome tudo isso, mostra avatar com botão de
-  câmera, exibe bio no hero, lista "Missões da semana" com botão
-  Resgatar (`POST /api/gamification/missions/:id/claim`), e os
-  modais ficam em `src/components/perfil/PerfilModals.tsx`
-  (EditProfile, ChangePassword, Language). Toggle de Notificações
-  persiste via `updatePreferences`. Idioma é local
-  (`localStorage["raio-language"]`, i18n real fora de escopo).
-  **Regra "no Em breve"**: nenhum item de menu pode disparar
-  `toast.info("Em breve!")` — ou faz algo real, ou é removido. "Sessões
-  Conselheiro" foi removido do grid (sem fonte de dados).
+  retorna `user`), `PATCH /api/users/preferences` (payload **nested**
+  `{ notifications: { push?, email?, weekly_digest?, missions?,
+  community? }, language? }`, merge raso preservando outras chaves;
+  language aceita `pt-BR` ou `en`), `GET /api/users/me/activity-stats`
+  (`{ libraryCount, communitiesCount, favoritesCount,
+  councilSessionsCount? }` — councilSessionsCount só aparece se a
+  tabela `trilha_transformacao_conversations` existir; nada de stat
+  fake). `PATCH /api/users/profile` aceita `name` (2–100), `bio` (≤280,
+  "" → null), `segments` (mín. 1 contexto obrigatório quando
+  fornecido) e `interests`. `GET /api/users/:id/public` devolve `bio` +
+  `avatar_url`. Frontend: `PerfilPage` consome tudo isso, mostra avatar
+  com botão de câmera, exibe bio no hero, lista "Missões da semana"
+  com botão Resgatar (`POST /api/gamification/missions/:id/claim`) e
+  estado vazio amigável quando não há missão. Modais ficam em
+  `src/components/perfil/PerfilModals.tsx`: `EditProfileModal` traz
+  multi-select de segmentos (com validação client-side de ≥1) e chips
+  de interesses; `ChangePasswordModal`; `LanguageModal` salva idioma
+  via `updatePreferences({language})`. Toggle de Notificações grava em
+  `notifications.push` no JSONB. Compartilhar perfil copia
+  `${VITE_APP_URL || origin}/u/<id>` — `App.tsx` detecta esse path no
+  mount, troca pra aba Perfil e usa `sessionStorage["raio-pending-
+  profile"]` (mesmo contrato da busca). Suporte é env-driven
+  (`VITE_SUPPORT_EMAIL` → mailto, fallback `VITE_SUPPORT_WHATSAPP_URL`);
+  se nada estiver setado, o item somem do menu. **Regra "no Em
+  breve"**: nenhum item de menu pode disparar `toast.info("Em breve!")`
+  — ou faz algo real, ou some.
 - **Stats clicáveis + Continue unificado + Busca mobile (Task #44)**:
   Os 3 cards de stats da Home (Sequência, Nível, XP semanal) viraram
   `<button>` reais e abrem modais informativos:

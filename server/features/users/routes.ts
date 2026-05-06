@@ -123,30 +123,65 @@ router.patch("/profile", requireAuth, async (req: Request, res: Response, next: 
   }
 });
 
-// Task #45 — atualiza preferências de notificação (merge raso na JSONB).
+// Task #45 — preferências de usuário (notifications + language). O
+// payload aceito é nested: `{ notifications: { push?, email?,
+// weekly_digest?, missions?, community? }, language? }`. Fazemos merge
+// raso preservando notifications existentes e qualquer outra chave
+// futura (ex.: theme).
 router.patch("/preferences", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const body = (req.body || {}) as Record<string, unknown>;
-    const allowed = ["push", "email", "missions", "community"] as const;
-    const next: Record<string, boolean> = {};
-    for (const key of allowed) {
-      if (body[key] !== undefined) {
-        next[key] = Boolean(body[key]);
+    const body = (req.body || {}) as { notifications?: unknown; language?: unknown };
+    const NOTIF_KEYS = ["push", "email", "weekly_digest", "missions", "community"] as const;
+
+    const nextNotif: Record<string, boolean> = {};
+    if (body.notifications !== undefined) {
+      if (typeof body.notifications !== "object" || body.notifications === null || Array.isArray(body.notifications)) {
+        error(res, "notifications deve ser um objeto", "VALIDATION_ERROR", 400);
+        return;
+      }
+      const incoming = body.notifications as Record<string, unknown>;
+      for (const key of NOTIF_KEYS) {
+        if (incoming[key] !== undefined) {
+          nextNotif[key] = Boolean(incoming[key]);
+        }
       }
     }
-    if (Object.keys(next).length === 0) {
+
+    let language: string | undefined;
+    if (body.language !== undefined) {
+      if (body.language !== "pt-BR" && body.language !== "en") {
+        error(res, "Idioma inválido (use pt-BR ou en)", "VALIDATION_ERROR", 400);
+        return;
+      }
+      language = body.language;
+    }
+
+    if (Object.keys(nextNotif).length === 0 && language === undefined) {
       error(res, "Nenhuma preferência válida fornecida", "VALIDATION_ERROR", 400);
       return;
     }
 
-    const { rows } = await query<{ notification_preferences: Record<string, boolean> | null }>(
+    const { rows } = await query<{ notification_preferences: Record<string, unknown> | null }>(
       "SELECT notification_preferences FROM users WHERE id = $1",
       [req.user!.id],
     );
-    const current = (rows[0]?.notification_preferences ?? {}) as Record<string, boolean>;
-    const merged = { ...current, ...next };
+    const current = (rows[0]?.notification_preferences ?? {}) as Record<string, unknown>;
+    const currentNotifRaw = current.notifications;
+    const currentNotif =
+      currentNotifRaw && typeof currentNotifRaw === "object" && !Array.isArray(currentNotifRaw)
+        ? (currentNotifRaw as Record<string, boolean>)
+        : {};
+    const merged: Record<string, unknown> = { ...current };
+    if (Object.keys(nextNotif).length > 0) {
+      merged.notifications = { ...currentNotif, ...nextNotif };
+    }
+    if (language !== undefined) {
+      merged.language = language;
+    }
 
-    const updatedUser = await updateUserProfile(req.user!.id, { notification_preferences: merged });
+    const updatedUser = await updateUserProfile(req.user!.id, {
+      notification_preferences: merged as Parameters<typeof updateUserProfile>[1]["notification_preferences"],
+    });
     success(res, { user: updatedUser });
   } catch (err) {
     next(err);
@@ -183,21 +218,17 @@ router.post("/avatar", requireAuth, (req: Request, res: Response, next: NextFunc
 });
 
 // Task #45 — agregador de stats reais para a Atividade no Perfil.
-// Comunidades = quantidade de fóruns distintos onde o usuário já postou
-// (não há tabela de membership). Vídeos favoritos vêm do localStorage
-// do cliente e não entram aqui.
+// Contrato: `{ libraryCount, communitiesCount, favoritesCount,
+// councilSessionsCount? }`. `favoritesCount` cobre apenas favoritos
+// persistidos no servidor (vídeos favoritos do YouTube ainda vivem em
+// localStorage e o frontend mescla). `councilSessionsCount` só é
+// devolvido se houver tabela de conversas do Conselheiro — caso
+// contrário fica omisso pra frontend não mostrar dado falso.
 router.get("/me/activity-stats", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id;
-    const [coursesRes, libraryRes, communitiesRes, postsRes] = await Promise.all([
+    const [libraryRes, communitiesRes, councilTableRes] = await Promise.all([
       query<{ count: string }>(
-        `SELECT COUNT(*)::text AS count FROM user_course_progress WHERE user_id = $1`,
-        [userId],
-      ),
-      query<{ count: string }>(
-        // Tabela existe? Em produção a Biblioteca vem dos cursos +
-        // CMS items lidos. Como não há tabela dedicada, retornamos a
-        // contagem de cursos matriculados como aproximação.
         `SELECT COUNT(*)::text AS count FROM user_course_progress WHERE user_id = $1`,
         [userId],
       ),
@@ -205,22 +236,33 @@ router.get("/me/activity-stats", requireAuth, async (req: Request, res: Response
         `SELECT COUNT(DISTINCT forum_id)::text AS count FROM posts WHERE user_id = $1 AND is_hidden = FALSE`,
         [userId],
       ),
-      query<{ count: string }>(
-        `SELECT COUNT(*)::text AS count FROM posts WHERE user_id = $1 AND is_hidden = FALSE`,
-        [userId],
+      query<{ exists: boolean }>(
+        `SELECT EXISTS (
+           SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = 'trilha_transformacao_conversations'
+         ) AS exists`,
       ),
     ]);
-    success(res, {
-      stats: {
-        coursesEnrolled: Number.parseInt(coursesRes.rows[0]?.count ?? "0", 10),
-        libraryCount: Number.parseInt(libraryRes.rows[0]?.count ?? "0", 10),
-        communitiesActive: Number.parseInt(
-          communitiesRes.rows[0]?.count ?? "0",
-          10,
-        ),
-        postsCreated: Number.parseInt(postsRes.rows[0]?.count ?? "0", 10),
-      },
-    });
+
+    const stats: Record<string, number> = {
+      libraryCount: Number.parseInt(libraryRes.rows[0]?.count ?? "0", 10),
+      communitiesCount: Number.parseInt(communitiesRes.rows[0]?.count ?? "0", 10),
+      // Favoritos persistidos no servidor: hoje só temos cursos
+      // marcados em progresso como proxy real (vídeos favoritos vivem
+      // no cliente). Se um dia tivermos `user_favorites`, troca aqui.
+      favoritesCount: 0,
+    };
+
+    if (councilTableRes.rows[0]?.exists) {
+      const councilRes = await query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM trilha_transformacao_conversations WHERE user_id = $1`,
+        [userId],
+      );
+      stats.councilSessionsCount = Number.parseInt(councilRes.rows[0]?.count ?? "0", 10);
+    }
+
+    success(res, { stats });
   } catch (err) {
     next(err);
   }

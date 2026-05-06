@@ -84,6 +84,29 @@ function AppContent() {
     analytics.trackAppOpened();
   }, []);
 
+  // Task #45 — deep-link `/u/<id>` para perfis compartilhados. Captura
+  // o id na primeira renderização, troca pra aba Perfil e deixa o
+  // sessionStorage `raio-pending-profile` pra PerfilPage abrir o
+  // perfil correto (mesmo contrato usado pela busca). A URL é limpa
+  // para não disparar de novo num refresh.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const match = window.location.pathname.match(/^\/u\/(\d+)\/?$/);
+    if (!match) return;
+    const id = match[1];
+    try {
+      sessionStorage.setItem("raio-pending-profile", id);
+    } catch {
+      // ignore
+    }
+    setCurrentTab("perfil");
+    try {
+      window.history.replaceState({}, "", "/");
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     if (resetToken && user) {
       void logout();

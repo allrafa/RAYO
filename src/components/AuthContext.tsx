@@ -4,11 +4,27 @@ import { markDeviceAsReturning } from "../lib/deviceMemory";
 
 export type UserRole = "client" | "producer" | "moderator" | "admin";
 
+export interface NotificationFlags {
+  push?: boolean;
+  email?: boolean;
+  weekly_digest?: boolean;
+  missions?: boolean;
+  community?: boolean;
+}
+
 export interface NotificationPreferences {
+  notifications?: NotificationFlags;
+  language?: string;
+  // legacy flat keys (lidos mas não escritos)
   push?: boolean;
   email?: boolean;
   missions?: boolean;
   community?: boolean;
+}
+
+export interface PreferencesPatch {
+  notifications?: NotificationFlags;
+  language?: "pt-BR" | "en";
 }
 
 export interface User {
@@ -66,7 +82,7 @@ interface AuthContextType {
     content_preferences?: string[];
   }) => Promise<{ success: boolean; error?: string }>;
   updatePreferences: (
-    prefs: Partial<NotificationPreferences>,
+    prefs: PreferencesPatch,
   ) => Promise<{ success: boolean; error?: string }>;
   uploadAvatar: (file: File) => Promise<{ success: boolean; error?: string }>;
   changePassword: (
@@ -172,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error: res.error?.message || "Erro ao atualizar perfil" };
   }, []);
 
-  const updatePreferences = useCallback(async (prefs: Partial<NotificationPreferences>) => {
+  const updatePreferences = useCallback(async (prefs: PreferencesPatch) => {
     const res = await api.patch<{ user: User }>("/api/users/preferences", prefs);
     if (res.success && res.data) {
       setUser(res.data.user);

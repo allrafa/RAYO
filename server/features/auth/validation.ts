@@ -117,7 +117,11 @@ export function validateProfileUpdate(body: unknown): { valid: true; data: Profi
     hasField = true;
   }
   if (segments !== undefined) {
-    data.segments = validateStringArray(segments, 10);
+    const arr = validateStringArray(segments, 10);
+    if (arr.length === 0) {
+      return { valid: false, message: "Selecione pelo menos um contexto de vida" };
+    }
+    data.segments = arr;
     hasField = true;
   }
   if (interests !== undefined) {
