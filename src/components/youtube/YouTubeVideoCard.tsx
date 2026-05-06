@@ -64,6 +64,8 @@ export function YouTubeVideoCard({ video, onClick, showProgress = false }: YouTu
         <img 
           src={video.thumbnail.medium}
           alt={video.title}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         

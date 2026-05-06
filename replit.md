@@ -68,6 +68,14 @@ RAIO is a digital platform designed to strengthen families through transformativ
   is a floating top-right icon (`MobileTopBar`, `lg:hidden`). Admin for
   `producer+` lives inside `PerfilPage` (Conta → Painel Admin), not in
   the bottom bar. Conselheiro is reached via the Home CTA.
+- **Home structure** (Task #42 — Faxina): hero is a single editorial
+  layer (image + overlay + greeting + headline + CTA "Falar com o
+  conselheiro" → opens `TrilhaTransformacaoChat`). The greeting lives
+  in the hero, not above the stats grid. Mensagens is **only** reached
+  via `MobileTopBar` (the duplicate envelope inside the hero was
+  removed). There is no Shuffle FAB and no empty "Adicionar conteúdo"
+  card. `YouTubeMockBanner` is dev-only (gated by `import.meta.env.PROD`).
+  YouTube card thumbnails use `loading="lazy"`.
 
 ## Gotchas
 - **Route Order**: In Express, fixed-prefix routes must be declared before dynamic parameter routes (e.g., `/:id`) to prevent incorrect matching.

@@ -13,6 +13,10 @@ export function YouTubeMockBanner() {
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
+    // Banner é só uma ajuda de configuração para devs (como obter a YouTube
+    // API Key). Em produção nunca aparece. Task #42.
+    if (import.meta.env.PROD) return;
+
     // Verifica se já foi dispensado anteriormente
     const wasDismissed = localStorage.getItem('raio-youtube-mock-banner-dismissed');
     if (!wasDismissed) {

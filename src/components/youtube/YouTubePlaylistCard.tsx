@@ -22,6 +22,8 @@ export function YouTubePlaylistCard({ playlist, onClick }: YouTubePlaylistCardPr
         <img 
           src={playlist.thumbnail.high}
           alt={playlist.title}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         

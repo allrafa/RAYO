@@ -1,4 +1,4 @@
-import { Play, BookOpen, Users, TrendingUp, Star, Clock, ArrowRight, Award, RefreshCw, Heart, Shuffle, MoreHorizontal, Plus, MessageCircle, Sparkles, Target, Brain, Flame, Zap, Trophy, CheckCircle2 } from "lucide-react";
+import { Play, Users, Star, Clock, Heart, MessageCircle, Target, Brain, Flame, Zap, Trophy, CheckCircle2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -468,382 +468,67 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   return (
     <PullToRefresh onRefresh={handleRefresh}>
       <div className="min-h-screen bg-background">
-        {/* Hero Section inspirado no Spotify */}
-        <div className="relative h-96 md:h-[28rem] overflow-hidden">
-          {/* Background com cards em mosaico */}
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-            {/* Grid de cards de fundo */}
-            <div className="absolute top-8 -right-12 w-72 h-56 opacity-20 overflow-hidden">
-              <div className="grid grid-cols-3 gap-2 h-full p-2 rotate-12 scale-100">
-                {/* Row 1 */}
-                <div className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-lg overflow-hidden">
-                  <ImageWithFallback
-                    src="https://images.unsplash.com/photo-1596510914965-9ae08acae566?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGZhbWlseSUyMHRvZ2V0aGVyJTIwYm9uZGluZ3xlbnwxfHx8fDE3NTk2MzYxNDN8MA&ixlib=rb-4.1.0&q=80&w=1080"
-                    alt="Família feliz"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-lg overflow-hidden">
-                  <ImageWithFallback
-                    src="https://images.unsplash.com/photo-1631337034560-28f2a00ab3d3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3VwbGUlMjByb21hbnRpYyUyMGVtYnJhY2UlMjBzdW5zZXR8ZW58MXx8fHwxNzU5NjM2MTQ2fDA&ixlib=rb-4.1.0&q=80&w=1080"
-                    alt="Casal romântico"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg overflow-hidden">
-                  <ImageWithFallback
-                    src="https://images.unsplash.com/photo-1548972774-1d09980f8e8e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwYXJlbnRzJTIwY2hpbGRyZW4lMjBwbGF5aW5nJTIwaG9tZXxlbnwxfHx8fDE3NTk2MzYxNTB8MA&ixlib=rb-4.1.0&q=80&w=1080"
-                    alt="Pais brincando"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                
-                {/* Row 2 */}
-                <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg overflow-hidden">
-                  <ImageWithFallback
-                    src="https://images.unsplash.com/photo-1749235878214-8a3079c72e5a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3ZWRkaW5nJTIwY291cGxlJTIwbG92ZSUyMGNlbGVicmF0aW9ufGVufDF8fHx8MTc1OTYzNjE1M3ww&ixlib=rb-4.1.0&q=80&w=1080"
-                    alt="Casamento"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg overflow-hidden">
-                  <ImageWithFallback
-                    src="https://images.unsplash.com/photo-1758874961105-37e0cba8c9dd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW1pbHklMjBkaW5uZXIlMjB0b2dldGhlciUyMGJvbmRpbmd8ZW58MXx8fHwxNzU5NjM2MTU3fDA&ixlib=rb-4.1.0&q=80&w=1080"
-                    alt="Jantar em família"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-lg overflow-hidden">
-                  <ImageWithFallback
-                    src="https://images.unsplash.com/photo-1689028538816-43e20bb203b2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3VwbGUlMjBob2xkaW5nJTIwaGFuZHMlMjB3YWxraW5nfGVufDF8fHx8fDE3NTk1ODMxNTh8MA&ixlib=rb-4.1.0&q=80&w=1080"
-                    alt="Casal caminhando"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+        {/* Hero — single editorial layer (Task #42, Faxina). Substitui as
+            três camadas sobrepostas (mosaico colorido + grid 3D rotacionado +
+            foto de aconselhamento) por uma única composição editorial:
+            imagem + overlay + saudação + headline + CTA. */}
+        <div className="relative h-[22rem] md:h-[26rem] overflow-hidden">
+          {/* Background editorial */}
+          <ImageWithFallback
+            src="https://images.unsplash.com/photo-1758273240403-052b3c99f636?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3Vuc2VsaW5nJTIwdGhlcmFweSUyMHNlc3Npb24lMjBjYWxtfGVufDF8fHx8MTc1OTY0NDg1MXww&ixlib=rb-4.1.0&q=80&w=1080"
+            alt="Família caminhando junto em direção à transformação"
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="eager"
+          />
+          {/* Overlay legível em qualquer tema (texto sempre branco) */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/55 to-black/90" />
+          {/* Brilho sutil de marca (token RAIO accent) */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(60% 50% at 80% 20%, var(--raio-accent-glow-soft), transparent 70%)',
+            }}
+          />
 
-                {/* Row 3 */}
-                <div className="bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg">
-                  <div className="h-full flex items-center justify-center text-white text-xs">
-                    Transformação
-                  </div>
-                </div>
-                <div className="bg-gradient-to-br from-teal-500 to-green-500 rounded-lg">
-                  <div className="h-full flex items-center justify-center text-white text-xs">
-                    Relacionamentos
-                  </div>
-                </div>
-                <div className="bg-gradient-to-br from-red-500 to-pink-500 rounded-lg">
-                  <div className="h-full flex items-center justify-center text-white text-xs">
-                    Família RAIO
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Overlay gradient */}
-          {/* RAIO Premium Mosaic Background */}
-          <div className="absolute inset-0 overflow-hidden">
-            {/* Grid de conteúdos em mosaico - inspirado no Spotify */}
-            <div className="absolute inset-0 grid grid-cols-6 gap-1 opacity-60 will-change-transform">
-              {/* Row 1 */}
-              <div className="bg-gradient-to-br from-raio-forest-500 to-raio-forest-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                💑 Relacionamento
-              </div>
-              <div className="bg-gradient-to-br from-raio-gold-500 to-raio-gold-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                💰 Finanças
-              </div>
-              <div className="bg-gradient-to-br from-raio-coral-500 to-raio-coral-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                ❤️ Intimidade
-              </div>
-              <div className="bg-gradient-to-br from-purple-500 to-purple-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                🙏 Fé
-              </div>
-              <div className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                📚 Cursos
-              </div>
-              <div className="bg-gradient-to-br from-orange-500 to-orange-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                🎯 Metas
-              </div>
-              
-              {/* Row 2 */}
-              <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                🌱 Crescimento
-              </div>
-              <div className="bg-gradient-to-br from-pink-500 to-pink-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                👥 Comunidade
-              </div>
-              <div className="bg-gradient-to-br from-teal-500 to-teal-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                🤖 Conselheiro
-              </div>
-              <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                📖 Trilhas
-              </div>
-              <div className="bg-gradient-to-br from-red-500 to-red-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                💪 Desafios
-              </div>
-              <div className="bg-gradient-to-br from-yellow-500 to-yellow-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                ⭐ Premium
-              </div>
-              
-              {/* Row 3 */}
-              <div className="bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                📱 App
-              </div>
-              <div className="bg-gradient-to-br from-lime-500 to-lime-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                🎵 Playlists
-              </div>
-              <div className="bg-gradient-to-br from-violet-500 to-violet-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                🧠 Mindset
-              </div>
-              <div className="bg-gradient-to-br from-rose-500 to-rose-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                👶 Filhos
-              </div>
-              <div className="bg-gradient-to-br from-amber-500 to-amber-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                🏠 Casa
-              </div>
-              <div className="bg-gradient-to-br from-green-500 to-green-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                ✨ Transformação
-              </div>
-              
-              {/* Row 4 */}
-              <div className="bg-gradient-to-br from-slate-500 to-slate-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                📊 Métricas
-              </div>
-              <div className="bg-gradient-to-br from-fuchsia-500 to-fuchsia-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                💎 Exclusivo
-              </div>
-              <div className="bg-gradient-to-br from-sky-500 to-sky-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                🎓 Academia
-              </div>
-              <div className="bg-gradient-to-br from-stone-500 to-stone-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                🔧 Ferramentas
-              </div>
-              <div className="bg-gradient-to-br from-neutral-500 to-neutral-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                📈 Progresso
-              </div>
-              <div className="bg-gradient-to-br from-zinc-500 to-zinc-700 rounded-lg flex items-center justify-center text-white font-bold text-xs p-2">
-                🎖️ Conquistas
-              </div>
-            </div>
-            
-            {/* Gradient Overlay - similar ao Spotify */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/20 will-change-transform" />
-            
-            {/* Extra overlay para melhor legibilidade */}
-            {/* Spotify-inspired Premium Banner Layout */}
-            <div className="absolute inset-0">
-              {/* 3D Mosaic Background - Fotos de Família */}
-              <div className="absolute inset-0 perspective-1000 photo-mosaic-3d">
-                {/* Grid com perspectiva 3D */}
-                <div className="absolute inset-0 transform-gpu rotate-y-12 scale-110 origin-center opacity-50">
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 sm:gap-3 h-full p-4 transform -rotate-12">
-                    
-                    {/* Row 1 - Família Feliz */}
-                    <div className="photo-card-3d transform rotate-6 hover:rotate-3">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1624448445915-97154f5e688c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGZhbWlseSUyMHBvcnRyYWl0fGVufDF8fHx8MTc1OTYxOTM4Nnww&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="Família Feliz" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="photo-card-3d transform -rotate-3 hover:rotate-0">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1641034189433-d2e405da28de?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXRoZXIlMjBkYXVnaHRlciUyMHBsYXlpbmd8ZW58MXx8fHwxNzU5NjQ0Mjg2fDA&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="Pai e Filha" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="photo-card-3d transform rotate-8 hover:rotate-4">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1613186420419-868111e7ac07?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3RoZXIlMjBjaGlsZCUyMGhvbWVzY2hvb2x8ZW58MXx8fHwxNzU5NjQ0Mjg5fDA&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="Homeschool" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="photo-card-3d transform -rotate-5 hover:-rotate-2">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1598133775469-50f06d14a0c6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3VwbGUlMjBsYXVnaGluZyUyMHRvZ2V0aGVyfGVufDF8fHx8MTc1OTYyMTc5M3ww&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="Casal Feliz" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="photo-card-3d transform rotate-4 hover:rotate-1 hidden sm:block">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1627203030417-33b1129033d0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYXJnZSUyMGZhbWlseSUyMGdyb3VwfGVufDF8fHx8MTc1OTY0NDI5NHww&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="Família Grande" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="photo-card-3d transform -rotate-7 hover:-rotate-3 hidden sm:block">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1551498800-17cbc39c85bb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW1pbHklMjByZWFkaW5nJTIwdG9nZXRoZXJ8ZW58MXx8fHwxNzU5NjQ0Mjk4fDA&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="Leitura em Família" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Row 2 - Repetir padrão */}
-                    <div className="photo-card-3d transform -rotate-8 hover:-rotate-4">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1598133775469-50f06d14a0c6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3VwbGUlMjBsYXVnaGluZyUyMHRvZ2V0aGVyfGVufDF8fHx8MTc1OTYyMTc5M3ww&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="Casal" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="photo-card-3d transform rotate-5 hover:rotate-2">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1624448445915-97154f5e688c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGZhbWlseSUyMHBvcnRyYWl0fGVufDF8fHx8MTc1OTYxOTM4Nnww&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="Família" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="photo-card-3d transform -rotate-2 hover:rotate-1">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1641034189433-d2e405da28de?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYXRoZXIlMjBkYXVnaHRlciUyMHBsYXlpbmd8ZW58MXx8fHwxNzU5NjQ0Mjg2fDA&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="Pai e Filha" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="photo-card-3d transform rotate-7 hover:rotate-3">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1613186420419-868111e7ac07?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3RoZXIlMjBjaGlsZCUyMGhvbWVzY2hvb2x8ZW58MXx8fHwxNzU5NjQ0Mjg5fDA&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="Aprendizado" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="photo-card-3d transform -rotate-9 hover:-rotate-5 hidden sm:block">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1627203030417-33b1129033d0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYXJnZSUyMGZhbWlseSUyMGdyb3VwfGVufDF8fHx8MTc1OTY0NDI5NHww&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="União Familiar" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="photo-card-3d transform rotate-3 hover:rotate-0 hidden sm:block">
-                      <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-2xl premium-card-hover">
-                        <ImageWithFallback 
-                          src="https://images.unsplash.com/photo-1551498800-17cbc39c85bb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW1pbHklMjByZWFkaW5nJTIwdG9nZXRoZXJ8ZW58MXx8fHwxNzU5NjQ0Mjk4fDA&ixlib=rb-4.1.0&q=80&w=1080"
-                          alt="Momentos Especiais" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-              </div>
-
-              {/* Gradient Overlay - Spotify Style */}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/60 to-black/90" />
-              
-              {/* Premium Brand Glow Effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-raio-forest-500/20 via-transparent to-raio-gold-500/20" />
-            </div>
-          </div>
-          
-          {/* Premium Content Layout - Spotify Style */}
-          {/* TransformationPromo_Screen - Inspirational Background */}
-          <div className="absolute inset-0">
-            {/* Background Image */}
-            <ImageWithFallback 
-              src="https://images.unsplash.com/photo-1758273240403-052b3c99f636?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3Vuc2VsaW5nJTIwdGhlcmFweSUyMHNlc3Npb24lMjBjYWxtfGVufDF8fHx8MTc1OTY0NDg1MXww&ixlib=rb-4.1.0&q=80&w=1080"
-              alt="Pessoa sendo aconselhada em ambiente calmo" 
-              className="w-full h-full object-cover"
-            />
-            
-            {/* Overlay Gradient - From transparent to dark */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/60 to-black/80" />
-          </div>
-
-          {/* Content Container - Auto Layout Vertical */}
-          <div className="absolute inset-0 flex flex-col justify-center items-start p-6 max-w-sm mx-auto space-y-4">
-            
-            {/* Header - Logo RAIO */}
-            <div className="flex items-center mb-2">
-              <img 
+          {/* Conteúdo */}
+          <div className="relative z-10 h-full flex flex-col justify-between p-6 max-w-2xl mx-auto">
+            {/* Topo: logo + saudação personalizada */}
+            <div className="flex items-center gap-3 pt-1">
+              <img
                 src={raioLogoFull}
                 alt="RAIO"
-                className="h-8 w-auto object-contain"
-                style={{
-                  filter: 'brightness(0) invert(1)', // Torna a logo branca
-                }}
+                className="h-7 w-auto object-contain"
+                style={{ filter: 'brightness(0) invert(1)' }}
               />
+              <span className="text-white/85 text-xs font-medium pl-3 border-l border-white/30">
+                {getGreeting()}
+                {authUser ? `, ${dashboard?.greeting.name ?? userName}` : ''}
+              </span>
             </div>
 
-            {/* Headline - Main emotional connection */}
-            <h1 className="font-display text-white font-bold text-3xl sm:text-4xl leading-tight mb-4">
-              Diga qual é o seu problema que você está vivendo hoje.
-            </h1>
-
-            {/* Subheadline - Solution statement */}
-            <p className="text-white/80 font-body text-base leading-relaxed mb-6 max-w-xs">
-              Temos um conselheiro pronto para te aconselhar.
-            </p>
-
-            {/* CTA Button - Transformation focused */}
-            <Button 
-              size="lg"
-              className="font-body bg-raio-gold-500 text-black hover:bg-yellow-400 rounded-3xl font-medium px-8 py-4 text-base shadow-lg hover:shadow-xl transition-all duration-200"
-              style={{ backgroundColor: '#F5B800' }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#FFD633';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#F5B800';
-              }}
-              onClick={() => {
-                if ('vibrate' in navigator) {
-                  navigator.vibrate([50, 50, 100]);
-                }
-                setIsInOrbChat(true);
-              }}
-            >
-              Começar a transformação
-            </Button>
-          </div>
-          
-          {/* Botão de Central de Conversas no canto */}
-          <div className="absolute top-4 right-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-white/80 hover:text-white hover:bg-white/10"
-              onClick={() => setIsInCentralConversas(true)}
-            >
-              <MessageCircle className="w-5 h-5" />
-            </Button>
+            {/* Base: copy + CTA */}
+            <div className="space-y-3 max-w-md">
+              <h1 className="font-display-serif text-white text-3xl sm:text-4xl leading-[1.1]">
+                Sua família, mais forte a cada dia.
+              </h1>
+              <p className="font-body text-white/80 text-sm sm:text-base leading-relaxed">
+                Conteúdo, comunidade e práticas para iluminar todas as fases — Solteiro,
+                Namoro, Noivos, Casados e Pais.
+              </p>
+              <Button
+                size="lg"
+                className="font-body bg-raio-gold-500 text-black hover:bg-raio-gold-600 rounded-3xl font-medium px-7 py-4 text-base shadow-lg transition-all duration-200 mt-2"
+                onClick={() => {
+                  if ('vibrate' in navigator) {
+                    navigator.vibrate([50, 50, 100]);
+                  }
+                  setIsInOrbChat(true);
+                }}
+              >
+                Falar com o conselheiro
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -856,10 +541,8 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
 
         {/* Dashboard Stats Cards */}
         {dashboard && (
-          <div className="px-4 mt-8 mb-6">
-            <h2 className="font-display text-xl font-semibold mb-4">
-              {getGreeting()}, {dashboard.greeting.name}!
-            </h2>
+          <div className="px-4 mt-6 mb-6">
+            {/* Saudação foi promovida para o hero (Task #42); aqui ficam só os stats. */}
             <div className="grid grid-cols-3 gap-3">
               <Card className="p-3 text-center bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950/30 dark:to-orange-900/20 border-orange-200/50">
                 <div className="flex flex-col items-center gap-1">
@@ -1201,19 +884,7 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
         <div className="px-4 mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-xl font-semibold">Descubra seu perfil</h2>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => {
-                enhancedToast.info({
-                  title: "🧠 Mais quizzes em breve!",
-                  description: "Novos testes de autoconhecimento chegando",
-                  haptic: true
-                });
-              }}
-            >
-              Ver tudo
-            </Button>
+            {/* "Ver tudo" oculto até existir destino real (Task #42). */}
           </div>
           <div className="overflow-x-auto scrollbar-hide">
             <div className="flex gap-4 pb-2 transition-all duration-300 ease-out" style={{ width: 'max-content' }}>
@@ -1281,8 +952,8 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
         {/* Podcasts */}
         <div className="px-4 mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Podcasts para você</h2>
-            <Button variant="ghost" size="sm">Ver tudo</Button>
+            <h2 className="font-display text-xl font-semibold">Podcasts para você</h2>
+            {/* "Ver tudo" oculto até existir destino real (Task #42). */}
           </div>
           <HomeFeedRail
             items={homeCategories.podcasts}
@@ -1291,25 +962,8 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
           />
         </div>
 
-        {/* Adicionar conteúdo - CTA */}
-        <div className="px-4 mb-20">
-          <Card className="p-6 text-center border-dashed border-2">
-
-          </Card>
-        </div>
-
-        {/* Floating action button */}
-        <div className="fixed bottom-24 right-4 z-40">
-          <Button
-            size="lg"
-            className="rounded-full shadow-lg h-14 w-14"
-            onClick={() => {
-              // Lógica de reprodução será implementada
-            }}
-          >
-            <Shuffle className="w-6 h-6" />
-          </Button>
-        </div>
+        {/* Espaço para a navbar mobile não cobrir o último rail (Task #42) */}
+        <div className="h-20" aria-hidden="true" />
       </div>
 
       {/* Create Playlist Modal */}
