@@ -548,7 +548,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       className="min-h-screen relative overflow-hidden"
       style={{
         background:
-          "radial-gradient(ellipse 90% 60% at 50% 20%, var(--raio-bg-secondary) 0%, var(--raio-text-inverse) 55%, var(--raio-bg-warm-cream) 100%)",
+          "radial-gradient(ellipse 90% 60% at 50% 20%, var(--raio-bg-secondary) 0%, var(--raio-bg-primary) 55%, var(--raio-bg-warm-cream) 100%)",
       }}
     >
       {/* Grain texture */}

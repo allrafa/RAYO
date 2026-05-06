@@ -207,7 +207,33 @@
   --raio-bg-primary: #0A0A0A;
   --raio-bg-secondary: #1A1A1A;
   --raio-bg-tertiary: #2A2A2A;
+  --raio-bg-warm-cream: #1A140C;       /* Warm dark (editorial gradient stop) */
+  --raio-bg-warm-soft: #221C13;        /* Warm dark suavizado */
   --raio-bg-overlay: rgba(10, 10, 10, 0.7);
+  --raio-bg-overlay-strong: rgba(26, 26, 26, 0.92);
+  --raio-bg-overlay-medium: rgba(26, 26, 26, 0.6);
+  --raio-bg-overlay-soft: rgba(26, 26, 26, 0.4);
+  --raio-bg-inverse-soft: rgba(26, 26, 26, 0.85);
+  --raio-bg-inverse-transparent: rgba(26, 26, 26, 0);
+
+  --raio-text-deep: #D1D5DB;
+  --raio-text-strong: #9CA3AF;
+
+  /* Accent glows - dark mode (more intense for visibility on dark surfaces) */
+  --raio-accent-glow-soft: rgba(252, 211, 77, 0.18);
+  --raio-accent-glow-medium: rgba(252, 211, 77, 0.35);
+  --raio-accent-glow-strong: rgba(252, 211, 77, 0.55);
+  --raio-accent-glow-amber-bright: rgba(252, 211, 77, 0.18);
+  --raio-accent-primary-rgb: 251, 191, 36;
+  --raio-accent-hover-rgb: 252, 211, 77;
+  --raio-accent-bright-rgb: 253, 230, 138;
+
+  /* Translucent overlays - dark mode (lighter on dark surfaces) */
+  --raio-overlay-dark-soft: rgba(255, 255, 255, 0.04);
+  --raio-overlay-dark-medium: rgba(255, 255, 255, 0.06);
+  --raio-overlay-dark-strong: rgba(255, 255, 255, 0.1);
+  --raio-overlay-text-primary-soft: rgba(250, 250, 250, 0.5);
+  --raio-overlay-text-primary-faint: rgba(250, 250, 250, 0.2);
   
   --raio-text-primary: #FAFAFA;
   --raio-text-secondary: #9CA3AF;

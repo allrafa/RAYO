@@ -27,7 +27,7 @@ export function WelcomeScreen({ onStart }: WelcomeScreenProps) {
       className="fixed inset-0 flex items-center justify-center overflow-hidden"
       style={{
         background:
-          "radial-gradient(ellipse 80% 60% at 50% 35%, var(--raio-bg-secondary) 0%, var(--raio-text-inverse) 55%, var(--raio-bg-warm-cream) 100%)",
+          "radial-gradient(ellipse 80% 60% at 50% 35%, var(--raio-bg-secondary) 0%, var(--raio-bg-primary) 55%, var(--raio-bg-warm-cream) 100%)",
       }}
       initial={{ opacity: 1 }}
       animate={{ opacity: isExiting ? 0 : 1 }}
