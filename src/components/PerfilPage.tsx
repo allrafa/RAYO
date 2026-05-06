@@ -4,7 +4,8 @@ import {
   ChevronRight, LogOut, Moon, Sun, Globe, 
   Shield, HelpCircle, MessageSquare, Star,
   Award, Target, TrendingUp, Calendar, Crown,
-  BookOpen, Users, Sparkles, Download, Trash2, FileText
+  BookOpen, Users, Sparkles, Download, Trash2, FileText,
+  ShieldAlert
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -13,7 +14,7 @@ import { Card } from "./ui/card";
 import { Switch } from "./ui/switch";
 import { Progress } from "./ui/progress";
 import { useApp } from "./AppContext";
-import { useAuth } from "./AuthContext";
+import { useAuth, userHasRole } from "./AuthContext";
 import { useAccessibility } from "./AccessibilityContext";
 import { useTheme } from "./ThemeProvider";
 import { toast } from "sonner@2.0.3";
@@ -22,11 +23,19 @@ import { BibliotecaWithBookReader } from "./BibliotecaWithBookReader";
 import { useVideoProgress } from "./hooks/useVideoProgress";
 import { api } from "../lib/api";
 
-export function PerfilPage() {
+interface PerfilPageProps {
+  /** Optional navigator so producer+ can jump to the Admin shell from
+      the mobile profile (Admin no longer has a slot in the bottom navbar
+      after Task #41). */
+  onNavigate?: (tab: string) => void;
+}
+
+export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const { userData, books } = useApp();
   const { settings } = useAccessibility();
   const { theme, toggleTheme } = useTheme();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const canAccessAdmin = userHasRole(user, "producer");
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showFavoritos, setShowFavoritos] = useState(false);
   const [showBiblioteca, setShowBiblioteca] = useState(false);
@@ -144,6 +153,9 @@ export function PerfilPage() {
         { icon: User, label: "Editar Perfil", onClick: () => toast.info("Em breve!") },
         { icon: Settings, label: "Configurações", onClick: () => toast.info("Em breve!") },
         { icon: Bell, label: "Notificações", hasSwitch: true },
+        ...(canAccessAdmin && onNavigate
+          ? [{ icon: ShieldAlert, label: "Painel Admin", onClick: () => onNavigate("admin") }]
+          : []),
       ]
     },
     {

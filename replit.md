@@ -63,6 +63,12 @@ RAIO is a digital platform designed to strengthen families through transformativ
 - Do not make changes to the `docs/` folder without explicit instruction.
 - Do not make changes to the `replit.nix` file.
 
+- **Mobile navigation** (Task #41): bottom navbar has 4 fixed slots
+  (Home, Academia, Comunidade, Perfil) and is always visible. Mensagens
+  is a floating top-right icon (`MobileTopBar`, `lg:hidden`). Admin for
+  `producer+` lives inside `PerfilPage` (Conta → Painel Admin), not in
+  the bottom bar. Conselheiro is reached via the Home CTA.
+
 ## Gotchas
 - **Route Order**: In Express, fixed-prefix routes must be declared before dynamic parameter routes (e.g., `/:id`) to prevent incorrect matching.
 - **Email Enumeration Prevention**: The `POST /api/auth/forgot-password` endpoint always returns a success message to prevent attackers from inferring valid email addresses.

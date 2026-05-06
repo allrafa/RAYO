@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Navigation } from "./components/Navigation";
 import { DesktopSidebar } from "./components/DesktopSidebar";
 import { TopNavbar } from "./components/TopNavbar";
+import { MobileTopBar } from "./components/MobileTopBar";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { Onboarding } from "./components/Onboarding";
 import { AccessibilityProvider } from "./components/AccessibilityContext";
@@ -231,7 +232,7 @@ function AppContent() {
         case "trilha-conversas":
           return <CentralConversasPage />;
         case "perfil":
-          return <PerfilPage />;
+          return <PerfilPage onNavigate={setCurrentTab} />;
         case "landingpage":
           return (
             <LandingPage
@@ -283,6 +284,12 @@ function AppContent() {
             onToggleMinimize={() => setIsSidebarMinimized(!isSidebarMinimized)}
           />
           <TopNavbar onTabChange={setCurrentTab} />
+          {/* Mobile-only entry point for Mensagens (moved out of the
+              bottom navbar in Task #41). Hidden on the conversas page
+              itself to avoid a redundant icon over the chat header. */}
+          {currentTab !== "conversas" && (
+            <MobileTopBar onOpenMessages={() => setCurrentTab("conversas")} />
+          )}
         </>
       )}
 

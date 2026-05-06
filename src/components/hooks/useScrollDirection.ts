@@ -21,22 +21,26 @@ export function useScrollDirection({
   const ticking = useRef(false);
 
   useEffect(() => {
+    // Minimum delta required to register a direction change. We never go
+    // below 6px so iOS rubber-band / trackpad inertia don't flip the
+    // direction on every frame.
+    const minDelta = Math.max(6, threshold);
+
     const updateScrollDirection = () => {
-      const currentScrollY = window.scrollY;
+      // Negative values happen during iOS overscroll / rubber-band. Treat
+      // them as "at top" and never as a direction change.
+      const currentScrollY = Math.max(0, window.scrollY);
       setScrollY(currentScrollY);
 
-      // Se estiver no topo ou muito próximo
       if (currentScrollY < threshold) {
         setScrollDirection(null);
-      } else if (Math.abs(currentScrollY - lastScrollY.current) < threshold) {
-        // Ignorar movimentos muito pequenos
+      } else if (Math.abs(currentScrollY - lastScrollY.current) < minDelta) {
+        // Ignore tiny jitter from inertia / sub-pixel scrolls.
         ticking.current = false;
         return;
       } else if (currentScrollY > lastScrollY.current) {
-        // Scrolling down
         setScrollDirection('down');
       } else if (currentScrollY < lastScrollY.current) {
-        // Scrolling up
         setScrollDirection('up');
       }
 

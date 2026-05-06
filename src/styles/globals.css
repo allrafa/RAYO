@@ -420,55 +420,20 @@
     padding-top: max(0rem, env(safe-area-inset-top));
   }
 
-  /* Espaçamento inferior considerando navbar com safe area - MOBILE ONLY */
+  /* Espaçamento inferior considerando navbar com safe area - MOBILE ONLY.
+     O overlay decorativo (::after) foi removido em Task #41 para eliminar
+     a "sombra fantasma" que persistia ao esconder a navbar — a sombra
+     própria de .navbar-modern já basta. */
   @media (max-width: 1023px) {
     .navbar-bottom-spacing {
       padding-bottom: calc(80px + env(safe-area-inset-bottom));
       position: relative;
-    }
-
-    /* Gradient fade ultra suave na parte inferior do conteúdo */
-    .navbar-bottom-spacing::after {
-      content: '';
-      position: fixed;
-      bottom: calc(76px + env(safe-area-inset-bottom));
-      left: 0;
-      right: 0;
-      height: 60px;
-      background: linear-gradient(to bottom, 
-        transparent 0%,
-        rgba(255, 255, 255, 0.1) 30%,
-        rgba(255, 255, 255, 0.4) 70%,
-        rgba(255, 255, 255, 0.7) 100%
-      );
-      pointer-events: none;
-      z-index: 40;
-      transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .dark .navbar-bottom-spacing::after {
-      background: linear-gradient(to bottom, 
-        transparent 0%,
-        rgba(15, 23, 42, 0.1) 30%,
-        rgba(15, 23, 42, 0.4) 70%,
-        rgba(15, 23, 42, 0.75) 100%
-      );
-    }
-
-    /* Esconder gradient quando navbar está escondida */
-    .navbar-hidden .navbar-bottom-spacing::after {
-      opacity: 0;
     }
   }
 
   @media screen and (max-width: 430px) {
     .navbar-bottom-spacing {
       padding-bottom: calc(74px + env(safe-area-inset-bottom));
-    }
-
-    .navbar-bottom-spacing::after {
-      bottom: calc(58px + env(safe-area-inset-bottom));
-      height: 35px;
     }
   }
 
@@ -478,19 +443,11 @@
       .navbar-bottom-spacing {
         padding-bottom: 80px;
       }
-
-      .navbar-bottom-spacing::after {
-        bottom: 64px;
-      }
     }
-    
+
     @media screen and (max-width: 430px) {
       .navbar-bottom-spacing {
         padding-bottom: 74px;
-      }
-
-      .navbar-bottom-spacing::after {
-        bottom: 58px;
       }
     }
   }
