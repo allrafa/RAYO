@@ -259,6 +259,7 @@ export const typography = {
   // Font Families
   family: {
     display: '"Urbanist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    displaySerif: '"Instrument Serif", "Cormorant Garamond", "Times New Roman", serif',
     body: '"Urbanist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     mono: '"SF Mono", "Monaco", "Cascadia Code", "Roboto Mono", monospace',
   },

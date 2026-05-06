@@ -1,11 +1,6 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { 
-  ArrowRight, 
-  Check, 
-  ArrowLeft,
-  Star
-} from "lucide-react";
+import { ArrowRight, Check, ArrowLeft, Star } from "lucide-react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { enhancedToast } from "./EnhancedToast";
@@ -14,121 +9,263 @@ interface OnboardingProps {
   onComplete: (userData: any) => void;
 }
 
+const segments = [
+  {
+    id: "solteiro",
+    title: "Solteiro",
+    description: "Preparando-se para encontrar alguém especial",
+    emoji: "✨",
+  },
+  {
+    id: "namoro",
+    title: "Namorando",
+    description: "Construindo um relacionamento sólido",
+    emoji: "💕",
+  },
+  {
+    id: "noivos",
+    title: "Noivos",
+    description: "Preparando para o casamento",
+    emoji: "💍",
+  },
+  {
+    id: "casados",
+    title: "Casados",
+    description: "Fortalecendo a união matrimonial",
+    emoji: "👫",
+  },
+  {
+    id: "pais",
+    title: "Pais",
+    description: "Educando filhos com propósito",
+    emoji: "👶",
+  },
+];
+
+const interests = [
+  { id: "relacionamento", label: "Relacionamento" },
+  { id: "comunicacao", label: "Comunicação" },
+  { id: "financas", label: "Finanças" },
+  { id: "intimidade", label: "Intimidade" },
+  { id: "fe", label: "Fé & Espiritualidade" },
+  { id: "familia", label: "Família" },
+  { id: "saude", label: "Saúde & Bem-estar" },
+  { id: "carreira", label: "Carreira" },
+  { id: "educacao", label: "Educação" },
+  { id: "parentalidade", label: "Parentalidade" },
+  { id: "lideranca", label: "Liderança" },
+  { id: "auto-conhecimento", label: "Auto-conhecimento" },
+  { id: "proposito", label: "Propósito" },
+  { id: "crescimento", label: "Crescimento Pessoal" },
+];
+
+const stepEyebrows: Record<number, { eyebrow: string; numeral: string }> = {
+  1: { eyebrow: "PASSO 01 · IDENTIDADE", numeral: "01" },
+  2: { eyebrow: "PASSO 02 · CONTEXTO", numeral: "02" },
+  3: { eyebrow: "PASSO 03 · INTERESSES", numeral: "03" },
+};
+
+function StepHeader({
+  step,
+  title,
+  italicWord,
+  subtitle,
+}: {
+  step: number;
+  title: string;
+  italicWord?: string;
+  subtitle: string;
+}) {
+  const meta = stepEyebrows[step];
+  // Split title to italicize the trailing word for editorial feel
+  const renderTitle = () => {
+    if (!italicWord || !title.includes(italicWord)) {
+      return title;
+    }
+    const [before, after] = title.split(italicWord);
+    return (
+      <>
+        {before}
+        <span style={{ fontStyle: "italic", color: "#B45309" }}>{italicWord}</span>
+        {after}
+      </>
+    );
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="text-center mb-10 relative"
+    >
+      {/* Editorial numeral watermark */}
+      <span
+        aria-hidden
+        className="font-display-serif italic absolute left-1/2 -translate-x-1/2 select-none pointer-events-none"
+        style={{
+          top: "-48px",
+          fontSize: "180px",
+          lineHeight: 1,
+          color: "#1A1A1A",
+          opacity: 0.04,
+          fontWeight: 400,
+        }}
+      >
+        {meta.numeral}
+      </span>
+
+      {/* Eyebrow */}
+      <div className="relative flex items-center justify-center gap-3 mb-5">
+        <span className="block w-8 h-px bg-[#1A1A1A]/15" />
+        <span
+          className="text-[10px] tracking-[0.32em]"
+          style={{ color: "#6B7280", fontWeight: 500 }}
+        >
+          {meta.eyebrow}
+        </span>
+        <span className="block w-8 h-px bg-[#1A1A1A]/15" />
+      </div>
+
+      <h2
+        className="font-display-serif relative"
+        style={{
+          fontSize: "clamp(34px, 5.5vw, 44px)",
+          lineHeight: 1.05,
+          letterSpacing: "-0.02em",
+          color: "#1A1A1A",
+          fontWeight: 400,
+          marginBottom: "12px",
+        }}
+      >
+        {renderTitle()}
+      </h2>
+
+      <p
+        className="text-[15px] mx-auto max-w-[380px]"
+        style={{ color: "#4B5563", lineHeight: 1.6, fontWeight: 400 }}
+      >
+        {subtitle}
+      </p>
+    </motion.div>
+  );
+}
+
+function PrimaryButton({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.button
+      onClick={onClick}
+      disabled={disabled}
+      className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
+      style={{
+        background: "#1A1A1A",
+        color: "#FAFAFA",
+        border: "none",
+        borderRadius: "14px",
+        padding: "18px 32px",
+        fontSize: "15px",
+        fontWeight: 500,
+        letterSpacing: "0.02em",
+        cursor: "pointer",
+        boxShadow:
+          "0 1px 2px rgba(0, 0, 0, 0.06), 0 8px 24px -10px rgba(180, 83, 9, 0.35)",
+      }}
+      whileHover={
+        !disabled
+          ? {
+              scale: 1.015,
+              boxShadow:
+                "0 4px 12px rgba(0, 0, 0, 0.1), 0 12px 32px -10px rgba(180, 83, 9, 0.55)",
+            }
+          : {}
+      }
+      whileTap={!disabled ? { scale: 0.98 } : {}}
+    >
+      <div
+        className="absolute top-0 left-0 right-0 h-[1px]"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, #FCD34D 50%, transparent)",
+        }}
+      />
+      <span className="relative z-10 flex items-center justify-center gap-2">
+        {children}
+      </span>
+    </motion.button>
+  );
+}
+
 export function Onboarding({ onComplete }: OnboardingProps) {
-  const [step, setStep] = useState(1); // Step 1 = Nome, Step 2 = Contexto, Step 3 = Interesses
+  const [step, setStep] = useState(1);
   const [userData, setUserData] = useState({
     name: "",
     segments: [] as string[],
     interests: [] as string[],
   });
 
-  const segments = [
-    {
-      id: "solteiro",
-      title: "Solteiro",
-      description: "Preparando-se para encontrar alguém especial",
-      emoji: "✨"
-    },
-    {
-      id: "namoro",
-      title: "Namorando",
-      description: "Construindo um relacionamento sólido",
-      emoji: "💕"
-    },
-    {
-      id: "noivos",
-      title: "Noivos", 
-      description: "Preparando para o casamento",
-      emoji: "💍"
-    },
-    {
-      id: "casados",
-      title: "Casados",
-      description: "Fortalecendo a união matrimonial",
-      emoji: "👫"
-    },
-    {
-      id: "pais",
-      title: "Pais",
-      description: "Educando filhos com propósito",
-      emoji: "👶"
-    }
-  ];
-
-  const interests = [
-    { id: "relacionamento", label: "Relacionamento" },
-    { id: "comunicacao", label: "Comunicação" },
-    { id: "financas", label: "Finanças" },
-    { id: "intimidade", label: "Intimidade" },
-    { id: "fe", label: "Fé & Espiritualidade" },
-    { id: "familia", label: "Família" },
-    { id: "saude", label: "Saúde & Bem-estar" },
-    { id: "carreira", label: "Carreira" },
-    { id: "educacao", label: "Educação" },
-    { id: "parentalidade", label: "Parentalidade" },
-    { id: "lideranca", label: "Liderança" },
-    { id: "auto-conhecimento", label: "Auto-conhecimento" },
-    { id: "proposito", label: "Propósito" },
-    { id: "crescimento", label: "Crescimento Pessoal" },
-  ];
-
   const totalSteps = 3;
   const currentProgress = (step / totalSteps) * 100;
 
   const handleNext = () => {
-    if (step < totalSteps) {
-      setStep(step + 1);
-    } else {
-      handleCompleteOnboarding();
-    }
+    if (step < totalSteps) setStep(step + 1);
+    else handleCompleteOnboarding();
   };
 
   const handleBack = () => {
-    if (step > 1) {
-      setStep(step - 1);
-    }
+    if (step > 1) setStep(step - 1);
   };
 
   const handleCompleteOnboarding = () => {
     const completeUserData = {
       ...userData,
       level: 1,
-      segments: userData.segments.length > 0 ? userData.segments : ["solteiro"]
+      segments:
+        userData.segments.length > 0 ? userData.segments : ["solteiro"],
     };
-    
     enhancedToast.success({
       title: "Perfil criado! 🌟",
       description: "Sua jornada de transformação começa agora",
-      haptic: true
+      haptic: true,
     });
-    
     onComplete(completeUserData);
   };
 
   const canContinue = () => {
     switch (step) {
-      case 1: return userData.name.trim().length > 0;
-      case 2: return userData.segments.length > 0;
-      case 3: return userData.interests.length >= 3;
-      default: return false;
+      case 1:
+        return userData.name.trim().length > 0;
+      case 2:
+        return userData.segments.length > 0;
+      case 3:
+        return userData.interests.length >= 3;
+      default:
+        return false;
     }
   };
 
   const toggleSegment = (segmentId: string) => {
-    setUserData(prev => ({
+    setUserData((prev) => ({
       ...prev,
       segments: prev.segments.includes(segmentId)
-        ? prev.segments.filter(s => s !== segmentId)
-        : [segmentId]
+        ? prev.segments.filter((s) => s !== segmentId)
+        : [segmentId],
     }));
   };
 
   const toggleInterest = (interestId: string) => {
-    setUserData(prev => ({
+    setUserData((prev) => ({
       ...prev,
       interests: prev.interests.includes(interestId)
-        ? prev.interests.filter(i => i !== interestId)
-        : [...prev.interests, interestId]
+        ? prev.interests.filter((i) => i !== interestId)
+        : [...prev.interests, interestId],
     }));
   };
 
@@ -138,51 +275,31 @@ export function Onboarding({ onComplete }: OnboardingProps) {
         return (
           <motion.div
             key="name"
-            initial={{ opacity: 0, x: 50 }}
+            initial={{ opacity: 0, x: 32 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            className="flex flex-col justify-center min-h-screen px-8"
+            exit={{ opacity: 0, x: -32 }}
+            transition={{ duration: 0.45, ease: [0.43, 0.13, 0.23, 0.96] }}
+            className="flex flex-col justify-center min-h-screen px-8 pt-24 pb-16"
           >
-            <div className="max-w-[400px] mx-auto w-full">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center mb-8"
-              >
-                <h2 
-                  className="text-[24px] tracking-tight mb-3"
-                  style={{
-                    fontWeight: 600,
-                    color: '#1A1A1A',
-                  }}
-                >
-                  Como podemos te chamar?
-                </h2>
-                <p 
-                  className="text-[15px]"
-                  style={{
-                    color: '#6B7280',
-                    lineHeight: 1.6,
-                  }}
-                >
-                  Vamos personalizar sua experiência
-                </p>
-              </motion.div>
+            <div className="max-w-[420px] mx-auto w-full">
+              <StepHeader
+                step={1}
+                title="Como podemos te chamar?"
+                italicWord="chamar"
+                subtitle="Comece pelo seu nome — vamos personalizar sua experiência."
+              />
 
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="space-y-6"
+                className="space-y-7"
               >
-                <div className="space-y-2">
-                  <Label 
+                <div className="space-y-2.5">
+                  <Label
                     htmlFor="name"
-                    style={{
-                      color: '#1A1A1A',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                    }}
+                    className="text-[10px] tracking-[0.24em] uppercase"
+                    style={{ color: "#6B7280", fontWeight: 600 }}
                   >
                     Seu nome
                   </Label>
@@ -191,43 +308,27 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                     type="text"
                     placeholder="Digite seu nome"
                     value={userData.name}
-                    onChange={(e) => setUserData(prev => ({ ...prev, name: e.target.value }))}
-                    className="h-12 bg-white border-[#e5e5e5] text-[#1A1A1A] placeholder:text-[#9CA3AF] rounded-lg focus:border-[#FCD34D] focus:ring-1 focus:ring-[#FCD34D] text-[15px]"
+                    onChange={(e) =>
+                      setUserData((prev) => ({ ...prev, name: e.target.value }))
+                    }
+                    className="h-14 bg-white text-[#1A1A1A] placeholder:text-[#6B7280] rounded-xl text-[16px] px-4"
                     style={{
-                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+                      border: "1px solid #D1D5DB",
+                      boxShadow:
+                        "inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(0,0,0,0.04)",
                     }}
                     autoFocus
                   />
                 </div>
 
-                <div className="w-full max-w-[280px] mx-auto">
-                  <motion.button
+                <div className="w-full max-w-[300px] mx-auto">
+                  <PrimaryButton
                     onClick={handleNext}
                     disabled={!canContinue()}
-                    className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{
-                      background: '#1A1A1A',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: '12px',
-                      padding: '16px 32px',
-                      fontSize: '15px',
-                      fontWeight: 500,
-                      letterSpacing: '-0.01em',
-                      cursor: 'pointer',
-                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-                    }}
-                    whileHover={canContinue() ? { 
-                      scale: 1.02,
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                    } : {}}
-                    whileTap={canContinue() ? { scale: 0.98 } : {}}
                   >
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      Continuar
-                      <ArrowRight className="w-4 h-4" />
-                    </span>
-                  </motion.button>
+                    Continuar
+                    <ArrowRight className="w-4 h-4" />
+                  </PrimaryButton>
                 </div>
               </motion.div>
             </div>
@@ -238,136 +339,112 @@ export function Onboarding({ onComplete }: OnboardingProps) {
         return (
           <motion.div
             key="segments"
-            initial={{ opacity: 0, x: 50 }}
+            initial={{ opacity: 0, x: 32 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            className="flex flex-col justify-center min-h-screen px-8 py-8"
+            exit={{ opacity: 0, x: -32 }}
+            transition={{ duration: 0.45, ease: [0.43, 0.13, 0.23, 0.96] }}
+            className="flex flex-col justify-center min-h-screen px-8 pt-24 pb-16"
           >
             <div className="max-w-[480px] mx-auto w-full">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center mb-8"
-              >
-                <h2 
-                  className="text-[24px] tracking-tight mb-3"
-                  style={{
-                    fontWeight: 600,
-                    color: '#1A1A1A',
-                  }}
-                >
-                  Qual seu contexto atual?
-                </h2>
-                <p 
-                  className="text-[15px]"
-                  style={{
-                    color: '#6B7280',
-                    lineHeight: 1.6,
-                  }}
-                >
-                  Isso nos ajuda a personalizar o conteúdo para você
-                </p>
-              </motion.div>
+              <StepHeader
+                step={2}
+                title="Qual seu contexto hoje?"
+                italicWord="hoje"
+                subtitle="Isso nos ajuda a personalizar o conteúdo para o seu momento de vida."
+              />
 
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: 0.15 }}
                 className="space-y-3 mb-8"
               >
                 {segments.map((segment, index) => {
                   const isSelected = userData.segments.includes(segment.id);
-                  
                   return (
                     <motion.div
                       key={segment.id}
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.05 * index }}
                     >
-                      <div
-                        className="cursor-pointer transition-all duration-200 rounded-xl p-4"
+                      <button
+                        type="button"
+                        className="w-full text-left transition-all duration-200 rounded-2xl p-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B45309]/40"
                         style={{
-                          background: isSelected ? '#FFFBEB' : '#FFFFFF',
-                          border: `1px solid ${isSelected ? '#FCD34D' : '#E5E5E5'}`,
-                          boxShadow: isSelected ? '0 2px 8px rgba(252, 211, 77, 0.15)' : '0 1px 2px rgba(0, 0, 0, 0.05)',
+                          background: "#FFFFFF",
+                          border: isSelected
+                            ? "1.5px solid #B45309"
+                            : "1px solid #E5E5E5",
+                          boxShadow: isSelected
+                            ? "0 6px 20px -8px rgba(180, 83, 9, 0.3), 0 0 0 4px rgba(252, 211, 77, 0.12)"
+                            : "0 1px 2px rgba(0, 0, 0, 0.04)",
                         }}
                         onClick={() => toggleSegment(segment.id)}
+                        aria-pressed={isSelected}
                       >
-                        <div className="flex items-center space-x-4">
-                          <div 
-                            className="w-12 h-12 rounded-lg flex items-center justify-center text-2xl"
+                        <div className="flex items-center gap-4">
+                          <div
+                            className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 transition-all"
                             style={{
-                              background: isSelected ? '#FEF3C7' : '#F5F5F5',
+                              background: isSelected ? "#FCD34D" : "#F5F1EA",
+                              boxShadow: isSelected
+                                ? "inset 0 1px 0 rgba(255,255,255,0.4)"
+                                : "inset 0 1px 0 rgba(255,255,255,0.6)",
                             }}
                           >
                             {segment.emoji}
                           </div>
-                          <div className="flex-1">
-                            <h3 
-                              className="mb-1"
+                          <div className="flex-1 min-w-0">
+                            <h3
                               style={{
-                                fontSize: '15px',
-                                fontWeight: 500,
-                                color: '#1A1A1A',
+                                fontSize: "16px",
+                                fontWeight: 600,
+                                color: "#1A1A1A",
+                                marginBottom: "2px",
                               }}
                             >
                               {segment.title}
                             </h3>
-                            <p 
+                            <p
                               style={{
-                                fontSize: '13px',
-                                color: '#6B7280',
+                                fontSize: "13px",
+                                color: "#4B5563",
+                                lineHeight: 1.45,
                               }}
                             >
                               {segment.description}
                             </p>
                           </div>
-                          {isSelected && (
-                            <div 
-                              className="w-6 h-6 rounded-full flex items-center justify-center"
-                              style={{
-                                background: '#FCD34D',
-                              }}
-                            >
-                              <Check className="w-4 h-4 text-[#1A1A1A]" />
-                            </div>
-                          )}
+                          <div
+                            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all"
+                            style={{
+                              background: isSelected ? "#1A1A1A" : "#F5F1EA",
+                              border: isSelected
+                                ? "none"
+                                : "1px solid #E5E5E5",
+                            }}
+                          >
+                            {isSelected && (
+                              <Check
+                                className="w-4 h-4"
+                                style={{ color: "#FCD34D" }}
+                                strokeWidth={2.5}
+                              />
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      </button>
                     </motion.div>
                   );
                 })}
               </motion.div>
 
-              <div className="w-full max-w-[280px] mx-auto">
-                <motion.button
-                  onClick={handleNext}
-                  disabled={!canContinue()}
-                  className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{
-                    background: '#1A1A1A',
-                    color: '#FFFFFF',
-                    border: 'none',
-                    borderRadius: '12px',
-                    padding: '16px 32px',
-                    fontSize: '15px',
-                    fontWeight: 500,
-                    letterSpacing: '-0.01em',
-                    cursor: 'pointer',
-                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-                  }}
-                  whileHover={canContinue() ? { 
-                    scale: 1.02,
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                  } : {}}
-                  whileTap={canContinue() ? { scale: 0.98 } : {}}
-                >
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    Continuar
-                    <ArrowRight className="w-4 h-4" />
-                  </span>
-                </motion.button>
+              <div className="w-full max-w-[300px] mx-auto">
+                <PrimaryButton onClick={handleNext} disabled={!canContinue()}>
+                  Continuar
+                  <ArrowRight className="w-4 h-4" />
+                </PrimaryButton>
               </div>
             </div>
           </motion.div>
@@ -377,118 +454,84 @@ export function Onboarding({ onComplete }: OnboardingProps) {
         return (
           <motion.div
             key="interests"
-            initial={{ opacity: 0, x: 50 }}
+            initial={{ opacity: 0, x: 32 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            className="flex flex-col min-h-screen px-8 py-8"
+            exit={{ opacity: 0, x: -32 }}
+            transition={{ duration: 0.45, ease: [0.43, 0.13, 0.23, 0.96] }}
+            className="flex flex-col min-h-screen px-8 pt-24 pb-16"
           >
             <div className="max-w-[480px] mx-auto w-full">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-center mb-8"
-              >
-                <h2 
-                  className="text-[24px] tracking-tight mb-3"
-                  style={{
-                    fontWeight: 600,
-                    color: '#1A1A1A',
-                  }}
-                >
-                  Escolha seus interesses
-                </h2>
-                <p 
-                  className="text-[15px]"
-                  style={{
-                    color: '#6B7280',
-                    lineHeight: 1.6,
-                  }}
-                >
-                  Selecione pelo menos 3 tópicos
-                </p>
-              </motion.div>
+              <StepHeader
+                step={3}
+                title="O que faz seu coração bater?"
+                italicWord="bater"
+                subtitle="Escolha pelo menos 3 temas — você pode mudar depois."
+              />
 
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: 0.15 }}
                 className="mb-8"
               >
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 justify-center">
                   {interests.map((interest, index) => {
                     const isSelected = userData.interests.includes(interest.id);
-                    
                     return (
-                      <motion.div
+                      <motion.button
                         key={interest.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
+                        type="button"
+                        initial={{ opacity: 0, scale: 0.92 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.02 * index }}
+                        whileTap={{ scale: 0.96 }}
+                        className="px-4 py-2.5 rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#B45309]/40"
+                        style={{
+                          background: isSelected ? "#1A1A1A" : "#FFFFFF",
+                          color: isSelected ? "#FCD34D" : "#374151",
+                          border: isSelected
+                            ? "1px solid #1A1A1A"
+                            : "1px solid #D1D5DB",
+                          fontSize: "14px",
+                          fontWeight: 500,
+                          letterSpacing: "0.005em",
+                          boxShadow: isSelected
+                            ? "0 6px 16px -8px rgba(26, 26, 26, 0.5)"
+                            : "0 1px 2px rgba(0, 0, 0, 0.04)",
+                        }}
+                        onClick={() => toggleInterest(interest.id)}
+                        aria-pressed={isSelected}
                       >
-                        <button
-                          className="px-4 py-2 rounded-full transition-all duration-200"
-                          style={{
-                            background: isSelected ? '#FCD34D' : '#FFFFFF',
-                            color: isSelected ? '#1A1A1A' : '#6B7280',
-                            border: `1px solid ${isSelected ? '#FCD34D' : '#E5E5E5'}`,
-                            fontSize: '14px',
-                            fontWeight: isSelected ? 500 : 400,
-                            boxShadow: isSelected ? '0 2px 8px rgba(252, 211, 77, 0.2)' : '0 1px 2px rgba(0, 0, 0, 0.05)',
-                          }}
-                          onClick={() => toggleInterest(interest.id)}
-                        >
-                          {interest.label}
-                        </button>
-                      </motion.div>
+                        {interest.label}
+                      </motion.button>
                     );
                   })}
                 </div>
               </motion.div>
 
-              {/* Bottom section */}
               <div className="space-y-4">
                 {userData.interests.length < 3 && (
                   <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="text-center"
-                    style={{
-                      fontSize: '14px',
-                      color: '#6B7280',
-                    }}
+                    className="text-center text-[13px] tracking-[0.04em]"
+                    style={{ color: "#6B7280" }}
                   >
-                    Selecione mais {3 - userData.interests.length} para continuar
+                    Faltam <strong style={{ color: "#B45309", fontWeight: 600 }}>{3 - userData.interests.length}</strong>{" "}
+                    para continuar
                   </motion.p>
                 )}
-                
-                <div className="w-full max-w-[280px] mx-auto">
-                  <motion.button
+
+                <div className="w-full max-w-[300px] mx-auto">
+                  <PrimaryButton
                     onClick={handleNext}
                     disabled={!canContinue()}
-                    className="relative w-full group overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{
-                      background: '#1A1A1A',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: '12px',
-                      padding: '16px 32px',
-                      fontSize: '15px',
-                      fontWeight: 500,
-                      letterSpacing: '-0.01em',
-                      cursor: 'pointer',
-                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-                    }}
-                    whileHover={canContinue() ? { 
-                      scale: 1.02,
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                    } : {}}
-                    whileTap={canContinue() ? { scale: 0.98 } : {}}
                   >
-                    <span className="relative z-10 flex items-center justify-center gap-2">
-                      {userData.interests.length >= 3 ? 'Finalizar' : `Selecione ${3 - userData.interests.length} mais`}
-                      <Star className="w-4 h-4" />
-                    </span>
-                  </motion.button>
+                    {userData.interests.length >= 3
+                      ? "Finalizar"
+                      : `Selecione ${3 - userData.interests.length} ${3 - userData.interests.length === 1 ? "tema" : "temas"}`}
+                    <Star className="w-4 h-4" />
+                  </PrimaryButton>
                 </div>
               </div>
             </div>
@@ -501,74 +544,82 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   };
 
   return (
-    <div 
+    <div
       className="min-h-screen relative overflow-hidden"
       style={{
-        background: '#FAFAFA',
+        background:
+          "radial-gradient(ellipse 90% 60% at 50% 20%, #FFFFFF 0%, #FAFAFA 55%, #F3EFE7 100%)",
       }}
     >
-      {/* Subtle grain texture overlay */}
-      <div 
-        className="absolute inset-0 opacity-[0.015] pointer-events-none"
+      {/* Grain texture */}
+      <div
+        className="absolute inset-0 opacity-[0.025] pointer-events-none mix-blend-multiply"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          backgroundRepeat: 'repeat',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
         }}
       />
 
-      {/* Progress indicator */}
+      {/* Top bar with progress */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="fixed top-0 left-0 right-0 z-50 p-6"
+        className="fixed top-0 left-0 right-0 z-50 px-6 pt-6 pb-5"
         style={{
-          background: 'linear-gradient(180deg, #FAFAFA 0%, rgba(250, 250, 250, 0.95) 80%, transparent 100%)',
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(250,250,250,0.85) 70%, rgba(250,250,250,0) 100%)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
         }}
       >
         <div className="max-w-[480px] mx-auto">
           <div className="flex items-center justify-between mb-3">
-            {step > 1 && (
-              <button
-                onClick={handleBack}
-                className="p-2 hover:bg-black/5 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" style={{ color: '#6B7280' }} />
-              </button>
-            )}
-            {step === 1 && <div className="w-9" />}
-            <span 
-              style={{
-                fontSize: '14px',
-                color: '#6B7280',
-                fontWeight: 500,
-              }}
+            <div className="w-9">
+              {step > 1 && (
+                <button
+                  onClick={handleBack}
+                  className="p-2 -ml-2 hover:bg-black/5 rounded-lg transition-colors"
+                  aria-label="Voltar"
+                >
+                  <ArrowLeft className="w-5 h-5" style={{ color: "#1A1A1A" }} />
+                </button>
+              )}
+            </div>
+            <span
+              className="text-[10px] tracking-[0.32em] uppercase"
+              style={{ color: "#6B7280", fontWeight: 600 }}
             >
-              {step} de {totalSteps}
+              {String(step).padStart(2, "0")} / {String(totalSteps).padStart(2, "0")}
             </span>
+            <div className="w-9" />
           </div>
-          <div 
-            className="w-full rounded-full h-1"
-            style={{
-              background: '#E5E5E5',
-            }}
-          >
-            <motion.div
-              className="h-1 rounded-full"
-              style={{
-                background: '#FCD34D',
-              }}
-              initial={{ width: 0 }}
-              animate={{ width: `${currentProgress}%` }}
-              transition={{ duration: 0.3 }}
-            />
+
+          {/* Stepped progress: 3 segments */}
+          <div className="flex items-center gap-1.5">
+            {[1, 2, 3].map((s) => (
+              <div
+                key={s}
+                className="flex-1 h-[3px] rounded-full overflow-hidden"
+                style={{ background: "#E5E5E5" }}
+              >
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{
+                    background:
+                      s <= step
+                        ? "linear-gradient(90deg, #B45309, #FCD34D)"
+                        : "transparent",
+                  }}
+                  initial={{ width: s < step ? "100%" : "0%" }}
+                  animate={{ width: s <= step ? "100%" : "0%" }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                />
+              </div>
+            ))}
           </div>
         </div>
       </motion.div>
 
-      {/* Content */}
-      <AnimatePresence mode="wait">
-        {renderStep()}
-      </AnimatePresence>
+      <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
     </div>
   );
 }

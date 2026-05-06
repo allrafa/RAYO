@@ -12,6 +12,7 @@ RAIO is a digital platform designed to strengthen families through transformativ
 
 ## Stack
 - **Frontend**: React 18, TypeScript, Tailwind CSS v4, Vite
+- **Fonts**: Urbanist (body/display sans) + Instrument Serif (`.font-display-serif` for editorial titles, used in onboarding); Google Fonts imports live at the top of `src/index.css`
 - **Backend**: Express.js, TypeScript, tsx (runtime)
 - **Database**: PostgreSQL
 - **ORM**: _Populate as you build_
