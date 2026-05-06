@@ -350,7 +350,10 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
   }: {
     items: HomeCard[];
     size?: "small" | "medium" | "large";
-    emptyHint: string;
+    // Optional now (Task #43): rails that omit themselves when empty
+    // pass nothing; only legacy callers that want to render an empty
+    // dashed placeholder still pass a hint.
+    emptyHint?: string;
   }) => {
     const cardWidth = size === "large" ? "w-60" : size === "small" ? "w-40" : "w-48";
     const cardHeight = size === "large" ? "h-60" : size === "small" ? "h-40" : "h-48";
@@ -372,6 +375,9 @@ export function HomePage({ userSegment, userName, userLevel }: HomePageProps) {
     }
 
     if (items.length === 0) {
+      // Without a hint, render nothing — the parent rail wrapper has
+      // already decided whether to show itself.
+      if (!emptyHint) return null;
       return (
         <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           {emptyHint}
