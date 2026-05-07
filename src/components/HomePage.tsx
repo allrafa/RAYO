@@ -17,6 +17,7 @@ import { SimpleQuizTest } from "./SimpleQuizTest";
 import { MusicPage } from "./MusicPage";
 import { PlaylistsExpandedPage } from "./PlaylistsExpandedPage";
 import { HojeNoRaio } from "./home/HojeNoRaio";
+import { RailCarousel } from "./home/RailCarousel";
 import { useYouTubeData } from "./hooks/useYouTubeData";
 import { YouTubeShortCard } from "./youtube/YouTubeShortCard";
 import { YouTubePlayerWithPlaylist } from "./youtube/YouTubePlayerWithPlaylist";
@@ -363,10 +364,9 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 title={<>Recomendado <span className="rh-light">para você</span></>}
                 action={{ label: "Ver todos", onClick: () => onNavigate?.("academia") }}
               />
-              <div
+              <RailCarousel
                 className="ra-rail rh-course-grid"
-                role="region"
-                aria-label="Cursos recomendados — deslize horizontalmente"
+                ariaLabel="Cursos recomendados — deslize horizontalmente"
               >
                 {recommendedCourses.map((course, i) => (
                   <button
@@ -394,7 +394,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                     </div>
                   </button>
                 ))}
-              </div>
+              </RailCarousel>
             </section>
           )}
 
@@ -460,10 +460,9 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 title={<>Feito <span className="rh-light">para você</span></>}
                 action={{ label: "Ver coleções", onClick: () => setIsInPlaylistsExpanded(true) }}
               />
-              <div
+              <RailCarousel
                 className="ra-rail rh-col-grid"
-                role="region"
-                aria-label="Coleções — deslize horizontalmente"
+                ariaLabel="Coleções — deslize horizontalmente"
               >
                 {collections.map((col, i) => (
                   <button
@@ -487,7 +486,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                     </div>
                   </button>
                 ))}
-              </div>
+              </RailCarousel>
             </section>
           )}
 
@@ -499,10 +498,9 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 title={<>Em alta <span className="rh-light">no</span> RAYO</>}
                 action={{ label: "Ver tudo", onClick: () => setIsInPlaylistsExpanded(true) }}
               />
-              <div
+              <RailCarousel
                 className="ra-rail rh-alta-grid"
-                role="region"
-                aria-label="Em alta — deslize horizontalmente"
+                ariaLabel="Em alta — deslize horizontalmente"
               >
                 {trending.map((row, i) => (
                   <button
@@ -521,7 +519,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                     </div>
                   </button>
                 ))}
-              </div>
+              </RailCarousel>
             </section>
           )}
 
@@ -533,10 +531,9 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 title={<>Podcasts <span className="rh-light">para você</span></>}
                 action={{ label: "Toda a biblioteca", onClick: () => setIsInMusicPage(true) }}
               />
-              <div
+              <RailCarousel
                 className="ra-rail rh-pod-grid"
-                role="region"
-                aria-label="Podcasts — deslize horizontalmente"
+                ariaLabel="Podcasts — deslize horizontalmente"
               >
                 {podcasts.map((row, i) => (
                   <button
@@ -556,7 +553,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                     )}
                   </button>
                 ))}
-              </div>
+              </RailCarousel>
             </section>
           )}
 
@@ -568,10 +565,9 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 title={<>Shorts <span className="rh-light">RAYO</span></>}
                 action={{ label: "Ver tudo", onClick: () => setIsInPlaylistsExpanded(true) }}
               />
-              <div
+              <RailCarousel
                 className="ra-rail rh-shorts-grid"
-                role="region"
-                aria-label="Shorts — deslize horizontalmente"
+                ariaLabel="Shorts — deslize horizontalmente"
               >
                 {shorts.map((short) => (
                   <YouTubeShortCard
@@ -580,7 +576,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                     onClick={setSelectedVideo}
                   />
                 ))}
-              </div>
+              </RailCarousel>
             </section>
           )}
 
@@ -590,10 +586,9 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
               eyebrow="Quizzes · perfil & missões"
               title={<>Descubra <span className="rh-light">seu</span> perfil</>}
             />
-            <div
+            <RailCarousel
               className="ra-rail rh-quiz-grid"
-              role="region"
-              aria-label="Quizzes — deslize horizontalmente"
+              ariaLabel="Quizzes — deslize horizontalmente"
             >
               <button
                 type="button"
@@ -625,7 +620,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                   <div className="rh-quiz-meta">5 perguntas · +20 XP</div>
                 </div>
               </button>
-            </div>
+            </RailCarousel>
           </section>
 
           {/* ── MISSÕES ─────────────────────────────────────── */}

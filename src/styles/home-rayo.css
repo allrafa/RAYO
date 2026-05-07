@@ -172,6 +172,39 @@
 }
 .rh-hoje-tile-foot .rh-arrow { color: var(--rayo-terra-500); font-weight: 600; }
 
+/* ── Carrossel horizontal: setas de navegação (≥ 768px).
+   `.rh-rail` envolve cada `.rh-*-grid`. As setas ficam ocultas
+   no mobile (gesto de arrastar resolve) e nas extremidades. */
+.rh-rail { position: relative; }
+.rh-rail-arrow {
+  display: none;
+  position: absolute; top: 50%;
+  transform: translateY(-50%);
+  width: 40px; height: 40px; border-radius: 999px;
+  background: rgba(250, 244, 232, 0.94);
+  border: 1px solid var(--rayo-sand-300);
+  color: var(--rayo-forest-900);
+  align-items: center; justify-content: center;
+  cursor: pointer; z-index: 3;
+  box-shadow: 0 6px 18px rgba(12, 59, 46, 0.18);
+  transition: background 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  font-family: inherit; padding: 0;
+}
+.rh-rail-arrow:hover {
+  background: var(--rayo-sand-50);
+  border-color: var(--rayo-terra-500);
+  color: var(--rayo-terra-500);
+}
+.rh-rail-arrow:focus-visible {
+  outline: 2px solid var(--rayo-terra-500);
+  outline-offset: 3px;
+}
+.rh-rail-arrow.left { left: -10px; }
+.rh-rail-arrow.right { right: -10px; }
+@media (min-width: 768px) {
+  .rh-rail-arrow:not([hidden]) { display: inline-flex; }
+}
+
 /* ── Carrossel horizontal (Spotify-style) — foco visível dentro
    dos scrollers horizontais (cards .rh-course/.rh-col/.rh-alta/
    .rh-pod/.rh-short/.rh-quiz). Mantemos outline forte mesmo sem
