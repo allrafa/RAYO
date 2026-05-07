@@ -4,11 +4,10 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import {
   ArrowRight, BookOpen, Clock, Heart, MessageCircle,
-  Target, Trophy, Flame, MessagesSquare, Play,
+  Target, MessagesSquare, Play,
 } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { PullToRefresh } from "./PullToRefresh";
-import { SkeletonLoader } from "./SkeletonLoader";
 import { enhancedToast } from "./EnhancedToast";
 import { useApp } from "./AppContext";
 import { CreatePlaylistModal } from "./CreatePlaylistModal";
@@ -18,9 +17,6 @@ import { SimpleQuizTest } from "./SimpleQuizTest";
 import { MusicPage } from "./MusicPage";
 import { PlaylistsExpandedPage } from "./PlaylistsExpandedPage";
 import { HojeNoRaio } from "./home/HojeNoRaio";
-import {
-  StreakCalendarModal, BadgesModal, XPHistoryModal,
-} from "./home/StatsModals";
 import { useYouTubeData } from "./hooks/useYouTubeData";
 import { YouTubeShortCard } from "./youtube/YouTubeShortCard";
 import { YouTubePlayerWithPlaylist } from "./youtube/YouTubePlayerWithPlaylist";
@@ -162,7 +158,6 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
   // Hoje no RAYO: undefined enquanto não soubermos; false esconde a section
   // inteira (incluindo aside) quando o item é nulo/skipped.
   const [hojeVisible, setHojeVisible] = useState<boolean>(true);
-  const [statsModal, setStatsModal] = useState<"streak" | "badges" | "xp" | null>(null);
   const [homeFeed, setHomeFeed] = useState<HomeFeedSections | null>(null);
   const { user: authUser } = useAuth();
   const { data: youtubeData, loading: youtubeLoading } = useYouTubeData();
@@ -243,13 +238,6 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
   }), [homeFeed]);
 
   // ── Greeting / hero copy ───────────────────────────────────────
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Bom dia";
-    if (hour < 18) return "Boa tarde";
-    return "Boa noite";
-  };
-  const displayName = dashboard?.greeting.name ?? userName;
   const primarySegment = dashboard?.greeting.segments?.[0] ?? userSegment;
 
   // ── Derived data for sections ──────────────────────────────────
@@ -303,122 +291,6 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
       <div className="rh-root">
         <div className="rh-content">
 
-          {/* ── HERO (faixa editorial sand-100, conforme task #57) ─ */}
-          <section className="rh-hero">
-            <div className="rh-hero-content">
-              <span className="rh-hero-eyebrow">
-                {getGreeting()}
-                {authUser ? ` · ${displayName}` : ""}
-                {dashboard ? ` · Nível ${dashboard.gamification.level}` : ""}
-                {primarySegment ? ` · ${primarySegment}` : ""}
-              </span>
-              <h1 className="rh-hero-title">
-                Sua família,<br />
-                mais <span className="rh-light">forte</span> a cada dia.
-              </h1>
-              <p className="rh-hero-subtitle">
-                Conteúdo, comunidade e práticas para iluminar todas as fases —
-                Solteiro, Namoro, Noivos, Casados e Pais.
-              </p>
-              <div className="rh-hero-cta-row">
-                <button
-                  type="button"
-                  className="rh-hero-cta"
-                  onClick={() => {
-                    if ("vibrate" in navigator) navigator.vibrate([50, 50, 100]);
-                    setIsInOrbChat(true);
-                  }}
-                >
-                  Falar com o conselheiro
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  className="rh-hero-cta-ghost"
-                  onClick={() => onNavigate?.("academia")}
-                >
-                  Ver minha trilha
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* ── STATS ───────────────────────────────────────── */}
-          {dashboardLoading && authUser && (
-            <SkeletonLoader type="card" count={1} />
-          )}
-          {dashboard && (
-            <section className="rh-stats">
-              <button
-                type="button"
-                className="rh-stat sage"
-                onClick={() => { if ("vibrate" in navigator) navigator.vibrate(10); setStatsModal("streak"); }}
-                aria-label={`Sequência: ${dashboard.gamification.streak} dias.`}
-              >
-                <div className="rh-stat-icon"><Flame className="w-4 h-4" /></div>
-                <div>
-                  <div className="rh-stat-value">{dashboard.gamification.streak}</div>
-                  <div className="rh-stat-label">Sequência · dias</div>
-                </div>
-                <div className="rh-stat-progress">
-                  <div className="rh-stat-progress-bar"
-                    style={{ width: `${Math.min(100, (dashboard.gamification.streak / 30) * 100)}%` }} />
-                </div>
-                <div className="rh-stat-meta">
-                  <span>{dashboard.gamification.streak} dias · meta 30</span>
-                  <span>RECORDE · {dashboard.gamification.longestStreak}</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="rh-stat forest"
-                onClick={() => { if ("vibrate" in navigator) navigator.vibrate(10); setStatsModal("xp"); }}
-                aria-label={`Nível ${dashboard.gamification.level} — ${dashboard.gamification.levelTitle}.`}
-              >
-                <div className="rh-stat-icon"><Trophy className="w-4 h-4" /></div>
-                <div>
-                  <div className="rh-stat-value">{dashboard.gamification.levelTitle}</div>
-                  <div className="rh-stat-label">
-                    Nível {dashboard.gamification.level}{primarySegment ? ` · ${primarySegment}` : ""}
-                  </div>
-                </div>
-                <div className="rh-stat-progress">
-                  <div className="rh-stat-progress-bar"
-                    style={{ width: `${Math.min(100, dashboard.gamification.levelProgress)}%` }} />
-                </div>
-                <div className="rh-stat-meta">
-                  <span style={{ color: "var(--rayo-ochre-300)" }}>
-                    {dashboard.gamification.xp} / {dashboard.gamification.xpForNextLevel} XP
-                  </span>
-                  <span>NÍVEL {dashboard.gamification.level + 1} →</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className="rh-stat sage"
-                onClick={() => { if ("vibrate" in navigator) navigator.vibrate(10); setStatsModal("badges"); }}
-                aria-label={`${dashboard.completedCoursesCount} conquistas.`}
-              >
-                <div className="rh-stat-icon"><Target className="w-4 h-4" /></div>
-                <div>
-                  <div className="rh-stat-value">
-                    {dashboard.completedCoursesCount}
-                    <span style={{ opacity: 0.55, fontWeight: 400, fontSize: "0.6em" }}>
-                      {" "}/ {Math.max(dashboard.completedCoursesCount + 3, 12)}
-                    </span>
-                  </div>
-                  <div className="rh-stat-label">Conquistas</div>
-                </div>
-                <div className="rh-stat-progress">
-                  <div className="rh-stat-progress-bar"
-                    style={{ width: `${Math.min(100, (dashboard.completedCoursesCount / Math.max(dashboard.completedCoursesCount + 3, 12)) * 100)}%` }} />
-                </div>
-                <div className="rh-stat-meta"><span>PRÓX · VER CONQUISTAS →</span></div>
-              </button>
-            </section>
-          )}
 
           {/* ── HOJE NO RAYO ────────────────────────────────── */}
           {/* Mantém HojeNoRaio SEMPRE montado pra preservar lifecycle
@@ -491,7 +363,11 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 title={<>Recomendado <span className="rh-light">para você</span></>}
                 action={{ label: "Ver todos", onClick: () => onNavigate?.("academia") }}
               />
-              <div className="rh-course-grid">
+              <div
+                className="rh-course-grid"
+                role="region"
+                aria-label="Cursos recomendados — deslize horizontalmente"
+              >
                 {recommendedCourses.map((course, i) => (
                   <button
                     key={course.id}
@@ -584,7 +460,11 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 title={<>Feito <span className="rh-light">para você</span></>}
                 action={{ label: "Ver coleções", onClick: () => setIsInPlaylistsExpanded(true) }}
               />
-              <div className="rh-col-grid">
+              <div
+                className="rh-col-grid"
+                role="region"
+                aria-label="Coleções — deslize horizontalmente"
+              >
                 {collections.map((col, i) => (
                   <button
                     key={col.id}
@@ -619,7 +499,11 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 title={<>Em alta <span className="rh-light">no</span> RAYO</>}
                 action={{ label: "Ver tudo", onClick: () => setIsInPlaylistsExpanded(true) }}
               />
-              <div className="rh-alta-grid">
+              <div
+                className="rh-alta-grid"
+                role="region"
+                aria-label="Em alta — deslize horizontalmente"
+              >
                 {trending.map((row, i) => (
                   <button
                     key={row.id}
@@ -649,7 +533,11 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 title={<>Podcasts <span className="rh-light">para você</span></>}
                 action={{ label: "Toda a biblioteca", onClick: () => setIsInMusicPage(true) }}
               />
-              <div className="rh-pod-grid">
+              <div
+                className="rh-pod-grid"
+                role="region"
+                aria-label="Podcasts — deslize horizontalmente"
+              >
                 {podcasts.map((row, i) => (
                   <button
                     key={row.id}
@@ -680,7 +568,11 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 title={<>Shorts <span className="rh-light">RAYO</span></>}
                 action={{ label: "Ver tudo", onClick: () => setIsInPlaylistsExpanded(true) }}
               />
-              <div className="rh-shorts-grid">
+              <div
+                className="rh-shorts-grid"
+                role="region"
+                aria-label="Shorts — deslize horizontalmente"
+              >
                 {shorts.map((short) => (
                   <YouTubeShortCard
                     key={short.id}
@@ -698,7 +590,11 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
               eyebrow="Quizzes · perfil & missões"
               title={<>Descubra <span className="rh-light">seu</span> perfil</>}
             />
-            <div className="rh-quiz-grid">
+            <div
+              className="rh-quiz-grid"
+              role="region"
+              aria-label="Quizzes — deslize horizontalmente"
+            >
               <button
                 type="button"
                 className="rh-quiz terra"
@@ -876,9 +772,6 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
 
       <YouTubeMockBanner />
 
-      <StreakCalendarModal open={statsModal === "streak"} onOpenChange={(o) => setStatsModal(o ? "streak" : null)} />
-      <BadgesModal open={statsModal === "badges"} onOpenChange={(o) => setStatsModal(o ? "badges" : null)} />
-      <XPHistoryModal open={statsModal === "xp"} onOpenChange={(o) => setStatsModal(o ? "xp" : null)} />
 
       {/* isLoading state suppressed in JSX (PullToRefresh handles its own indicator) */}
       {isLoading && null}
