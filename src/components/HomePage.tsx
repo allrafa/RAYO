@@ -364,7 +364,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 action={{ label: "Ver todos", onClick: () => onNavigate?.("academia") }}
               />
               <div
-                className="rh-course-grid"
+                className="ra-rail rh-course-grid"
                 role="region"
                 aria-label="Cursos recomendados — deslize horizontalmente"
               >
@@ -461,7 +461,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 action={{ label: "Ver coleções", onClick: () => setIsInPlaylistsExpanded(true) }}
               />
               <div
-                className="rh-col-grid"
+                className="ra-rail rh-col-grid"
                 role="region"
                 aria-label="Coleções — deslize horizontalmente"
               >
@@ -500,7 +500,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 action={{ label: "Ver tudo", onClick: () => setIsInPlaylistsExpanded(true) }}
               />
               <div
-                className="rh-alta-grid"
+                className="ra-rail rh-alta-grid"
                 role="region"
                 aria-label="Em alta — deslize horizontalmente"
               >
@@ -534,7 +534,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 action={{ label: "Toda a biblioteca", onClick: () => setIsInMusicPage(true) }}
               />
               <div
-                className="rh-pod-grid"
+                className="ra-rail rh-pod-grid"
                 role="region"
                 aria-label="Podcasts — deslize horizontalmente"
               >
@@ -569,7 +569,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 action={{ label: "Ver tudo", onClick: () => setIsInPlaylistsExpanded(true) }}
               />
               <div
-                className="rh-shorts-grid"
+                className="ra-rail rh-shorts-grid"
                 role="region"
                 aria-label="Shorts — deslize horizontalmente"
               >
@@ -591,7 +591,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
               title={<>Descubra <span className="rh-light">seu</span> perfil</>}
             />
             <div
-              className="rh-quiz-grid"
+              className="ra-rail rh-quiz-grid"
               role="region"
               aria-label="Quizzes — deslize horizontalmente"
             >

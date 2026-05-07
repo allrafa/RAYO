@@ -4,6 +4,28 @@
    home-rayo.css (.rh-*) e nav-rayo.css (.rn-*).
    Tokens via --rayo-*. Classes prefixadas `ra-`. */
 
+/* ── HORIZONTAL RAIL (Spotify-style carrossel) ───────────────────
+   Utilitário compartilhado pelos rails horizontais da Home, Academia,
+   Música e Comunidade (Task #68). Centraliza scroll-snap, esconde a
+   scrollbar e estende o padding do container pra criar bleed nas
+   bordas. Cada rail só precisa definir a largura dos cards (e, se
+   quiser, sobrescrever `--ra-rail-gap` ou `--ra-rail-pad-x`).
+   Os filhos diretos viram itens do snap automaticamente. */
+.ra-rail {
+  display: flex; flex-wrap: nowrap;
+  gap: var(--ra-rail-gap, 16px);
+  overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  margin-inline: calc(var(--ra-rail-pad-x, var(--rh-pad-x, 16px)) * -1);
+  padding-inline: var(--ra-rail-pad-x, var(--rh-pad-x, 16px));
+  scroll-padding-inline-start: var(--ra-rail-pad-x, var(--rh-pad-x, 16px));
+}
+.ra-rail::-webkit-scrollbar { display: none; }
+.ra-rail > * { flex: 0 0 auto; scroll-snap-align: start; }
+
 /* ── PAGE SHELL ──────────────────────────────────────────────── */
 .ra-page {
   min-height: 100vh;

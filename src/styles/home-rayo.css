@@ -187,20 +187,10 @@
 }
 
 /* ── COURSE GRID (Recomendado) ────────────────────────────────── */
-.rh-course-grid {
-  display: flex; flex-wrap: nowrap;
-  gap: 14px;
-  overflow-x: auto; overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  margin-inline: calc(var(--rh-pad-x, 16px) * -1);
-  padding-inline: var(--rh-pad-x, 16px);
-  scroll-padding-inline-start: var(--rh-pad-x, 16px);
-}
-.rh-course-grid::-webkit-scrollbar { display: none; }
-@media (min-width: 1024px) { .rh-course-grid { gap: 16px; } }
+/* Carrossel horizontal compartilhado: classe `.ra-rail` em app-rayo.css.
+   Aqui só ajustamos o gap específico desse rail. */
+.rh-course-grid { --ra-rail-gap: 14px; }
+@media (min-width: 1024px) { .rh-course-grid { --ra-rail-gap: 16px; } }
 .rh-course {
   flex: 0 0 auto;
   width: clamp(160px, 44vw, 200px);
@@ -294,20 +284,8 @@
 .rh-disc-stat.liked { color: var(--rayo-terra-500); }
 
 /* ── COLEÇÕES (Feito para você) ───────────────────────────────── */
-.rh-col-grid {
-  display: flex; flex-wrap: nowrap;
-  gap: 16px;
-  overflow-x: auto; overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  margin-inline: calc(var(--rh-pad-x, 16px) * -1);
-  padding-inline: var(--rh-pad-x, 16px);
-  scroll-padding-inline-start: var(--rh-pad-x, 16px);
-}
-.rh-col-grid::-webkit-scrollbar { display: none; }
-@media (min-width: 768px) { .rh-col-grid { gap: 20px; } }
+/* Usa `.ra-rail` (app-rayo.css) — só sobrescreve o gap deste rail. */
+@media (min-width: 768px) { .rh-col-grid { --ra-rail-gap: 20px; } }
 .rh-col {
   flex: 0 0 auto;
   width: clamp(260px, 78vw, 320px);
@@ -369,20 +347,8 @@
 }
 
 /* ── EM ALTA ──────────────────────────────────────────────────── */
-.rh-alta-grid {
-  display: flex; flex-wrap: nowrap;
-  gap: 16px;
-  overflow-x: auto; overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  margin-inline: calc(var(--rh-pad-x, 16px) * -1);
-  padding-inline: var(--rh-pad-x, 16px);
-  scroll-padding-inline-start: var(--rh-pad-x, 16px);
-}
-.rh-alta-grid::-webkit-scrollbar { display: none; }
-@media (min-width: 640px) { .rh-alta-grid { gap: 20px; } }
+/* Usa `.ra-rail` (app-rayo.css) — só sobrescreve o gap deste rail. */
+@media (min-width: 640px) { .rh-alta-grid { --ra-rail-gap: 20px; } }
 .rh-alta {
   flex: 0 0 auto;
   width: clamp(220px, 70vw, 280px);
@@ -427,20 +393,8 @@
 .rh-alta-desc { font-size: 12px; color: var(--rayo-sand-300); }
 
 /* ── PODCASTS ─────────────────────────────────────────────────── */
-.rh-pod-grid {
-  display: flex; flex-wrap: nowrap;
-  gap: 16px;
-  overflow-x: auto; overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  margin-inline: calc(var(--rh-pad-x, 16px) * -1);
-  padding-inline: var(--rh-pad-x, 16px);
-  scroll-padding-inline-start: var(--rh-pad-x, 16px);
-}
-.rh-pod-grid::-webkit-scrollbar { display: none; }
-@media (min-width: 640px) { .rh-pod-grid { gap: 20px; } }
+/* Usa `.ra-rail` (app-rayo.css) — só sobrescreve o gap deste rail. */
+@media (min-width: 640px) { .rh-pod-grid { --ra-rail-gap: 20px; } }
 .rh-pod {
   flex: 0 0 auto;
   width: clamp(150px, 42vw, 200px);
@@ -484,21 +438,10 @@
 .rh-pod-desc { font-size: 12px; color: var(--rayo-ink-400); margin-top: 4px; }
 
 /* ── SHORTS ───────────────────────────────────────────────────── */
-.rh-shorts-grid {
-  display: flex; flex-wrap: nowrap;
-  gap: 12px;
-  overflow-x: auto; overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  margin-inline: calc(var(--rh-pad-x, 16px) * -1);
-  padding-inline: var(--rh-pad-x, 16px);
-  scroll-padding-inline-start: var(--rh-pad-x, 16px);
-}
-.rh-shorts-grid::-webkit-scrollbar { display: none; }
-@media (min-width: 640px) { .rh-shorts-grid { gap: 14px; } }
-@media (min-width: 1024px) { .rh-shorts-grid { gap: 16px; } }
+/* Usa `.ra-rail` (app-rayo.css) — só sobrescreve o gap deste rail. */
+.rh-shorts-grid { --ra-rail-gap: 12px; }
+@media (min-width: 640px) { .rh-shorts-grid { --ra-rail-gap: 14px; } }
+@media (min-width: 1024px) { .rh-shorts-grid { --ra-rail-gap: 16px; } }
 .rh-short {
   flex: 0 0 auto;
   width: clamp(140px, 40vw, 180px);
@@ -547,20 +490,8 @@
 @media (min-width: 768px) { .rh-short-title { font-size: 13px; } }
 
 /* ── QUIZZES ──────────────────────────────────────────────────── */
-.rh-quiz-grid {
-  display: flex; flex-wrap: nowrap;
-  gap: 16px;
-  overflow-x: auto; overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  margin-inline: calc(var(--rh-pad-x, 16px) * -1);
-  padding-inline: var(--rh-pad-x, 16px);
-  scroll-padding-inline-start: var(--rh-pad-x, 16px);
-}
-.rh-quiz-grid::-webkit-scrollbar { display: none; }
-@media (min-width: 768px) { .rh-quiz-grid { gap: 20px; } }
+/* Usa `.ra-rail` (app-rayo.css) — só sobrescreve o gap deste rail. */
+@media (min-width: 768px) { .rh-quiz-grid { --ra-rail-gap: 20px; } }
 .rh-quiz {
   flex: 0 0 auto;
   width: clamp(260px, 82vw, 360px);
