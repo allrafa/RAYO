@@ -4,8 +4,15 @@ import { validateRegister, validateLogin } from "./validation.js";
 import { registerUser, loginUser, logoutUser, sendVerificationCode, verifyCode, requestPasswordReset, resetPassword, changePassword } from "./service.js";
 import { success, created, error } from "../../utils/response.js";
 import { requireAuth } from "../../middleware/auth.js";
+import oauthRouter from "./oauth.js";
 
 const router = Router();
+
+// Task #69 — Rotas OAuth (Google/Apple). Montadas antes das outras pra
+// que /providers e /:provider/callback não conflitem com handlers
+// específicos. Coexistem com email/senha; quando o provider não está
+// configurado por env, o próprio router devolve 503.
+router.use("/", oauthRouter);
 
 const isDev = process.env.NODE_ENV !== "production";
 

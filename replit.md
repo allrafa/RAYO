@@ -9,6 +9,9 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
     - `RESEND_FROM_EMAIL`: Sender email address (default: `RAIO <onboarding@resend.dev>`).
     - `APP_URL`: Public URL for email links (default: `https://${REPLIT_DEV_DOMAIN}`).
     - `ADMIN_EMAILS`: Comma-separated emails for admin role on boot.
+    - **OAuth (opcional, Task #69)** — sem essas vars os botões aparecem como "Em breve":
+        - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: credenciais OAuth 2.0 do Google Cloud.
+        - `APPLE_CLIENT_ID` (Service ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (P8 em texto).
 
 ## Stack
 - **Frontend**: React 18, TypeScript, Tailwind CSS v4, Vite

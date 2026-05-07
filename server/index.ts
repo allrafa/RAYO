@@ -1,5 +1,6 @@
 import express from "express";
 import cookieParser from "cookie-parser";
+import passport from "passport";
 import { securityMiddleware, corsMiddleware, rateLimiter } from "./middleware/security.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { initializeSchema } from "./db/schema.js";
@@ -53,6 +54,11 @@ app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+// Task #69 — Passport só pra OAuth (Google/Apple). Usamos `session: false`
+// nas estratégias então não precisa de express-session — a sessão real
+// continua sendo o cookie httpOnly `session_token` da própria app.
+app.use(passport.initialize());
+
 app.use("/api", corsMiddleware);
 app.use("/api/health", healthRoutes);
 // Task #51 — limiters revisados:
@@ -83,6 +89,15 @@ const isSensitiveAuthPost = (req: import("express").Request) =>
   req.method === "POST" && SENSITIVE_AUTH_PATHS.has(req.path);
 const isAuthMe = (req: import("express").Request) =>
   req.method === "GET" && req.path === "/me";
+// Task #69 — endpoints OAuth: /providers é polled pelo AuthPage e os
+// /callback são one-shot do provider; nenhum é vetor de brute-force por
+// senha. Ficam de fora do limiter geral pra não estourar o orçamento.
+const isOAuthPath = (req: import("express").Request) =>
+  req.path === "/providers" ||
+  req.path === "/google" ||
+  req.path === "/google/callback" ||
+  req.path === "/apple" ||
+  req.path === "/apple/callback";
 app.use(
   "/api/auth",
   // Strict per-IP limiter that ONLY applies to sensitive write endpoints
@@ -101,7 +116,7 @@ app.use(
   // called on every app boot/refresh and is not an abuse vector.
   rateLimiter(60, 15 * 60 * 1000, {
     keyByUser: true,
-    skip: (req) => isSensitiveAuthPost(req) || isAuthMe(req),
+    skip: (req) => isSensitiveAuthPost(req) || isAuthMe(req) || isOAuthPath(req),
   }),
   authRoutes,
 );

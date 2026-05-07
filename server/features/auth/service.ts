@@ -307,6 +307,16 @@ export async function loginUser(input: LoginInput, ip?: string, userAgent?: stri
   }
 
   const row = result.rows[0];
+
+  // Task #69 — contas só-OAuth (Google/Apple) não têm `password_hash`.
+  // Tratar como credencial inválida em vez de deixar o bcrypt estourar 500.
+  if (!row.password_hash) {
+    const err = new Error("Esta conta usa login social. Entre com Google ou Apple.") as Error & { statusCode: number; code: string };
+    err.statusCode = 401;
+    err.code = "OAUTH_ONLY_ACCOUNT";
+    throw err;
+  }
+
   const validPassword = await bcrypt.compare(input.password, row.password_hash);
 
   if (!validPassword) {
@@ -324,6 +334,107 @@ export async function loginUser(input: LoginInput, ip?: string, userAgent?: stri
   trackEvent(user.id, "user_login", { method: "email" });
 
   return { user, token };
+}
+
+// Task #69 — OAuth social. Resolve um login social num SafeUser interno:
+//  1) Tenta achar pelo provider id (já vinculado antes) → atualiza last_active.
+//  2) Senão tenta pelo email → vincula o provider id à conta existente.
+//  3) Senão cria uma conta nova (password_hash NULL, email já considerado verificado).
+// Mantém a forma funcional do resto do módulo: cada caminho retorna SafeUser pronto.
+export async function findOrCreateOAuthUser(params: {
+  provider: "google" | "apple";
+  providerId: string;
+  email: string;
+  name: string | null;
+}): Promise<SafeUser> {
+  const idCol = params.provider === "google" ? "google_id" : "apple_id";
+  const email = params.email.trim().toLowerCase();
+
+  const byId = await query(
+    `SELECT ${USER_SAFE_COLUMNS} FROM users WHERE ${idCol} = $1`,
+    [params.providerId],
+  );
+  if (byId.rows.length > 0) {
+    await query(
+      "UPDATE users SET last_active_at = NOW(), updated_at = NOW() WHERE id = $1",
+      [byId.rows[0].id],
+    );
+    trackEvent(byId.rows[0].id as number, "user_login", { method: params.provider });
+    return await toSafeUser(byId.rows[0]);
+  }
+
+  const byEmail = await query(
+    `SELECT ${USER_SAFE_COLUMNS} FROM users WHERE email = $1`,
+    [email],
+  );
+  if (byEmail.rows.length > 0) {
+    const linked = await query(
+      `UPDATE users SET ${idCol} = $1, last_active_at = NOW(), updated_at = NOW()
+       WHERE id = $2 RETURNING ${USER_SAFE_COLUMNS}`,
+      [params.providerId, byEmail.rows[0].id],
+    );
+    trackEvent(linked.rows[0].id as number, "user_login", { method: params.provider, linked: true });
+    return await toSafeUser(linked.rows[0]);
+  }
+
+  const fallbackName = (params.name && params.name.trim()) || email.split("@")[0] || "Usuário";
+  // Race-safe: se outra conexão criou a conta entre nossos SELECTs e o
+  // INSERT, ON CONFLICT DO NOTHING evita o 500 e nós re-resolvemos.
+  // Conflito pode vir por `users_email_key` OU pelo unique do provider id.
+  const created = await query(
+    `INSERT INTO users (email, password_hash, name, ${idCol})
+     VALUES ($1, NULL, $2, $3)
+     ON CONFLICT DO NOTHING
+     RETURNING ${USER_SAFE_COLUMNS}`,
+    [email, fallbackName, params.providerId],
+  );
+  if (created.rows.length > 0) {
+    const newUser = await toSafeUser(created.rows[0]);
+    trackEvent(newUser.id, "user_registered", { method: params.provider });
+    void sendWelcomeEmail(newUser.email, newUser.name);
+    return newUser;
+  }
+
+  // Conflito: alguém criou em paralelo. Refaz por providerId e, se não
+  // achar, vincula por email (mesmo caminho do "linkar conta existente").
+  const raceById = await query(
+    `SELECT ${USER_SAFE_COLUMNS} FROM users WHERE ${idCol} = $1`,
+    [params.providerId],
+  );
+  if (raceById.rows.length > 0) {
+    return await toSafeUser(raceById.rows[0]);
+  }
+  const raceByEmail = await query(
+    `UPDATE users SET ${idCol} = $1, last_active_at = NOW(), updated_at = NOW()
+     WHERE email = $2 AND ${idCol} IS NULL
+     RETURNING ${USER_SAFE_COLUMNS}`,
+    [params.providerId, email],
+  );
+  if (raceByEmail.rows.length > 0) {
+    return await toSafeUser(raceByEmail.rows[0]);
+  }
+  // Última tentativa: o provider id já estava em outro email — devolve esse.
+  const finalLookup = await query(
+    `SELECT ${USER_SAFE_COLUMNS} FROM users WHERE email = $1`,
+    [email],
+  );
+  if (finalLookup.rows.length > 0) {
+    return await toSafeUser(finalLookup.rows[0]);
+  }
+  const err = new Error("Não foi possível concluir o login social. Tente novamente.") as Error & { statusCode: number; code: string };
+  err.statusCode = 500;
+  err.code = "OAUTH_RACE_UNRESOLVED";
+  throw err;
+}
+
+// Wrapper público pra rotas OAuth criarem a sessão sem ter que duplicar
+// a lógica de cookie/expiração que mora aqui dentro do service.
+export async function createSessionForUser(
+  userId: number,
+  ip?: string,
+  userAgent?: string,
+): Promise<string> {
+  return createSession(userId, ip, userAgent);
 }
 
 async function createSession(userId: number, ip?: string, userAgent?: string): Promise<string> {
@@ -606,6 +717,15 @@ export async function changePassword(
     const err = new Error("Usuário não encontrado") as Error & { statusCode: number; code: string };
     err.statusCode = 404;
     err.code = "USER_NOT_FOUND";
+    throw err;
+  }
+
+  // Task #69 — usuário só-OAuth ainda não tem senha local. Não dá pra
+  // "trocar" — precisa fluxo de "definir senha" no futuro. Por ora bloqueia.
+  if (!rows[0].password_hash) {
+    const err = new Error("Esta conta ainda não tem senha. Use o fluxo de redefinição de senha para criar uma.") as Error & { statusCode: number; code: string };
+    err.statusCode = 400;
+    err.code = "NO_PASSWORD_SET";
     throw err;
   }
 

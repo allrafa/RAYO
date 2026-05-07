@@ -1,10 +1,103 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "./AuthContext";
+import { api } from "../lib/api";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { ArrowRight, ArrowLeft, Eye, EyeOff, Mail, ShieldCheck, KeyRound, CheckCircle2 } from "lucide-react";
 import logoIcon from "figma:asset/827405fdf6d360d2a9ec31dfa3facf23fe3474fb.png";
+
+// Task #69 — Botões de login social. Pergunta ao backend quais providers
+// estão configurados (`/api/auth/providers`); quando o provider não está
+// disponível mostra "Em breve" desabilitado. Click → redireciona pro
+// fluxo OAuth, que ao final volta no `/` com cookie de sessão setado.
+type ProvidersFlags = { google: boolean; apple: boolean };
+
+function GoogleGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" aria-hidden>
+      <path fill="#4285F4" d="M21.6 12.227c0-.709-.064-1.39-.182-2.045H12v3.868h5.382a4.6 4.6 0 0 1-1.996 3.018v2.51h3.232c1.891-1.742 2.982-4.305 2.982-7.351z"/>
+      <path fill="#34A853" d="M12 22c2.7 0 4.964-.895 6.618-2.422l-3.232-2.51c-.895.6-2.04.955-3.386.955-2.605 0-4.81-1.76-5.596-4.123H3.064v2.59A9.997 9.997 0 0 0 12 22z"/>
+      <path fill="#FBBC05" d="M6.404 13.9a6.005 6.005 0 0 1 0-3.8V7.51H3.064a10 10 0 0 0 0 8.98l3.34-2.59z"/>
+      <path fill="#EA4335" d="M12 5.977c1.468 0 2.786.504 3.823 1.495l2.868-2.868C16.96 2.99 14.696 2 12 2A9.997 9.997 0 0 0 3.064 7.51l3.34 2.59C7.19 7.736 9.395 5.977 12 5.977z"/>
+    </svg>
+  );
+}
+
+function AppleGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-[18px] h-[18px]" aria-hidden>
+      <path fill="currentColor" d="M16.365 1.43c0 1.14-.42 2.22-1.13 3.04-.79.93-2.07 1.65-3.27 1.55-.14-1.13.42-2.3 1.1-3.04.78-.86 2.13-1.5 3.3-1.55zM20.5 17.18c-.55 1.27-.81 1.83-1.52 2.95-.99 1.56-2.39 3.5-4.13 3.51-1.55.02-1.95-1.01-4.06-1-2.1.01-2.55 1.02-4.1 1-1.74-.01-3.07-1.76-4.06-3.32-2.77-4.36-3.06-9.48-1.35-12.2 1.21-1.93 3.13-3.06 4.93-3.06 1.84 0 3 1.01 4.52 1.01 1.48 0 2.38-1.01 4.51-1.01 1.61 0 3.31.88 4.52 2.4-3.97 2.18-3.33 7.85.74 9.72z"/>
+    </svg>
+  );
+}
+
+function OAuthButtons() {
+  const [providers, setProviders] = useState<ProvidersFlags | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get<ProvidersFlags>("/api/auth/providers")
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success && res.data) setProviders(res.data);
+        else setProviders({ google: false, apple: false });
+      })
+      .catch(() => { if (!cancelled) setProviders({ google: false, apple: false }); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const renderBtn = (
+    provider: "google" | "apple",
+    label: string,
+    icon: React.ReactNode,
+    enabled: boolean | undefined,
+  ) => {
+    const isReady = providers !== null;
+    const disabled = !isReady || !enabled;
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => { if (enabled) window.location.href = `/api/auth/${provider}`; }}
+        className="w-full h-12 rounded-lg border flex items-center justify-center gap-3 text-[14px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        style={{
+          background: "var(--card)",
+          borderColor: "var(--border)",
+          color: "var(--foreground)",
+          fontWeight: 500,
+          boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
+        }}
+        aria-label={label}
+      >
+        {icon}
+        <span>{label}</span>
+        {isReady && !enabled && (
+          <span
+            className="text-[11px] px-2 py-[2px] rounded-full"
+            style={{ background: "var(--rayo-sand-100, #f3efe7)", color: "var(--rayo-ink-500)" }}
+          >
+            Em breve
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-2">
+        {renderBtn("google", "Continuar com Google", <GoogleGlyph />, providers?.google)}
+        {renderBtn("apple", "Continuar com Apple", <AppleGlyph />, providers?.apple)}
+      </div>
+      <div className="flex items-center gap-3" aria-hidden>
+        <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+        <span className="text-[12px]" style={{ color: "var(--muted-foreground)" }}>ou</span>
+        <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+      </div>
+    </div>
+  );
+}
 
 type AuthMode = "login" | "register" | "forgot" | "reset";
 type RegisterStep = "form" | "verify" | "password";
@@ -264,6 +357,10 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
             <p className="text-[15px]" style={{ color: "var(--rayo-ink-500)", lineHeight: 1.6 }}>
               Entre com seus dados para continuar
             </p>
+          </div>
+
+          <div className="mb-5">
+            <OAuthButtons />
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -545,6 +642,10 @@ export function AuthPage({ defaultMode = "login", prefillName, prefillSegments, 
             <p className="text-[15px]" style={{ color: "var(--rayo-ink-500)", lineHeight: 1.6 }}>
               Vamos verificar seu email para começar
             </p>
+          </div>
+
+          <div className="mb-5">
+            <OAuthButtons />
           </div>
 
           <div className="space-y-5">
