@@ -10,9 +10,10 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
     - `APP_URL`: Public URL for email links (default: `https://${REPLIT_DEV_DOMAIN}`).
     - `PUBLIC_SITE_URL`: Domínio canônico usado em `/sitemap.xml` e `/robots.txt` (default: `https://rayo.app.br`).
     - `ADMIN_EMAILS`: Comma-separated emails for admin role on boot.
-    - **OAuth (opcional, Task #69)** — sem essas vars os botões aparecem como "Em breve":
+    - **OAuth (opcional, Task #69)** — sem essas vars os botões aparecem como "Em breve". **OAuth Google só funciona no domínio de produção `https://rayo.app.br`** (no preview/dev o login social fica desabilitado de propósito; use email/senha):
         - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: credenciais OAuth 2.0 do Google Cloud.
-        - `APPLE_CLIENT_ID` (Service ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (P8 em texto).
+        - `GOOGLE_REDIRECT_URI` (**obrigatória** para habilitar Google): deve ser exatamente `https://rayo.app.br/api/auth/google/callback` e estar registrada como Authorized redirect URI no Google Cloud Console. Sem essa var a estratégia não é registrada (log de erro no boot) e o botão fica como "Em breve".
+        - `APPLE_CLIENT_ID` (Service ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (P8 em texto). `APPLE_REDIRECT_URI` é **opcional** — se ausente, a callback é montada a partir de `APP_URL`/`REPLIT_DEV_DOMAIN` (comportamento legado preservado).
 
 ## Stack
 - **Frontend**: React 18, TypeScript, Tailwind CSS v4, Vite

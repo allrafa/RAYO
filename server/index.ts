@@ -8,6 +8,7 @@ import { logger } from "./utils/logger.js";
 import { error as sendError } from "./utils/response.js";
 import healthRoutes from "./features/health/routes.js";
 import authRoutes from "./features/auth/routes.js";
+import { validateOAuthEnvAtBoot } from "./features/auth/oauth.js";
 import userRoutes from "./features/users/routes.js";
 import gamificationRoutes from "./features/gamification/routes.js";
 import academiaRoutes from "./features/academia/routes.js";
@@ -58,6 +59,11 @@ app.use(express.urlencoded({ extended: true }));
 // nas estratégias então não precisa de express-session — a sessão real
 // continua sendo o cookie httpOnly `session_token` da própria app.
 app.use(passport.initialize());
+
+// Task #69 — valida no boot se Google OAuth está plenamente configurado.
+// Se as credenciais existem mas GOOGLE_REDIRECT_URI faltar, loga erro
+// explícito (em prod) ou info (em dev) para sinalizar misconfig.
+validateOAuthEnvAtBoot();
 
 app.use("/api", corsMiddleware);
 app.use("/api/health", healthRoutes);

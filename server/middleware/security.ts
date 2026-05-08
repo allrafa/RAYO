@@ -10,9 +10,19 @@ export const securityMiddleware = helmet({
   frameguard: isDev ? false : { action: "sameorigin" },
 });
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",")
-  : [];
+// Task #69 — `https://rayo.app.br` é o domínio canônico da plataforma e
+// precisa estar sempre na allowlist em produção (mesmo que ALLOWED_ORIGINS
+// não esteja setada). Em dev mantemos a lista vazia + heurística Replit.
+const PROD_CANONICAL_ORIGIN = "https://rayo.app.br";
+const allowedOrigins = (() => {
+  const fromEnv = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+  if (!isDev && !fromEnv.includes(PROD_CANONICAL_ORIGIN)) {
+    fromEnv.push(PROD_CANONICAL_ORIGIN);
+  }
+  return fromEnv;
+})();
 
 function isReplitOrigin(origin: string): boolean {
   try {
