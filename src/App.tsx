@@ -30,6 +30,7 @@ import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
 import "./styles/nav-rayo.css";
 import "./styles/playlists-rayo.css";
 import "./styles/app-rayo.css";
+import "./styles/auth-rayo.css";
 
 type PreAuthStage = "welcome" | "onboarding" | "auth";
 type AuthStartMode = "login" | "register";

@@ -1,0 +1,33 @@
+Aqui vai o prompt pronto para você colar no Replit:
+
+Prompt para o Replit:
+A partir de agora, a autenticação Google OAuth da aplicação Rayo deve usar exclusivamente o domínio de produção. Por favor, faça os seguintes ajustes no projeto:
+1. Redirect URI única e oficial
+A única redirect URI válida do Google OAuth é:
+https://rayo.app.br/api/auth/google/callback
+Remova do código, dos arquivos de configuração e de qualquer lógica condicional todas as outras URIs antigas do Replit (qualquer URL terminando em .replit.dev, .repl.co, .riker.replit.dev, etc.). Não devem mais ser usadas para fluxo OAuth, nem em desenvolvimento, nem em produção.
+2. Variáveis de ambiente
+Garanta que as variáveis de ambiente referentes ao OAuth estejam assim:
+GOOGLE_REDIRECT_URI=https://rayo.app.br/api/auth/google/callback
+APP_BASE_URL=https://rayo.app.br
+NEXTAUTH_URL=https://rayo.app.br        (caso use NextAuth)
+Atualize tanto os Secrets do Replit quanto qualquer arquivo .env.example do repositório. Remova variáveis antigas que apontem para subdomínios do Replit.
+3. Código que monta a redirect URI
+Procure no código por qualquer trecho que monte a redirect URI dinamicamente a partir de req.headers.host, window.location.origin, process.env.REPLIT_DEV_DOMAIN, REPLIT_DOMAINS ou similar e substitua por leitura direta de process.env.GOOGLE_REDIRECT_URI. A URI não deve mais ser inferida em runtime — ela deve vir fixa da variável de ambiente.
+4. Cookies e sessão
+Ajuste a configuração de cookies de sessão para o domínio de produção:
+
+domain: 'rayo.app.br' (ou .rayo.app.br se houver subdomínios)
+secure: true
+sameSite: 'lax'
+
+5. CORS e domínios permitidos
+Atualize a lista de origens permitidas (CORS, CSP, allowed hosts) para conter apenas https://rayo.app.br. Remova entradas de domínios do Replit.
+6. Teste
+Após as alterações, faça um deploy em produção e valide o fluxo completo de login Google em https://rayo.app.br. Confirme que:
+
+O botão "Entrar com Google" redireciona para accounts.google.com com redirect_uri=https://rayo.app.br/api/auth/google/callback.
+O callback retorna corretamente para https://rayo.app.br e cria a sessão do usuário.
+Não aparece mais o erro redirect_uri_mismatch.
+
+Me retorne com a lista de arquivos que você alterou e um resumo do que foi feito.
