@@ -88,8 +88,8 @@ Você pode gerenciar suas preferências de cookies através do banner de consent
       title: "9. Contato e Encarregado de Dados (DPO)",
       content: `Para questões sobre privacidade e proteção de dados, entre em contato:
 
-• E-mail: privacidade@raio.app
-• Encarregado de Dados (DPO): dpo@raio.app
+• E-mail: privacidade@rayo.app
+• Encarregado de Dados (DPO): dpo@rayo.app
 
 Você também pode registrar reclamações junto à Autoridade Nacional de Proteção de Dados (ANPD) através do site www.gov.br/anpd.`,
     },
@@ -97,7 +97,7 @@ Você também pode registrar reclamações junto à Autoridade Nacional de Prote
       title: "10. Atualizações desta Política",
       content: `Esta política pode ser atualizada periodicamente. Mudanças significativas serão comunicadas por meio da plataforma. A data da última atualização está indicada abaixo.
 
-Última atualização: Abril de 2026.`,
+Última atualização: Maio de 2026.`,
     },
   ];
 

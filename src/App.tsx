@@ -24,6 +24,7 @@ import { ConversasPage } from "./components/ConversasPage";
 import { ConsentBanner } from "./components/ConsentBanner";
 import { LandingPage } from "./components/LandingPage";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
+import { TermsPage } from "./components/TermsPage";
 import { analytics } from "./lib/analytics/mixpanel";
 import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
 import "./styles/nav-rayo.css";
@@ -37,6 +38,19 @@ interface OnboardingData {
   name: string;
   segments: string[];
   interests: string[];
+}
+
+// Páginas legais públicas. Precisam funcionar SEM autenticação (Google
+// e Apple verificam essas URLs antes do consentimento OAuth). Detecta
+// `/privacy` e `/terms` no path e renderiza a página direto, fora do
+// fluxo welcome/onboarding/auth.
+type LegalPage = "privacy" | "terms";
+function getLegalPageFromUrl(): LegalPage | null {
+  if (typeof window === "undefined") return null;
+  const p = window.location.pathname.replace(/\/+$/, "");
+  if (p === "/privacy") return "privacy";
+  if (p === "/terms") return "terms";
+  return null;
 }
 
 function getResetTokenFromUrl(): string | null {
@@ -82,6 +96,20 @@ function AppContent() {
   );
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [showPrivacyOverlay, setShowPrivacyOverlay] = useState(false);
+  const [legalPage, setLegalPage] = useState<LegalPage | null>(() => getLegalPageFromUrl());
+
+  // Quando a pessoa volta da página legal pra app principal, limpa a URL
+  // pra `/` sem recarregar — evita reabrir a página de Termos no refresh.
+  const closeLegalPage = () => {
+    setLegalPage(null);
+    if (typeof window !== "undefined") {
+      try {
+        window.history.replaceState({}, "", "/");
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   const appContext = useApp();
   const isInBookReader = appContext?.isInBookReader || false;
@@ -157,6 +185,16 @@ function AppContent() {
       }
     }
   };
+
+  // Páginas legais (Privacy/Terms) — sempre acessíveis, mesmo sem login
+  // e antes do loading da sessão. Google/Apple precisam visitá-las pra
+  // aprovar o app OAuth.
+  if (legalPage === "privacy") {
+    return <PrivacyPolicyPage onBack={closeLegalPage} />;
+  }
+  if (legalPage === "terms") {
+    return <TermsPage onBack={closeLegalPage} />;
+  }
 
   if (isLoading) {
     return (
