@@ -186,6 +186,33 @@ async function start() {
     // huge media tree doesn't delay the listen() call.
     void backfillLocalUploads(UPLOAD_ROOT);
 
+    // SEO público: sitemap.xml e robots.txt. Precisam vir ANTES do
+    // middleware do Vite/SPA pra não cair no fallback de index.html.
+    // Domínio canônico configurável via env (default: rayo.app.br).
+    const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL || "https://rayo.app.br").replace(/\/+$/, "");
+    const PUBLIC_PAGES: ReadonlyArray<{ path: string; priority: string; changefreq: string }> = [
+      { path: "/", priority: "1.0", changefreq: "weekly" },
+      { path: "/privacy", priority: "0.5", changefreq: "yearly" },
+      { path: "/terms", priority: "0.5", changefreq: "yearly" },
+    ];
+    app.get("/sitemap.xml", (_req, res) => {
+      const today = new Date().toISOString().slice(0, 10);
+      const urls = PUBLIC_PAGES.map(
+        (p) =>
+          `  <url>\n    <loc>${PUBLIC_SITE_URL}${p.path}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`,
+      ).join("\n");
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+      res.set("Content-Type", "application/xml; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.send(xml);
+    });
+    app.get("/robots.txt", (_req, res) => {
+      const body = `User-agent: *\nAllow: /$\nAllow: /privacy\nAllow: /terms\nDisallow: /api/\nDisallow: /admin\nDisallow: /perfil\nDisallow: /conversas\n\nSitemap: ${PUBLIC_SITE_URL}/sitemap.xml\n`;
+      res.set("Content-Type", "text/plain; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.send(body);
+    });
+
     if (isDev) {
       const vite = await createViteServer({
         server: { middlewareMode: true },
