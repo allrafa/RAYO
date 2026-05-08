@@ -52,120 +52,115 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
   };
   
   if (!showBanner) return null;
-  
+
+  // Termos é página pública (/terms) — navegação direta funciona em
+  // qualquer contexto. Política aceita o handler quando passado (overlay
+  // pós-login) e cai pra /privacy se não houver.
+  const openTerms = () => {
+    if (typeof window !== 'undefined') window.location.href = '/terms';
+  };
+  const openPrivacy = () => {
+    if (onOpenPrivacyPolicy) onOpenPrivacyPolicy();
+    else if (typeof window !== 'undefined') window.location.href = '/privacy';
+  };
+
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[100] flex items-end justify-center pointer-events-none"
-      style={{ 
-        background: showDetails 
-          ? 'rgba(0, 0, 0, 0.5)' 
+      style={{
+        background: showDetails
+          ? 'rgba(0, 0, 0, 0.5)'
           : 'transparent',
       }}
       onClick={() => showDetails && setShowDetails(false)}
     >
-      <Card 
-        className="w-full max-w-4xl m-4 mb-4 lg:mb-6 pointer-events-auto shadow-2xl"
+      <Card
+        className={`w-full m-3 sm:m-4 pointer-events-auto shadow-xl ${showDetails ? 'max-w-2xl' : 'max-w-2xl'}`}
         style={{
           background: 'var(--rayo-sand-50)',
           borderColor: 'var(--rayo-sand-300)',
+          borderRadius: 16,
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-6">
+        <div className={showDetails ? 'p-5' : 'p-4 sm:p-4'}>
           {!showDetails ? (
-            // Banner Simples
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div 
-                  className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+            // Banner compacto — uma linha em desktop, empilhado em mobile
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
                   style={{ background: 'var(--rayo-terra-100)' }}
                 >
-                  <Cookie 
-                    className="w-6 h-6" 
+                  <Cookie
+                    className="w-4 h-4"
                     style={{ color: 'var(--rayo-terra-500)' }}
                   />
                 </div>
-                
                 <div className="flex-1 min-w-0">
-                  <h3 
-                    className="text-[18px] mb-2"
-                    style={{ 
-                      fontWeight: 600,
-                      color: 'var(--rayo-forest-900)' 
-                    }}
-                  >
-                    Sua privacidade importa 🔒
-                  </h3>
-                  <p 
-                    className="text-[14px] leading-relaxed"
+                  <p
+                    className="text-[13px] leading-snug"
                     style={{ color: 'var(--rayo-ink-700)' }}
                   >
-                    Usamos cookies e tecnologias similares para melhorar sua experiência, 
-                    analisar o uso da plataforma e personalizar conteúdo. Você tem controle 
-                    total sobre suas preferências.
+                    <strong style={{ color: 'var(--rayo-forest-900)', fontWeight: 600 }}>
+                      Cookies
+                    </strong>
+                    {' '}para melhorar sua experiência. Veja nossa{' '}
+                    <button
+                      type="button"
+                      onClick={openPrivacy}
+                      className="underline hover:no-underline"
+                      style={{ color: 'var(--rayo-terra-500)' }}
+                    >
+                      Política
+                    </button>
+                    {' e '}
+                    <button
+                      type="button"
+                      onClick={openTerms}
+                      className="underline hover:no-underline"
+                      style={{ color: 'var(--rayo-terra-500)' }}
+                    >
+                      Termos
+                    </button>
+                    .
                   </p>
                 </div>
               </div>
-              
-              <div className="flex flex-col sm:flex-row gap-2">
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowDetails(true)}
+                  className="text-[12px] underline hover:no-underline px-2 py-1.5"
+                  style={{ color: 'var(--rayo-ink-500)' }}
+                >
+                  Personalizar
+                </button>
                 <Button
+                  size="sm"
                   variant="outline"
                   onClick={handleRejectAll}
-                  className="flex-1 sm:flex-none"
+                  className="h-8 px-3 text-[12px] rounded-full"
                   style={{
                     borderColor: 'var(--rayo-sand-300)',
                     color: 'var(--rayo-ink-700)',
                   }}
                 >
-                  Rejeitar Todos
+                  Rejeitar
                 </Button>
-                
                 <Button
-                  variant="outline"
-                  onClick={() => setShowDetails(true)}
-                  className="flex-1 sm:flex-none"
-                  style={{
-                    borderColor: 'var(--rayo-terra-500)',
-                    color: 'var(--rayo-terra-500)',
-                  }}
-                >
-                  <Shield className="w-4 h-4 mr-2" />
-                  Personalizar
-                </Button>
-                
-                <Button
+                  size="sm"
                   onClick={handleAcceptAll}
-                  className="flex-1"
+                  className="h-8 px-4 text-[12px] rounded-full"
                   style={{
                     background: 'var(--rayo-terra-500)',
                     color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF',
                   }}
                 >
-                  Aceitar Todos
+                  Aceitar
                 </Button>
               </div>
-              
-              <p 
-                className="text-[12px] text-center"
-                style={{ color: 'var(--rayo-ink-400)' }}
-              >
-                Ao continuar, você concorda com nossa{' '}
-                <button 
-                  onClick={onOpenPrivacyPolicy}
-                  className="underline hover:no-underline"
-                  style={{ color: 'var(--rayo-terra-500)' }}
-                >
-                  Política de Privacidade
-                </button>
-                {' e '}
-                <button 
-                  onClick={onOpenPrivacyPolicy}
-                  className="underline hover:no-underline"
-                  style={{ color: 'var(--rayo-terra-500)' }}
-                >
-                  Termos de Uso
-                </button>
-              </p>
             </div>
           ) : (
             // Detalhes e Personalização
@@ -333,12 +328,20 @@ export function ConsentBanner({ onOpenPrivacyPolicy }: { onOpenPrivacyPolicy?: (
                   </strong>{' '}
                   Você pode acessar, corrigir, exportar ou deletar seus dados a qualquer momento 
                   nas configurações da conta. Leia mais em nossa{' '}
-                  <button 
-                    onClick={onOpenPrivacyPolicy}
+                  <button
+                    onClick={openPrivacy}
                     className="underline"
                     style={{ color: 'var(--rayo-terra-500)' }}
                   >
                     Política de Privacidade
+                  </button>
+                  {' e nos '}
+                  <button
+                    onClick={openTerms}
+                    className="underline"
+                    style={{ color: 'var(--rayo-terra-500)' }}
+                  >
+                    Termos de Uso
                   </button>.
                 </p>
               </div>
