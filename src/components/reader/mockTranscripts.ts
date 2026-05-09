@@ -188,6 +188,141 @@ export const mockBookContents: Record<string, BookContent> = {
   },
 };
 
+// Mocks mínimos pros demais livros do CMS. Mantemos apenas summary,
+// 3 takeaways e 2 segments por livro pra evitar a tela "Conteúdo não
+// encontrado" no reader. Quando o conteúdo real for produzido, basta
+// substituir a entrada correspondente em `mockBookContents`. — Task #116.
+function placeholderContent(
+  slug: string,
+  summary: string,
+  takeaways: string[],
+  firstParagraph: string,
+): BookContent {
+  return {
+    bookId: slug,
+    summary,
+    keyTakeaways: takeaways,
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    audioUrlMale: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    audioUrlFemale: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    transcript: [
+      {
+        id: 'seg-intro',
+        text: 'Introdução',
+        startTime: 0,
+        endTime: 3,
+        page: 1,
+      },
+      {
+        id: 'seg-1',
+        text: firstParagraph,
+        startTime: 3,
+        endTime: 18,
+        page: 1,
+      },
+    ],
+  };
+}
+
+const placeholders: BookContent[] = [
+  placeholderContent(
+    'educacao-positiva-criando-filhos-resilientes',
+    'Um guia prático para pais que querem criar filhos emocionalmente fortes através da educação positiva, com limites claros e empatia genuína.',
+    [
+      '🌱 Resiliência se constrói com vínculo, não com punição',
+      '🤝 Limites claros dão segurança à criança',
+      '💛 Empatia não é permissividade',
+    ],
+    'A educação positiva começa com a forma como você enxerga seu filho: alguém em construção, e não um adulto em miniatura.',
+  ),
+  placeholderContent(
+    'financas-do-casal-prosperidade-juntos',
+    'Como construir prosperidade financeira em casal sem brigas: orçamento conjunto, metas compartilhadas e conversas honestas sobre dinheiro.',
+    [
+      '💰 Dinheiro é assunto de casal, não de uma pessoa só',
+      '📊 Orçamento começa com transparência total',
+      '🎯 Metas comuns alinham as decisões do dia a dia',
+    ],
+    'Casais que prosperam juntos compartilham planilhas, mas também sonhos. Dinheiro deixa de ser tabu quando vira projeto comum.',
+  ),
+  placeholderContent(
+    'comunicacao-nao-violenta-em-familia',
+    'Aplicando os princípios da CNV no ambiente familiar para resolver conflitos sem gritar, julgar ou ferir relacionamentos importantes.',
+    [
+      '👂 Escutar sem interromper já desarma metade dos conflitos',
+      '🗣️ Fale do que sente, não do que o outro "fez"',
+      '🤲 Pedidos claros substituem exigências',
+    ],
+    'A comunicação não-violenta começa quando você troca o "você sempre" pelo "eu sinto que". Pequena mudança, grande impacto.',
+  ),
+  placeholderContent(
+    'a-arte-de-educar-sem-gritar',
+    'Estratégias práticas para pais que querem parar de gritar e construir autoridade pelo respeito mútuo, com técnicas testadas no dia a dia.',
+    [
+      '🧘 O grito é sintoma — entenda o gatilho antes',
+      '⏸️ Pause: 3 respirações antes de responder',
+      '🤝 Autoridade vem do exemplo, não do volume',
+    ],
+    'Gritar é um hábito, não um traço de personalidade. E como todo hábito, pode ser substituído com prática consciente.',
+  ),
+  placeholderContent(
+    'intimidade-e-conexao-no-casamento',
+    'Como reacender a chama no casamento de longa data através da intimidade emocional, vulnerabilidade compartilhada e rituais de conexão.',
+    [
+      '💞 Intimidade física precede e segue a emocional',
+      '🕯️ Rituais simples mantêm a chama viva',
+      '🫂 Vulnerabilidade é coragem, não fraqueza',
+    ],
+    'A conexão profunda não acontece por acaso: é o resultado de pequenas escolhas diárias de presença e cuidado.',
+  ),
+  placeholderContent(
+    'proposito-de-vida-encontrando-seu-chamado',
+    'Um guia para descobrir seu propósito de vida combinando dons naturais, paixões e necessidades do mundo ao seu redor.',
+    [
+      '🎯 Propósito é interseção entre dom, paixão e serviço',
+      '🌍 O mundo precisa do que só você pode oferecer',
+      '🌱 Propósito se descobre fazendo, não pensando',
+    ],
+    'Seu propósito não está escondido em algum lugar do futuro: ele já se manifesta nas pequenas coisas que você faz com alegria.',
+  ),
+  placeholderContent(
+    'gestao-do-tempo-para-pais-ocupados',
+    'Métodos práticos de gestão de tempo adaptados à realidade de pais e mães ocupados, com foco em qualidade ao invés de quantidade.',
+    [
+      '⏰ Tempo de qualidade > tempo de quantidade',
+      '📋 Bloqueie tempo pra família como reunião sagrada',
+      '🚫 Aprender a dizer "não" libera o "sim" pro que importa',
+    ],
+    'Pais ocupados não precisam de mais horas no dia: precisam de melhores escolhas dentro das horas que já têm.',
+  ),
+  placeholderContent(
+    'saude-mental-da-familia-moderna',
+    'Como cuidar da saúde mental de toda a família na era digital: ansiedade, sobrecarga, telas e os novos desafios da parentalidade contemporânea.',
+    [
+      '🧠 Saúde mental da família começa pela do cuidador',
+      '📵 Limites com telas protegem todos',
+      '💬 Conversas sobre emoções devem ser rotina, não exceção',
+    ],
+    'A família moderna enfrenta desafios que nenhuma geração anterior conheceu. Cuidar da saúde mental virou habilidade essencial.',
+  ),
+  placeholderContent(
+    'criando-vinculos-seguros-com-seus-filhos',
+    'A teoria do apego aplicada na prática: como criar filhos com vínculo seguro que se torna base pra todos os relacionamentos da vida.',
+    [
+      '🔗 Vínculo seguro vira modelo pra futuras relações',
+      '👶 Presença consistente vale mais que perfeição',
+      '🤗 Reparar vínculos rompidos fortalece a confiança',
+    ],
+    'Vínculo seguro não exige pais perfeitos: exige pais presentes, que voltam, que reconhecem erros e que estão dispostos a reparar.',
+  ),
+];
+
+for (const content of placeholders) {
+  if (!mockBookContents[content.bookId]) {
+    mockBookContents[content.bookId] = content;
+  }
+}
+
 // Helper para buscar conteúdo do livro
 export function getBookContent(bookId: string): BookContent | null {
   return mockBookContents[bookId] || null;

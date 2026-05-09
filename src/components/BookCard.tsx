@@ -51,7 +51,7 @@ export function BookCard({
                 ? 'linear-gradient(135deg, #374151 0%, #1F2937 100%)'
                 : 'linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)'
             }}
-            onClick={book.isEnrolled ? onRead : onEnroll}
+            onClick={onRead}
           >
             <img 
               src={book.coverImage} 
@@ -134,7 +134,7 @@ export function BookCard({
                   : 'var(--rayo-terra-500)'
               }}
               variant={book.isEnrolled ? 'default' : 'outline'}
-              onClick={book.isEnrolled ? onRead : onEnroll}
+              onClick={onRead}
               onMouseEnter={(e) => {
                 if (book.isEnrolled) {
                   e.currentTarget.style.background = 'var(--rayo-terra-700)';
@@ -158,7 +158,7 @@ export function BookCard({
               ) : (
                 <>
                   <BookOpen className="w-4 h-4 mr-2" />
-                  {book.isPremium && book.price ? `R$ ${book.price.toFixed(2)}` : 'Adicionar'}
+                  {book.isPremium && book.price ? `R$ ${book.price.toFixed(2)}` : 'Ver detalhes'}
                 </>
               )}
             </Button>
@@ -252,13 +252,13 @@ export function BookCard({
               <Button 
                 size="sm" 
                 variant="outline"
-                onClick={onEnroll}
+                onClick={onRead}
                 style={{
                   borderColor: 'var(--rayo-terra-500)',
                   color: 'var(--rayo-terra-500)'
                 }}
               >
-                Adicionar
+                Ver detalhes
               </Button>
             )}
           </div>
