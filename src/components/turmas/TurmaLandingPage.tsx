@@ -28,6 +28,12 @@ export interface TurmaLanding {
   how_it_works: string | null;
   members_count: number;
   is_member: boolean;
+  // Task #130 — quando a turma é parte de trilha paga, o backend expõe
+  // trail_id/trail_slug + has_trail_access pra que TurmaShell decida entre
+  // <TrailPaywall> e o fluxo padrão de "interesse"/matrícula.
+  trail_id?: number | null;
+  trail_slug?: string | null;
+  has_trail_access?: boolean;
 }
 
 interface TurmaLandingPageProps {

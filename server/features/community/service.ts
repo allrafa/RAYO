@@ -760,19 +760,53 @@ export async function getUserSavedPosts(viewerId: number, page = 1, limit = 20) 
   return { posts, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
-// Task #99 — invariante de turma: like/comment em post com class_id setado
-// só é permitido para matriculados ou moderator+. Trata como 404 pra não
-// vazar a existência do recurso (mesma estratégia de getPostDetail).
+// Task #99/#130 — invariante de turma: like/comment/reaction em post com
+// class_id setado exige (a) trilha paga liberada (se houver) e (b) matrícula
+// (ou moderator+). Sem o trail gate, usuários que cancelaram a assinatura
+// mas continuaram matriculados ainda interagiam com a comunidade paga.
 async function assertCanInteractWithClassPost(classId: number | null | undefined, userId: number): Promise<void> {
   if (!classId) return;
+  // Moderator+ bypass tudo.
+  const { rows: r } = await query(`SELECT role FROM users WHERE id = $1`, [userId]);
+  const role = r[0]?.role;
+  if (role === "moderator" || role === "admin") return;
+  // (a) Trail gate: se essa turma é parte de trilha paga, exige assinatura ativa.
+  const { rows: tr } = await query<{ trail_id: number; slug: string }>(
+    `SELECT t.id AS trail_id, t.slug
+       FROM trail_courses tc
+       JOIN trails t ON t.id = tc.trail_id
+      WHERE tc.course_id = $1 AND t.active = TRUE
+      LIMIT 1`,
+    [classId],
+  );
+  if (tr.length > 0) {
+    const trailId = tr[0].trail_id;
+    const { rows: sub } = await query<{ exists: boolean }>(
+      `SELECT EXISTS(
+         SELECT 1 FROM subscriptions
+          WHERE user_id = $1 AND trail_id = $2
+            AND status = ANY(ARRAY['active','trialing','past_due']::text[])
+       ) AS exists`,
+      [userId, trailId],
+    );
+    if (!sub[0]?.exists) {
+      const err = new AppError(
+        "Esta interação faz parte de uma trilha paga. Assine para participar.",
+        "TRAIL_PAYMENT_REQUIRED",
+        402,
+      );
+      (err as unknown as { trail_id: number; trail_slug: string; class_id: number }).trail_id = trailId;
+      (err as unknown as { trail_id: number; trail_slug: string; class_id: number }).trail_slug = tr[0].slug;
+      (err as unknown as { trail_id: number; trail_slug: string; class_id: number }).class_id = classId;
+      throw err;
+    }
+  }
+  // (b) Matrícula — 404 pra não vazar.
   const { rows: m } = await query(
     `SELECT 1 FROM user_course_progress WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
     [userId, classId],
   );
-  if (m.length > 0) return;
-  const { rows: r } = await query(`SELECT role FROM users WHERE id = $1`, [userId]);
-  const role = r[0]?.role;
-  if (role !== "moderator" && role !== "admin") {
+  if (m.length === 0) {
     throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
   }
 }

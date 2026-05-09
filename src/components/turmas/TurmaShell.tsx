@@ -15,6 +15,7 @@ import { CourseDetailPage } from "../CourseDetailPage";
 import { TurmaLandingPage, type TurmaLanding } from "./TurmaLandingPage";
 import { TurmaCommunityTab } from "./TurmaCommunityTab";
 import { TurmaMembersTab } from "./TurmaMembersTab";
+import { TrailPaywall } from "../trilhas/TrailPaywall";
 
 type TurmaTab = "aulas" | "comunidade" | "membros" | "sobre";
 
@@ -94,6 +95,33 @@ export function TurmaShell() {
         defaultName={user?.name}
         defaultEmail={user?.email}
       />
+    );
+  }
+
+  // Task #130 — turma vinculada a trilha paga + viewer sem assinatura ativa
+  // ⇒ render <TrailPaywall> direto (em vez do fluxo "interesse"/landing),
+  // pra deixar claro que a entrada é via assinatura.
+  if (!landing.is_member && landing.trail_id && !landing.has_trail_access) {
+    return (
+      <div className="min-h-screen" style={{ background: "var(--rayo-sand-100)" }}>
+        <div
+          className="sticky top-0 z-40 px-4 py-3"
+          style={{ background: "var(--rayo-sand-100)", borderBottom: "1px solid var(--rayo-sand-300)" }}
+        >
+          <div className="max-w-5xl mx-auto flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={back}>
+              <ArrowLeft className="w-4 h-4 mr-1" /> Turmas
+            </Button>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground truncate">Turma</div>
+              <div className="font-display font-bold truncate">{landing.title}</div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-3xl mx-auto px-4 py-6">
+          <TrailPaywall trailId={landing.trail_id} variant="block" />
+        </div>
+      </div>
     );
   }
 

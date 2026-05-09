@@ -298,7 +298,38 @@ export async function getCourseLanding(courseId: number, viewerId?: number) {
     );
     isMember = m.length > 0;
   }
-  return { ...course, is_member: isMember };
+  // Task #130 — expõe trilha vinculada (se houver) e flag de assinatura ativa
+  // do viewer pra que o frontend (TurmaShell) renderize <TrailPaywall> em vez
+  // do fluxo de "interesse" quando a turma é parte de trilha paga.
+  const { rows: tr } = await query<{ trail_id: number; trail_slug: string }>(
+    `SELECT t.id AS trail_id, t.slug AS trail_slug
+       FROM trail_courses tc
+       JOIN trails t ON t.id = tc.trail_id
+      WHERE tc.course_id = $1 AND t.active = TRUE
+      LIMIT 1`,
+    [courseId],
+  );
+  const trailId = tr[0]?.trail_id ?? null;
+  const trailSlug = tr[0]?.trail_slug ?? null;
+  let hasTrailAccess = false;
+  if (trailId && viewerId) {
+    const { rows: sub } = await query<{ exists: boolean }>(
+      `SELECT EXISTS(
+         SELECT 1 FROM subscriptions
+          WHERE user_id = $1 AND trail_id = $2
+            AND status = ANY(ARRAY['active','trialing','past_due']::text[])
+       ) AS exists`,
+      [viewerId, trailId],
+    );
+    hasTrailAccess = !!sub[0]?.exists;
+  }
+  return {
+    ...course,
+    is_member: isMember,
+    trail_id: trailId,
+    trail_slug: trailSlug,
+    has_trail_access: hasTrailAccess,
+  };
 }
 
 // Task #99 — Cria registro de "interesse" (modal Em breve). Rate-limit
