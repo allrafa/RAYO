@@ -25,6 +25,7 @@ import {
   listClassInterests,
   exportClassInterestsCsv,
   notifyClassInterests,
+  resendClassInterestNotification,
   listCourseModulesWithLessons,
   createCourseModule,
   updateCourseModule,
@@ -128,6 +129,32 @@ adminCmsRouter.post("/courses/:id/notify-interests", async (req, res, next) => {
         "EMAIL_NOT_CONFIGURED",
         503,
       );
+      return;
+    }
+    success(res, result);
+  } catch (err) { handle(err, res, next); }
+});
+
+// Task #107 — reenviar aviso para UMA linha específica (ex.: caiu no spam,
+// pessoa pediu de novo). Diferente do disparo em lote, ignora o estado de
+// `notified_at` e atualiza pro novo timestamp em sucesso.
+adminCmsRouter.post("/courses/:courseId/interests/:id/resend", async (req, res, next) => {
+  try {
+    const courseId = parseId(req.params.courseId);
+    const interestId = parseId(req.params.id);
+    if (!courseId || !interestId) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const result = await resendClassInterestNotification(req.user!, courseId, interestId);
+    if (!result.email_configured) {
+      sendError(
+        res,
+        "Resend não está configurado neste ambiente. Configure RESEND_API_KEY antes de notificar.",
+        "EMAIL_NOT_CONFIGURED",
+        503,
+      );
+      return;
+    }
+    if (!result.sent) {
+      sendError(res, "Falha ao reenviar o e-mail. Tente novamente em instantes.", "SEND_FAILED", 502);
       return;
     }
     success(res, result);

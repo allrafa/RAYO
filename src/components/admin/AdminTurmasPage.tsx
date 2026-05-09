@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Download, GraduationCap, Mail, RefreshCw } from "lucide-react";
+import { ArrowLeft, Download, GraduationCap, Mail, RefreshCw, Send } from "lucide-react";
 import { Button } from "../ui/button";
 import {
   AlertDialog,
@@ -185,6 +185,7 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
   const [notifyOpen, setNotifyOpen] = useState(false);
   const [notifyMessage, setNotifyMessage] = useState("");
   const [notifying, setNotifying] = useState(false);
+  const [resendingId, setResendingId] = useState<number | null>(null);
   const limit = 50;
 
   // `pending_total` vem do backend e cobre a turma inteira (não só a
@@ -251,6 +252,27 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
       toast.error(err instanceof Error ? err.message : "Falha ao notificar interessados");
     } finally {
       setNotifying(false);
+    }
+  }
+
+  async function resendOne(row: InterestRow) {
+    setResendingId(row.id);
+    try {
+      const res = await api.post<{ sent: boolean; notified_at: string | null }>(
+        `/api/admin/cms/courses/${course.id}/interests/${row.id}/resend`,
+      );
+      if (res.success && res.data?.sent) {
+        toast.success(`Aviso reenviado para ${row.email}.`);
+        await load();
+      } else if (res.error?.code === "EMAIL_NOT_CONFIGURED") {
+        toast.error("Resend não está configurado. Configure RESEND_API_KEY antes de notificar.");
+      } else {
+        toast.error(res.error?.message ?? "Falha ao reenviar o aviso");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao reenviar o aviso");
+    } finally {
+      setResendingId(null);
     }
   }
 
@@ -421,12 +443,24 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
                     </p>
                   )}
                 </div>
-                <div className="text-xs text-right whitespace-nowrap" style={{ color: "var(--rayo-ink-400)" }}>
+                <div className="text-xs text-right whitespace-nowrap flex flex-col items-end gap-1" style={{ color: "var(--rayo-ink-400)" }}>
                   <div>{new Date(row.created_at).toLocaleString("pt-BR")}</div>
                   {row.notified_at && (
-                    <div className="mt-1" style={{ color: "var(--rayo-sage-600, var(--rayo-ink-400))" }}>
-                      Aviso enviado em {new Date(row.notified_at).toLocaleString("pt-BR")}
-                    </div>
+                    <>
+                      <div style={{ color: "var(--rayo-sage-600, var(--rayo-ink-400))" }}>
+                        Aviso enviado em {new Date(row.notified_at).toLocaleString("pt-BR")}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => resendOne(row)}
+                        disabled={resendingId === row.id}
+                        title={`Reenviar o aviso para ${row.email} (ex.: caiu no spam)`}
+                      >
+                        <Send className="w-3.5 h-3.5 mr-1.5" />
+                        {resendingId === row.id ? "Reenviando..." : "Reenviar aviso"}
+                      </Button>
+                    </>
                   )}
                 </div>
               </div>

@@ -1125,6 +1125,66 @@ export async function notifyClassInterests(
   };
 }
 
+// Task #107 — Reenvio individual do aviso de matrícula aberta. Diferente
+// do disparo em lote (`notifyClassInterests`), aqui o admin escolhe uma
+// linha específica e re-dispara o e-mail mesmo que `notified_at` já
+// esteja preenchido (caso de "caiu no spam, reenvia pra mim"). Atualiza
+// `notified_at` para o novo timestamp em sucesso.
+export async function resendClassInterestNotification(
+  user: SafeUser,
+  courseId: number,
+  interestId: number,
+): Promise<{ sent: boolean; email_configured: boolean; notified_at: string | null; error?: string }> {
+  const cur = await getCourseAdmin(courseId);
+  if (!cur) throw new CmsError("Turma não encontrada", "COURSE_NOT_FOUND", 404);
+  assertCanMutate(user, (cur as { created_by: number | null }).created_by ?? null);
+
+  const { rows } = await query<{ id: number; name: string; email: string }>(
+    `SELECT id, name, email
+       FROM class_interests
+      WHERE id = $1 AND course_id = $2
+      LIMIT 1`,
+    [interestId, courseId],
+  );
+  const row = rows[0];
+  if (!row) throw new CmsError("Interessado não encontrado nesta turma", "INTEREST_NOT_FOUND", 404);
+
+  const { isEmailConfigured } = await import("../../lib/email.js");
+  if (!isEmailConfigured()) {
+    return { sent: false, email_configured: false, notified_at: null };
+  }
+
+  const courseTitle = String((cur as { title: string }).title || `Turma #${courseId}`);
+  const courseLink = `${APP_URL.replace(/\/+$/, "")}/turmas/${courseId}`;
+
+  const result = await sendClassOpenEmail(row.email, row.name, courseTitle, courseLink, null);
+  if (!result.sent) {
+    logger.warn(
+      "CMS",
+      `class-open resend failed for course ${courseId} interest ${row.id}: ${result.error ?? "unknown"}`,
+    );
+    return {
+      sent: false,
+      email_configured: true,
+      notified_at: null,
+      error: result.error ?? "send_failed",
+    };
+  }
+
+  const { rows: upd } = await query<{ notified_at: string }>(
+    `UPDATE class_interests
+        SET notified_at = NOW()
+      WHERE id = $1 AND course_id = $2
+      RETURNING notified_at`,
+    [row.id, courseId],
+  );
+  return {
+    sent: true,
+    email_configured: true,
+    notified_at: upd[0]?.notified_at ?? null,
+  };
+}
+
 // ── Course creation from CMS ──────────────────────────────────────────
 // Lets producers create a brand-new course (and its mirroring CMS row) in
 // one step, replacing the legacy seed-driven flow. The `courses` table
