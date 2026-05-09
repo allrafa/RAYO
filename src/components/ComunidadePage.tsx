@@ -136,6 +136,50 @@ export function ComunidadePage() {
     };
   }, [openPostById]);
 
+  // Task #92 — deep-link `/c/<slug>`. Recebe via sessionStorage
+  // (`rayo-pending-community-slug`) ou CustomEvent `rayo:open-community`.
+  // Por enquanto resolvemos só pra Grupos com toast informativo (CommunityDetailPage
+  // dedicado é follow-up). Ainda assim, busca o forum por slug pra validar
+  // existência e dá feedback claro se a comunidade não existe.
+  const openCommunityBySlug = useCallback(async (slug: string) => {
+    const res = await api.get<{ forum: { id: number; name: string; slug: string } }>(
+      `/api/community/forums/by-slug/${encodeURIComponent(slug)}`,
+    );
+    if (res.success && res.data) {
+      setCurrentView("grupos");
+      enhancedToast.info({
+        title: `Comunidade c/${res.data.forum.slug}`,
+        description: `Você está vendo as comunidades. Toque em "${res.data.forum.name}" pra abrir.`,
+      });
+    } else {
+      enhancedToast.error({
+        title: "Comunidade não encontrada",
+        description: res.error?.message || `c/${slug} não existe`,
+        haptic: true,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ slug: string }>).detail;
+      if (detail?.slug) void openCommunityBySlug(detail.slug);
+    };
+    window.addEventListener("rayo:open-community", handler as EventListener);
+    try {
+      const pending = sessionStorage.getItem("rayo-pending-community-slug");
+      if (pending) {
+        sessionStorage.removeItem("rayo-pending-community-slug");
+        void openCommunityBySlug(pending);
+      }
+    } catch {
+      // ignore
+    }
+    return () => {
+      window.removeEventListener("rayo:open-community", handler as EventListener);
+    };
+  }, [openCommunityBySlug]);
+
   const loadForums = useCallback(async () => {
     setForumsLoading(true);
     setForumsError(null);
@@ -1045,22 +1089,46 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
                 )}
               </div>
               <div 
-                className="flex items-center gap-2 text-[12px]"
+                className="flex items-center gap-2 text-[12px] flex-wrap"
                 style={{ color: 'var(--rayo-ink-400)' }}
               >
+                {post.forum_slug && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        try {
+                          sessionStorage.setItem("rayo-pending-community-slug", post.forum_slug);
+                        } catch { /* noop */ }
+                        window.dispatchEvent(new CustomEvent("rayo:open-community", { detail: { slug: post.forum_slug } }));
+                      }}
+                      className="hover:underline"
+                      style={{ fontWeight: 600, color: 'var(--rayo-terra-500)' }}
+                      title={`Abrir c/${post.forum_slug}`}
+                    >
+                      {post.forum_icon ? `${post.forum_icon} ` : ""}c/{post.forum_slug}
+                    </button>
+                    <span>•</span>
+                  </>
+                )}
                 <Clock className="w-3 h-3" />
                 <span>{post.time}</span>
-                <span>•</span>
-                <Badge 
-                  style={{ 
-                    fontSize: '10px', 
-                    fontWeight: 600,
-                    background: 'var(--rayo-terra-100)',
-                    color: 'var(--rayo-terra-500)',
-                  }}
-                >
-                  {post.category}
-                </Badge>
+                {post.category && (
+                  <>
+                    <span>•</span>
+                    <Badge
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        background: 'var(--rayo-terra-100)',
+                        color: 'var(--rayo-terra-500)',
+                      }}
+                    >
+                      {post.category}
+                    </Badge>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -1082,14 +1150,34 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
           {post.content}
         </p>
 
-        {/* Images */}
+        {/* Images — Task #92: até 4 imagens em grid responsivo */}
         {post.images && post.images.length > 0 && (
-          <div className="mb-4 rounded-xl overflow-hidden">
-            <ImageWithFallback
-              src={post.images[0]}
-              alt="Post image"
-              className="w-full h-auto"
-            />
+          <div
+            className={`mb-4 grid gap-1 rounded-xl overflow-hidden ${
+              post.images.length === 1
+                ? "grid-cols-1"
+                : post.images.length === 2
+                ? "grid-cols-2"
+                : "grid-cols-2"
+            }`}
+          >
+            {post.images.slice(0, 4).map((src: string, i: number) => (
+              <div
+                key={i}
+                className={
+                  post.images.length === 3 && i === 0
+                    ? "row-span-2"
+                    : ""
+                }
+              >
+                <ImageWithFallback
+                  src={src}
+                  alt={`Imagem ${i + 1}`}
+                  className="w-full h-full object-cover"
+                  style={{ minHeight: post.images.length === 1 ? "auto" : 160 }}
+                />
+              </div>
+            ))}
           </div>
         )}
 

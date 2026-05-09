@@ -282,4 +282,82 @@ router.get("/me/activity-stats", requireAuth, async (req: Request, res: Response
   }
 });
 
+// Task #92 — Follow / Unfollow (Reddit-style). Idempotente, sem self-follow.
+router.post(
+  "/:id/follow",
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const targetId = Number.parseInt(req.params.id, 10);
+      if (!Number.isFinite(targetId) || targetId <= 0) {
+        error(res, "ID de usuário inválido", "INVALID_USER_ID", 400);
+        return;
+      }
+      if (targetId === req.user!.id) {
+        error(res, "Você não pode seguir a si mesmo", "SELF_FOLLOW", 400);
+        return;
+      }
+      const exists = await query(`SELECT id FROM users WHERE id = $1`, [targetId]);
+      if (exists.rows.length === 0) {
+        error(res, "Usuário não encontrado", "USER_NOT_FOUND", 404);
+        return;
+      }
+      const follow = req.body?.follow !== false;
+      if (follow) {
+        await query(
+          `INSERT INTO user_follows (follower_id, followee_id) VALUES ($1, $2)
+           ON CONFLICT DO NOTHING`,
+          [req.user!.id, targetId],
+        );
+      } else {
+        await query(
+          `DELETE FROM user_follows WHERE follower_id = $1 AND followee_id = $2`,
+          [req.user!.id, targetId],
+        );
+      }
+      const counts = await query<{ followers: string; following: string }>(
+        `SELECT
+           (SELECT COUNT(*) FROM user_follows WHERE followee_id = $1)::text AS followers,
+           (SELECT COUNT(*) FROM user_follows WHERE follower_id = $1)::text AS following`,
+        [targetId],
+      );
+      success(res, {
+        following: follow,
+        followers_count: Number.parseInt(counts.rows[0]?.followers ?? "0", 10),
+        following_count: Number.parseInt(counts.rows[0]?.following ?? "0", 10),
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.get(
+  "/:id/follows",
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const targetId = Number.parseInt(req.params.id, 10);
+      if (!Number.isFinite(targetId) || targetId <= 0) {
+        error(res, "ID de usuário inválido", "INVALID_USER_ID", 400);
+        return;
+      }
+      const counts = await query<{ followers: string; following: string; is_following: boolean }>(
+        `SELECT
+           (SELECT COUNT(*) FROM user_follows WHERE followee_id = $1)::text AS followers,
+           (SELECT COUNT(*) FROM user_follows WHERE follower_id = $1)::text AS following,
+           EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $2 AND followee_id = $1) AS is_following`,
+        [targetId, req.user!.id],
+      );
+      success(res, {
+        followers_count: Number.parseInt(counts.rows[0]?.followers ?? "0", 10),
+        following_count: Number.parseInt(counts.rows[0]?.following ?? "0", 10),
+        is_following: counts.rows[0]?.is_following ?? false,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 export default router;

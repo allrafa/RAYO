@@ -23,6 +23,7 @@ import { BibliotecaWithBookReader } from "./BibliotecaWithBookReader";
 import { useVideoProgress } from "./hooks/useVideoProgress";
 import { api } from "../lib/api";
 import { EditProfileModal, ChangePasswordModal, LanguageModal } from "./perfil/PerfilModals";
+import { UserProfilePage } from "./UserProfilePage";
 
 const LANGUAGE_LABELS: Record<string, string> = {
   "pt-BR": "Português",
@@ -507,72 +508,41 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     >
       {(otherProfile || otherProfileLoading || otherProfileError) && (
         <div className="mx-auto max-w-md lg:max-w-7xl px-4 lg:px-8 pt-3">
-          <div
-            role="region"
-            aria-label="Perfil público"
-            className="rounded-xl p-4 mb-3"
-            style={{
-              background: "var(--rayo-sand-50)",
-              border: "1px solid var(--rayo-sand-300)",
-            }}
-          >
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                Perfil público
-              </p>
+          {/* Task #92 — overlay agora usa UserProfilePage com tabs Reddit-style. */}
+          {otherProfileLoading && (
+            <div
+              className="rounded-xl p-4 mb-3"
+              style={{ background: "var(--rayo-sand-50)", border: "1px solid var(--rayo-sand-300)" }}
+            >
+              <p className="text-sm text-muted-foreground">Carregando perfil…</p>
+            </div>
+          )}
+          {otherProfileError && !otherProfileLoading && (
+            <div
+              className="rounded-xl p-4 mb-3 flex items-start justify-between gap-3"
+              style={{ background: "var(--rayo-sand-50)", border: "1px solid var(--rayo-sand-300)" }}
+            >
+              <p className="text-sm text-destructive">{otherProfileError}</p>
               <button
                 type="button"
-                onClick={() => {
-                  setOtherProfile(null);
-                  setOtherProfileError(null);
-                }}
+                onClick={() => setOtherProfileError(null)}
                 className="text-xs underline text-muted-foreground"
               >
                 fechar
               </button>
             </div>
-            {otherProfileLoading && (
-              <p className="text-sm text-muted-foreground">Carregando…</p>
-            )}
-            {otherProfileError && (
-              <p className="text-sm text-destructive">{otherProfileError}</p>
-            )}
-            {otherProfile && (
-              <div>
-                <h3 className="text-lg font-semibold mb-1">
-                  {otherProfile.name}
-                </h3>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Membro desde{" "}
-                  {new Date(otherProfile.joinedAt).toLocaleDateString("pt-BR", {
-                    month: "long",
-                    year: "numeric",
-                  })}
-                  {otherProfile.segments.length > 0 &&
-                    ` · ${otherProfile.segments.join(", ")}`}
-                </p>
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  {[
-                    { label: "Nível", value: otherProfile.level },
-                    { label: "XP", value: otherProfile.xp },
-                    { label: "Sequência", value: otherProfile.streak },
-                    { label: "Conquistas", value: otherProfile.totalBadges },
-                  ].map((s) => (
-                    <div
-                      key={s.label}
-                      className="rounded-lg p-2"
-                      style={{ background: "var(--rayo-sand-300)" }}
-                    >
-                      <p className="text-base font-semibold">{s.value}</p>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {s.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          )}
+          {otherProfile && (
+            <div className="mb-3">
+              <UserProfilePage
+                userId={otherProfile.id}
+                onClose={() => {
+                  setOtherProfile(null);
+                  setOtherProfileError(null);
+                }}
+              />
+            </div>
+          )}
         </div>
       )}
       {/* Desktop Layout */}

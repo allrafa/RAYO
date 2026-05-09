@@ -182,6 +182,28 @@ function AppContent() {
     }
   }, []);
 
+  // Task #92 — deep-link `/c/<slug>` para comunidades. Mesma mecânica do
+  // `/u/<id>`: mantém autenticado (NÃO é página pública), parqueia o slug
+  // em sessionStorage e troca pra aba Comunidade. ComunidadePage lê
+  // `rayo-pending-community-slug` e abre a vista da comunidade.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const match = window.location.pathname.match(/^\/c\/([a-z0-9-]+)\/?$/i);
+    if (!match) return;
+    const slug = match[1].toLowerCase();
+    try {
+      sessionStorage.setItem("rayo-pending-community-slug", slug);
+    } catch {
+      // ignore
+    }
+    setCurrentTab("comunidade");
+    try {
+      window.history.replaceState({}, "", "/");
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Task #71 — deep-link `/conversas/<id>` for notification + email links.
   // Mirrors the `/u/:id` contract: park the target id in sessionStorage,
   // switch to the Conversas tab, and clean the URL so refresh doesn't replay.

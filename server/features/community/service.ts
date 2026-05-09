@@ -1,65 +1,125 @@
 import { query } from "../../db/index.js";
 import { AppError } from "../academia/service.js";
 import { trackEvent } from "../analytics/service.js";
+import { resolveStoredMediaUrl } from "../../lib/objectStorageBridge.js";
 
-export async function listForums() {
+const POST_IMAGE_PREFIX = "objstore://posts/";
+const POST_MAX_IMAGES = 4;
+
+// Resolve images JSON column (array de sentinels) → array de URLs assinadas.
+async function resolvePostImages(images: unknown): Promise<string[]> {
+  if (!Array.isArray(images)) return [];
+  const out: string[] = [];
+  for (const it of images) {
+    if (typeof it !== "string") continue;
+    const url = await resolveStoredMediaUrl(it);
+    if (url) out.push(url);
+  }
+  return out;
+}
+
+async function hydratePostsRows<T extends Record<string, any>>(rows: T[]): Promise<T[]> {
+  return Promise.all(
+    rows.map(async (r) => ({
+      ...r,
+      images: await resolvePostImages(r.images),
+      author_avatar: await resolveStoredMediaUrl(r.author_avatar),
+    })),
+  );
+}
+
+export async function listForums(userId?: number) {
+  const params: Array<number> = [];
+  let subscribedExpr = "false AS is_subscribed";
+  if (userId) {
+    params.push(userId);
+    subscribedExpr = `EXISTS(SELECT 1 FROM forum_subscriptions fs WHERE fs.forum_id = f.id AND fs.user_id = $1) AS is_subscribed`;
+  }
   const { rows } = await query(
-    `SELECT f.id, f.name, f.description, f.icon, f.life_context, f.category,
-       (SELECT COUNT(*) FROM posts p WHERE p.forum_id = f.id AND p.is_hidden = FALSE) AS post_count
+    `SELECT f.id, f.name, f.slug, f.description, f.icon, f.life_context, f.category,
+       (SELECT COUNT(*) FROM posts p WHERE p.forum_id = f.id AND p.is_hidden = FALSE) AS post_count,
+       (SELECT COUNT(*) FROM forum_subscriptions fs2 WHERE fs2.forum_id = f.id) AS member_count,
+       ${subscribedExpr}
      FROM forums f
      WHERE f.is_active = true
-     ORDER BY f.sort_order`
+     ORDER BY f.sort_order`,
+    params,
   );
   return rows;
+}
+
+export async function getForumBySlug(slug: string, userId?: number) {
+  const params: Array<string | number> = [slug];
+  let subscribedExpr = "false AS is_subscribed";
+  if (userId) {
+    params.push(userId);
+    subscribedExpr = `EXISTS(SELECT 1 FROM forum_subscriptions fs WHERE fs.forum_id = f.id AND fs.user_id = $2) AS is_subscribed`;
+  }
+  const { rows } = await query(
+    `SELECT f.id, f.name, f.slug, f.description, f.icon, f.life_context, f.category,
+       (SELECT COUNT(*) FROM posts p WHERE p.forum_id = f.id AND p.is_hidden = FALSE) AS post_count,
+       (SELECT COUNT(*) FROM forum_subscriptions fs2 WHERE fs2.forum_id = f.id) AS member_count,
+       ${subscribedExpr}
+     FROM forums f
+     WHERE f.slug = $1 AND f.is_active = true`,
+    params,
+  );
+  if (rows.length === 0) {
+    throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
+  }
+  return rows[0];
 }
 
 export async function getForumPosts(
   forumId: number,
   page: number = 1,
   limit: number = 20,
-  userId?: number
+  userId?: number,
 ) {
   const offset = (page - 1) * limit;
 
   const { rows: countRows } = await query(
     `SELECT COUNT(*) AS total FROM posts WHERE forum_id = $1 AND is_hidden = FALSE`,
-    [forumId]
+    [forumId],
   );
   const total = parseInt(countRows[0].total);
 
   const { rows } = await query(
-    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned,
+    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned, p.images,
        p.like_count, p.comment_count, p.share_count, p.created_at,
-       u.name AS author_name, u.id AS author_id,
+       u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
+       f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon,
        ${userId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $4) AS user_liked` : `false AS user_liked`}
      FROM posts p
      JOIN users u ON u.id = p.user_id
+     JOIN forums f ON f.id = p.forum_id
      WHERE p.forum_id = $1 AND p.is_hidden = FALSE
      ORDER BY p.is_pinned DESC, p.created_at DESC
      LIMIT $2 OFFSET $3`,
-    userId ? [forumId, limit, offset, userId] : [forumId, limit, offset]
+    userId ? [forumId, limit, offset, userId] : [forumId, limit, offset],
   );
 
-  return { posts: rows, total, page, limit, totalPages: Math.ceil(total / limit) };
+  const posts = await hydratePostsRows(rows);
+  return { posts, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
 export async function getAllPosts(
   page: number = 1,
   limit: number = 20,
-  userId?: number
+  userId?: number,
 ) {
   const offset = (page - 1) * limit;
 
   const { rows: countRows } = await query(
-    `SELECT COUNT(*) AS total FROM posts WHERE is_hidden = FALSE`
+    `SELECT COUNT(*) AS total FROM posts WHERE is_hidden = FALSE`,
   );
   const total = parseInt(countRows[0].total);
 
   const { rows } = await query(
-    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned,
+    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned, p.images,
        p.like_count, p.comment_count, p.share_count, p.created_at,
-       u.name AS author_name, u.id AS author_id,
-       f.name AS forum_name,
+       u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
+       f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon,
        ${userId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $3) AS user_liked` : `false AS user_liked`}
      FROM posts p
      JOIN users u ON u.id = p.user_id
@@ -67,10 +127,11 @@ export async function getAllPosts(
      WHERE p.is_hidden = FALSE
      ORDER BY p.is_pinned DESC, p.created_at DESC
      LIMIT $1 OFFSET $2`,
-    userId ? [limit, offset, userId] : [limit, offset]
+    userId ? [limit, offset, userId] : [limit, offset],
   );
 
-  return { posts: rows, total, page, limit, totalPages: Math.ceil(total / limit) };
+  const posts = await hydratePostsRows(rows);
+  return { posts, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
 export async function createPost(
@@ -78,53 +139,85 @@ export async function createPost(
   forumId: number,
   content: string,
   category?: string,
-  title?: string
+  title?: string,
+  images?: unknown,
 ) {
-  if (!content || content.trim().length === 0) {
+  const trimmed = (content || "").trim();
+  // Imagens: array de sentinels objstore://posts/<file>. Posts só com fotos
+  // (sem texto) são permitidos — Reddit-style.
+  let imageList: string[] = [];
+  if (images !== undefined && images !== null) {
+    if (!Array.isArray(images)) {
+      throw new AppError("Imagens devem ser um array", "INVALID_IMAGES", 400);
+    }
+    if (images.length > POST_MAX_IMAGES) {
+      throw new AppError(`Máximo de ${POST_MAX_IMAGES} imagens por post`, "TOO_MANY_IMAGES", 400);
+    }
+    for (const it of images) {
+      if (typeof it !== "string" || !it.startsWith(POST_IMAGE_PREFIX)) {
+        throw new AppError("Referência de imagem inválida", "INVALID_IMAGE_REF", 400);
+      }
+      imageList.push(it);
+    }
+  }
+
+  if (trimmed.length === 0 && imageList.length === 0) {
     throw new AppError("Conteúdo do post é obrigatório", "EMPTY_CONTENT", 400);
   }
-  if (content.length > 5000) {
+  if (trimmed.length > 5000) {
     throw new AppError("Conteúdo excede o limite de 5000 caracteres", "CONTENT_TOO_LONG", 400);
   }
 
   const { rows: forumCheck } = await query(
     `SELECT id FROM forums WHERE id = $1 AND is_active = true`,
-    [forumId]
+    [forumId],
   );
   if (forumCheck.length === 0) {
-    throw new AppError("Fórum não encontrado", "FORUM_NOT_FOUND", 404);
+    throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
   }
 
   const { rows } = await query(
-    `INSERT INTO posts (forum_id, user_id, title, content, category)
-     VALUES ($1, $2, $3, $4, $5)
-     RETURNING id, forum_id, title, content, category, is_pinned, like_count, comment_count, share_count, created_at`,
-    [forumId, userId, title || null, content.trim(), category || null]
+    `INSERT INTO posts (forum_id, user_id, title, content, category, images)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+     RETURNING id, forum_id, title, content, category, is_pinned, like_count, comment_count, share_count, created_at, images`,
+    [forumId, userId, title || null, trimmed, category || null, JSON.stringify(imageList)],
   );
 
   const post = rows[0];
-  const { rows: userRows } = await query(`SELECT name FROM users WHERE id = $1`, [userId]);
+  const { rows: userRows } = await query(
+    `SELECT name, avatar_url FROM users WHERE id = $1`,
+    [userId],
+  );
+  const { rows: forumRows } = await query(
+    `SELECT name, slug, icon FROM forums WHERE id = $1`,
+    [forumId],
+  );
   post.author_name = userRows[0]?.name || "Anônimo";
   post.author_id = userId;
+  post.author_avatar = await resolveStoredMediaUrl(userRows[0]?.avatar_url);
+  post.forum_name = forumRows[0]?.name;
+  post.forum_slug = forumRows[0]?.slug;
+  post.forum_icon = forumRows[0]?.icon;
+  post.images = await resolvePostImages(post.images);
   post.user_liked = false;
 
-  trackEvent(userId, "post_created", { post_id: post.id, forum_id: forumId });
+  trackEvent(userId, "post_created", { post_id: post.id, forum_id: forumId, image_count: imageList.length });
 
   return post;
 }
 
 export async function getPostDetail(postId: number, userId?: number) {
   const { rows } = await query(
-    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned,
+    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned, p.images,
        p.like_count, p.comment_count, p.share_count, p.created_at,
-       u.name AS author_name, u.id AS author_id,
-       f.name AS forum_name,
+       u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
+       f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon,
        ${userId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2) AS user_liked` : `false AS user_liked`}
      FROM posts p
      JOIN users u ON u.id = p.user_id
      JOIN forums f ON f.id = p.forum_id
      WHERE p.id = $1 AND p.is_hidden = FALSE`,
-    userId ? [postId, userId] : [postId]
+    userId ? [postId, userId] : [postId],
   );
 
   if (rows.length === 0) {
@@ -133,22 +226,30 @@ export async function getPostDetail(postId: number, userId?: number) {
 
   const { rows: comments } = await query(
     `SELECT c.id, c.content, c.parent_id, c.like_count, c.created_at,
-       u.name AS author_name, u.id AS author_id,
+       u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
        ${userId ? `EXISTS(SELECT 1 FROM comment_likes cl WHERE cl.comment_id = c.id AND cl.user_id = $2) AS user_liked` : `false AS user_liked`}
      FROM comments c
      JOIN users u ON u.id = c.user_id
      WHERE c.post_id = $1 AND c.is_hidden = FALSE
      ORDER BY c.created_at ASC`,
-    userId ? [postId, userId] : [postId]
+    userId ? [postId, userId] : [postId],
   );
 
-  return { ...rows[0], comments };
+  const hydratedComments = await Promise.all(
+    comments.map(async (c) => ({
+      ...c,
+      author_avatar: await resolveStoredMediaUrl(c.author_avatar),
+    })),
+  );
+
+  const post = (await hydratePostsRows([rows[0]]))[0];
+  return { ...post, comments: hydratedComments };
 }
 
 export async function togglePostLike(postId: number, userId: number) {
   const { rows: postCheck } = await query(
     `SELECT id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
-    [postId]
+    [postId],
   );
   if (postCheck.length === 0) {
     throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
@@ -156,7 +257,7 @@ export async function togglePostLike(postId: number, userId: number) {
 
   const { rows: existing } = await query(
     `SELECT id FROM post_likes WHERE post_id = $1 AND user_id = $2`,
-    [postId, userId]
+    [postId, userId],
   );
 
   if (existing.length > 0) {
@@ -168,7 +269,7 @@ export async function togglePostLike(postId: number, userId: number) {
   } else {
     const { rowCount } = await query(
       `INSERT INTO post_likes (post_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-      [postId, userId]
+      [postId, userId],
     );
     if (rowCount && rowCount > 0) {
       await query(`UPDATE posts SET like_count = like_count + 1 WHERE id = $1`, [postId]);
@@ -187,7 +288,7 @@ export async function addComment(postId: number, userId: number, content: string
 
   const { rows: postCheck } = await query(
     `SELECT id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
-    [postId]
+    [postId],
   );
   if (postCheck.length === 0) {
     throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
@@ -196,7 +297,7 @@ export async function addComment(postId: number, userId: number, content: string
   if (parentId) {
     const { rows: parentCheck } = await query(
       `SELECT id FROM comments WHERE id = $1 AND post_id = $2 AND is_hidden = FALSE`,
-      [parentId, postId]
+      [parentId, postId],
     );
     if (parentCheck.length === 0) {
       throw new AppError("Comentário pai não encontrado", "PARENT_NOT_FOUND", 404);
@@ -207,15 +308,19 @@ export async function addComment(postId: number, userId: number, content: string
     `INSERT INTO comments (post_id, user_id, content, parent_id)
      VALUES ($1, $2, $3, $4)
      RETURNING id, content, parent_id, like_count, created_at`,
-    [postId, userId, content.trim(), parentId || null]
+    [postId, userId, content.trim(), parentId || null],
   );
 
   await query(`UPDATE posts SET comment_count = comment_count + 1 WHERE id = $1`, [postId]);
 
   const comment = rows[0];
-  const { rows: userRows } = await query(`SELECT name FROM users WHERE id = $1`, [userId]);
+  const { rows: userRows } = await query(
+    `SELECT name, avatar_url FROM users WHERE id = $1`,
+    [userId],
+  );
   comment.author_name = userRows[0]?.name || "Anônimo";
   comment.author_id = userId;
+  comment.author_avatar = await resolveStoredMediaUrl(userRows[0]?.avatar_url);
   comment.user_liked = false;
 
   trackEvent(userId, "comment_created", { post_id: postId, comment_id: comment.id });
@@ -226,7 +331,7 @@ export async function addComment(postId: number, userId: number, content: string
 export async function toggleCommentLike(commentId: number, userId: number) {
   const { rows: commentCheck } = await query(
     `SELECT id FROM comments WHERE id = $1 AND is_hidden = FALSE`,
-    [commentId]
+    [commentId],
   );
   if (commentCheck.length === 0) {
     throw new AppError("Comentário não encontrado", "COMMENT_NOT_FOUND", 404);
@@ -234,7 +339,7 @@ export async function toggleCommentLike(commentId: number, userId: number) {
 
   const { rows: existing } = await query(
     `SELECT id FROM comment_likes WHERE comment_id = $1 AND user_id = $2`,
-    [commentId, userId]
+    [commentId, userId],
   );
 
   if (existing.length > 0) {
@@ -246,11 +351,124 @@ export async function toggleCommentLike(commentId: number, userId: number) {
   } else {
     const { rowCount } = await query(
       `INSERT INTO comment_likes (comment_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-      [commentId, userId]
+      [commentId, userId],
     );
     if (rowCount && rowCount > 0) {
       await query(`UPDATE comments SET like_count = like_count + 1 WHERE id = $1`, [commentId]);
     }
     return { liked: true };
   }
+}
+
+// ───── Subscriptions / Comunidades ─────
+
+export async function setForumSubscription(forumId: number, userId: number, subscribed: boolean) {
+  const { rows: forumCheck } = await query(
+    `SELECT id FROM forums WHERE id = $1 AND is_active = true`,
+    [forumId],
+  );
+  if (forumCheck.length === 0) {
+    throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
+  }
+  if (subscribed) {
+    await query(
+      `INSERT INTO forum_subscriptions (forum_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [forumId, userId],
+    );
+  } else {
+    await query(
+      `DELETE FROM forum_subscriptions WHERE forum_id = $1 AND user_id = $2`,
+      [forumId, userId],
+    );
+  }
+  const { rows: countRows } = await query(
+    `SELECT COUNT(*)::int AS member_count FROM forum_subscriptions WHERE forum_id = $1`,
+    [forumId],
+  );
+  return { subscribed, member_count: countRows[0]?.member_count ?? 0 };
+}
+
+// ───── Perfil público (Reddit-style) ─────
+
+export async function getUserPosts(targetUserId: number, viewerId?: number, page = 1, limit = 20) {
+  const offset = (page - 1) * limit;
+  const { rows: countRows } = await query(
+    `SELECT COUNT(*) AS total FROM posts WHERE user_id = $1 AND is_hidden = FALSE`,
+    [targetUserId],
+  );
+  const total = parseInt(countRows[0].total);
+
+  const params: Array<number> = [targetUserId, limit, offset];
+  let likedExpr = "false AS user_liked";
+  if (viewerId) {
+    params.push(viewerId);
+    likedExpr = `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $4) AS user_liked`;
+  }
+
+  const { rows } = await query(
+    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned, p.images,
+       p.like_count, p.comment_count, p.share_count, p.created_at,
+       u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
+       f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon,
+       ${likedExpr}
+     FROM posts p
+     JOIN users u ON u.id = p.user_id
+     JOIN forums f ON f.id = p.forum_id
+     WHERE p.user_id = $1 AND p.is_hidden = FALSE
+     ORDER BY p.created_at DESC
+     LIMIT $2 OFFSET $3`,
+    params,
+  );
+
+  const posts = await hydratePostsRows(rows);
+  return { posts, total, page, limit, totalPages: Math.ceil(total / limit) };
+}
+
+export async function getUserComments(targetUserId: number, page = 1, limit = 20) {
+  const offset = (page - 1) * limit;
+  const { rows: countRows } = await query(
+    `SELECT COUNT(*) AS total FROM comments WHERE user_id = $1 AND is_hidden = FALSE`,
+    [targetUserId],
+  );
+  const total = parseInt(countRows[0].total);
+
+  const { rows } = await query(
+    `SELECT c.id, c.post_id, c.content, c.like_count, c.created_at,
+       p.title AS post_title, p.content AS post_excerpt,
+       f.name AS forum_name, f.slug AS forum_slug
+     FROM comments c
+     JOIN posts p ON p.id = c.post_id
+     JOIN forums f ON f.id = p.forum_id
+     WHERE c.user_id = $1 AND c.is_hidden = FALSE AND p.is_hidden = FALSE
+     ORDER BY c.created_at DESC
+     LIMIT $2 OFFSET $3`,
+    [targetUserId, limit, offset],
+  );
+
+  return { comments: rows, total, page, limit, totalPages: Math.ceil(total / limit) };
+}
+
+export async function getUserCommunities(targetUserId: number) {
+  const { rows } = await query(
+    `SELECT f.id, f.name, f.slug, f.description, f.icon, f.category,
+       (SELECT COUNT(*) FROM forum_subscriptions fs2 WHERE fs2.forum_id = f.id) AS member_count
+     FROM forum_subscriptions fs
+     JOIN forums f ON f.id = fs.forum_id
+     WHERE fs.user_id = $1 AND f.is_active = true
+     ORDER BY fs.created_at DESC`,
+    [targetUserId],
+  );
+  return { communities: rows };
+}
+
+export async function getUserKarma(targetUserId: number) {
+  const { rows } = await query(
+    `SELECT
+       COALESCE((SELECT SUM(like_count) FROM posts    WHERE user_id = $1 AND is_hidden = FALSE), 0)::int AS post_karma,
+       COALESCE((SELECT SUM(like_count) FROM comments WHERE user_id = $1 AND is_hidden = FALSE), 0)::int AS comment_karma,
+       (SELECT COUNT(*) FROM posts    WHERE user_id = $1 AND is_hidden = FALSE)::int AS post_count,
+       (SELECT COUNT(*) FROM comments WHERE user_id = $1 AND is_hidden = FALSE)::int AS comment_count`,
+    [targetUserId],
+  );
+  return rows[0];
 }

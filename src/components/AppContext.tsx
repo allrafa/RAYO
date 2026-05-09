@@ -120,6 +120,8 @@ interface Post {
   images?: string[];
   forum_id?: number;
   forum_name?: string;
+  forum_slug?: string;
+  forum_icon?: string;
   author_id?: number;
 }
 
@@ -548,7 +550,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     created_at: string;
     author_name: string;
     author_id: number;
+    author_avatar?: string | null;
     forum_name?: string;
+    forum_slug?: string;
+    forum_icon?: string;
+    images?: string[];
     user_liked: boolean;
   }
 
@@ -556,7 +562,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return {
       id: p.id,
       author: p.author_name,
-      avatar: "/placeholder-avatar.jpg",
+      avatar: p.author_avatar || "/placeholder-avatar.jpg",
       time: formatRelativeTime(p.created_at),
       content: p.content,
       category: p.category || "",
@@ -566,8 +572,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isPinned: p.is_pinned,
       userReacted: p.user_liked,
       visibility: "comunidade",
+      images: Array.isArray(p.images) ? p.images : [],
       forum_id: p.forum_id,
       forum_name: p.forum_name,
+      forum_slug: p.forum_slug,
+      forum_icon: p.forum_icon,
       author_id: p.author_id,
     };
   }
@@ -622,12 +631,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const createPost = async (content: string, category: string, options?: { visibility?: string; images?: string[]; forum_id?: number }): Promise<boolean> => {
-    const forumId = options?.forum_id || 7;
+    const forumId = options?.forum_id;
+    if (!forumId || forumId < 1) {
+      enhancedToast.error({
+        title: "Selecione uma comunidade",
+        description: "Escolha onde você quer publicar antes de enviar",
+        haptic: true,
+      });
+      return false;
+    }
 
+    // Task #92 — `images` é um array de sentinels `objstore://posts/<file>`
+    // (já enviado pelo composer via /api/community/posts/attachments).
     const res = await api.post<{ post: APIPost }>("/api/community/posts", {
       forum_id: forumId,
       content,
       category,
+      images: options?.images ?? [],
     });
 
     if (res.success && res.data) {

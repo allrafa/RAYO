@@ -1,8 +1,14 @@
 import { Router } from "express";
+import multer from "multer";
+import path from "path";
 import { requireAuth } from "../../middleware/auth.js";
+import { rateLimiter } from "../../middleware/security.js";
 import { success, error as sendError } from "../../utils/response.js";
+import { putPublicObject } from "../../lib/objectStorageBridge.js";
+import { optimizeCmsImage } from "../../lib/imageOptimization.js";
 import {
   listForums,
+  getForumBySlug,
   getForumPosts,
   getAllPosts,
   createPost,
@@ -10,16 +16,128 @@ import {
   togglePostLike,
   addComment,
   toggleCommentLike,
+  setForumSubscription,
+  getUserPosts,
+  getUserComments,
+  getUserCommunities,
+  getUserKarma,
 } from "./service.js";
 import { AppError } from "../academia/service.js";
 
 const router = Router();
 
+// ───── Upload de fotos para posts (Task #92) ─────
+//
+// REGRA INVIOLÁVEL: posts SÓ aceitam imagens. Vídeo é exclusivo do CMS via
+// Bunny Stream e está bloqueado tanto no fileFilter (allowlist mime) quanto
+// no service (validação do prefix `objstore://posts/`).
+//
+// Multer próprio (memoryStorage) — NÃO reutilizamos o uploadMiddleware do
+// CMS porque ele aceita vídeos, PDFs e áudio. Espelha o padrão usado em
+// `messages/routes.ts` (membership/auth ANTES, fileFilter restrito,
+// validação semântica, otimização com sharp, gravação em Object Storage).
+const POST_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const POST_IMAGE_MAX = 5 * 1024 * 1024; // 5 MB
+const postImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: POST_IMAGE_MAX },
+  fileFilter: (_req, file, cb) => {
+    if (POST_IMAGE_MIMES.has(file.mimetype)) return cb(null, true);
+    cb(new Error("Apenas imagens JPG, PNG ou WebP são permitidas"));
+  },
+}).single("file");
+
+function imageExt(mime: string): string {
+  switch (mime) {
+    case "image/jpeg": return ".jpg";
+    case "image/png":  return ".png";
+    case "image/webp": return ".webp";
+    default: return "";
+  }
+}
+
+// 60 uploads/h por usuário — uma sessão de composer com 4 fotos cabe folgada.
+const postUploadLimiter = rateLimiter(60, 60 * 60 * 1000, { keyByUser: true });
+// 30 posts/h por usuário (anti-spam, separado do limiter geral de /api/community).
+const postCreateLimiter = rateLimiter(30, 60 * 60 * 1000, { keyByUser: true });
+
+router.post(
+  "/posts/attachments",
+  requireAuth,
+  postUploadLimiter,
+  (req, res, next) => postImageUpload(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      sendError(res, "Imagem deve ter até 5 MB", "FILE_TOO_LARGE", 413);
+      return;
+    }
+    sendError(res, err instanceof Error ? err.message : "Upload inválido", "INVALID_UPLOAD", 400);
+  }),
+  async (req, res, next) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        sendError(res, "Arquivo é obrigatório", "FILE_REQUIRED", 400);
+        return;
+      }
+      if (!POST_IMAGE_MIMES.has(file.mimetype)) {
+        sendError(res, "Tipo de imagem não suportado", "UNSUPPORTED_IMAGE", 400);
+        return;
+      }
+
+      let buffer = file.buffer;
+      let mime = file.mimetype;
+      try {
+        const optimized = await optimizeCmsImage(buffer, mime);
+        buffer = optimized.buffer;
+        mime = optimized.mimetype;
+      } catch {
+        // se sharp falhar, segue com buffer original (já validado por mime).
+      }
+
+      const ext = imageExt(mime) || path.extname(file.originalname) || ".jpg";
+      const safeName = `${Date.now()}-${Math.random().toString(16).slice(2, 10).padEnd(8, "0")}${ext}`;
+      const key = `posts/${safeName}`;
+      await putPublicObject(key, buffer, mime);
+
+      success(res, {
+        attachment: {
+          attachment_url: `objstore://${key}`,
+          mime,
+          size: buffer.length,
+        },
+      }, 201);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ───── Forums ─────
+
 router.get("/forums", async (req, res, next) => {
   try {
-    const forums = await listForums();
+    const forums = await listForums(req.user?.id);
     success(res, { forums });
   } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/forums/by-slug/:slug", async (req, res, next) => {
+  try {
+    const slug = String(req.params.slug || "").trim().toLowerCase();
+    if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+      sendError(res, "Slug inválido", "INVALID_SLUG", 400);
+      return;
+    }
+    const forum = await getForumBySlug(slug, req.user?.id);
+    success(res, { forum });
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
     next(err);
   }
 });
@@ -41,6 +159,27 @@ router.get("/forums/:id/posts", async (req, res, next) => {
   }
 });
 
+router.post("/forums/:id/subscribe", requireAuth, async (req, res, next) => {
+  try {
+    const forumId = parseInt(req.params.id, 10);
+    if (isNaN(forumId) || forumId < 1) {
+      sendError(res, "ID de fórum inválido", "INVALID_FORUM_ID", 400);
+      return;
+    }
+    const subscribed = req.body?.subscribed !== false;
+    const result = await setForumSubscription(forumId, req.user!.id, subscribed);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+// ───── Posts ─────
+
 router.get("/posts", async (req, res, next) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
@@ -53,15 +192,15 @@ router.get("/posts", async (req, res, next) => {
   }
 });
 
-router.post("/posts", requireAuth, async (req, res, next) => {
+router.post("/posts", requireAuth, postCreateLimiter, async (req, res, next) => {
   try {
-    const { forum_id, content, category, title } = req.body;
+    const { forum_id, content, category, title, images } = req.body;
     const parsedForumId = parseInt(forum_id, 10);
     if (!forum_id || isNaN(parsedForumId) || parsedForumId < 1) {
-      sendError(res, "forum_id é obrigatório e deve ser um número válido", "INVALID_FORUM_ID");
+      sendError(res, "Selecione uma comunidade para publicar", "INVALID_FORUM_ID", 400);
       return;
     }
-    const post = await createPost(req.user!.id, forum_id, content, category, title);
+    const post = await createPost(req.user!.id, parsedForumId, content, category, title, images);
     success(res, { post }, 201);
   } catch (err) {
     if (err instanceof AppError) {
@@ -142,6 +281,68 @@ router.post("/comments/:id/like", requireAuth, async (req, res, next) => {
       sendError(res, err.message, err.code, err.statusCode);
       return;
     }
+    next(err);
+  }
+});
+
+// ───── Perfil público (Reddit-style) ─────
+
+router.get("/users/:id/posts", requireAuth, async (req, res, next) => {
+  try {
+    const targetId = parseInt(req.params.id, 10);
+    if (isNaN(targetId) || targetId < 1) {
+      sendError(res, "ID de usuário inválido", "INVALID_USER_ID", 400);
+      return;
+    }
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 20, 50));
+    const result = await getUserPosts(targetId, req.user?.id, page, limit);
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/users/:id/comments", requireAuth, async (req, res, next) => {
+  try {
+    const targetId = parseInt(req.params.id, 10);
+    if (isNaN(targetId) || targetId < 1) {
+      sendError(res, "ID de usuário inválido", "INVALID_USER_ID", 400);
+      return;
+    }
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 20, 50));
+    const result = await getUserComments(targetId, page, limit);
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/users/:id/communities", requireAuth, async (req, res, next) => {
+  try {
+    const targetId = parseInt(req.params.id, 10);
+    if (isNaN(targetId) || targetId < 1) {
+      sendError(res, "ID de usuário inválido", "INVALID_USER_ID", 400);
+      return;
+    }
+    const result = await getUserCommunities(targetId);
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/users/:id/karma", requireAuth, async (req, res, next) => {
+  try {
+    const targetId = parseInt(req.params.id, 10);
+    if (isNaN(targetId) || targetId < 1) {
+      sendError(res, "ID de usuário inválido", "INVALID_USER_ID", 400);
+      return;
+    }
+    const result = await getUserKarma(targetId);
+    success(res, result);
+  } catch (err) {
     next(err);
   }
 });
