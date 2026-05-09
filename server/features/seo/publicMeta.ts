@@ -18,12 +18,29 @@
 // curto (60s) pra não martelar o Postgres.
 
 import { query } from "../../db/index.js";
+import { resolveStoredMediaUrl } from "../../lib/objectStorageBridge.js";
 
 const SITE = (process.env.PUBLIC_SITE_URL || "https://rayo.app.br").replace(
   /\/+$/,
   "",
 );
 const DEFAULT_OG = `${SITE}/og-default.png`;
+
+// Task #111 — resolve qualquer referência de imagem (objstore://, /uploads/...,
+// http(s)://) em URL absoluta utilizável por crawler de OG. Caso a referência
+// não vire absoluta (ex.: legado órfão), cai pro DEFAULT_OG pra não quebrar
+// o card de preview.
+async function toAbsoluteImageUrl(ref: string | null | undefined): Promise<string> {
+  if (!ref) return DEFAULT_OG;
+  try {
+    const resolved = await resolveStoredMediaUrl(ref);
+    if (resolved && /^https?:\/\//i.test(resolved)) return resolved;
+    if (resolved && resolved.startsWith("/")) return `${SITE}${resolved}`;
+  } catch {
+    /* fall through */
+  }
+  return DEFAULT_OG;
+}
 
 export interface JsonLd {
   "@context": "https://schema.org";
@@ -42,6 +59,8 @@ export interface PublicMeta {
   jsonLd?: JsonLd[];
   /** HTML estático para `<noscript>`. Opcional — se ausente, só meta tags. */
   noscriptHtml?: string;
+  /** href para `<link rel="alternate" type="application/rss+xml">`. Opcional. */
+  alternateRss?: string;
 }
 
 const escapeHtml = (s: string): string =>
@@ -120,6 +139,22 @@ const EXCLUIR_DADOS_NOSCRIPT = `
 </main>
 `;
 
+// Task #111 — BreadcrumbList helper para todas as páginas marketing.
+// Google usa pra mostrar trilha de navegação na SERP.
+function breadcrumb(items: Array<{ name: string; url: string }>): JsonLd {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((it, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      name: it.name,
+      item: it.url,
+    })),
+  };
+}
+const HOME_CRUMB = { name: "Início", url: `${SITE}/` };
+
 // Registry: path exato (sem trailing slash) -> meta. Adicionar nova rota
 // pública estática aqui é o único lugar a tocar — o middleware faz o resto.
 export const PUBLIC_META: Record<string, PublicMeta> = {
@@ -135,54 +170,64 @@ export const PUBLIC_META: Record<string, PublicMeta> = {
     description:
       "Conheça os recursos do RAYO: turmas, comunidade, missões, cursos, áudios, livros e mais.",
     canonical: `${SITE}/recursos`,
+    jsonLd: [breadcrumb([HOME_CRUMB, { name: "Recursos", url: `${SITE}/recursos` }])],
   },
   "/como-funciona": {
     title: "Como funciona · RAYO",
     description:
       "Entenda como o RAYO acompanha cada fase da sua família com conteúdo, comunidade e práticas guiadas.",
     canonical: `${SITE}/como-funciona`,
+    jsonLd: [breadcrumb([HOME_CRUMB, { name: "Como funciona", url: `${SITE}/como-funciona` }])],
   },
   "/empresa": {
     title: "Empresa · RAYO",
     description:
       "Quem somos, missão, valores e o time por trás do RAYO.",
     canonical: `${SITE}/empresa`,
+    jsonLd: [breadcrumb([HOME_CRUMB, { name: "Empresa", url: `${SITE}/empresa` }])],
   },
   "/contato": {
     title: "Contato · RAYO",
     description:
       "Suporte, parcerias, imprensa, ideias para o produto. Respondemos em até um dia útil.",
     canonical: `${SITE}/contato`,
+    jsonLd: [breadcrumb([HOME_CRUMB, { name: "Contato", url: `${SITE}/contato` }])],
   },
   "/faq": {
     title: "Perguntas frequentes · RAYO",
     description:
       "Respostas rápidas sobre conta, planos, conteúdo, comunidade e privacidade no RAYO.",
     canonical: `${SITE}/faq`,
+    jsonLd: [breadcrumb([HOME_CRUMB, { name: "FAQ", url: `${SITE}/faq` }])],
   },
   "/imprensa": {
     title: "Imprensa · RAYO",
     description:
       "Materiais para imprensa, kit de marca e canais oficiais para falar com o RAYO.",
     canonical: `${SITE}/imprensa`,
+    jsonLd: [breadcrumb([HOME_CRUMB, { name: "Imprensa", url: `${SITE}/imprensa` }])],
   },
   "/blog": {
     title: "Blog · RAYO",
     description:
       "Reflexões, práticas e estudos sobre família, relacionamentos e formação espiritual.",
     canonical: `${SITE}/blog`,
+    alternateRss: `${SITE}/blog/feed.xml`,
+    jsonLd: [breadcrumb([HOME_CRUMB, { name: "Blog", url: `${SITE}/blog` }])],
   },
   "/privacy": {
     title: "Política de Privacidade · RAYO",
     description:
       "Como o RAYO coleta, usa, armazena e protege seus dados pessoais — em conformidade com a LGPD.",
     canonical: `${SITE}/privacy`,
+    jsonLd: [breadcrumb([HOME_CRUMB, { name: "Privacidade", url: `${SITE}/privacy` }])],
   },
   "/terms": {
     title: "Termos de Uso · RAYO",
     description:
       "Termos e condições para uso da plataforma RAYO.",
     canonical: `${SITE}/terms`,
+    jsonLd: [breadcrumb([HOME_CRUMB, { name: "Termos", url: `${SITE}/terms` }])],
   },
   "/excluir-dados": {
     title: "Exclusão de dados · RAYO",
@@ -190,6 +235,7 @@ export const PUBLIC_META: Record<string, PublicMeta> = {
       "Como excluir sua conta e todos os dados pessoais associados ao RAYO. Conformidade LGPD + Login do Google e Facebook.",
     canonical: `${SITE}/excluir-dados`,
     noscriptHtml: EXCLUIR_DADOS_NOSCRIPT,
+    jsonLd: [breadcrumb([HOME_CRUMB, { name: "Exclusão de dados", url: `${SITE}/excluir-dados` }])],
   },
 };
 
@@ -260,8 +306,7 @@ async function resolveBlogPost(slug: string): Promise<PublicMeta | null> {
     200,
   ) || "Artigo do blog do RAYO.";
   const canonical = `${SITE}/blog/${encodeURIComponent(slug)}`;
-  const ogImage =
-    r.cover_url && /^https?:\/\//.test(r.cover_url) ? r.cover_url : DEFAULT_OG;
+  const ogImage = await toAbsoluteImageUrl(r.cover_url);
   const articleLd: JsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -283,13 +328,19 @@ async function resolveBlogPost(slug: string): Promise<PublicMeta | null> {
     mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
     inLanguage: "pt-BR",
   };
+  const crumbs = breadcrumb([
+    HOME_CRUMB,
+    { name: "Blog", url: `${SITE}/blog` },
+    { name: r.title, url: canonical },
+  ]);
   return {
     title: `${r.title} · RAYO`,
     description: desc,
     canonical,
     ogImage,
     ogType: "article",
-    jsonLd: [articleLd],
+    alternateRss: `${SITE}/blog/feed.xml`,
+    jsonLd: [articleLd, crumbs],
   };
 }
 
@@ -309,9 +360,9 @@ async function resolveUserProfile(id: number): Promise<PublicMeta | null> {
   const bio = truncate((r.bio || "").trim(), 200) || `Perfil de ${name} no RAYO.`;
   const canonical = `${SITE}/u/${id}`;
   // avatar_url pode ser sentinel objstore:// ou /uploads/avatar/... — pra OG
-  // precisamos de URL absoluta. Mantém só http(s)://; resto cai no default.
-  const ogImage =
-    r.avatar_url && /^https?:\/\//.test(r.avatar_url) ? r.avatar_url : DEFAULT_OG;
+  // precisamos de URL absoluta. toAbsoluteImageUrl assina objstore:// pra
+  // signed URL pública (TTL 7d) e prefixa /uploads/... com SITE.
+  const ogImage = await toAbsoluteImageUrl(r.avatar_url);
   const profileLd: JsonLd = {
     "@context": "https://schema.org",
     "@type": "ProfilePage",
@@ -358,8 +409,7 @@ async function resolveTurma(id: number): Promise<PublicMeta | null> {
   ) || `Conheça a turma "${r.title}" no RAYO.`;
   const canonical = `${SITE}/turmas/${id}`;
   const heroOrThumb = r.hero_cover_url || r.thumbnail;
-  const ogImage =
-    heroOrThumb && /^https?:\/\//.test(heroOrThumb) ? heroOrThumb : DEFAULT_OG;
+  const ogImage = await toAbsoluteImageUrl(heroOrThumb);
   const courseLd: JsonLd = {
     "@context": "https://schema.org",
     "@type": "Course",
@@ -458,6 +508,9 @@ export function applyPublicMeta(html: string, meta: PublicMeta): string {
     <meta name="twitter:description" content="${escapeHtml(meta.description)}" />
     <meta name="twitter:image" content="${ogImage}" />
   `;
+  if (meta.alternateRss) {
+    headTags += `\n    <link rel="alternate" type="application/rss+xml" title="Blog · RAYO" href="${meta.alternateRss}" />`;
+  }
   if (meta.jsonLd && meta.jsonLd.length > 0) {
     for (const ld of meta.jsonLd) {
       headTags += `\n    <script type="application/ld+json">${escapeJsonLd(ld)}</script>`;

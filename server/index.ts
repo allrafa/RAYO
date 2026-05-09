@@ -204,6 +204,46 @@ app.get("/uploads/*splat", async (req, res, next) => {
   }
 });
 
+// Task #111 — coletor de violações CSP (registrado em module scope ANTES
+// do catch-all 404 abaixo). Aceita JSON legacy (`application/csp-report`)
+// e a Reporting API moderna (`application/reports+json`). Loga apenas
+// document-uri, blocked-uri, violated-directive, source-file e line —
+// payloads completos podem inflar disk e vazar paths internos. Sem
+// rate-limit por IP de propósito: reports legítimos vêm direto do
+// browser de cada usuário; o `limit: 8kb` do body parser já protege
+// contra abuso.
+app.post(
+  "/api/csp-report",
+  express.json({
+    type: ["application/csp-report", "application/reports+json", "application/json"],
+    limit: "8kb",
+  }),
+  (req, res) => {
+    try {
+      const payload = req.body as
+        | { "csp-report"?: Record<string, unknown> }
+        | Array<{ body?: Record<string, unknown> }>
+        | Record<string, unknown>;
+      const reports = Array.isArray(payload)
+        ? payload.map((p) => p.body || {})
+        : [(payload as { "csp-report"?: Record<string, unknown> })?.["csp-report"] || payload || {}];
+      for (const r of reports as Array<Record<string, unknown>>) {
+        const summary = {
+          doc: r["document-uri"] || r["documentURL"],
+          blocked: r["blocked-uri"] || r["blockedURL"],
+          directive: r["violated-directive"] || r["effectiveDirective"],
+          source: r["source-file"] || r["sourceFile"],
+          line: r["line-number"] || r["lineNumber"],
+        };
+        logger.warn("CSP", `report-only violation: ${JSON.stringify(summary)}`);
+      }
+    } catch {
+      /* ignore malformed reports */
+    }
+    res.status(204).end();
+  },
+);
+
 app.all("/api/{*path}", (req, res) => {
   sendError(res, `Route ${req.method} ${req.path} not found`, "NOT_FOUND", 404);
 });
@@ -229,6 +269,23 @@ async function start() {
     // Task #70 — sitemap inclui todas as páginas públicas marketing + posts
     // do blog (artigos publicados). Posts são lidos a quente do banco a cada
     // request; com cache HTTP de 1h o custo é insignificante.
+    // Task #111 — `lastmod` para páginas marketing estáticas. Em ordem de
+    // preferência: BUILD_TIME (env, geralmente injetada pelo CI/Replit
+    // Deploy), depois mtime de package.json (proxy de "última build"),
+    // depois "agora" (boot do processo). Garante que o sitemap reflita
+    // mudanças reais ao invés de carimbar `today` em todo request.
+    let MARKETING_LASTMOD: string;
+    try {
+      if (process.env.BUILD_TIME && !Number.isNaN(Date.parse(process.env.BUILD_TIME))) {
+        MARKETING_LASTMOD = new Date(process.env.BUILD_TIME).toISOString().slice(0, 10);
+      } else {
+        const pkgStat = await fs.stat(path.resolve(process.cwd(), "package.json")).catch(() => null);
+        MARKETING_LASTMOD = (pkgStat?.mtime ?? new Date()).toISOString().slice(0, 10);
+      }
+    } catch {
+      MARKETING_LASTMOD = new Date().toISOString().slice(0, 10);
+    }
+
     const PUBLIC_PAGES: ReadonlyArray<{ path: string; priority: string; changefreq: string }> = [
       { path: "/", priority: "1.0", changefreq: "weekly" },
       { path: "/recursos", priority: "0.9", changefreq: "monthly" },
@@ -246,7 +303,7 @@ async function start() {
       const today = new Date().toISOString().slice(0, 10);
       const urls: string[] = PUBLIC_PAGES.map(
         (p) =>
-          `  <url>\n    <loc>${PUBLIC_SITE_URL}${p.path}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`,
+          `  <url>\n    <loc>${PUBLIC_SITE_URL}${p.path}</loc>\n    <lastmod>${MARKETING_LASTMOD}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`,
       );
       try {
         const { query: dbQuery } = await import("./db/index.js");
@@ -310,15 +367,23 @@ async function start() {
     // Task #111 — /.well-known/security.txt (RFC 9116). Sinaliza canal
     // de segurança para pesquisadores e bug-bounty hunters.
     app.get("/.well-known/security.txt", (_req, res) => {
+      // Env-driven (Task #111 review): time de segurança pode trocar
+      // contatos sem rebuild. Defaults seguros pra produção.
+      const securityContact =
+        (process.env.SECURITY_CONTACT_EMAIL || "security@rayo.app.br").trim();
+      const dpoContact =
+        (process.env.DPO_CONTACT_EMAIL || "dpo@rayo.app.br").trim();
+      const policyUrl =
+        (process.env.SECURITY_POLICY_URL || `${PUBLIC_SITE_URL}/privacy`).trim();
       const expires = new Date();
       expires.setFullYear(expires.getFullYear() + 1);
       const body =
-        `Contact: mailto:security@rayo.app.br\n` +
-        `Contact: mailto:dpo@rayo.app.br\n` +
+        `Contact: mailto:${securityContact}\n` +
+        `Contact: mailto:${dpoContact}\n` +
         `Expires: ${expires.toISOString()}\n` +
         `Preferred-Languages: pt-BR, en\n` +
         `Canonical: ${PUBLIC_SITE_URL}/.well-known/security.txt\n` +
-        `Policy: ${PUBLIC_SITE_URL}/privacy\n`;
+        `Policy: ${policyUrl}\n`;
       res.set("Content-Type", "text/plain; charset=utf-8");
       res.set("Cache-Control", "public, max-age=86400");
       res.send(body);
@@ -402,8 +467,33 @@ async function start() {
         "camera=(), microphone=(self), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
       );
       // microphone=(self) porque DM permite gravação de áudio in-app.
+      // Task #111 — CSP report-only: monitora violações sem bloquear nada
+      // (helmet's CSP está off no projeto). Define uma política realista
+      // baseada nos hosts conhecidos do app (Bunny CDN, Object Storage,
+      // Resend não precisa, OAuth via redirect). Browsers postam violações
+      // pro endpoint /api/csp-report — útil pra detectar XSS, supply-chain
+      // de bundle e CDNs novas que entrarem sem registro.
+      const cspReportOnly = [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' data: https://fonts.gstatic.com",
+        "img-src 'self' data: blob: https:",
+        "media-src 'self' blob: https:",
+        "connect-src 'self' https://*.b-cdn.net https://*.bunnycdn.com https://storage.googleapis.com",
+        "frame-src 'self' https://iframe.mediadelivery.net",
+        "frame-ancestors 'self'",
+        "form-action 'self'",
+        "base-uri 'self'",
+        "object-src 'none'",
+        "report-uri /api/csp-report",
+      ].join("; ");
+      res.set("Content-Security-Policy-Report-Only", cspReportOnly);
       next();
     });
+
+    // (CSP report endpoint movido para top-level — antes do `/api/*`
+    // catch-all 404 que vive em module scope.)
 
     // SEO/SSR-leve: para rotas públicas registradas em PUBLIC_META, lemos
     // o index.html, injetamos <title>, meta tags, OpenGraph e (quando
