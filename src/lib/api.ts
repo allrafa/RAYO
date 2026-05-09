@@ -64,7 +64,10 @@ export const api = {
     });
   },
 
-  delete<T>(path: string) {
-    return request<T>(path, { method: "DELETE" });
+  delete<T>(path: string, body?: unknown) {
+    return request<T>(path, {
+      method: "DELETE",
+      body: body ? JSON.stringify(body) : undefined,
+    });
   },
 };

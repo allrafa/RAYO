@@ -9,6 +9,8 @@ import { Badge } from "./ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { Label } from "./ui/label";
 import { useState, useEffect, useCallback } from "react";
 import { PullToRefresh } from "./PullToRefresh";
 import { SkeletonLoader } from "./SkeletonLoader";
@@ -1054,7 +1056,13 @@ function PostCard({ post, reactions, onReact, onComment, onShare, onMutated, onE
   const [savedLocal, setSavedLocal] = useState<boolean>(!!post.is_saved);
   useEffect(() => { setSavedLocal(!!post.is_saved); }, [post.is_saved]);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const showReasonField = !isAuthor && isModeratorPlus;
+
+  useEffect(() => {
+    if (!confirmDelete) setDeleteReason("");
+  }, [confirmDelete]);
 
   const handleToggleSave = async () => {
     if (busy) return;
@@ -1088,10 +1096,10 @@ function PostCard({ post, reactions, onReact, onComment, onShare, onMutated, onE
     } catch { /* user cancelled */ }
   };
 
-  const handleConfirmDelete = async () => {
+  const performDelete = async (body?: { reason: string }) => {
     if (busy) return;
     setBusy(true);
-    const res = await api.delete<{ ok: boolean }>(`/api/community/posts/${post.id}`);
+    const res = await api.delete<{ ok: boolean }>(`/api/community/posts/${post.id}`, body);
     setBusy(false);
     setConfirmDelete(false);
     if (!res.success) {
@@ -1204,7 +1212,13 @@ function PostCard({ post, reactions, onReact, onComment, onShare, onMutated, onE
               )}
               {canDelete && (
                 <DropdownMenuItem
-                  onClick={() => setConfirmDelete(true)}
+                  onClick={() => {
+                    if (isAuthor) {
+                      void performDelete();
+                    } else {
+                      setConfirmDelete(true);
+                    }
+                  }}
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
@@ -1220,12 +1234,37 @@ function PostCard({ post, reactions, onReact, onComment, onShare, onMutated, onE
             <AlertDialogHeader>
               <AlertDialogTitle>Excluir publicação?</AlertDialogTitle>
               <AlertDialogDescription>
-                Esta ação não pode ser desfeita. A publicação será removida do feed.
+                {showReasonField
+                  ? "Você está removendo a publicação como moderador. O autor receberá uma notificação — opcionalmente, descreva o motivo abaixo."
+                  : "Esta ação não pode ser desfeita. A publicação será removida do feed."}
               </AlertDialogDescription>
             </AlertDialogHeader>
+            {showReasonField && (
+              <div className="grid gap-2 py-2">
+                <Label htmlFor={`delete-reason-${post.id}`}>Motivo (opcional)</Label>
+                <Textarea
+                  id={`delete-reason-${post.id}`}
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  placeholder="Ex.: Conteúdo fora das diretrizes da comunidade."
+                  maxLength={500}
+                  rows={3}
+                  disabled={busy}
+                />
+                <p className="text-[12px]" style={{ color: 'var(--rayo-ink-400)' }}>
+                  {deleteReason.trim().length}/500 — será incluído na notificação enviada ao autor.
+                </p>
+              </div>
+            )}
             <AlertDialogFooter>
               <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConfirmDelete} disabled={busy}>
+              <AlertDialogAction
+                onClick={() => {
+                  const trimmed = deleteReason.trim();
+                  void performDelete(showReasonField && trimmed ? { reason: trimmed } : undefined);
+                }}
+                disabled={busy}
+              >
                 Excluir
               </AlertDialogAction>
             </AlertDialogFooter>
