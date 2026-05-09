@@ -1,5 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../../lib/api";
+
+// Task #130 — shape do payload de /api/admin/trails/:id/subscribers.
+interface SubscriberRow {
+  user_id: number;
+  user_email: string;
+  user_name: string | null;
+  status: string;
+  interval: string;
+  current_period_end: string | null; // ISO (Date serializa em string)
+  cancel_at_period_end: boolean;
+  created_at: string;
+}
 
 interface TrailRow {
   id: number;
@@ -43,6 +55,12 @@ export function AdminTrailsPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [subscribers, setSubscribers] = useState<Record<number, number>>({});
+  // Task #130 (fix code-review): drawer com lista completa de assinantes
+  // por trilha, com filtros de status e busca por email.
+  const [subDrawer, setSubDrawer] = useState<{ trail: TrailRow; rows: SubscriberRow[] } | null>(null);
+  const [subDrawerLoading, setSubDrawerLoading] = useState(false);
+  const [subFilterStatus, setSubFilterStatus] = useState<string>("all");
+  const [subFilterQuery, setSubFilterQuery] = useState("");
 
   async function loadTrails() {
     const r = await api.get<{ trails: TrailRow[] }>("/api/admin/trails");
@@ -64,11 +82,54 @@ export function AdminTrailsPage() {
     if (r.success && r.data) setEditing(r.data.trail);
   }
 
-  async function viewSubscribers(id: number) {
-    const r = await api.get<{ subscribers: unknown[] }>(`/api/admin/trails/${id}/subscribers`);
+  async function viewSubscribers(trail: TrailRow) {
+    setSubDrawer({ trail, rows: [] });
+    setSubDrawerLoading(true);
+    setSubFilterStatus("all");
+    setSubFilterQuery("");
+    const r = await api.get<{ subscribers: SubscriberRow[] }>(`/api/admin/trails/${trail.id}/subscribers`);
+    setSubDrawerLoading(false);
     if (r.success && r.data) {
-      setSubscribers((prev) => ({ ...prev, [id]: r.data!.subscribers.length }));
+      setSubDrawer({ trail, rows: r.data.subscribers });
+      setSubscribers((prev) => ({ ...prev, [trail.id]: r.data!.subscribers.length }));
     }
+  }
+
+  // Filtro derivado: status ∈ {all,active,trialing,past_due,canceled,unpaid} +
+  // match por email/nome (case-insensitive).
+  const filteredSubs = useMemo(() => {
+    if (!subDrawer) return [];
+    const q = subFilterQuery.trim().toLowerCase();
+    return subDrawer.rows.filter((s) => {
+      if (subFilterStatus !== "all" && s.status !== subFilterStatus) return false;
+      if (q) {
+        const hay = `${s.user_email} ${s.user_name ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [subDrawer, subFilterStatus, subFilterQuery]);
+
+  function fmtDate(iso: string | null): string {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    } catch {
+      return iso;
+    }
+  }
+
+  function statusBadgeStyle(status: string): React.CSSProperties {
+    const map: Record<string, { bg: string; fg: string }> = {
+      active: { bg: "#dcfce7", fg: "#166534" },
+      trialing: { bg: "#dbeafe", fg: "#1e40af" },
+      past_due: { bg: "#fef3c7", fg: "#92400e" },
+      canceled: { bg: "#fee2e2", fg: "#991b1b" },
+      unpaid: { bg: "#fee2e2", fg: "#991b1b" },
+      incomplete: { bg: "#f3f4f6", fg: "#374151" },
+    };
+    const c = map[status] ?? { bg: "#f3f4f6", fg: "#374151" };
+    return { background: c.bg, color: c.fg };
   }
 
   async function save() {
@@ -154,7 +215,7 @@ export function AdminTrailsPage() {
                 <td className="p-3 text-right">
                   <button
                     type="button"
-                    onClick={() => void viewSubscribers(t.id)}
+                    onClick={() => void viewSubscribers(t)}
                     className="text-xs underline mr-3"
                   >
                     Assinantes {subscribers[t.id] !== undefined ? `(${subscribers[t.id]})` : ""}
@@ -186,6 +247,106 @@ export function AdminTrailsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Task #130 — Drawer de assinantes: tabela com status, próximo
+          ciclo, cancelamento e filtros (status + busca). */}
+      {subDrawer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+          <div
+            className="rounded-2xl bg-white max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6"
+            style={{ borderColor: "var(--rayo-ink-100)" }}
+          >
+            <div className="flex items-start justify-between mb-4 gap-4">
+              <div>
+                <h2 className="text-lg mb-1">Assinantes — {subDrawer.trail.title}</h2>
+                <p className="text-xs text-muted-foreground">
+                  {subDrawer.rows.length} no total · fonte: tabela <code>subscriptions</code> sincronizada via webhook
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSubDrawer(null)}
+                className="text-sm underline"
+              >
+                Fechar
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-4">
+              <select
+                className="rounded-lg border px-3 py-2 text-sm"
+                value={subFilterStatus}
+                onChange={(e) => setSubFilterStatus(e.target.value)}
+              >
+                <option value="all">Todos os status</option>
+                <option value="active">Ativos</option>
+                <option value="trialing">Em trial</option>
+                <option value="past_due">Em atraso</option>
+                <option value="canceled">Cancelados</option>
+                <option value="unpaid">Inadimplentes</option>
+                <option value="incomplete">Incompletos</option>
+              </select>
+              <input
+                className="rounded-lg border px-3 py-2 text-sm flex-1 min-w-[200px]"
+                placeholder="Buscar por email ou nome…"
+                value={subFilterQuery}
+                onChange={(e) => setSubFilterQuery(e.target.value)}
+              />
+              <span className="text-xs text-muted-foreground self-center">
+                {filteredSubs.length} resultado{filteredSubs.length === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            {subDrawerLoading ? (
+              <div className="py-12 text-center text-sm text-muted-foreground">Carregando…</div>
+            ) : (
+              <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--rayo-ink-100)" }}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ background: "var(--rayo-mist-100)" }}>
+                      <th className="text-left p-3">Usuário</th>
+                      <th className="text-left p-3">Status</th>
+                      <th className="text-left p-3">Plano</th>
+                      <th className="text-left p-3">Próx. ciclo</th>
+                      <th className="text-left p-3">Cancela ao fim?</th>
+                      <th className="text-left p-3">Desde</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSubs.map((s) => (
+                      <tr key={`${s.user_id}-${s.created_at}`} className="border-t" style={{ borderColor: "var(--rayo-ink-100)" }}>
+                        <td className="p-3">
+                          <div>{s.user_name || "—"}</div>
+                          <div className="text-xs text-muted-foreground">{s.user_email}</div>
+                        </td>
+                        <td className="p-3">
+                          <span
+                            className="inline-block rounded-full px-2 py-0.5 text-xs"
+                            style={statusBadgeStyle(s.status)}
+                          >
+                            {s.status}
+                          </span>
+                        </td>
+                        <td className="p-3">{s.interval === "year" ? "Anual" : "Mensal"}</td>
+                        <td className="p-3">{fmtDate(s.current_period_end)}</td>
+                        <td className="p-3">{s.cancel_at_period_end ? "Sim" : "Não"}</td>
+                        <td className="p-3">{fmtDate(s.created_at)}</td>
+                      </tr>
+                    ))}
+                    {filteredSubs.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                          Nenhum assinante encontrado com esses filtros.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {editing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">

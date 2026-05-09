@@ -11,6 +11,7 @@ import { Button } from "../ui/button";
 import { PostCard } from "../ComunidadePage";
 import { CreatePostModal } from "../CreatePostModal";
 import { mapAPIPost, type APIPost, type MappedPost } from "../../lib/postMapper";
+import { TrailPaywall } from "../trilhas/TrailPaywall";
 
 // Task #122 — PostCard não recebe mais `reactions`/`onReact`; cada card
 // gerencia seu próprio estado de reações multi-emoji internamente via
@@ -21,6 +22,10 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingPost, setEditingPost] = useState<MappedPost | null>(null);
+  // Task #130 — paywall inline. Quando o backend devolve 402
+  // TRAIL_PAYMENT_REQUIRED no GET /posts?class_id=N, capturamos
+  // trailId/trailSlug e renderizamos <TrailPaywall> em vez do feed.
+  const [paywall, setPaywall] = useState<{ trailId: number | null; trailSlug: string | null } | null>(null);
   // Task #102 — id do post pendente vindo de uma notificação class_post.
   // Capturado uma única vez no mount; depois que a lista carrega, rola
   // até o post e aplica destaque temporário.
@@ -29,6 +34,7 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setPaywall(null);
     const res = await api.get<{ posts: APIPost[] }>(
       `/api/community/posts?class_id=${classId}&limit=50`,
     );
@@ -36,6 +42,11 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
       // Mapeia pra mesma shape consumida pelo feed global; PostCard
       // espera `author`, `time`, `likes`… (vide src/lib/postMapper.ts).
       setPosts((res.data.posts || []).map(mapAPIPost));
+    } else if (res.error?.code === "TRAIL_PAYMENT_REQUIRED") {
+      // Task #130 — sem assinatura ativa: mostra <TrailPaywall> in-place.
+      const e = res.error as { trail_id?: number | null; trail_slug?: string | null };
+      setPaywall({ trailId: e.trail_id ?? null, trailSlug: e.trail_slug ?? null });
+      setPosts([]);
     }
     setLoading(false);
   }, [classId]);
@@ -112,6 +123,15 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
       el.style.transition = "";
     };
   }, [loading, highlightId, posts]);
+
+  // Task #130 — paywall inline tem prioridade sobre o feed.
+  if (paywall && paywall.trailId) {
+    return (
+      <div className="px-4 py-4">
+        <TrailPaywall trailId={paywall.trailId} variant="block" />
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-4 space-y-4">

@@ -114,6 +114,40 @@ async function handleEvent(event: Stripe.Event): Promise<void> {
       }
       break;
     }
+    // Task #130 — refund tratado explicitamente. Quando o charge é
+    // reembolsado total ou parcialmente, marcamos a sub como `canceled`
+    // e revogamos o acesso (a Stripe normalmente também emite
+    // `customer.subscription.deleted` em refunds totais via dashboard,
+    // mas refunds via API/parciais nem sempre — então defensivo).
+    case "charge.refunded": {
+      const charge = event.data.object as Stripe.Charge;
+      // Resolve a subscription pela invoice associada ao charge.
+      const invoiceId = typeof charge.invoice === "string"
+        ? charge.invoice
+        : charge.invoice?.id ?? null;
+      if (invoiceId) {
+        try {
+          const stripe = await getUncachableStripeClient();
+          const invoice = await stripe.invoices.retrieve(invoiceId);
+          const subId = (invoice as unknown as { subscription?: string | null }).subscription;
+          if (subId && typeof subId === "string") {
+            await query(
+              `UPDATE subscriptions
+                  SET status = 'canceled',
+                      cancel_at_period_end = false,
+                      updated_at = NOW()
+                WHERE stripe_subscription_id = $1`,
+              [subId],
+            );
+            invalidateTrailLookupCache();
+            console.info("[stripe webhook] charge.refunded → subscription canceled", subId);
+          }
+        } catch (err) {
+          console.error("[stripe webhook] charge.refunded retrieve invoice failed", invoiceId, err);
+        }
+      }
+      break;
+    }
     default:
       // outros eventos são ignorados pelo nosso handler — mas o
       // stripe-replit-sync já sincronizou tudo.

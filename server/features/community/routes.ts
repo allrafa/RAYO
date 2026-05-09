@@ -3,6 +3,56 @@ import multer from "multer";
 import path from "path";
 import { requireAuth, hasRole } from "../../middleware/auth.js";
 import { isCourseMember } from "../academia/service.js";
+import { checkCourseAccess } from "../../middleware/requireTrailAccess.js";
+import { query as dbQuery } from "../../db/index.js";
+
+// Task #130 — gating compartilhado da comunidade. Quando a turma tem trilha
+// paga vinculada e o usuário não assina, devolve 402 TRAIL_PAYMENT_REQUIRED
+// (com trail_id+trail_slug pra que o frontend renderize <TrailPaywall>).
+// Para turmas grátis ou usuários com assinatura ativa, segue o gate de
+// matrícula original (404 pra não vazar a existência da turma).
+async function gateClassPostsAccess(
+  req: import("express").Request,
+  res: import("express").Response,
+  classId: number,
+): Promise<boolean> {
+  const { allowed, trailId } = await checkCourseAccess(req, classId);
+  if (!allowed) {
+    let trailSlug: string | null = null;
+    if (trailId) {
+      const { rows } = await dbQuery<{ slug: string }>(
+        `SELECT slug FROM trails WHERE id = $1`,
+        [trailId],
+      );
+      trailSlug = rows[0]?.slug ?? null;
+    }
+    res.status(402).json({
+      success: false,
+      data: null,
+      error: {
+        code: "TRAIL_PAYMENT_REQUIRED",
+        message: "Esta comunidade faz parte de uma trilha paga. Assine para acessar.",
+        trail_id: trailId,
+        trail_slug: trailSlug,
+        course_id: classId,
+      },
+    });
+    return false;
+  }
+  // Trilha grátis ou subscriber: continua exigindo matrícula (privacidade
+  // intra-turma — não-membros recebem 404 pra não vazar a turma).
+  const userId = req.user?.id;
+  if (!userId) {
+    sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404);
+    return false;
+  }
+  const member = await isCourseMember(userId, classId);
+  if (!member && !hasRole(req.user, "moderator")) {
+    sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404);
+    return false;
+  }
+  return true;
+}
 import { rateLimiter } from "../../middleware/security.js";
 import { success, error as sendError } from "../../utils/response.js";
 import { putPublicObject } from "../../lib/objectStorageBridge.js";
@@ -161,8 +211,8 @@ router.get("/posts/trending", requireAuth, async (req, res, next) => {
       sendError(res, "forum_id inválido", "INVALID_FORUM_ID", 400);
       return;
     }
-    // Task #99 — escopo opcional por turma. Quando setado, exige matrícula
-    // (ou moderator+); 404 pra não vazar a existência da turma.
+    // Task #99/#130 — escopo opcional por turma. Trilha paga ⇒ 402; depois
+    // matrícula ⇒ 404. `gateClassPostsAccess` cobre os dois casos.
     const classIdRaw = String(req.query.class_id || "").trim();
     let classId: number | undefined;
     if (classIdRaw) {
@@ -171,16 +221,7 @@ router.get("/posts/trending", requireAuth, async (req, res, next) => {
         sendError(res, "class_id inválido", "INVALID_CLASS_ID", 400);
         return;
       }
-      const uid = req.user?.id;
-      if (!uid) {
-        sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404);
-        return;
-      }
-      const member = await isCourseMember(uid, cid);
-      if (!member && !hasRole(req.user, "moderator")) {
-        sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404);
-        return;
-      }
+      if (!(await gateClassPostsAccess(req, res, cid))) return;
       classId = cid;
     }
     const limit = parseInt(String(req.query.limit || "20"), 10);
@@ -334,17 +375,9 @@ router.get("/posts", async (req, res, next) => {
         sendError(res, "class_id inválido", "INVALID_CLASS_ID", 400);
         return;
       }
-      // AUTORIZAÇÃO: apenas matriculados (ou moderator+) leem o feed da turma.
-      // Tratado como 404 pra não vazar a existência da turma.
-      if (!userId) {
-        sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404);
-        return;
-      }
-      const member = await isCourseMember(userId, cid);
-      if (!member && !hasRole(req.user, "moderator")) {
-        sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404);
-        return;
-      }
+      // Task #130 — gating em camadas: trilha paga ⇒ 402 TRAIL_PAYMENT_REQUIRED;
+      // depois matrícula ⇒ 404 (não vaza turma).
+      if (!(await gateClassPostsAccess(req, res, cid))) return;
       classId = cid;
     }
     const result = await getAllPosts(page, limit, userId, classId);
@@ -362,7 +395,8 @@ router.post("/posts", requireAuth, postCreateLimiter, async (req, res, next) => 
       sendError(res, "Selecione uma comunidade para publicar", "INVALID_FORUM_ID", 400);
       return;
     }
-    // Task #99 — class_id opcional. Quando vem, service valida matrícula.
+    // Task #99/#130 — class_id opcional. Quando vem, valida trilha paga
+    // (402) + matrícula (service ainda revalida pra evitar TOCTOU).
     let classId: number | null = null;
     if (class_id !== undefined && class_id !== null && class_id !== "") {
       const cid = parseInt(String(class_id), 10);
@@ -370,6 +404,7 @@ router.post("/posts", requireAuth, postCreateLimiter, async (req, res, next) => 
         sendError(res, "class_id inválido", "INVALID_CLASS_ID", 400);
         return;
       }
+      if (!(await gateClassPostsAccess(req, res, cid))) return;
       classId = cid;
     }
     const post = await createPost(req.user!.id, parsedForumId, content, category, title, images, classId);
