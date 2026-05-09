@@ -147,6 +147,27 @@ export async function markRead(notificationId: number, userId: number): Promise<
   return { marked };
 }
 
+// Task #129 — marcar como lidas todas as notifications da seção
+// Comunidade quando o usuário entra na aba (decremento on-view do badge).
+// Mantemos a granularidade por kind pra não zerar mensagens (que são
+// gerenciadas pelo fluxo de DM, não pelo bell).
+export async function markCommunityRead(userId: number): Promise<{ marked: number }> {
+  const { rowCount } = await query(
+    `UPDATE notifications SET read_at = NOW()
+      WHERE user_id = $1 AND read_at IS NULL AND kind = ANY($2::text[])`,
+    [userId, COMMUNITY_NOTIFICATION_KINDS as unknown as string[]],
+  );
+  const marked = rowCount || 0;
+  if (marked > 0) {
+    void getUnreadCount(userId)
+      .then((unread) => publishToUser(userId, "notification:unread", { unread }))
+      .catch(() => {
+        /* best-effort */
+      });
+  }
+  return { marked };
+}
+
 export async function markAllRead(userId: number): Promise<{ marked: number }> {
   const { rowCount } = await query(
     `UPDATE notifications SET read_at = NOW() WHERE user_id = $1 AND read_at IS NULL`,

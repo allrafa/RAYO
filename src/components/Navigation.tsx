@@ -22,11 +22,11 @@ function formatBadge(n: number): string {
 }
 
 export function Navigation({ currentTab, onTabChange }: NavigationProps) {
-  // Task #129 — Mensagens vive dentro da aba Comunidade no mobile (pílula
-  // "Mensagens" no header). Por isso o badge da aba Comunidade soma DMs
-  // não lidas + atividade nova de comunidade/turmas. Aria-label detalha
-  // o split pra leitores de tela; o número é o total agregado.
-  const { messages, community } = useUnreadBySection();
+  // Task #129 — badge da aba Comunidade conta SÓ atividade nova da
+  // comunidade/turmas (semantica clara: "tem coisa nova nessa seção").
+  // O contador de DMs não lidas vai pra pílula "Mensagens" dentro da
+  // ComunidadePage (mobile não tem aba Mensagens — foi removida na #41).
+  const { community } = useUnreadBySection();
 
   return (
     <nav className="rn-bottom" role="navigation" aria-label="Navegação principal">
@@ -34,11 +34,11 @@ export function Navigation({ currentTab, onTabChange }: NavigationProps) {
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = currentTab === tab.id;
-          const totalForTab = tab.id === "comunidade" ? messages + community : 0;
+          const totalForTab = tab.id === "comunidade" ? community : 0;
           const badgeText = formatBadge(totalForTab);
           const ariaLabel =
             tab.id === "comunidade" && totalForTab > 0
-              ? `${tab.label}, ${messages} mensagem${messages === 1 ? "" : "s"} e ${community} novidade${community === 1 ? "" : "s"} da comunidade`
+              ? `${tab.label}, ${community} novidade${community === 1 ? "" : "s"} não vista${community === 1 ? "" : "s"}`
               : tab.label;
           return (
             <button

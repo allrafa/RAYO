@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../../middleware/auth.js";
 import { success, error as sendError } from "../../utils/response.js";
-import { listNotifications, markRead, markAllRead, getUnreadCount, getUnreadBySection } from "./service.js";
+import { listNotifications, markRead, markAllRead, getUnreadCount, getUnreadBySection, markCommunityRead } from "./service.js";
 
 const router = Router();
 
@@ -30,6 +30,17 @@ router.get("/unread-by-section", requireAuth, async (req, res, next) => {
   try {
     const sections = await getUnreadBySection(req.user!.id);
     success(res, sections);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Task #129 — zera o badge de Comunidade quando o usuário entra na aba.
+// Não toca em mensagens (essas se resolvem pelo fluxo do DM).
+router.post("/read-section/community", requireAuth, async (req, res, next) => {
+  try {
+    const result = await markCommunityRead(req.user!.id);
+    success(res, result);
   } catch (err) {
     next(err);
   }

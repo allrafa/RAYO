@@ -22,6 +22,8 @@ import { EmptyStateError, EmptyStateNoCommunity } from "./EmptyState";
 import { enhancedToast } from "./EnhancedToast";
 import { useApp } from "./AppContext";
 import { useAuth } from "./AuthContext";
+import { useUnreadMessages } from "./hooks/useUnreadMessages";
+import { useUnreadBySection } from "./hooks/useUnreadBySection";
 import { CreatePostModal } from "./CreatePostModal";
 import { EmojiReactionPicker, ReactionsSummary, type ReactionAggregate } from "./EmojiReactionPicker";
 import { FavoriteIcon } from "./FavoriteButton";
@@ -113,6 +115,21 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   // EmojiReactionPicker (que dispara o endpoint multi-emoji direto).
   const { posts, sharePost, loadPosts } = useApp();
   const { user: authUser } = useAuth();
+  // Task #129 — badge de DMs na pílula "Mensagens" + decremento on-view
+  // do badge de Comunidade na nav inferior. O endpoint
+  // `/api/notifications/read-section/community` marca os kinds de
+  // comunidade/turmas como lidos e dispara `notification:unread` via SSE,
+  // que o `useUnreadBySection` já escuta pra ressincronizar.
+  const { count: unreadMessages } = useUnreadMessages();
+  const { community: unreadCommunity, refresh: refreshSections } = useUnreadBySection();
+  useEffect(() => {
+    if (!authUser || unreadCommunity <= 0) return;
+    void api.post("/api/notifications/read-section/community").then(() => {
+      void refreshSections();
+    });
+    // Roda quando o badge passa a >0 enquanto a página está montada
+    // (post novo chegou enquanto o usuário tá olhando o feed).
+  }, [authUser, unreadCommunity, refreshSections]);
   const { theme } = useTheme();
   const [forums, setForums] = useState<Forum[]>([]);
   const [trendingPosts, setTrendingPosts] = useState<any[]>([]);
@@ -584,8 +601,31 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
                   }
                 }}
               >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Mensagens
+                <span className="relative inline-flex items-center">
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Mensagens
+                  {unreadMessages > 0 && (
+                    <span
+                      aria-label={`${unreadMessages} mensagem${unreadMessages === 1 ? "" : "s"} não lida${unreadMessages === 1 ? "" : "s"}`}
+                      style={{
+                        marginLeft: 8,
+                        minWidth: 18,
+                        height: 18,
+                        padding: "0 5px",
+                        borderRadius: 9,
+                        background: "var(--rayo-terra-500)",
+                        color: "var(--rayo-sand-50)",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        lineHeight: "18px",
+                        display: "inline-block",
+                        textAlign: "center",
+                      }}
+                    >
+                      {unreadMessages > 99 ? "99+" : unreadMessages}
+                    </span>
+                  )}
+                </span>
               </Button>
             </div>
           </div>
