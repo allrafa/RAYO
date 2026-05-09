@@ -297,6 +297,7 @@ export function ConversasPage() {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const [typingByConv, setTypingByConv] = useState<Record<number, { user_id: number; expiresAt: number }>>({});
+  const [listeningByConv, setListeningByConv] = useState<Record<number, { user_id: number; expiresAt: number }>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<number | null>(null);
@@ -304,6 +305,8 @@ export function ConversasPage() {
   const streamConnectedRef = useRef(false);
   const lastTypingSentAtRef = useRef<number>(0);
   const typingExpiryTimersRef = useRef<Map<number, number>>(new Map());
+  const lastListeningSentAtRef = useRef<Map<number, number>>(new Map());
+  const listeningExpiryTimersRef = useRef<Map<number, number>>(new Map());
 
   const activeConversation = useMemo(
     () =>
@@ -374,6 +377,11 @@ export function ConversasPage() {
         window.clearTimeout(handle);
       }
       typingExpiryTimersRef.current.clear();
+      for (const handle of listeningExpiryTimersRef.current.values()) {
+        window.clearTimeout(handle);
+      }
+      listeningExpiryTimersRef.current.clear();
+      lastListeningSentAtRef.current.clear();
       if (recordTickRef.current) window.clearInterval(recordTickRef.current);
       const rec = mediaRecorderRef.current;
       if (rec && rec.state !== "inactive") {
@@ -472,6 +480,27 @@ export function ConversasPage() {
         timers.set(conversation_id, handle);
         return;
       }
+      if (event.type === "listening") {
+        const { conversation_id, user_id } = event.payload;
+        if (user_id === currentUserId) return;
+        const expiresAt = Date.now() + 6500;
+        setListeningByConv((prev) => ({ ...prev, [conversation_id]: { user_id, expiresAt } }));
+        const timers = listeningExpiryTimersRef.current;
+        const existing = timers.get(conversation_id);
+        if (existing) window.clearTimeout(existing);
+        const handle = window.setTimeout(() => {
+          setListeningByConv((prev) => {
+            const cur = prev[conversation_id];
+            if (!cur || cur.expiresAt > Date.now()) return prev;
+            const next = { ...prev };
+            delete next[conversation_id];
+            return next;
+          });
+          timers.delete(conversation_id);
+        }, 6600);
+        timers.set(conversation_id, handle);
+        return;
+      }
       if (event.type === "message:new") {
         const { conversation_id, message } = event.payload as { conversation_id: number; message: MessageItem };
         if (message.sender_id !== currentUserId) {
@@ -526,6 +555,14 @@ export function ConversasPage() {
     if (now - lastTypingSentAtRef.current < 3000) return;
     lastTypingSentAtRef.current = now;
     void api.post(`/api/messages/conversations/${conversationId}/typing`);
+  }, []);
+
+  const sendListeningPing = useCallback((conversationId: number, messageId: number) => {
+    const now = Date.now();
+    const last = lastListeningSentAtRef.current.get(messageId) ?? 0;
+    if (now - last < 5000) return;
+    lastListeningSentAtRef.current.set(messageId, now);
+    void api.post(`/api/messages/conversations/${conversationId}/listening`, { message_id: messageId });
   }, []);
 
   // ─────────── Anexos ───────────
@@ -944,10 +981,15 @@ export function ConversasPage() {
                   <h2 className="font-body font-medium">{activeConversation.other_user_name}</h2>
                   {(() => {
                     const t = typingByConv[activeConversation.id];
-                    if (!t || t.user_id !== activeConversation.other_user_id) return null;
+                    const l = listeningByConv[activeConversation.id];
+                    const showTyping = t && t.user_id === activeConversation.other_user_id;
+                    const showListening = !showTyping && l && l.user_id === activeConversation.other_user_id;
+                    if (!showTyping && !showListening) return null;
                     return (
                       <p className="text-xs text-muted-foreground italic" aria-live="polite">
-                        {activeConversation.other_user_name} está digitando...
+                        {showTyping
+                          ? `${activeConversation.other_user_name} está digitando...`
+                          : `${activeConversation.other_user_name} está ouvindo seu áudio...`}
                       </p>
                     );
                   })()}
@@ -1026,7 +1068,14 @@ export function ConversasPage() {
                           )}
                           {m.kind === "audio" && m.attachment_url && (
                             <div className="flex items-center gap-2 mb-1">
-                              <audio controls src={m.attachment_url} className="max-w-full" preload="metadata" />
+                              <audio
+                                controls
+                                src={m.attachment_url}
+                                className="max-w-full"
+                                preload="metadata"
+                                onPlay={() => sendListeningPing(m.conversation_id, m.id)}
+                                onTimeUpdate={() => sendListeningPing(m.conversation_id, m.id)}
+                              />
                               {typeof meta.duration_sec === "number" && (
                                 <span className="text-xs opacity-70">{formatDuration(meta.duration_sec)}</span>
                               )}

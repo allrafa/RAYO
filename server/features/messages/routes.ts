@@ -404,6 +404,60 @@ router.post("/conversations/:id/typing", requireAuth, async (req, res, next) => 
   }
 });
 
+router.post("/conversations/:id/listening", requireAuth, async (req, res, next) => {
+  try {
+    const conversationId = parseInt(req.params.id, 10);
+    if (isNaN(conversationId) || conversationId < 1) {
+      sendError(res, "ID de conversa inválido", "INVALID_CONVERSATION_ID", 400);
+      return;
+    }
+    const messageIdRaw = req.body?.message_id;
+    const messageId = typeof messageIdRaw === "number" ? messageIdRaw : parseInt(messageIdRaw, 10);
+    if (!Number.isFinite(messageId) || messageId < 1) {
+      sendError(res, "message_id é obrigatório", "INVALID_MESSAGE_ID", 400);
+      return;
+    }
+    const userId = req.user!.id;
+    const { rows } = await query<{ user_a_id: number; user_b_id: number; sender_id: number; kind: string }>(
+      `SELECT c.user_a_id, c.user_b_id, m.sender_id, m.kind
+         FROM conversations c
+         JOIN messages m ON m.conversation_id = c.id
+        WHERE c.id = $1 AND m.id = $2`,
+      [conversationId, messageId]
+    );
+    if (rows.length === 0) {
+      sendError(res, "Conversa ou mensagem não encontrada", "NOT_FOUND", 404);
+      return;
+    }
+    const row = rows[0];
+    if (row.user_a_id !== userId && row.user_b_id !== userId) {
+      sendError(res, "Acesso negado a esta conversa", "FORBIDDEN", 403);
+      return;
+    }
+    if (row.kind !== "audio") {
+      sendError(res, "Mensagem não é de áudio", "NOT_AUDIO", 400);
+      return;
+    }
+    // Só faz fan-out pro autor do áudio (e só se NÃO for o próprio listener).
+    if (row.sender_id === userId) {
+      success(res, { ok: true });
+      return;
+    }
+    publishToUser(row.sender_id, "listening", {
+      conversation_id: conversationId,
+      user_id: userId,
+      message_id: messageId,
+    });
+    success(res, { ok: true });
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
 router.get("/unread-count", requireAuth, async (req, res, next) => {
   try {
     const count = await getUnreadConversationCount(req.user!.id);
