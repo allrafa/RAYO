@@ -364,7 +364,7 @@
 /* Gap denso entre mensagens do mesmo grupo, espaço normal entre grupos. */
 .ra-chat-row { margin-top: 12px; }
 .ra-chat-row.grouped { margin-top: 2px; }
-.ra-chat-row:first-child { margin-top: 0; }
+.ra-chat-row.first { margin-top: 0; }
 
 /* Anexo standalone (imagem sem texto): renderizado fora do balão. */
 .ra-chat-attachment {

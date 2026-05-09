@@ -7,6 +7,7 @@ export interface GroupableMessage {
   sender_id: number;
   created_at: string;
   read_at: string | null;
+  kind?: string;
 }
 
 export interface MessageRenderInfo<M extends GroupableMessage> {
@@ -113,12 +114,14 @@ export function annotateMessages<M extends GroupableMessage>(
     const sameSenderAsPrev =
       !!prev &&
       prev.sender_id === m.sender_id &&
+      (prev.kind ?? "text") === (m.kind ?? "text") &&
       isSameDay(new Date(prev.created_at), mDate) &&
       mDate.getTime() - new Date(prev.created_at).getTime() <= GROUP_WINDOW_MS;
 
     const sameSenderAsNext =
       !!next &&
       next.sender_id === m.sender_id &&
+      (next.kind ?? "text") === (m.kind ?? "text") &&
       isSameDay(new Date(next.created_at), mDate) &&
       new Date(next.created_at).getTime() - mDate.getTime() <= GROUP_WINDOW_MS;
 

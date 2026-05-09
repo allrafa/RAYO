@@ -1097,7 +1097,7 @@ export function ConversasPage() {
                 </div>
               ) : (
                 <div>
-                  {annotateMessages(messages, currentUserId).map((info) => {
+                  {annotateMessages(messages, currentUserId).map((info, idx) => {
                     const m = info.message;
                     const mine = m.sender_id === currentUserId;
                     const meta = (m.attachment_meta || {}) as { duration_sec?: number };
@@ -1134,7 +1134,7 @@ export function ConversasPage() {
                         <div
                           className={`ra-chat-row flex ${mine ? "justify-end" : "justify-start"} ${
                             !info.isFirstOfGroup ? "grouped" : ""
-                          }`}
+                          } ${idx === 0 && !info.dateSeparator ? "first" : ""}`}
                         >
                           <div className={`flex flex-col max-w-[80%] ${mine ? "items-end" : "items-start"}`}>
                             {isImageOnly ? (
