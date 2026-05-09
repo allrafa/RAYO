@@ -64,6 +64,12 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
   const [selectedCategory, setSelectedCategory] = useState(editingPost?.category || "Relacionamento");
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [uploadingCount, setUploadingCount] = useState(0);
+  // Task #117 — session token: incrementado em cada doClose. Callbacks
+  // de upload em voo capturam o token no início e ignoram seus próprios
+  // setState quando o token mudou (descartado/fechado). Sem isso, um
+  // upload que termina depois do discard ressuscita imagens e zoa o
+  // contador (negativo) na próxima abertura do modal.
+  const draftSessionRef = useRef(0);
   // Task #92 — progresso per-file (0–100). Renderizamos a média.
   const [uploadProgress, setUploadProgress] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -242,6 +248,9 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
 
     if (validFiles.length === 0) return;
 
+    // Captura o token desta sessão; se mudar até o upload terminar,
+    // ignoramos os setStates pra não corromper a próxima sessão.
+    const mySession = draftSessionRef.current;
     setUploadingCount((c) => c + validFiles.length);
     // Task #92 — progresso per-file via XHR onprogress. Mantemos um
     // array com o % de cada upload em curso e exibimos a média.
@@ -249,16 +258,22 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
     setUploadProgress((prev) => [...prev, ...validFiles.map(() => 0)]);
     const results = await Promise.all(
       validFiles.map((f, i) =>
-        uploadOne(f, (pct) =>
+        uploadOne(f, (pct) => {
+          if (draftSessionRef.current !== mySession) return;
           setUploadProgress((prev) => {
             const copy = [...prev];
             copy[startIdx + i] = pct;
             return copy;
-          }),
-        ),
+          });
+        }),
       ),
     );
-    setUploadingCount((c) => c - validFiles.length);
+    if (draftSessionRef.current !== mySession) {
+      // Modal foi descartado/fechado durante o upload — não toca em
+      // estado nenhum (já foi resetado em doClose).
+      return;
+    }
+    setUploadingCount((c) => Math.max(0, c - validFiles.length));
     setUploadProgress((prev) => prev.filter((_, i) => i < startIdx || i >= startIdx + validFiles.length));
     const ok = results.filter((r): r is UploadedImage => r !== null);
     if (ok.length > 0) {
@@ -390,6 +405,9 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
   // categoria, comunidade e estado de edição pra próxima abertura
   // começar limpa.
   const doClose = () => {
+    // Invalida uploads em voo: callbacks pendentes virão depois e
+    // serão ignorados (ver guard no handleFileChange).
+    draftSessionRef.current += 1;
     setConfirmDiscard(false);
     setContent("");
     setSelectedCategory("Relacionamento");
