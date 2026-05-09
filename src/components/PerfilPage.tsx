@@ -555,6 +555,23 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
               </div>
             )}
 
+            {/* Task #93 — "Sua área pessoal": separador visual explícito
+                deixando claro que o que vem abaixo NÃO é repetição do
+                perfil público acima — são CONTROLES da conta do dono
+                (missões, configurações, privacidade, logout). Mantemos
+                aqui em vez de mover pra dentro de uma tab pra preservar
+                acessibilidade mobile (rolar pra baixo > navegar tabs). */}
+            <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mt-8 mb-2">
+              <div
+                className="flex items-center gap-2 text-xs uppercase tracking-wider"
+                style={{ color: "var(--rayo-forest-700)", fontWeight: 600 }}
+              >
+                <span style={{ height: 1, flex: 1, background: "var(--rayo-sand-300)" }} />
+                Sua área pessoal
+                <span style={{ height: 1, flex: 1, background: "var(--rayo-sand-300)" }} />
+              </div>
+            </div>
+
             {/* Task #45 — Missões da semana (consome /api/gamification/missions) */}
             <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
               <Card

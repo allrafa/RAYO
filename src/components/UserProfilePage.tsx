@@ -157,7 +157,7 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
     if (!isSelf) return;
     setSavedLoading(true);
     try {
-      const res = await api.get<{ posts: UserPost[] }>(`/api/community/users/me/saved?limit=20`);
+      const res = await api.get<{ posts: UserPost[] }>(`/api/community/users/${userId}/saved?limit=20`);
       if (res.success && res.data) setSavedPosts(res.data.posts);
       else setSavedPosts([]);
     } finally {

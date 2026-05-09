@@ -403,9 +403,20 @@ router.post("/posts/:id/save", requireAuth, async (req, res, next) => {
   }
 });
 
-// Task #93 — posts salvos do viewer (só do próprio usuário, privado).
-router.get("/users/me/saved", requireAuth, async (req, res, next) => {
+// Task #93 — posts salvos: privado, só o próprio usuário pode ler a
+// própria lista. Aceita "me" como atalho. Outros IDs respondem 403.
+router.get("/users/:id/saved", requireAuth, async (req, res, next) => {
   try {
+    const raw = req.params.id;
+    const targetId = raw === "me" ? req.user!.id : parseInt(raw, 10);
+    if (!Number.isFinite(targetId) || targetId < 1) {
+      sendError(res, "ID inválido", "INVALID_USER_ID", 400);
+      return;
+    }
+    if (targetId !== req.user!.id) {
+      sendError(res, "Posts salvos são privados", "FORBIDDEN", 403);
+      return;
+    }
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 20, 50));
     const result = await getUserSavedPosts(req.user!.id, page, limit);
