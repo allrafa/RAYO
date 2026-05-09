@@ -24,6 +24,7 @@ import {
   updateCourseLanding,
   listClassInterests,
   exportClassInterestsCsv,
+  notifyClassInterests,
   listCourseModulesWithLessons,
   createCourseModule,
   updateCourseModule,
@@ -108,6 +109,28 @@ adminCmsRouter.get("/courses/:id/interests", async (req, res, next) => {
     const limit = parseInt(String(req.query.limit ?? "50"), 10) || 50;
     const data = await listClassInterests(req.user!, id, page, limit);
     success(res, data);
+  } catch (err) { handle(err, res, next); }
+});
+
+// Task #106 — disparo em lote de "matrícula aberta" pra lista de interessados.
+// Idempotente em relação a (course_id, email): linhas com `notified_at`
+// preenchido são puladas. Producer só notifica suas turmas; moderator+ qualquer.
+adminCmsRouter.post("/courses/:id/notify-interests", async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const customMessage = typeof req.body?.message === "string" ? req.body.message : null;
+    const result = await notifyClassInterests(req.user!, id, { customMessage });
+    if (!result.email_configured) {
+      sendError(
+        res,
+        "Resend não está configurado neste ambiente. Configure RESEND_API_KEY antes de notificar.",
+        "EMAIL_NOT_CONFIGURED",
+        503,
+      );
+      return;
+    }
+    success(res, result);
   } catch (err) { handle(err, res, next); }
 });
 

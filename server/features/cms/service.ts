@@ -6,6 +6,12 @@ import {
   normalizeStorageRef,
 } from "../../lib/objectStorageBridge.js";
 import { withResolvedBunnyFields } from "../../lib/bunnyStream.js";
+import { sendClassOpenEmail } from "../../lib/email.js";
+import { logger } from "../../utils/logger.js";
+
+const APP_URL =
+  process.env.APP_URL ||
+  (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000");
 
 // Task #48 — every public/admin read goes through these helpers so any
 // `objstore://` references stored in cover_url / media_url / public_url
@@ -928,7 +934,7 @@ export async function listClassInterests(
   const total = countRows[0]?.total ?? 0;
 
   const { rows } = await query(
-    `SELECT ci.id, ci.user_id, ci.name, ci.email, ci.message, ci.created_at,
+    `SELECT ci.id, ci.user_id, ci.name, ci.email, ci.message, ci.created_at, ci.notified_at,
             u.name AS user_name
        FROM class_interests ci
        LEFT JOIN users u ON u.id = ci.user_id
@@ -937,6 +943,16 @@ export async function listClassInterests(
       LIMIT $2 OFFSET $3`,
     [courseId, safeLimit, offset],
   );
+  // Task #106 — `pending_total` é o número global de linhas ainda não
+  // notificadas (notified_at IS NULL) na turma inteira, NÃO só nesta
+  // página. O admin precisa desse número pra decidir se vale enviar
+  // (e pra mostrar no botão "Notificar interessados (N)").
+  const { rows: pendingRows } = await query(
+    `SELECT COUNT(*)::int AS pending FROM class_interests WHERE course_id = $1 AND notified_at IS NULL`,
+    [courseId],
+  );
+  const pendingTotal = pendingRows[0]?.pending ?? 0;
+
   return {
     interests: rows,
     pagination: {
@@ -945,6 +961,7 @@ export async function listClassInterests(
       total,
       totalPages: Math.ceil(total / safeLimit),
     },
+    pending_total: pendingTotal,
   };
 }
 
@@ -991,6 +1008,121 @@ export async function exportClassInterestsCsv(
     .slice(0, 50) || `turma-${courseId}`;
   const filename = `interessados-${safeTitle}-${courseId}.csv`;
   return { filename, csv };
+}
+
+// Task #106 — Notificar interessados que as matrículas abriram. Roda em
+// lote, paralelo limitado, e marca `notified_at` por linha pra não
+// reentregar o aviso. `customMessage` (opcional) é uma nota livre do
+// admin embutida no e-mail. Sem Resend configurado, retorna sent=0 e
+// nenhuma linha é marcada (assim o admin pode tentar de novo).
+export async function notifyClassInterests(
+  user: SafeUser,
+  courseId: number,
+  options: { customMessage?: string | null } = {},
+): Promise<{ sent: number; failed: number; skipped_already_notified: number; total_pending_before: number; email_configured: boolean }> {
+  const cur = await getCourseAdmin(courseId);
+  if (!cur) throw new CmsError("Turma não encontrada", "COURSE_NOT_FOUND", 404);
+  assertCanMutate(user, (cur as { created_by: number | null }).created_by ?? null);
+
+  const courseTitle = String((cur as { title: string }).title || `Turma #${courseId}`);
+  const courseLink = `${APP_URL.replace(/\/+$/, "")}/turmas/${courseId}`;
+  const customMessage = options.customMessage?.toString().slice(0, 2000) ?? null;
+
+  // Defesa em profundidade: se Resend não está configurado, não toca em
+  // notified_at e devolve sinalizando o problema pro admin.
+  const { isEmailConfigured } = await import("../../lib/email.js");
+  if (!isEmailConfigured()) {
+    return {
+      sent: 0,
+      failed: 0,
+      skipped_already_notified: 0,
+      total_pending_before: 0,
+      email_configured: false,
+    };
+  }
+
+  // Dedupe por (user_id OR email) — se o mesmo email pediu interesse em
+  // sessões diferentes, só recebe uma vez. Pegamos o ID mais antigo
+  // (MIN(id)) por bucket pra ser determinístico.
+  const { rows: pending } = await query<{
+    id: number;
+    name: string;
+    email: string;
+  }>(
+    `SELECT MIN(id) AS id,
+            MIN(name) AS name,
+            LOWER(email) AS email
+       FROM class_interests
+      WHERE course_id = $1
+        AND notified_at IS NULL
+      GROUP BY LOWER(email)
+      ORDER BY MIN(created_at) ASC`,
+    [courseId],
+  );
+
+  if (pending.length === 0) {
+    return {
+      sent: 0,
+      failed: 0,
+      skipped_already_notified: 0,
+      total_pending_before: 0,
+      email_configured: true,
+    };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  const sentIds: number[] = [];
+
+  // Throttle simples — Resend free tier limita a ~2 req/s, então 600ms
+  // entre envios fica confortavelmente abaixo do teto e evita 429s
+  // mesmo em lotes maiores. Para lotes muito grandes seria melhor uma
+  // fila, mas Task #106 escopa isso como ação manual do admin, então
+  // sequencial é seguro.
+  for (const p of pending) {
+    const result = await sendClassOpenEmail(
+      p.email,
+      p.name,
+      courseTitle,
+      courseLink,
+      customMessage,
+    );
+    if (result.sent) {
+      sent += 1;
+      sentIds.push(p.id);
+    } else {
+      failed += 1;
+      logger.warn(
+        "CMS",
+        `class-open notify failed for course ${courseId} interest ${p.id}: ${result.error ?? "unknown"}`,
+      );
+    }
+    await new Promise((r) => setTimeout(r, 600));
+  }
+
+  // Marca todas as linhas (não só o MIN(id) representativo) que casam
+  // com os emails que foram entregues, pra também silenciar duplicatas
+  // futuras por (user OR email)+course.
+  if (sentIds.length > 0) {
+    await query(
+      `UPDATE class_interests
+          SET notified_at = NOW()
+        WHERE course_id = $1
+          AND notified_at IS NULL
+          AND LOWER(email) IN (
+            SELECT LOWER(email) FROM class_interests WHERE id = ANY($2::int[])
+          )`,
+      [courseId, sentIds],
+    );
+  }
+
+  return {
+    sent,
+    failed,
+    skipped_already_notified: 0,
+    total_pending_before: pending.length,
+    email_configured: true,
+  };
 }
 
 // ── Course creation from CMS ──────────────────────────────────────────

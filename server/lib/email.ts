@@ -310,6 +310,41 @@ export async function sendClassInterestDigestEmail(
   return sendEmail({ to: email, subject, html, text });
 }
 
+// Task #106 — aviso individual aos interessados quando o admin marcar a
+// turma como "matrícula aberta". Disparado em lote pelo painel admin com
+// dedupe via `class_interests.notified_at`.
+export async function sendClassOpenEmail(
+  email: string,
+  recipientName: string,
+  courseTitle: string,
+  courseLink: string,
+  customMessage?: string | null,
+): Promise<SendResult> {
+  const subject = `As matrículas da turma "${courseTitle}" abriram!`;
+  const preheader = `A turma "${courseTitle}" que você queria está com matrículas abertas.`;
+  const safeName = escapeHtml(recipientName || "olá");
+  const safeTitle = escapeHtml(courseTitle);
+  const customHtml =
+    customMessage && customMessage.trim()
+      ? `<div style="margin:16px 0;padding:14px 16px;border-left:3px solid ${RAIO_ACCENT};background:${RAIO_BG};color:${RAIO_TEXT};border-radius:6px;">${escapeHtml(customMessage).replace(/\n/g, "<br>")}</div>`
+      : "";
+  const html = layout(
+    `
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">As matrículas abriram</h1>
+      <p style="margin:0 0 16px 0;">Olá, ${safeName}.</p>
+      <p style="margin:0 0 16px 0;">Você pediu pra ser avisado(a) quando a turma <strong>${safeTitle}</strong> abrisse — e o dia chegou! As matrículas estão abertas a partir de agora.</p>
+      ${customHtml}
+      <div style="text-align:center;margin:32px 0;">
+        <a href="${courseLink}" style="display:inline-block;padding:14px 28px;background:${RAIO_ACCENT};color:${RAIO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Garantir minha vaga</a>
+      </div>
+      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Se você não se inscreveu pra esse aviso, pode ignorar este e-mail com segurança.</p>
+    `,
+    preheader,
+  );
+  const text = `Olá, ${recipientName}.\n\nA turma "${courseTitle}" que você queria está com matrículas abertas.${customMessage && customMessage.trim() ? `\n\n${customMessage.trim()}` : ""}\n\nGarantir minha vaga: ${courseLink}\n\nSe não foi você que se inscreveu pra este aviso, pode ignorar este e-mail.`;
+  return sendEmail({ to: email, subject, html, text });
+}
+
 // Task #70 — destinatário do formulário público /contato. Lê primeiro
 // `CONTACT_EMAIL` (nome canônico), depois `CONTATO_TO_EMAIL` (alias legado),
 // e cai num default explícito. Nunca usa o e-mail do remetente como destino.

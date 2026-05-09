@@ -983,6 +983,10 @@ export async function initializeSchema() {
   await query(`CREATE INDEX IF NOT EXISTS idx_class_interests_course ON class_interests(course_id)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_class_interests_user ON class_interests(user_id)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_class_interests_created ON class_interests(created_at DESC)`);
+  // Task #106 — dedupe quem já recebeu o aviso de "matrícula aberta".
+  // NULL = ainda não notificado. Idempotente.
+  await query(`ALTER TABLE class_interests ADD COLUMN IF NOT EXISTS notified_at TIMESTAMP`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_class_interests_notified ON class_interests(course_id, notified_at)`);
   await query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS class_id INTEGER REFERENCES courses(id) ON DELETE SET NULL`);
   await query(`CREATE INDEX IF NOT EXISTS idx_posts_class_id ON posts(class_id)`);
 

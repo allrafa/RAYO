@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Download, GraduationCap, RefreshCw } from "lucide-react";
+import { ArrowLeft, Download, GraduationCap, Mail, RefreshCw } from "lucide-react";
 import { Button } from "../ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
+import { Textarea } from "../ui/textarea";
 import { api } from "../../lib/api";
 import { toast } from "sonner@2.0.3";
 
@@ -23,11 +34,20 @@ interface InterestRow {
   email: string;
   message: string | null;
   created_at: string;
+  notified_at: string | null;
+}
+
+interface NotifyResponse {
+  sent: number;
+  failed: number;
+  total_pending_before: number;
+  email_configured: boolean;
 }
 
 interface InterestsResp {
   interests: InterestRow[];
   pagination: { page: number; limit: number; total: number; totalPages: number };
+  pending_total?: number;
 }
 
 export function AdminTurmasPage() {
@@ -162,7 +182,18 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
   const [forbidden, setForbidden] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [notifyMessage, setNotifyMessage] = useState("");
+  const [notifying, setNotifying] = useState(false);
   const limit = 50;
+
+  // `pending_total` vem do backend e cobre a turma inteira (não só a
+  // página visível). Fallback pra contagem da página atual caso a API
+  // antiga não devolva o campo, garantindo robustez durante deploys.
+  const pendingCount = useMemo(() => {
+    if (typeof data?.pending_total === "number") return data.pending_total;
+    return (data?.interests ?? []).filter((r) => !r.notified_at).length;
+  }, [data]);
 
   async function load() {
     setLoading(true);
@@ -187,6 +218,41 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
   }
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [course.id, page]);
+
+  async function runNotify() {
+    setNotifying(true);
+    try {
+      const res = await api.post<NotifyResponse>(
+        `/api/admin/cms/courses/${course.id}/notify-interests`,
+        { message: notifyMessage.trim() || undefined },
+      );
+      if (res.success && res.data) {
+        const { sent, failed, total_pending_before } = res.data;
+        if (total_pending_before === 0) {
+          toast.info("Todos os interessados já foram notificados antes.");
+        } else if (failed === 0) {
+          toast.success(
+            sent === 1
+              ? "1 interessado avisado por e-mail."
+              : `${sent} interessados avisados por e-mail.`,
+          );
+        } else {
+          toast.warning(`Enviados ${sent} de ${total_pending_before}. ${failed} falharam — tente novamente em instantes.`);
+        }
+        setNotifyOpen(false);
+        setNotifyMessage("");
+        await load();
+      } else if (res.error?.code === "EMAIL_NOT_CONFIGURED") {
+        toast.error("Resend não está configurado. Configure RESEND_API_KEY antes de notificar.");
+      } else {
+        toast.error(res.error?.message ?? "Falha ao notificar interessados");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao notificar interessados");
+    } finally {
+      setNotifying(false);
+    }
+  }
 
   async function exportCsv() {
     setExporting(true);
@@ -224,21 +290,76 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
         <Button variant="ghost" size="sm" onClick={onBack}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
         </Button>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={load}>
             <RefreshCw className="w-4 h-4 mr-2" /> Atualizar
           </Button>
           <Button
+            variant="outline"
             size="sm"
             onClick={exportCsv}
             disabled={exporting || total === 0}
-            style={{ background: "var(--rayo-terra-500)", color: "#fff" }}
           >
             <Download className="w-4 h-4 mr-2" />
             {exporting ? "Exportando..." : "Exportar CSV"}
           </Button>
+          <Button
+            size="sm"
+            onClick={() => setNotifyOpen(true)}
+            disabled={pendingCount === 0}
+            title={
+              pendingCount === 0
+                ? "Todos os interessados já foram notificados"
+                : `Enviar e-mail para ${pendingCount} pessoa${pendingCount === 1 ? "" : "s"}`
+            }
+            style={{ background: "var(--rayo-terra-500)", color: "#fff" }}
+          >
+            <Mail className="w-4 h-4 mr-2" />
+            Notificar interessados{pendingCount > 0 ? ` (${pendingCount})` : ""}
+          </Button>
         </div>
       </div>
+
+      <AlertDialog open={notifyOpen} onOpenChange={(o) => !notifying && setNotifyOpen(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Notificar interessados?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingCount === 0
+                ? "Não há interessados pendentes para esta turma."
+                : `Vamos enviar um e-mail avisando que as matrículas da turma "${course.title}" estão abertas para ${pendingCount} pessoa${pendingCount === 1 ? "" : "s"} que ainda não foram notificadas. Quem já recebeu não receberá de novo.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {pendingCount > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
+                Mensagem extra (opcional)
+              </label>
+              <Textarea
+                value={notifyMessage}
+                onChange={(e) => setNotifyMessage(e.target.value)}
+                placeholder="Ex.: As vagas são limitadas. Garanta a sua até sexta-feira!"
+                rows={4}
+                maxLength={2000}
+                disabled={notifying}
+              />
+              <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
+                Aparece em destaque dentro do e-mail. Deixe em branco para usar só o texto padrão.
+              </p>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={notifying}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); runNotify(); }}
+              disabled={notifying || pendingCount === 0}
+              style={{ background: "var(--rayo-terra-500)", color: "#fff" }}
+            >
+              {notifying ? "Enviando..." : "Enviar e-mails"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div>
         <h1 className="text-2xl mb-1" style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }}>
@@ -288,6 +409,11 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
                     {row.user_id && (
                       <span className="ra-tag">Usuário cadastrado</span>
                     )}
+                    {row.notified_at ? (
+                      <span className="ra-tag sage">Avisado</span>
+                    ) : (
+                      <span className="ra-tag ochre">Aguardando aviso</span>
+                    )}
                   </div>
                   {row.message && (
                     <p className="text-sm mt-1 whitespace-pre-wrap" style={{ color: "var(--rayo-ink-700)" }}>
@@ -296,7 +422,12 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
                   )}
                 </div>
                 <div className="text-xs text-right whitespace-nowrap" style={{ color: "var(--rayo-ink-400)" }}>
-                  {new Date(row.created_at).toLocaleString("pt-BR")}
+                  <div>{new Date(row.created_at).toLocaleString("pt-BR")}</div>
+                  {row.notified_at && (
+                    <div className="mt-1" style={{ color: "var(--rayo-sage-600, var(--rayo-ink-400))" }}>
+                      Aviso enviado em {new Date(row.notified_at).toLocaleString("pt-BR")}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
