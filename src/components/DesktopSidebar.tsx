@@ -4,6 +4,7 @@ import { useApp } from "./AppContext";
 import { useAuth, userHasRole } from "./AuthContext";
 import { useTheme } from "./ThemeProvider";
 import { useUnreadMessages } from "./hooks/useUnreadMessages";
+import { useUnreadBySection } from "./hooks/useUnreadBySection";
 import { toast } from "sonner@2.0.3";
 import { dispatchScrollTop } from "../lib/scrollTop";
 
@@ -32,13 +33,17 @@ export function DesktopSidebar({
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { count: unreadMessages } = useUnreadMessages();
+  // Task #129 — badge de comunidade no desktop também (separado do de
+  // Mensagens, que já existe). No mobile, ambos vivem no badge único da
+  // aba Comunidade, porque Mensagens não é uma aba própria.
+  const { community: unreadCommunity } = useUnreadBySection();
 
   const baseItems: MenuItem[] = [
     { id: "home", label: "Início", icon: Home },
     { id: "academia", label: "Turmas", icon: GraduationCap },
     // Logo RAYO customizada (mark "R" forest-900 + ochre dot)
     { id: "conselheiro", label: "Conselheiro", icon: null, isSpecial: true },
-    { id: "comunidade", label: "Comunidade", icon: Users },
+    { id: "comunidade", label: "Comunidade", icon: Users, badge: unreadCommunity },
     { id: "conversas", label: "Mensagens", icon: MessageCircle, badge: unreadMessages },
     { id: "perfil", label: "Perfil", icon: User },
   ];

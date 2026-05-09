@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../../middleware/auth.js";
 import { success, error as sendError } from "../../utils/response.js";
-import { listNotifications, markRead, markAllRead, getUnreadCount } from "./service.js";
+import { listNotifications, markRead, markAllRead, getUnreadCount, getUnreadBySection } from "./service.js";
 
 const router = Router();
 
@@ -20,6 +20,16 @@ router.get("/unread-count", requireAuth, async (req, res, next) => {
   try {
     const unread = await getUnreadCount(req.user!.id);
     success(res, { unread });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Task #129 — agregado por seção pra alimentar os badges da nav.
+router.get("/unread-by-section", requireAuth, async (req, res, next) => {
+  try {
+    const sections = await getUnreadBySection(req.user!.id);
+    success(res, sections);
   } catch (err) {
     next(err);
   }

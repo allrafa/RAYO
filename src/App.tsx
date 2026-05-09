@@ -12,6 +12,7 @@ import { AuthProvider, useAuth, userHasRole } from "./components/AuthContext";
 import { AdminShell } from "./components/admin/AdminShell";
 import { ThemeProvider, useTheme } from "./components/ThemeProvider";
 import { UnreadMessagesProvider } from "./components/hooks/useUnreadMessages";
+import { UnreadBySectionProvider } from "./components/hooks/useUnreadBySection";
 import { Toaster } from "./components/ui/sonner";
 import { AuthPage } from "./components/AuthPage";
 import { HomePage } from "./components/HomePage";
@@ -639,8 +640,10 @@ export default function App() {
           <AppProvider>
             <AnalyticsProvider>
               <UnreadMessagesProvider>
-                <AppContent />
-                <Toaster />
+                <UnreadBySectionProvider>
+                  <AppContent />
+                  <Toaster />
+                </UnreadBySectionProvider>
               </UnreadMessagesProvider>
             </AnalyticsProvider>
           </AppProvider>

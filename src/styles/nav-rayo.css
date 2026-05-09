@@ -316,6 +316,21 @@
   transition: color 0.15s ease;
 }
 .rn-bottom-item:focus-visible { outline: 2px solid var(--rayo-terra-500); outline-offset: 2px; border-radius: 8px; }
+/* Task #129 — wrapper relativo pro badge ancorar no canto sup-direito do ícone. */
+.rn-bottom-icon-wrap { position: relative; display: inline-grid; place-items: center; }
+.rn-bottom-badge {
+  position: absolute; top: -6px; right: -10px;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px;
+  background: var(--rayo-terra-500);
+  color: var(--rayo-sand-50);
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 10px; font-weight: 700; line-height: 18px;
+  text-align: center;
+  border: 2px solid var(--rayo-sand-50);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  pointer-events: none;
+}
 .rn-bottom-item.active { color: var(--rayo-forest-900); }
 .rn-bottom-item.active::after {
   content: ""; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
