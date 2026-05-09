@@ -1,7 +1,8 @@
-import { query } from "../../db/index.js";
+import { query, getClient } from "../../db/index.js";
 import { AppError } from "../academia/service.js";
 import { trackEvent } from "../analytics/service.js";
 import { resolveStoredMediaUrl } from "../../lib/objectStorageBridge.js";
+import { createNotification } from "../notifications/service.js";
 
 const POST_IMAGE_PREFIX = "objstore://posts/";
 const POST_MAX_IMAGES = 4;
@@ -370,19 +371,78 @@ export async function deletePost(
   postId: number,
   userId: number,
   isModeratorPlus: boolean,
+  reason?: string | null,
 ) {
   const { rows: existing } = await query(
-    `SELECT id, user_id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
+    `SELECT p.id, p.user_id, p.title, p.content, f.slug AS forum_slug, f.name AS forum_name
+     FROM posts p
+     JOIN forums f ON f.id = p.forum_id
+     WHERE p.id = $1 AND p.is_hidden = FALSE`,
     [postId],
   );
   if (existing.length === 0) {
     throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
   }
-  if (existing[0].user_id !== userId && !isModeratorPlus) {
+  const post = existing[0];
+  const isAuthor = post.user_id === userId;
+  if (!isAuthor && !isModeratorPlus) {
     throw new AppError("Sem permissão", "FORBIDDEN", 403);
   }
-  await query(`UPDATE posts SET is_hidden = TRUE, updated_at = NOW() WHERE id = $1`, [postId]);
-  trackEvent(userId, "post_deleted", { post_id: postId, by_moderator: existing[0].user_id !== userId });
+
+  // Task #94 — quando moderador (não autor) remove, soft delete + insert
+  // em mod_actions rodam na MESMA transação pra evitar estado parcial
+  // (post escondido sem registro de auditoria). Auto-exclusão do autor
+  // continua silenciosa (sem entrada de auditoria/notificação).
+  const trimmedReason = typeof reason === "string" ? reason.trim().slice(0, 2000) : null;
+  if (isAuthor) {
+    await query(`UPDATE posts SET is_hidden = TRUE, updated_at = NOW() WHERE id = $1`, [postId]);
+  } else {
+    const client = await getClient();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `UPDATE posts SET is_hidden = TRUE, updated_at = NOW() WHERE id = $1`,
+        [postId],
+      );
+      await client.query(
+        `INSERT INTO mod_actions (actor_id, target_kind, target_id, action, reason)
+         VALUES ($1, 'post', $2, 'post_deleted', $3)`,
+        [userId, postId, trimmedReason || null],
+      );
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+    // Notificação fica fora da transação: é melhor-esforço (falha no
+    // bell não deve reverter a moderação). Se cair, fica logado pra
+    // diagnóstico mas o autor não é avisado nesse caso de borda.
+    try {
+      const snippet = String(post.title || post.content || "").trim().slice(0, 80);
+      await createNotification({
+        userId: post.user_id,
+        kind: "post_moderated",
+        title: "Seu post foi removido pela moderação",
+        body: trimmedReason
+          ? `Motivo: ${trimmedReason}`
+          : (snippet ? `Post removido: "${snippet}"` : "Um moderador removeu seu post."),
+        link: post.forum_slug ? `/c/${post.forum_slug}` : null,
+        payload: {
+          post_id: postId,
+          forum_slug: post.forum_slug,
+          forum_name: post.forum_name,
+          reason: trimmedReason || null,
+          actor_id: userId,
+        },
+      });
+    } catch (err) {
+      console.error("[community] failed to notify author of moderated post", err);
+    }
+  }
+
+  trackEvent(userId, "post_deleted", { post_id: postId, by_moderator: !isAuthor });
   return { post_id: postId, deleted: true };
 }
 

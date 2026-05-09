@@ -642,6 +642,25 @@ export async function initializeSchema() {
   await query(`CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id) WHERE read_at IS NULL`);
 
+  // ──────────────────────────────────────────────────────────────────
+  // mod_actions (Task #94) — auditoria de ações de moderação. Hoje
+  // só registra `post_deleted` mas o schema é genérico (target_kind +
+  // target_id) pra suportar comment_deleted/user_banned no futuro.
+  // ──────────────────────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS mod_actions (
+      id SERIAL PRIMARY KEY,
+      actor_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      target_kind VARCHAR(40) NOT NULL,
+      target_id INTEGER NOT NULL,
+      action VARCHAR(40) NOT NULL,
+      reason TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_mod_actions_target ON mod_actions(target_kind, target_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_mod_actions_actor_created ON mod_actions(actor_id, created_at DESC)`);
+
   // Idempotency guard for DM "you have a new message" emails so a burst
   // of messages in the same conversation cannot flood the recipient's
   // inbox. Service layer enforces a 1-hour cool-down per conversation.

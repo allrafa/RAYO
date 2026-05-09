@@ -372,7 +372,12 @@ router.delete("/posts/:id", requireAuth, async (req, res, next) => {
     }
     const role = req.user?.role || "client";
     const isModeratorPlus = role === "moderator" || role === "admin";
-    const result = await deletePost(postId, req.user!.id, isModeratorPlus);
+    // Task #94 — `reason` é opcional e só é registrado quando o requester
+    // é moderator+ (pra autores excluindo o próprio post o campo é ignorado).
+    const reason = isModeratorPlus && typeof req.body?.reason === "string"
+      ? req.body.reason
+      : null;
+    const result = await deletePost(postId, req.user!.id, isModeratorPlus, reason);
     success(res, result);
   } catch (err) {
     if (err instanceof AppError) {
