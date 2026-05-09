@@ -24,6 +24,13 @@ interface CreatePostModalProps {
   currentPage?: string;
   /** Quando passado, pre-seleciona a comunidade no composer. */
   initialForumId?: number;
+  /** Task #93 — quando setado, modal entra em modo edição (PATCH). */
+  editingPost?: {
+    id: number;
+    content?: string;
+    category?: string;
+    forum_id?: number;
+  } | null;
 }
 
 // Task #92 — Composer estilo Reddit: comunidade é OBRIGATÓRIA, fotos são
@@ -39,11 +46,12 @@ interface UploadedImage {
   storedUrl: string; // sentinel objstore://posts/<file>
 }
 
-export function CreatePostModal({ open, onOpenChange, currentPage = "home", initialForumId }: CreatePostModalProps) {
-  const { userData, createPost } = useApp();
+export function CreatePostModal({ open, onOpenChange, currentPage = "home", initialForumId, editingPost }: CreatePostModalProps) {
+  const { userData, createPost, loadPosts } = useApp();
   const { user } = useAuth();
-  const [content, setContent] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Relacionamento");
+  const isEditing = !!editingPost;
+  const [content, setContent] = useState(editingPost?.content || "");
+  const [selectedCategory, setSelectedCategory] = useState(editingPost?.category || "Relacionamento");
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [uploadingCount, setUploadingCount] = useState(0);
   // Task #92 — progresso per-file (0–100). Renderizamos a média.
@@ -51,7 +59,21 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [forumOptions, setForumOptions] = useState<ForumOption[]>([]);
-  const [selectedForumId, setSelectedForumId] = useState<number | null>(initialForumId ?? null);
+  const [selectedForumId, setSelectedForumId] = useState<number | null>(
+    editingPost?.forum_id ?? initialForumId ?? null,
+  );
+
+  // Task #93 — quando o modal abre em modo edição, hidrata os campos com
+  // o post sendo editado. Em modo criação, reseta tudo.
+  useEffect(() => {
+    if (!open) return;
+    if (editingPost) {
+      setContent(editingPost.content || "");
+      setSelectedCategory(editingPost.category || "Relacionamento");
+      setSelectedForumId(editingPost.forum_id ?? null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editingPost?.id]);
 
   useEffect(() => {
     if (!open) return;
@@ -264,11 +286,36 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
 
     setIsSubmitting(true);
     try {
-      const ok = await createPost(content, selectedCategory, {
-        visibility: "comunidade",
-        images: uploadedImages.map((i) => i.storedUrl),
-        forum_id: selectedForumId,
-      });
+      let ok = false;
+      if (isEditing && editingPost) {
+        // Task #93 — edição via PATCH. Imagens não são editáveis aqui
+        // (o backend não atualiza anexos no PATCH). Comunidade fixa.
+        const res = await api.patch<{ post: { id: number } }>(
+          `/api/community/posts/${editingPost.id}`,
+          { content, category: selectedCategory },
+        );
+        ok = res.success;
+        if (ok) {
+          enhancedToast.success({
+            title: "Publicação atualizada",
+            description: "Suas mudanças já estão visíveis.",
+            haptic: true,
+          });
+          await loadPosts();
+        } else {
+          enhancedToast.error({
+            title: "Erro ao atualizar",
+            description: res.error?.message || "Tente novamente",
+            haptic: true,
+          });
+        }
+      } else {
+        ok = await createPost(content, selectedCategory, {
+          visibility: "comunidade",
+          images: uploadedImages.map((i) => i.storedUrl),
+          forum_id: selectedForumId,
+        });
+      }
       if (ok) {
         uploadedImages.forEach((img) => {
           try { URL.revokeObjectURL(img.previewUrl); } catch { /* noop */ }
@@ -280,7 +327,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
       }
     } catch {
       enhancedToast.error({
-        title: "Erro ao publicar",
+        title: isEditing ? "Erro ao atualizar" : "Erro ao publicar",
         description: "Tente novamente em alguns instantes",
         haptic: true,
       });
@@ -301,7 +348,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
             <div className="p-2 bg-primary/10 rounded-lg">
               <Plus className="w-5 h-5 text-primary" />
             </div>
-            Criar Publicação
+            {isEditing ? "Editar Publicação" : "Criar Publicação"}
           </DialogTitle>
           <DialogDescription>
             Compartilhe com a comunidade RAYO. Apenas fotos são permitidas.

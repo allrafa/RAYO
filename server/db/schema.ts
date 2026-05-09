@@ -527,6 +527,18 @@ export async function initializeSchema() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_user_follows_followee ON user_follows(followee_id)`);
 
+  // Task #93 — posts salvos (Salvar/Desalvar). Per-usuário, idempotente.
+  await query(`
+    CREATE TABLE IF NOT EXISTS post_saves (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, post_id)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_post_saves_post ON post_saves(post_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_post_saves_user_created ON post_saves(user_id, created_at DESC)`);
+
   await query(`
     CREATE TABLE IF NOT EXISTS lgpd_requests (
       id SERIAL PRIMARY KEY,

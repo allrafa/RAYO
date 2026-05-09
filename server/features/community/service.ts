@@ -18,12 +18,28 @@ async function resolvePostImages(images: unknown): Promise<string[]> {
   return out;
 }
 
-async function hydratePostsRows<T extends Record<string, any>>(rows: T[]): Promise<T[]> {
+async function hydratePostsRows<T extends Record<string, any>>(
+  rows: T[],
+  viewerId?: number,
+): Promise<T[]> {
+  // Task #93 — hidrata is_saved em batch (evita subquery em cada listagem).
+  let savedSet: Set<number> = new Set();
+  if (viewerId && rows.length > 0) {
+    const ids = rows.map((r) => Number((r as any).id)).filter((n) => Number.isFinite(n));
+    if (ids.length > 0) {
+      const { rows: savedRows } = await query(
+        `SELECT post_id FROM post_saves WHERE user_id = $1 AND post_id = ANY($2::int[])`,
+        [viewerId, ids],
+      );
+      savedSet = new Set(savedRows.map((r) => Number(r.post_id)));
+    }
+  }
   return Promise.all(
     rows.map(async (r) => ({
       ...r,
       images: await resolvePostImages(r.images),
       author_avatar: await resolveStoredMediaUrl(r.author_avatar),
+      is_saved: viewerId ? savedSet.has(Number((r as any).id)) : false,
     })),
   );
 }
@@ -99,7 +115,7 @@ export async function getForumPosts(
     userId ? [forumId, limit, offset, userId] : [forumId, limit, offset],
   );
 
-  const posts = await hydratePostsRows(rows);
+  const posts = await hydratePostsRows(rows, userId);
   return { posts, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
@@ -130,7 +146,7 @@ export async function getAllPosts(
     userId ? [limit, offset, userId] : [limit, offset],
   );
 
-  const posts = await hydratePostsRows(rows);
+  const posts = await hydratePostsRows(rows, userId);
   return { posts, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
@@ -242,8 +258,126 @@ export async function getPostDetail(postId: number, userId?: number) {
     })),
   );
 
-  const post = (await hydratePostsRows([rows[0]]))[0];
+  const post = (await hydratePostsRows([rows[0]], userId))[0];
   return { ...post, comments: hydratedComments };
+}
+
+// Task #93 — autor edita; autor OU moderador+ pode esconder (soft delete).
+export async function updatePost(
+  postId: number,
+  userId: number,
+  patch: { content?: string; category?: string; title?: string },
+) {
+  const { rows: existing } = await query(
+    `SELECT id, user_id, forum_id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
+    [postId],
+  );
+  if (existing.length === 0) {
+    throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
+  }
+  if (existing[0].user_id !== userId) {
+    throw new AppError("Apenas o autor pode editar", "FORBIDDEN", 403);
+  }
+
+  const sets: string[] = [];
+  const params: any[] = [];
+  if (patch.content !== undefined) {
+    const trimmed = String(patch.content || "").trim();
+    if (trimmed.length === 0) {
+      throw new AppError("Conteúdo não pode ficar vazio", "EMPTY_CONTENT", 400);
+    }
+    if (trimmed.length > 5000) {
+      throw new AppError("Conteúdo excede 5000 caracteres", "CONTENT_TOO_LONG", 400);
+    }
+    params.push(trimmed);
+    sets.push(`content = $${params.length}`);
+  }
+  if (patch.category !== undefined) {
+    params.push(patch.category || null);
+    sets.push(`category = $${params.length}`);
+  }
+  if (patch.title !== undefined) {
+    params.push(patch.title || null);
+    sets.push(`title = $${params.length}`);
+  }
+  if (sets.length === 0) {
+    return { post_id: postId, updated: false };
+  }
+  sets.push(`updated_at = NOW()`);
+  params.push(postId);
+  await query(`UPDATE posts SET ${sets.join(", ")} WHERE id = $${params.length}`, params);
+  trackEvent(userId, "post_edited", { post_id: postId });
+  return { post_id: postId, updated: true };
+}
+
+export async function deletePost(
+  postId: number,
+  userId: number,
+  isModeratorPlus: boolean,
+) {
+  const { rows: existing } = await query(
+    `SELECT id, user_id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
+    [postId],
+  );
+  if (existing.length === 0) {
+    throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
+  }
+  if (existing[0].user_id !== userId && !isModeratorPlus) {
+    throw new AppError("Sem permissão", "FORBIDDEN", 403);
+  }
+  await query(`UPDATE posts SET is_hidden = TRUE, updated_at = NOW() WHERE id = $1`, [postId]);
+  trackEvent(userId, "post_deleted", { post_id: postId, by_moderator: existing[0].user_id !== userId });
+  return { post_id: postId, deleted: true };
+}
+
+// Task #93 — Salvar/Desalvar post (toggle). Idempotente.
+export async function setPostSaved(postId: number, userId: number, saved: boolean) {
+  const { rows: postCheck } = await query(
+    `SELECT id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
+    [postId],
+  );
+  if (postCheck.length === 0) {
+    throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
+  }
+  if (saved) {
+    await query(
+      `INSERT INTO post_saves (user_id, post_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [userId, postId],
+    );
+  } else {
+    await query(`DELETE FROM post_saves WHERE user_id = $1 AND post_id = $2`, [userId, postId]);
+  }
+  return { post_id: postId, is_saved: saved };
+}
+
+export async function getUserSavedPosts(viewerId: number, page = 1, limit = 20) {
+  const offset = (page - 1) * limit;
+  const { rows: countRows } = await query(
+    `SELECT COUNT(*) AS total
+     FROM post_saves s
+     JOIN posts p ON p.id = s.post_id
+     WHERE s.user_id = $1 AND p.is_hidden = FALSE`,
+    [viewerId],
+  );
+  const total = parseInt(countRows[0].total);
+
+  const { rows } = await query(
+    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned, p.images,
+       p.like_count, p.comment_count, p.share_count, p.created_at,
+       u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
+       f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon,
+       EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $1) AS user_liked
+     FROM post_saves s
+     JOIN posts p ON p.id = s.post_id
+     JOIN users u ON u.id = p.user_id
+     JOIN forums f ON f.id = p.forum_id
+     WHERE s.user_id = $1 AND p.is_hidden = FALSE
+     ORDER BY s.created_at DESC
+     LIMIT $2 OFFSET $3`,
+    [viewerId, limit, offset],
+  );
+  const posts = await hydratePostsRows(rows, viewerId);
+  return { posts, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
 export async function togglePostLike(postId: number, userId: number) {
@@ -427,7 +561,7 @@ export async function getTrendingPosts(opts: {
      LIMIT $1`,
     params,
   );
-  const posts = await hydratePostsRows(rows);
+  const posts = await hydratePostsRows(rows, opts.userId);
   return { posts };
 }
 
@@ -489,7 +623,7 @@ export async function getUserPosts(targetUserId: number, viewerId?: number, page
     params,
   );
 
-  const posts = await hydratePostsRows(rows);
+  const posts = await hydratePostsRows(rows, viewerId);
   return { posts, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 

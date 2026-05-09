@@ -1,4 +1,8 @@
-import { Heart, MessageCircle, Share2, MoreHorizontal, Plus, TrendingUp, Users, Clock, Pin, Send, Search, Sparkles, Trophy, UserPlus, ChevronRight, CheckCircle, Lock, Globe, Mail, Image as ImageIcon, Video, Smile } from "lucide-react";
+import { Heart, MessageCircle, Share2, MoreHorizontal, Plus, TrendingUp, Users, Clock, Pin, Send, Search, Sparkles, Trophy, UserPlus, ChevronRight, CheckCircle, Lock, Globe, Mail, Image as ImageIcon, Video, Smile, Bookmark, BookmarkCheck, Pencil, Trash2, X } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
+import { MobileSearchPage } from "./MobileSearchPage";
+import { userHasRole } from "./AuthContext";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -62,6 +66,10 @@ export function ComunidadePage() {
   const [newComment, setNewComment] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
+  // Task #93 — modal de edição reusa o CreatePostModal com `editingPost`.
+  const [editingPost, setEditingPost] = useState<any>(null);
+  // Task #93 — barra de busca clicável abre a MobileSearchPage existente.
+  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentView, setCurrentView] = useState<"feed" | "grupos" | "trending" | "conversas">("feed");
   // Task #92 — Community detail page por slug. Quando setado, sobrepõe
@@ -207,18 +215,19 @@ export function ComunidadePage() {
   }, [loadForums]);
 
   // Task #92 — "Em alta" puxa do servidor (likes+comments 48h).
+  const loadTrendingPosts = useCallback(async () => {
+    setTrendingLoading(true);
+    try {
+      const res = await api.get<{ posts: any[] }>("/api/community/posts/trending?limit=20");
+      if (res.success) setTrendingPosts(res.data?.posts ?? []);
+    } finally {
+      setTrendingLoading(false);
+    }
+  }, []);
   useEffect(() => {
     if (currentView !== "trending") return;
-    let cancelled = false;
-    setTrendingLoading(true);
-    api.get<{ posts: any[] }>("/api/community/posts/trending?limit=20")
-      .then((res) => {
-        if (cancelled) return;
-        if (res.success) setTrendingPosts(res.data?.posts ?? []);
-      })
-      .finally(() => { if (!cancelled) setTrendingLoading(false); });
-    return () => { cancelled = true; };
-  }, [currentView]);
+    void loadTrendingPosts();
+  }, [currentView, loadTrendingPosts]);
 
   const loadPostComments = useCallback(async (postId: number) => {
     setLoadingComments(true);
@@ -435,98 +444,58 @@ export function ComunidadePage() {
           </div>
         </div>
 
-        {/* COMPOSER (Facebook-style) — only on Feed view */}
-        {currentView === "feed" && (
-          <section
-            style={{
-              background: 'var(--rayo-sand-50)',
-              borderBottom: '1px solid var(--rayo-sand-300)',
-            }}
-          >
-            <div className="max-w-7xl mx-auto px-6 py-4">
-              <div
-                className="max-w-2xl mx-auto ra-card"
-                style={{ padding: 14 }}
+        {/* Task #93 — Header limpo: barra de busca clicável + botão "+"
+            substituem o composer "No que pensando" e as pílulas flutuantes
+            do MobileTopBar. Visível em todas as views da Comunidade. */}
+        <section
+          style={{
+            background: 'var(--rayo-sand-50)',
+            borderBottom: '1px solid var(--rayo-sand-300)',
+          }}
+        >
+          <div className="max-w-7xl mx-auto px-6 py-3">
+            <div className="max-w-2xl mx-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="flex-1 flex items-center gap-3 text-left transition-colors"
+                style={{
+                  height: 44,
+                  padding: '0 16px',
+                  borderRadius: 999,
+                  background: 'var(--rayo-sand-100)',
+                  border: '1px solid var(--rayo-sand-300)',
+                  color: 'var(--rayo-ink-400)',
+                  fontSize: 15,
+                  cursor: 'pointer',
+                }}
+                aria-label="Buscar na comunidade"
               >
-                <div className="flex items-center gap-3">
-                  {/* Avatar */}
-                  {authUser?.avatar_url ? (
-                    <img
-                      src={authUser.avatar_url}
-                      alt={authUser.name}
-                      className="flex-shrink-0"
-                      style={{
-                        width: 44, height: 44, borderRadius: '50%',
-                        objectFit: 'cover',
-                        border: '1px solid var(--rayo-sand-300)',
-                      }}
-                    />
-                  ) : (
-                    <span
-                      className="ra-disc-avatar terra flex-shrink-0"
-                      style={{ width: 44, height: 44 }}
-                    >
-                      {(authUser?.name || 'R').trim().charAt(0).toUpperCase()}
-                    </span>
-                  )}
-
-                  {/* Read-only input que abre o modal */}
-                  <button
-                    type="button"
-                    onClick={() => setShowCreatePost(true)}
-                    className="flex-1 text-left transition-colors"
-                    style={{
-                      height: 44,
-                      padding: '0 18px',
-                      borderRadius: 999,
-                      background: 'var(--rayo-sand-100)',
-                      border: '1px solid var(--rayo-sand-300)',
-                      color: 'var(--rayo-ink-400)',
-                      fontFamily: 'inherit',
-                      fontSize: 15,
-                      cursor: 'pointer',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--rayo-sand-50)';
-                      e.currentTarget.style.borderColor = 'var(--rayo-terra-500)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'var(--rayo-sand-100)';
-                      e.currentTarget.style.borderColor = 'var(--rayo-sand-300)';
-                    }}
-                  >
-                    No que você está pensando, {(authUser?.name || '').split(' ')[0] || 'amigo'}?
-                  </button>
-
-                  {/* Ações rápidas */}
-                  <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
-                    <button
-                      type="button"
-                      className="ra-action"
-                      aria-label="Adicionar foto"
-                      title="Foto"
-                      onClick={() => setShowCreatePost(true)}
-                      style={{ color: 'var(--rayo-sage-500)' }}
-                    >
-                      <ImageIcon className="w-5 h-5" />
-                    </button>
-                    {/* Task #92 — vídeo é proibido em posts da comunidade. */}
-                    <button
-                      type="button"
-                      className="ra-action"
-                      aria-label="Sentimento"
-                      title="Sentimento"
-                      onClick={() => setShowCreatePost(true)}
-                      style={{ color: 'var(--rayo-ochre-500)' }}
-                    >
-                      <Smile className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+                <Search className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">Buscar comunidades, posts, pessoas…</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCreatePost(true)}
+                className="flex-shrink-0 flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 999,
+                  background: 'var(--rayo-terra-500)',
+                  color: '#fff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(200,85,61,0.25)',
+                }}
+                aria-label="Criar publicação"
+                title="Criar publicação"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
             </div>
-          </section>
-        )}
+          </div>
+        </section>
 
         {/* MAIN CONTENT */}
         <div className="max-w-7xl mx-auto px-6 py-8">
@@ -545,6 +514,8 @@ export function ComunidadePage() {
                 setShowShare(true);
               }}
               trendingTopics={trendingTopics}
+              onMutated={loadPosts}
+              onEdit={(p) => setEditingPost(p)}
             />
           )}
 
@@ -573,6 +544,8 @@ export function ComunidadePage() {
                 setSelectedPost(post);
                 setShowShare(true);
               }}
+              onMutated={loadTrendingPosts}
+              onEdit={(p) => setEditingPost(p)}
             />
           )}
 
@@ -596,9 +569,22 @@ export function ComunidadePage() {
         )}
 
         {/* Create Post Modal */}
-        {showCreatePost && (
-          <CreatePostModal open={showCreatePost} onOpenChange={setShowCreatePost} currentPage="comunidade" />
+        {(showCreatePost || editingPost) && (
+          <CreatePostModal
+            open={showCreatePost || !!editingPost}
+            onOpenChange={(open) => {
+              setShowCreatePost(open);
+              if (!open) setEditingPost(null);
+            }}
+            currentPage="comunidade"
+            editingPost={editingPost}
+          />
         )}
+        <MobileSearchPage
+          open={searchOpen}
+          onClose={() => setSearchOpen(false)}
+          onTabChange={() => setSearchOpen(false)}
+        />
       </div>
     </PullToRefresh>
   );
@@ -612,9 +598,11 @@ interface FeedViewProps {
   onComment: (post: any) => void;
   onShare: (post: any) => void;
   trendingTopics: any[];
+  onMutated?: () => void;
+  onEdit?: (post: any) => void;
 }
 
-function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopics }: FeedViewProps) {
+function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopics, onMutated, onEdit }: FeedViewProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Main Feed */}
@@ -649,6 +637,8 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
             onReact={onReact}
             onComment={() => onComment(post)}
             onShare={() => onShare(post)}
+            onMutated={onMutated}
+            onEdit={onEdit}
           />
         ))}
       </div>
@@ -985,9 +975,11 @@ interface TrendingViewProps {
   onReact: (postId: number, emoji: string) => void;
   onComment: (post: any) => void;
   onShare: (post: any) => void;
+  onMutated?: () => void;
+  onEdit?: (post: any) => void;
 }
 
-function TrendingView({ posts, loading, reactions, onReact, onComment, onShare }: TrendingViewProps) {
+function TrendingView({ posts, loading, reactions, onReact, onComment, onShare, onMutated, onEdit }: TrendingViewProps) {
   return (
     <div className="space-y-6">
       <div 
@@ -1028,6 +1020,8 @@ function TrendingView({ posts, loading, reactions, onReact, onComment, onShare }
               onReact={onReact}
               onComment={() => onComment(post)}
               onShare={() => onShare(post)}
+              onMutated={onMutated}
+              onEdit={onEdit}
             />
           ))}
         </div>
@@ -1045,10 +1039,68 @@ interface PostCardProps {
   onReact: (postId: number, emoji: string) => void;
   onComment: () => void;
   onShare: () => void;
+  // Task #93 — recarregar lista após delete; abrir modal de edição.
+  onMutated?: () => void;
+  onEdit?: (post: any) => void;
 }
 
-function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProps) {
+function PostCard({ post, reactions, onReact, onComment, onShare, onMutated, onEdit }: PostCardProps) {
   const { likePost } = useApp();
+  const { user: viewer } = useAuth();
+  const isAuthor = !!(viewer && post.author_id && viewer.id === post.author_id);
+  const isModeratorPlus = userHasRole(viewer, "moderator");
+  const canEdit = isAuthor;
+  const canDelete = isAuthor || isModeratorPlus;
+  const [savedLocal, setSavedLocal] = useState<boolean>(!!post.is_saved);
+  useEffect(() => { setSavedLocal(!!post.is_saved); }, [post.is_saved]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const handleToggleSave = async () => {
+    if (busy) return;
+    const next = !savedLocal;
+    setSavedLocal(next);
+    setBusy(true);
+    const res = await api.post<{ saved: boolean }>(`/api/community/posts/${post.id}/save`, { saved: next });
+    setBusy(false);
+    if (!res.success) {
+      setSavedLocal(!next);
+      enhancedToast.error({ title: "Falha ao salvar", description: res.error?.message || "Tente novamente", haptic: true });
+      return;
+    }
+    enhancedToast.success({
+      title: next ? "Salvo" : "Removido dos salvos",
+      description: next ? "Você pode encontrá-lo na aba Salvos do seu perfil." : "",
+      haptic: true,
+    });
+  };
+
+  const handleShare = async () => {
+    onShare();
+    try {
+      const url = `${window.location.origin}/?post=${post.id}`;
+      if (navigator.share) {
+        await navigator.share({ title: post.author ? `Post de ${post.author}` : "RAYO", text: post.content?.slice(0, 120) || "", url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        enhancedToast.success({ title: "Link copiado", description: "Compartilhe com quem quiser.", haptic: true });
+      }
+    } catch { /* user cancelled */ }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (busy) return;
+    setBusy(true);
+    const res = await api.delete<{ ok: boolean }>(`/api/community/posts/${post.id}`);
+    setBusy(false);
+    setConfirmDelete(false);
+    if (!res.success) {
+      enhancedToast.error({ title: "Falha ao excluir", description: res.error?.message || "Tente novamente", haptic: true });
+      return;
+    }
+    enhancedToast.success({ title: "Publicação excluída", description: "", haptic: true });
+    onMutated?.();
+  };
 
   return (
     <div className="ra-card ra-card-hover">
@@ -1122,15 +1174,63 @@ function PostCard({ post, reactions, onReact, onComment, onShare }: PostCardProp
               </div>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-8 w-8"
-            style={{ color: 'var(--rayo-ink-400)' }}
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                style={{ color: 'var(--rayo-ink-400)' }}
+                aria-label="Mais ações"
+              >
+                <MoreHorizontal className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={handleToggleSave} disabled={busy}>
+                {savedLocal ? <BookmarkCheck className="w-4 h-4 mr-2" /> : <Bookmark className="w-4 h-4 mr-2" />}
+                {savedLocal ? "Remover dos salvos" : "Salvar"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleShare}>
+                <Share2 className="w-4 h-4 mr-2" />
+                Compartilhar
+              </DropdownMenuItem>
+              {(canEdit || canDelete) && <DropdownMenuSeparator />}
+              {canEdit && (
+                <DropdownMenuItem onClick={() => onEdit?.(post)}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar
+                </DropdownMenuItem>
+              )}
+              {canDelete && (
+                <DropdownMenuItem
+                  onClick={() => setConfirmDelete(true)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir{!isAuthor && isModeratorPlus ? " (mod)" : ""}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+
+        <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir publicação?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação não pode ser desfeita. A publicação será removida do feed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmDelete} disabled={busy}>
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Content */}
         <p 
@@ -1475,7 +1575,7 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
           )}
         </div>
 
-        <div className="p-4 border-t flex items-center gap-2" style={{ borderColor: 'var(--rayo-sand-300)' }}>
+        <div className="p-4 border-t flex flex-shrink-0 items-center gap-2" style={{ borderColor: 'var(--rayo-sand-300)' }}>
           <Input
             placeholder="Escreva um comentário..."
             value={commentText}

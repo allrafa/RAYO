@@ -15,6 +15,10 @@ import {
   getForumPosts,
   getAllPosts,
   createPost,
+  updatePost,
+  deletePost,
+  setPostSaved,
+  getUserSavedPosts,
   getPostDetail,
   togglePostLike,
   addComment,
@@ -334,6 +338,79 @@ router.get("/posts/:id", async (req, res, next) => {
       sendError(res, err.message, err.code, err.statusCode);
       return;
     }
+    next(err);
+  }
+});
+
+// Task #93 — autor edita conteúdo/categoria/título do próprio post.
+router.patch("/posts/:id", requireAuth, async (req, res, next) => {
+  try {
+    const postId = parseInt(req.params.id, 10);
+    if (isNaN(postId) || postId < 1) {
+      sendError(res, "ID de post inválido", "INVALID_POST_ID", 400);
+      return;
+    }
+    const { content, category, title } = req.body || {};
+    const result = await updatePost(postId, req.user!.id, { content, category, title });
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+// Task #93 — soft delete (autor OU moderador+).
+router.delete("/posts/:id", requireAuth, async (req, res, next) => {
+  try {
+    const postId = parseInt(req.params.id, 10);
+    if (isNaN(postId) || postId < 1) {
+      sendError(res, "ID de post inválido", "INVALID_POST_ID", 400);
+      return;
+    }
+    const role = req.user?.role || "client";
+    const isModeratorPlus = role === "moderator" || role === "admin";
+    const result = await deletePost(postId, req.user!.id, isModeratorPlus);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+// Task #93 — Salvar/Desalvar post. Toggle via body `{saved:bool}`.
+router.post("/posts/:id/save", requireAuth, async (req, res, next) => {
+  try {
+    const postId = parseInt(req.params.id, 10);
+    if (isNaN(postId) || postId < 1) {
+      sendError(res, "ID de post inválido", "INVALID_POST_ID", 400);
+      return;
+    }
+    const saved = req.body?.saved !== false;
+    const result = await setPostSaved(postId, req.user!.id, saved);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+// Task #93 — posts salvos do viewer (só do próprio usuário, privado).
+router.get("/users/me/saved", requireAuth, async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 20, 50));
+    const result = await getUserSavedPosts(req.user!.id, page, limit);
+    success(res, result);
+  } catch (err) {
     next(err);
   }
 });

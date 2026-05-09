@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { api } from "../lib/api";
 import { useAuth } from "./AuthContext";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { Heart, MessageCircle, UserPlus, UserCheck, X, Award } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, UserCheck, X, Award, Bookmark } from "lucide-react";
 import { enhancedToast } from "./EnhancedToast";
 
 // Task #92 — Perfil público estilo Reddit. Carrega karma, posts,
@@ -116,6 +116,9 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
   const [comments, setComments] = useState<UserComment[]>([]);
   const [communities, setCommunities] = useState<UserCommunity[]>([]);
   const [badges, setBadges] = useState<UserBadge[]>([]);
+  // Task #93 — aba "Salvos" só carrega quando isSelf abre a tab.
+  const [savedPosts, setSavedPosts] = useState<UserPost[] | null>(null);
+  const [savedLoading, setSavedLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
@@ -149,6 +152,24 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
   useEffect(() => {
     void loadAll();
   }, [loadAll]);
+
+  const loadSaved = useCallback(async () => {
+    if (!isSelf) return;
+    setSavedLoading(true);
+    try {
+      const res = await api.get<{ posts: UserPost[] }>(`/api/community/users/me/saved?limit=20`);
+      if (res.success && res.data) setSavedPosts(res.data.posts);
+      else setSavedPosts([]);
+    } finally {
+      setSavedLoading(false);
+    }
+  }, [isSelf]);
+
+  const handleTabChange = (value: string) => {
+    if (value === "saved" && isSelf && savedPosts === null && !savedLoading) {
+      void loadSaved();
+    }
+  };
 
   const onToggleFollow = async () => {
     if (!follow || followBusy || isSelf) return;
@@ -299,14 +320,59 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="posts" className="px-3 pt-3 pb-5">
-        <TabsList className="grid grid-cols-5 w-full">
+      <Tabs defaultValue="posts" className="px-3 pt-3 pb-5" onValueChange={handleTabChange}>
+        <TabsList className={`grid w-full ${isSelf ? "grid-cols-6" : "grid-cols-5"}`}>
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="comments">Comentários</TabsTrigger>
           <TabsTrigger value="communities">Comunidades</TabsTrigger>
           <TabsTrigger value="achievements">Conquistas</TabsTrigger>
+          {isSelf && (
+            <TabsTrigger value="saved" className="flex items-center gap-1">
+              <Bookmark className="w-3 h-3" />
+              Salvos
+            </TabsTrigger>
+          )}
           <TabsTrigger value="about">Sobre</TabsTrigger>
         </TabsList>
+
+        {isSelf && (
+          <TabsContent value="saved" className="mt-3 space-y-2">
+            {savedLoading ? (
+              <p className="text-sm text-muted-foreground p-4 text-center">Carregando…</p>
+            ) : !savedPosts || savedPosts.length === 0 ? (
+              <p className="text-sm text-muted-foreground p-4 text-center">
+                Você ainda não salvou nenhuma publicação. Use o menu “…” em qualquer post para salvar.
+              </p>
+            ) : (
+              savedPosts.map((p) => (
+                <div
+                  key={p.id}
+                  className="rounded-lg p-3 text-sm"
+                  style={{ background: "var(--rayo-sand-100)", border: "1px solid var(--rayo-sand-300)" }}
+                >
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1">
+                    {p.forum_slug && (
+                      <button
+                        type="button"
+                        onClick={() => openCommunity(p.forum_slug!)}
+                        className="hover:underline"
+                        style={{ color: "var(--rayo-terra-500)", fontWeight: 600 }}
+                      >
+                        c/{p.forum_slug}
+                      </button>
+                    )}
+                    <span>· {formatRelative(p.created_at)}</span>
+                  </div>
+                  <p className="line-clamp-3" style={{ color: "var(--rayo-forest-900)" }}>{p.content}</p>
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-2">
+                    <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{p.like_count}</span>
+                    <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{p.comment_count}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </TabsContent>
+        )}
 
         <TabsContent value="posts" className="mt-3 space-y-2">
           {posts.length === 0 ? (

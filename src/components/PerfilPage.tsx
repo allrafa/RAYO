@@ -587,15 +587,14 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                 />
               </div>
             )}
-            {/* Header com Avatar e Info */}
-            <div 
-              className="relative lg:rounded-2xl overflow-hidden"
-              style={{ 
-                background: theme === 'dark' 
-                  ? 'linear-gradient(135deg, var(--rayo-terra-700) 0%, var(--rayo-terra-500) 100%)'
-                  : 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)'
-              }}
-            >
+            {/* Task #93 — Header gradiente terra, Stats Cards, Earned Badges
+                e "Suas comunidades" foram REMOVIDOS daqui. Tudo isso já é
+                renderizado pelo UserProfilePage embutido acima (avatar,
+                karma, seguidores, segments, tabs Posts/Comentários/
+                Comunidades/Conquistas/Salvos/Sobre). Configurações,
+                Missões, LGPD e Logout continuam abaixo. */}
+            <div className="hidden">
+            <div>
               <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItaDJoLTJ2LTJ6bTAtNHYyaC0ydi0yaDF2LTFoMXptMC00djJoLTJ2LTJoMnptLTQgMHYyaC0ydi0yaDJ6bS00IDB2MmgtMnYtMmgyem0tNCAwdjJoLTJ2LTJoMnptLTQgMHYyaC0ydi0yaDJ6bTAgNHYyaC0ydi0yaDJ6bTAgNHYyaC0ydi0yaDJ6bTQgMHYyaC0ydi0yaDJ6bTQgMHYyaC0ydi0yaDJ6bTQgMHYyaC0ydi0yaDJ6bTQtOHYyaC0ydi0yaDJ6bTAtNHYyaC0ydi0yaDJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30"></div>
               
               <div className="relative pt-12 pb-20 lg:pb-16 px-6">
@@ -871,6 +870,9 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                 )}
               </Card>
             </div>
+
+            </div>
+            {/* fim do bloco oculto Task #93 */}
 
             {/* Task #45 — Missões da semana (consome /api/gamification/missions) */}
             <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
