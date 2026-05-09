@@ -226,7 +226,7 @@ interface AppContextType {
   
   likePost: (postId: number) => void;
   sharePost: (postId: number) => void;
-  createPost: (content: string, category: string, options?: { visibility?: string; images?: string[]; forum_id?: number }) => Promise<boolean>;
+  createPost: (content: string, category: string, options?: { visibility?: string; images?: string[]; forum_id?: number; class_id?: number }) => Promise<boolean>;
   
   // Product functions
   addToCart: (productId: number) => void;
@@ -637,7 +637,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ));
   };
 
-  const createPost = async (content: string, category: string, options?: { visibility?: string; images?: string[]; forum_id?: number }): Promise<boolean> => {
+  const createPost = async (content: string, category: string, options?: { visibility?: string; images?: string[]; forum_id?: number; class_id?: number }): Promise<boolean> => {
     const forumId = options?.forum_id;
     if (!forumId || forumId < 1) {
       enhancedToast.error({
@@ -650,11 +650,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     // Task #92 — `images` é um array de sentinels `objstore://posts/<file>`
     // (já enviado pelo composer via /api/community/posts/attachments).
+    // Task #99 — `class_id` opcional escopa o post a uma turma específica.
     const res = await api.post<{ post: APIPost }>("/api/community/posts", {
       forum_id: forumId,
       content,
       category,
       images: options?.images ?? [],
+      ...(options?.class_id ? { class_id: options.class_id } : {}),
     });
 
     if (res.success && res.data) {

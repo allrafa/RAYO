@@ -5,7 +5,6 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "../ui/dialog";
-import { useApp } from "../AppContext";
 import { toast } from "sonner@2.0.3";
 
 interface JoinInterestModalProps {
@@ -13,6 +12,11 @@ interface JoinInterestModalProps {
   onClose: () => void;
   turmaId: number;
   turmaTitle: string;
+  // Task #99 — modal NÃO depende de AppContext pra poder ser usado
+  // também na landing pública (sem AuthProvider). Quem chama autenticado
+  // passa nome/e-mail pré-preenchidos; visitante anônimo digita.
+  defaultName?: string;
+  defaultEmail?: string;
 }
 
 interface InterestResponse {
@@ -20,10 +24,16 @@ interface InterestResponse {
   courseTitle: string;
 }
 
-export function JoinInterestModal({ open, onClose, turmaId, turmaTitle }: JoinInterestModalProps) {
-  const { userData } = useApp();
-  const [name, setName] = useState(userData?.name || "");
-  const [email, setEmail] = useState(userData?.email || "");
+export function JoinInterestModal({
+  open,
+  onClose,
+  turmaId,
+  turmaTitle,
+  defaultName = "",
+  defaultEmail = "",
+}: JoinInterestModalProps) {
+  const [name, setName] = useState(defaultName);
+  const [email, setEmail] = useState(defaultEmail);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
 

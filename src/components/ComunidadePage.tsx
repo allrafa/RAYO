@@ -1046,7 +1046,9 @@ interface PostCardProps {
   onEdit?: (post: any) => void;
 }
 
-function PostCard({ post, reactions, onReact, onComment, onShare, onMutated, onEdit }: PostCardProps) {
+// Task #99 — exportado pra ser reusado em contextos escopados (ex.:
+// TurmaCommunityTab). Requer AppProvider/AuthProvider no ascendente.
+export function PostCard({ post, reactions, onReact, onComment, onShare, onMutated, onEdit }: PostCardProps) {
   const { likePost } = useApp();
   const { user: viewer } = useAuth();
   const isAuthor = !!(viewer && post.author_id && viewer.id === post.author_id);

@@ -24,6 +24,10 @@ interface CreatePostModalProps {
   currentPage?: string;
   /** Quando passado, pre-seleciona a comunidade no composer. */
   initialForumId?: number;
+  /** Task #99 — quando setado, o post sai escopado nessa turma
+   *  (`class_id`). Usado pelo TurmaCommunityTab para que o feed
+   *  global da Comunidade não veja esses posts. */
+  initialClassId?: number;
   /** Task #93 — quando setado, modal entra em modo edição (PATCH). */
   editingPost?: {
     id: number;
@@ -50,7 +54,7 @@ interface UploadedImage {
   storedUrl: string; // sentinel objstore://posts/<file>
 }
 
-export function CreatePostModal({ open, onOpenChange, currentPage = "home", initialForumId, editingPost }: CreatePostModalProps) {
+export function CreatePostModal({ open, onOpenChange, currentPage = "home", initialForumId, initialClassId, editingPost }: CreatePostModalProps) {
   const { userData, createPost, loadPosts } = useApp();
   const { user } = useAuth();
   const isEditing = !!editingPost;
@@ -342,6 +346,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
           visibility: "comunidade",
           images: uploadedImages.map((i) => i.storedUrl),
           forum_id: selectedForumId,
+          ...(initialClassId ? { class_id: initialClassId } : {}),
         });
       }
       if (ok) {
