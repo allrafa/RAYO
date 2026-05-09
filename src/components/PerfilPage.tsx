@@ -219,7 +219,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     return onScrollTop(() => {
       setOtherProfile(null);
       setOtherProfileError(null);
-    });
+    }, "perfil");
   }, []);
 
   useEffect(() => {

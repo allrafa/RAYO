@@ -406,7 +406,7 @@ export function ConversasPage() {
   useEffect(() => {
     return onScrollTop(() => {
       if (activeIdRef.current != null) setActiveId(null);
-    });
+    }, "conversas");
   }, []);
 
   useEffect(() => {

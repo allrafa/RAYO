@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { onScrollTop } from "../lib/scrollTop";
 import { PullToRefresh } from "./PullToRefresh";
@@ -190,7 +190,7 @@ export function ComunidadePage() {
   useEffect(() => {
     return onScrollTop(() => {
       setActiveCommunitySlug(null);
-    });
+    }, "comunidade");
   }, []);
 
   // Task #92 — deep-link `/c/<slug>`. Recebe via sessionStorage
@@ -1580,6 +1580,13 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
     return () => { document.body.style.overflow = prev; };
   }, []);
 
+  // Task #115 — foco inicial no botão de fechar pra garantir que Esc/Tab
+  // funcionem como esperado num dialog (a11y mínima sem focus-trap completo).
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    closeBtnRef.current?.focus();
+  }, []);
+
   // Esc fecha (a11y).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1650,8 +1657,14 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
           <h3 className="text-[16px]" style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}>
             Comentários ({post.comments})
           </h3>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <MoreHorizontal className="w-5 h-5" style={{ color: 'var(--rayo-ink-400)' }} />
+          <Button
+            ref={closeBtnRef}
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Fechar comentários"
+          >
+            <X className="w-5 h-5" style={{ color: 'var(--rayo-ink-400)' }} />
           </Button>
         </div>
 

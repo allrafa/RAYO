@@ -19,13 +19,20 @@ export function dispatchScrollTop(tab: string) {
   );
 }
 
+// `tab` opcional filtra o evento: o handler só roda quando o re-tap foi
+// na aba pedida. Reduz acoplamento implícito (montagem simultânea) e
+// previne side-effects fora de contexto (ex.: fechar overlay de Perfil
+// quando o re-tap foi em Mensagens).
 export function onScrollTop(
   handler: (detail: ScrollTopDetail) => void,
+  tab?: string,
 ): () => void {
   if (typeof window === "undefined") return () => {};
   const listener = (e: Event) => {
     const detail = (e as CustomEvent<ScrollTopDetail>).detail;
-    if (detail) handler(detail);
+    if (!detail) return;
+    if (tab && detail.tab !== tab) return;
+    handler(detail);
   };
   window.addEventListener(RAYO_SCROLL_TOP, listener);
   return () => window.removeEventListener(RAYO_SCROLL_TOP, listener);
