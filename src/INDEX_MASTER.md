@@ -89,7 +89,6 @@ Se você está começando **AGORA**, leia nesta ordem:
 ### 🍎 APP STORE (Em Progresso 🔄)
 
 **Plano Master:**
-- **[`/APP_STORE_SUBMISSION_PLAN.md`](/APP_STORE_SUBMISSION_PLAN.md)** 📋
   - Plano completo de submissão
   - Assets necessários
   - Metadata completo
@@ -356,11 +355,9 @@ Se você está começando **AGORA**, leia nesta ordem:
 ### "Quero submeter para App Store"
 1. [`/COMECE_AGORA.md`](/COMECE_AGORA.md) ← Comece aqui (4h)
 2. [`/APP_STORE_LAUNCH_CHECKLIST.md`](/APP_STORE_LAUNCH_CHECKLIST.md) ← Checklist completo
-3. [`/APP_STORE_SUBMISSION_PLAN.md`](/APP_STORE_SUBMISSION_PLAN.md) ← Plano detalhado
 
 ### "Quero criar screenshots"
 1. [`/SCREENSHOT_COPY_TEMPLATES.md`](/SCREENSHOT_COPY_TEMPLATES.md) ← Templates
-2. [`/APP_STORE_SUBMISSION_PLAN.md`](/APP_STORE_SUBMISSION_PLAN.md) ← Seção Screenshots
 
 ### "Quero entender a migração feita"
 1. [`/FINAL_SUMMARY.md`](/FINAL_SUMMARY.md) ← Resumo executivo
@@ -372,7 +369,6 @@ Se você está começando **AGORA**, leia nesta ordem:
 2. [`/APP_STORE_LAUNCH_CHECKLIST.md`](/APP_STORE_LAUNCH_CHECKLIST.md) ← Timeline
 
 2. [`/APP_STORE_READINESS.md`](/APP_STORE_READINESS.md) ← Prontidão
-3. [`/APP_STORE_SUBMISSION_PLAN.md`](/APP_STORE_SUBMISSION_PLAN.md) ← Review notes
 
 ---
 
@@ -425,7 +421,6 @@ Se você está começando **AGORA**, leia nesta ordem:
 - [`/design-tokens.ts`](/design-tokens.ts) - TypeScript tokens
 
 ### Para Product/Marketing
-- [`/APP_STORE_SUBMISSION_PLAN.md`](/APP_STORE_SUBMISSION_PLAN.md) - Metadata
 - [`/SCREENSHOT_COPY_TEMPLATES.md`](/SCREENSHOT_COPY_TEMPLATES.md) - Copy
 
 ### Para Gestão
@@ -459,7 +454,6 @@ Se você está começando **AGORA**, leia nesta ordem:
 │   └── COLOR_PALETTE_SUGGESTIONS.md
 │
 ├── 🍎 APP STORE
-│   ├── APP_STORE_SUBMISSION_PLAN.md
 │   ├── APP_STORE_LAUNCH_CHECKLIST.md
 │   ├── SCREENSHOT_COPY_TEMPLATES.md
 │   └── APP_STORE_READINESS.md
@@ -551,7 +545,6 @@ DIAS ATÉ SUBMIT:        7  ⏰
 → Procurar em `/DESIGN_SYSTEM_QUICK_REFERENCE.md`
 
 ### Dúvidas de Processo (App Store)
-→ Ver `/APP_STORE_SUBMISSION_PLAN.md`  
 → Seguir `/APP_STORE_LAUNCH_CHECKLIST.md`
 
 ### Dúvidas de Cronograma

@@ -121,7 +121,6 @@ CONFIANÇA: 90% de aprovação 1ª tentativa
     📈 Social proof
     🎁 Planos
     ```
-  - Usar template de `/APP_STORE_SUBMISSION_PLAN.md`
   - Revisar gramática
   - Testar legibilidade
 
@@ -183,7 +182,6 @@ CONFIANÇA: 90% de aprovação 1ª tentativa
 
 ### Privacy Policy
 - [ ] **3.1** Escrever Privacy Policy (2h)
-  - Usar template de `/APP_STORE_SUBMISSION_PLAN.md`
   - Cobrir:
     ```
     ☐ Dados coletados
@@ -321,7 +319,6 @@ CONFIANÇA: 90% de aprovação 1ª tentativa
 
 ### Documentação
 - [ ] **5.3** Escrever Review Notes (1h)
-  - Usar template de `/APP_STORE_SUBMISSION_PLAN.md`
   - Seções:
     ```
     ☐ Informações técnicas

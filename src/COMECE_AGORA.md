@@ -235,7 +235,6 @@ Você terá os 3 assets mais críticos:
 
 Se precisar de mais detalhes:
 
-1. **`/APP_STORE_SUBMISSION_PLAN.md`**  
    → Plano master completo
 
 2. **`/APP_STORE_LAUNCH_CHECKLIST.md`**  
@@ -383,6 +382,5 @@ Agora é só finalizar! 💪
 
 **Próxima ação**: Abrir Figma/Canva e criar App Icon (1h)  
 **Documento de referência**: `/APP_STORE_LAUNCH_CHECKLIST.md`  
-**Dúvidas**: Revisar `/APP_STORE_SUBMISSION_PLAN.md`
 
 **VAMOS LANÇAR! 🚀**
