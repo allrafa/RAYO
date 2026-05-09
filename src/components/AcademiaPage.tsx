@@ -651,7 +651,7 @@ interface MarketplaceViewProps {
   mostPopularCourses: any[];
   bestRatedCourses: any[];
   filteredCourses: any[];
-  setCurrentCourseId: (id: string) => void;
+  setCurrentCourseId: (id: number | null) => void;
   setIsInCourseDetail: (value: boolean) => void;
   setCurrentBookId: (bookId: string | null) => void;
   setIsInBookDetail: (value: boolean) => void;
@@ -1301,13 +1301,7 @@ function MarketplaceView({
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                       {kindItems.map((it) => {
-                        // Task #128 — cada kind do catálogo precisa abrir
-                        // a página correspondente. Antes da #128 estes
-                        // cards eram <div> mudos: usuário clicava num
-                        // livro/áudio/vídeo/reels/série no Catálogo de
-                        // Turmas e nada acontecia. Agora roteamos por
-                        // kind pro mesmo destino que /api/search já usa
-                        // (ver src/lib/searchNavigate.ts).
+                        // Task #128 — roteia por kind (mesmo contrato de searchNavigate.ts).
                         const handleOpen = () => {
                           switch (selectedKind) {
                             case 'livro':
@@ -1321,9 +1315,8 @@ function MarketplaceView({
                               setIsInVideoPage(true);
                               break;
                             case 'serie':
-                              // Séries são "jornadas em episódios" e
-                              // hoje compartilham a página de curso.
-                              setCurrentCourseId(it.id as unknown as string);
+                              // Séries hoje compartilham CourseDetailPage.
+                              setCurrentCourseId(it.id);
                               setIsInCourseDetail(true);
                               break;
                             default:
