@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useApp } from "./AppContext";
 import { enhancedToast } from "./EnhancedToast";
+import { TrailPaywall } from "./trilhas/TrailPaywall";
 
 interface DetailLesson {
   id: number;
@@ -106,9 +107,35 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
 
   const [modules, setModules] = useState<DetailModule[]>([]);
   const [lessonProgressMap, setLessonProgressMap] = useState<Record<number, string>>({});
+  // Task #137 — status da trilha vinculada (se houver) pra renderizar o
+  // <TrailPaywall> inline em vez de exibir "Matricular" + redirect.
+  const [trailGate, setTrailGate] = useState<{ trail_id: number | null; has_trail_access: boolean } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+
+    // Task #137 — busca o "landing" da turma em paralelo (try/catch
+    // próprio) pra obter trail_id/has_trail_access. Falha aqui NÃO bloqueia
+    // o carregamento dos módulos: gate cai pro fallback "sem trilha", o que
+    // mantém o comportamento legado (mostra Matricular). Erros são logados.
+    (async () => {
+      try {
+        const landingRes = await api.get<{ turma: { trail_id: number | null; has_trail_access: boolean } }>(`/api/turmas/${courseId}/landing`);
+        if (cancelled) return;
+        if (landingRes.success && landingRes.data?.turma) {
+          setTrailGate({
+            trail_id: landingRes.data.turma.trail_id ?? null,
+            has_trail_access: !!landingRes.data.turma.has_trail_access,
+          });
+        } else {
+          setTrailGate({ trail_id: null, has_trail_access: false });
+        }
+      } catch (err) {
+        console.error("[CourseDetail] Failed to load trail gate:", err);
+        if (!cancelled) setTrailGate({ trail_id: null, has_trail_access: false });
+      }
+    })();
+
     (async () => {
       try {
         const detailRes = await api.get<{ course: { modules: APIDetailCourseModule[] } }>(`/api/courses/${courseId}`);
@@ -136,6 +163,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
         console.error("[CourseDetail] Failed to load:", err);
       }
     })();
+
     return () => { cancelled = true; };
   }, [courseId, course.isEnrolled]);
 
@@ -331,6 +359,11 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                           </>
                         )}
                       </Button>
+                    ) : trailGate?.trail_id && !trailGate.has_trail_access ? (
+                      // Task #137 — turma é parte de trilha paga e o viewer
+                      // não tem assinatura ativa: mostramos o <TrailPaywall>
+                      // inline (sem redirect) e ocultamos "Matricular".
+                      <TrailPaywall trailId={trailGate.trail_id} />
                     ) : (
                       <div className="space-y-2">
                         <Button 

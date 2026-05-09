@@ -472,18 +472,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (res.error?.code === "ALREADY_ENROLLED") {
         enhancedToast.info({ title: "Já matriculado", description: "Você já tem acesso a este curso", haptic: true });
       } else if (res.error?.code === "TRAIL_PAYMENT_REQUIRED") {
-        // Task #130 — turma gated por trilha paga: redireciona pra landing
-        // da trilha (com fallback pro catálogo geral). Backend devolve
-        // `trail_slug` no payload do erro.
-        const slug = (res.error as { trail_slug?: string | null }).trail_slug || null;
+        // Task #137 — turma gated por trilha paga: NÃO redirecionamos mais.
+        // CourseDetailPage/TurmaShell renderizam <TrailPaywall> inline na
+        // própria página; aqui só sinalizamos com um toast informativo pra
+        // que o usuário entenda por que o "Matricular" não saiu.
         enhancedToast.info({
-          title: "Trilha paga",
-          description: "Esta turma faz parte de uma trilha paga. Vamos te levar pros planos.",
+          title: "Assinatura necessária",
+          description: "Esta turma faz parte de uma trilha paga. Veja os planos abaixo.",
           haptic: true,
         });
-        if (typeof window !== "undefined") {
-          window.location.href = slug ? `/trilhas/${slug}` : "/trilhas";
-        }
       } else {
         enhancedToast.error({
           title: "Erro ao matricular",
