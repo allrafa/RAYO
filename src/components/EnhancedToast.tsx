@@ -111,6 +111,50 @@ export const enhancedToast = {
     });
   },
 
+  // Task #117 — toast otimista com janela de Undo. Recebe `onConfirm`
+  // (efeito de fato, ex.: chamada DELETE) e `onUndo` (rollback visual).
+  // O toast aparece imediatamente; se o usuário clicar Desfazer dentro
+  // de `duration`, `onUndo` roda e `onConfirm` NUNCA é chamado. Caso
+  // contrário, `onConfirm` roda quando o toast expira.
+  undo: (options: {
+    title: string;
+    description?: string;
+    onConfirm: () => void;
+    onUndo: () => void;
+    duration?: number;
+    haptic?: boolean;
+  }) => {
+    const duration = options.duration ?? 5000;
+    if (options.haptic && 'vibrate' in navigator) {
+      navigator.vibrate(30);
+    }
+    let undone = false;
+    const timer = window.setTimeout(() => {
+      if (!undone) {
+        try { options.onConfirm(); } catch (e) { console.error(e); }
+      }
+    }, duration);
+    return toast.info(options.title, {
+      description: options.description,
+      duration,
+      icon: <Info className="w-5 h-5" />,
+      action: {
+        label: "Desfazer",
+        onClick: () => {
+          undone = true;
+          window.clearTimeout(timer);
+          try { options.onUndo(); } catch (e) { console.error(e); }
+        },
+      },
+      classNames: {
+        toast: "group toast group-[.toaster]:bg-blue-50 group-[.toaster]:text-blue-950 group-[.toaster]:border-blue-200",
+        description: "group-[.toast]:text-blue-800",
+        actionButton: "group-[.toast]:bg-blue-600 group-[.toast]:text-white",
+        cancelButton: "group-[.toast]:bg-blue-100 group-[.toast]:text-blue-900",
+      },
+    });
+  },
+
   promise: <T,>(
     promise: Promise<T>,
     options: {

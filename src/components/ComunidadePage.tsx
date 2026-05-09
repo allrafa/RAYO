@@ -14,6 +14,9 @@ import { Label } from "./ui/label";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { onScrollTop } from "../lib/scrollTop";
+import { useScrollRestore } from "../lib/scrollRestore";
+import { useAutofocusOnDesktop } from "../lib/useAutofocusOnDesktop";
+import { DiscardDraftDialog } from "./DiscardDraftDialog";
 import { PullToRefresh } from "./PullToRefresh";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { EmptyStateError, EmptyStateNoCommunity } from "./EmptyState";
@@ -79,6 +82,11 @@ export function ComunidadePage() {
   // Task #92 — Community detail page por slug. Quando setado, sobrepõe
   // tudo (header de tabs + composer escondidos) e renderiza CommunityDetailPage.
   const [activeCommunitySlug, setActiveCommunitySlug] = useState<string | null>(null);
+
+  // Task #117 — restaura scrollY do feed quando o usuário fecha o painel
+  // de comentários OU sai da página de uma comunidade. Sem isso ele cai
+  // no topo da lista e perde o contexto de onde estava.
+  useScrollRestore("comunidade-feed", showComments || !!activeCommunitySlug);
   
   const { posts, likePost, sharePost, loadPosts } = useApp();
   const { user: authUser } = useAuth();
@@ -1423,14 +1431,16 @@ function GroupCard({ group }: GroupCardProps) {
     setMembers(Number(group.members) || 0);
   }, [group.isJoined, group.members]);
 
-  const handleJoinGroup = async () => {
-    if (busy || !group.slug) return;
-    const next = !isJoined;
-    setBusy(true);
-    setIsJoined(next);
-    setMembers((m) => Math.max(0, m + (next ? 1 : -1)));
+  // Task #117 — Token de cancelamento pra leave-undo. Se o usuário re-entra
+  // dentro da janela de 5s, invalidamos o token e o `onConfirm` pendente
+  // do toast vira no-op. Sem isso, o DELETE atrasado dispara DEPOIS do
+  // novo POST e a inscrição some silenciosamente.
+  const pendingLeaveTokenRef = useRef(0);
+
+  const callSubscribe = useCallback(async (subscribe: boolean): Promise<boolean> => {
+    if (!group.slug) return false;
     try {
-      const res = next
+      const res = subscribe
         ? await api.post<{ subscribed: boolean; member_count: number }>(
             `/api/community/forums/by-slug/${encodeURIComponent(group.slug)}/subscribe`,
             { subscribed: true },
@@ -1442,18 +1452,57 @@ function GroupCard({ group }: GroupCardProps) {
       if (typeof res.data?.member_count === "number") {
         setMembers(res.data.member_count);
       }
-      enhancedToast.success({
-        title: next ? "Você entrou no grupo! 🎉" : "Você saiu do grupo",
-        description: next ? `Bem-vindo ao grupo "${group.name}"` : `Você não faz mais parte de "${group.name}"`,
-        haptic: true,
-      });
+      return true;
     } catch (err: any) {
-      // Reverte otimismo em caso de erro.
-      setIsJoined(!next);
-      setMembers((m) => Math.max(0, m + (next ? -1 : 1)));
+      // Reverte otimismo em caso de erro real do servidor.
+      setIsJoined(!subscribe);
+      setMembers((m) => Math.max(0, m + (subscribe ? -1 : 1)));
       enhancedToast.error({ title: "Não foi possível atualizar a inscrição", description: err?.message });
-    } finally {
+      return false;
+    }
+  }, [group.slug]);
+
+  const handleJoinGroup = async () => {
+    if (busy || !group.slug) return;
+    const next = !isJoined;
+    // Otimismo visual imediato em ambos os fluxos.
+    setIsJoined(next);
+    setMembers((m) => Math.max(0, m + (next ? 1 : -1)));
+    if (next) {
+      // Entrar: invalida qualquer leave pendente — se o usuário saiu há
+      // < 5s e clicou pra re-entrar, o DELETE atrasado é cancelado.
+      pendingLeaveTokenRef.current += 1;
+      setBusy(true);
+      const ok = await callSubscribe(true);
       setBusy(false);
+      if (ok) {
+        enhancedToast.success({
+          title: "Você entrou no grupo! 🎉",
+          description: `Bem-vindo ao grupo "${group.name}"`,
+          haptic: true,
+        });
+      }
+    } else {
+      // Task #117 — Sair: janela de Undo de 5s. UI já refletiu a saída;
+      // só chamamos DELETE quando o toast expira sem Desfazer.
+      pendingLeaveTokenRef.current += 1;
+      const myToken = pendingLeaveTokenRef.current;
+      enhancedToast.undo({
+        title: "Você saiu do grupo",
+        description: `Você não faz mais parte de "${group.name}"`,
+        haptic: true,
+        onConfirm: () => {
+          // Token mudou = usuário re-entrou ou disparou outra ação;
+          // ignoramos esse confirm pra não desfazer o re-join.
+          if (pendingLeaveTokenRef.current !== myToken) return;
+          void callSubscribe(false);
+        },
+        onUndo: () => {
+          pendingLeaveTokenRef.current += 1;
+          setIsJoined(true);
+          setMembers((m) => m + 1);
+        },
+      });
     }
   };
 
@@ -1572,6 +1621,12 @@ interface CommentsPanelProps {
 function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComment, onLikeComment, highlightCommentId }: CommentsPanelProps) {
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Task #117 — confirma descarte se houver rascunho não enviado.
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const requestClose = useCallback(() => {
+    if (commentText.trim().length > 0) setConfirmDiscard(true);
+    else onClose();
+  }, [commentText, onClose]);
 
   // Task #115 — body-scroll-lock enquanto o painel está aberto. Sem isso a
   // página de fundo rola atrás do overlay no mobile e os 80vh de altura
@@ -1600,7 +1655,7 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
   // dialog está aberto.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { onClose(); return; }
+      if (e.key === "Escape") { requestClose(); return; }
       if (e.key !== "Tab" || !sheetRef.current) return;
       const focusables = sheetRef.current.querySelectorAll<HTMLElement>(
         'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
@@ -1614,7 +1669,7 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [requestClose]);
 
   // Task #115 — swipe-down pra fechar o sheet no mobile. Arrasta a partir
   // do header (não da lista de comentários, que precisa rolar). Threshold:
@@ -1636,7 +1691,7 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
     const dt = Math.max(1, Date.now() - dragStateRef.current.startT);
     const velocity = dy / dt;
     dragStateRef.current = null;
-    if (dy > 80 || velocity > 0.5) onClose();
+    if (dy > 80 || velocity > 0.5) requestClose();
     else setDragY(0);
   };
 
@@ -1691,7 +1746,7 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
       role="dialog"
       aria-modal="true"
       aria-label="Comentários"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) requestClose(); }}
     >
       <div
         ref={sheetRef}
@@ -1716,12 +1771,18 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
             ref={closeBtnRef}
             variant="ghost"
             size="icon"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Fechar comentários"
           >
             <X className="w-5 h-5" style={{ color: 'var(--rayo-ink-400)' }} />
           </Button>
         </div>
+        <DiscardDraftDialog
+          open={confirmDiscard}
+          onOpenChange={setConfirmDiscard}
+          onConfirm={() => { setConfirmDiscard(false); setCommentText(""); onClose(); }}
+          description="Você tem um comentário em rascunho. Se sair agora, vai perdê-lo."
+        />
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {loadingComments ? (

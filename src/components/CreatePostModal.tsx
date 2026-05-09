@@ -10,6 +10,8 @@ import { useApp } from "./AppContext";
 import { useAuth } from "./AuthContext";
 import { enhancedToast } from "./EnhancedToast";
 import { api } from "../lib/api";
+import { useAutofocusOnDesktop } from "../lib/useAutofocusOnDesktop";
+import { DiscardDraftDialog } from "./DiscardDraftDialog";
 
 interface ForumOption {
   id: number;
@@ -66,6 +68,11 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
   const [uploadProgress, setUploadProgress] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  // Task #117 — confirmação de descarte se houver rascunho não publicado.
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  // Task #117 — auto-focus no textarea ao abrir no desktop (pointer:fine).
+  useAutofocusOnDesktop(textareaRef, open);
   const [forumOptions, setForumOptions] = useState<ForumOption[]>([]);
   const [selectedForumId, setSelectedForumId] = useState<number | null>(
     editingPost?.forum_id ?? initialForumId ?? null,
@@ -369,12 +376,39 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
     }
   };
 
+  // Task #117 — só consideramos rascunho o que o usuário acrescentou
+  // nesta sessão do modal: texto novo (em modo edição compara com o
+  // original) ou novas imagens carregadas. Mudar categoria/comunidade
+  // sozinho não dispara confirmação.
+  const hasDraft = (() => {
+    const baseContent = editingPost?.content || "";
+    const contentChanged = content.trim() !== baseContent.trim();
+    return uploadingCount > 0 || uploadedImages.length > 0 || contentChanged;
+  })();
+
+  const doClose = () => {
+    setConfirmDiscard(false);
+    setContent("");
+    setUploadedImages([]);
+    onOpenChange(false);
+  };
+
   const handleClose = () => {
+    if (hasDraft && !isSubmitting) {
+      setConfirmDiscard(true);
+      return;
+    }
     onOpenChange(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(true); }}>
+      <DiscardDraftDialog
+        open={confirmDiscard}
+        onOpenChange={setConfirmDiscard}
+        onConfirm={doClose}
+        description="Você escreveu ou carregou imagens que ainda não foram publicadas. Sair agora descarta tudo."
+      />
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0 pb-4">
           <DialogTitle className="flex items-center gap-3 text-xl">
@@ -434,6 +468,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
           {/* Texto */}
           <div className="space-y-3">
             <Textarea
+              ref={textareaRef}
               placeholder="Compartilhe suas experiências e momentos especiais…"
               value={content}
               onChange={(e) => setContent(e.target.value)}

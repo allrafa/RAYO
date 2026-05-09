@@ -61,14 +61,23 @@ export function MobileSearchPage({ open, onClose, onTabChange }: Props) {
   const [recents, setRecents] = useState<string[]>(loadRecents);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Task #117 — restaura scrollY de quem abriu a busca. Sem isso a página
+  // de fundo pula pro topo quando o overlay fecha, porque travamos
+  // overflow do <body> enquanto o overlay está aberto.
+  const savedScrollRef = useRef<number>(0);
   useEffect(() => {
     if (open) {
+      savedScrollRef.current = window.scrollY;
       setTimeout(() => inputRef.current?.focus(), 50);
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
       setQ("");
       setResults([]);
+      const y = savedScrollRef.current;
+      if (y > 0) {
+        requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
+      }
     }
     return () => {
       document.body.style.overflow = "";
