@@ -15,7 +15,20 @@ export type MessageStreamEvent =
   | { type: "message:read"; payload: MessageReadPayload }
   | { type: "unread:changed"; payload: UnreadChangedPayload }
   | { type: "typing"; payload: TypingPayload }
+  | { type: "notification:new"; payload: NotificationPayload }
+  | { type: "notification:unread"; payload: { unread: number } }
   | { type: "connected"; payload: Record<string, never> };
+
+export interface NotificationPayload {
+  id: number;
+  kind: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  payload: Record<string, unknown>;
+  read_at: string | null;
+  created_at: string;
+}
 
 export interface TypingPayload {
   conversation_id: number;
@@ -178,11 +191,32 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
         if (mountedRef.current) setStreamConnected(false);
       };
 
+      const handleNotificationNew = (e: MessageEvent) => {
+        if (!mountedRef.current) return;
+        try {
+          const data = JSON.parse(e.data) as NotificationPayload;
+          broadcast({ type: "notification:new", payload: data });
+        } catch {
+          /* ignore */
+        }
+      };
+      const handleNotificationUnread = (e: MessageEvent) => {
+        if (!mountedRef.current) return;
+        try {
+          const data = JSON.parse(e.data) as { unread: number };
+          broadcast({ type: "notification:unread", payload: data });
+        } catch {
+          /* ignore */
+        }
+      };
+
       es.addEventListener("connected", handleConnected);
       es.addEventListener("message:new", handleMessageNew);
       es.addEventListener("message:read", handleMessageRead);
       es.addEventListener("unread:changed", handleUnreadChanged);
       es.addEventListener("typing", handleTyping);
+      es.addEventListener("notification:new", handleNotificationNew);
+      es.addEventListener("notification:unread", handleNotificationUnread);
       es.addEventListener("error", handleError);
     }
 

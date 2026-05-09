@@ -515,6 +515,40 @@ export async function initializeSchema() {
   await query(`CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(conversation_id, sender_id) WHERE read_at IS NULL`);
 
   // ──────────────────────────────────────────────────────────────────
+  // Task #71 — Notifications (DM + room for system kinds in the future).
+  // Persisted feed shown in the bell dropdown; payload is JSONB so
+  // future kinds (likes, mentions, follows…) can carry arbitrary metadata
+  // without schema churn. `read_at IS NULL` is the unread predicate.
+  // ──────────────────────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind VARCHAR(40) NOT NULL,
+      title VARCHAR(200) NOT NULL,
+      body TEXT,
+      link VARCHAR(500),
+      payload JSONB DEFAULT '{}'::jsonb,
+      read_at TIMESTAMP,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id) WHERE read_at IS NULL`);
+
+  // Idempotency guard for DM "you have a new message" emails so a burst
+  // of messages in the same conversation cannot flood the recipient's
+  // inbox. Service layer enforces a 1-hour cool-down per conversation.
+  await query(`
+    CREATE TABLE IF NOT EXISTS dm_email_sent (
+      conversation_id INTEGER PRIMARY KEY REFERENCES conversations(id) ON DELETE CASCADE,
+      recipient_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      last_sent_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_dm_email_sent_recipient ON dm_email_sent(recipient_id)`);
+
+  // ──────────────────────────────────────────────────────────────────
   // CMS — content_items + child tables + media_assets
   // ──────────────────────────────────────────────────────────────────
   await query(`

@@ -59,11 +59,34 @@ export function requireRole(minRole: UserRole) {
   };
 }
 
+// Task #71 — throttle DB writes for "user is active" tracking. Touch
+// `last_active_at` at most once per minute per user across requests.
+const LAST_ACTIVE_TOUCH_MS = 60_000;
+const lastActiveTouch = new Map<number, number>();
+
+async function touchLastActive(userId: number): Promise<void> {
+  const now = Date.now();
+  const prev = lastActiveTouch.get(userId) || 0;
+  if (now - prev < LAST_ACTIVE_TOUCH_MS) return;
+  lastActiveTouch.set(userId, now);
+  try {
+    const { query } = await import("../db/index.js");
+    await query("UPDATE users SET last_active_at = NOW() WHERE id = $1", [userId]);
+  } catch {
+    /* best-effort — don't block the request */
+  }
+}
+
 export async function optionalAuth(req: Request, _res: Response, next: NextFunction) {
   const token = req.cookies?.session_token;
   if (token) {
     const user = await validateSession(token);
-    if (user) req.user = user;
+    if (user) {
+      req.user = user;
+      // Track activity so the messages service can decide whether the
+      // recipient is "offline" (>10min idle) for email notifications.
+      void touchLastActive(user.id);
+    }
   }
   next();
 }

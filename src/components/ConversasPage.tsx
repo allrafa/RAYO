@@ -186,6 +186,23 @@ export function ConversasPage() {
     streamConnectedRef.current = streamConnected;
   }, [streamConnected]);
 
+  // Task #71 — deep-link / notification handoff. App.tsx (and NotificationBell)
+  // park a target conversation id in sessionStorage; pick it up here so the
+  // page opens directly on the right thread. Same contract as PerfilPage.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const pending = sessionStorage.getItem("rayo-pending-conversation");
+      if (pending) {
+        sessionStorage.removeItem("rayo-pending-conversation");
+        const id = Number.parseInt(pending, 10);
+        if (Number.isFinite(id) && id > 0) setActiveId(id);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   // Initial load + slow safety-net poll for the conversation list. The poll
   // only runs when the realtime stream is NOT connected.
   useEffect(() => {
@@ -370,8 +387,13 @@ export function ConversasPage() {
       setNewMessage("");
       // Reset throttle so the next keystroke sends a fresh "typing" ping.
       lastTypingSentAtRef.current = 0;
-      setMessages((prev) => [...prev, res.data!.message]);
-      lastMessageIdRef.current = res.data.message.id;
+      // Dedupe by id: the SSE `message:new` event for our own message can
+      // arrive BEFORE this POST resolves (server publishes immediately after
+      // the INSERT). Without this guard we render the message twice — once
+      // from the SSE handler and once here.
+      const sent = res.data.message;
+      setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
+      lastMessageIdRef.current = sent.id;
       requestAnimationFrame(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       });

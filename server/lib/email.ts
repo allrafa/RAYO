@@ -183,6 +183,33 @@ export async function sendPasswordResetEmail(
   return sendEmail({ to: email, subject, html, text });
 }
 
+export async function sendNewMessageEmail(
+  email: string,
+  recipientName: string,
+  senderName: string,
+  preview: string,
+  conversationLink: string,
+): Promise<SendResult> {
+  const subject = `Nova mensagem de ${senderName} no RAYO`;
+  const preheader = `${senderName} te enviou uma mensagem no RAYO.`;
+  const safePreview = preview.length > 240 ? `${preview.slice(0, 237)}…` : preview;
+  const html = layout(
+    `
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Nova mensagem</h1>
+      <p style="margin:0 0 16px 0;">Olá, ${escapeHtml(recipientName)}.</p>
+      <p style="margin:0 0 16px 0;"><strong>${escapeHtml(senderName)}</strong> te enviou uma mensagem no RAYO:</p>
+      <blockquote style="margin:0 0 24px 0;padding:12px 16px;border-left:3px solid ${RAIO_ACCENT};background:${RAIO_BG};color:${RAIO_TEXT};font-style:italic;border-radius:6px;">${escapeHtml(safePreview)}</blockquote>
+      <div style="text-align:center;margin:32px 0;">
+        <a href="${conversationLink}" style="display:inline-block;padding:14px 28px;background:${RAIO_ACCENT};color:${RAIO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Abrir conversa</a>
+      </div>
+      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Você está recebendo este aviso porque estava offline quando a mensagem chegou. Para evitar floods, enviamos no máximo um e-mail por hora por conversa.</p>
+    `,
+    preheader,
+  );
+  const text = `Olá, ${recipientName}.\n\n${senderName} te enviou uma mensagem no RAYO:\n\n"${safePreview}"\n\nAbra a conversa: ${conversationLink}`;
+  return sendEmail({ to: email, subject, html, text });
+}
+
 export async function sendDataExportEmail(email: string, name: string): Promise<SendResult> {
   const subject = "Seus dados foram exportados (LGPD)";
   const preheader = "Sua solicitação de exportação de dados foi processada com sucesso.";

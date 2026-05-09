@@ -50,7 +50,8 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
 - **Gamification**: XP levels, badges, missions, and streaks.
 - **Community Forums**: Forums, posts, comments, likes with moderation.
 - **Personalized Dashboard**: Aggregates gamification stats, course progress, recommendations, and community posts.
-- **Direct Messaging**: Private conversations with real-time updates.
+- **Direct Messaging**: Private conversations with real-time updates. Mensagens fora do ar disparam notificação por e-mail (rate-limit 1/h por conversa) quando o destinatário não tem SSE ativo e está idle há >10min.
+- **Notificações**: Tabela `notifications` (kind/title/body/link/payload) feed pelo sino no header (`NotificationBell`). DM gera entrada com kind `message`. SSE (`notification:new` / `notification:unread`) atualiza badge + dropdown sem polling. Endpoints em `/api/notifications`.
 - **LGPD Compliance**: Data export and account deletion features.
 - **Admin & Moderation**: Tools for user management, content moderation, and platform metrics.
 

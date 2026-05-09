@@ -18,6 +18,7 @@ import homeRoutes from "./features/home/routes.js";
 import searchRoutes from "./features/search/routes.js";
 import lgpdRoutes from "./features/lgpd/routes.js";
 import messagesRoutes from "./features/messages/routes.js";
+import notificationsRoutes from "./features/notifications/routes.js";
 import adminRoutes from "./features/admin/routes.js";
 import { bootstrapAdminsFromEnv } from "./features/admin/bootstrap.js";
 import { adminCmsRouter, publicCmsRouter } from "./features/cms/routes.js";
@@ -138,6 +139,7 @@ app.use("/api/lgpd", optionalAuth, rateLimiter(20, 15 * 60 * 1000, { keyByUser: 
 // unread-count every 20s); each authenticated user must comfortably fit a 15-min
 // active session without hitting 429.
 app.use("/api/messages", optionalAuth, rateLimiter(600, 15 * 60 * 1000, { keyByUser: true }), messagesRoutes);
+app.use("/api/notifications", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), notificationsRoutes);
 app.use("/api/admin", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), adminRoutes);
 app.use("/api/admin/cms", optionalAuth, rateLimiter(300, 15 * 60 * 1000, { keyByUser: true }), adminCmsRouter);
 app.use("/api/content", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), publicCmsRouter);

@@ -151,6 +151,27 @@ function AppContent() {
     }
   }, []);
 
+  // Task #71 — deep-link `/conversas/<id>` for notification + email links.
+  // Mirrors the `/u/:id` contract: park the target id in sessionStorage,
+  // switch to the Conversas tab, and clean the URL so refresh doesn't replay.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const match = window.location.pathname.match(/^\/conversas\/(\d+)\/?$/);
+    if (!match) return;
+    const id = match[1];
+    try {
+      sessionStorage.setItem("rayo-pending-conversation", id);
+    } catch {
+      // ignore
+    }
+    setCurrentTab("conversas");
+    try {
+      window.history.replaceState({}, "", "/");
+    } catch {
+      // ignore
+    }
+  }, []);
+
   useEffect(() => {
     if (resetToken && user) {
       void logout();

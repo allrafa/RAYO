@@ -1,4 +1,5 @@
-import { Search, Bell, Heart, MessageCircle, Plus, BookOpen, Play, Headphones, Film, Users, MessagesSquare } from "lucide-react";
+import { Search, Heart, MessageCircle, Plus, BookOpen, Play, Headphones, Film, Users, MessagesSquare } from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner@2.0.3";
 import { useApp } from "./AppContext";
@@ -189,16 +190,7 @@ export function TopNavbar({ onTabChange, isSidebarMinimized = false }: TopNavbar
             {unreadMessages > 0 && <span className="rn-icon-btn-dot" aria-hidden="true" />}
           </button>
 
-          <button
-            type="button"
-            className="rn-icon-btn"
-            disabled
-            aria-disabled="true"
-            aria-label="Notificações (em breve)"
-            title="Notificações — em breve"
-          >
-            <Bell className="w-5 h-5" />
-          </button>
+          <NotificationBell onTabChange={onTabChange} />
 
           <button
             type="button"

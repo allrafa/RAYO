@@ -1,7 +1,19 @@
 import { query } from "../../db/index.js";
 import { AppError } from "../academia/service.js";
 import { trackEvent } from "../analytics/service.js";
-import { publishToUser } from "./events.js";
+import { publishToUser, getActiveSubscriberCount } from "./events.js";
+import { createNotification } from "../notifications/service.js";
+import { sendNewMessageEmail } from "../../lib/email.js";
+import { logger } from "../../utils/logger.js";
+
+// Recipient is considered "offline" if they have no live SSE subscriber AND
+// their last_active_at is older than this threshold. We then enqueue an email
+// (idempotent via dm_email_sent — at most one per conversation per hour).
+const OFFLINE_THRESHOLD_MIN = 10;
+const EMAIL_COOLDOWN_MIN = 60;
+const APP_URL =
+  process.env.APP_URL ||
+  (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000");
 
 const MAX_MESSAGE_LENGTH = 4000;
 const SEARCH_MIN_LENGTH = 2;
@@ -222,6 +234,9 @@ export async function sendMessage(conversationId: number, userId: number, conten
   // Real-time fan-out: notify both participants so the UI updates without polling.
   // We publish AFTER the DB writes succeed; fire-and-forget for unread refresh.
   const eventPayload = { conversation_id: conversationId, message };
+  // Fan-out to other open tabs/devices of the SENDER too — they should also
+  // see the new message. Client-side dedupe (by message id) prevents the
+  // tab that originated the POST from rendering it twice.
   publishToUser(userId, "message:new", eventPayload);
   if (recipientId !== userId) {
     publishToUser(recipientId, "message:new", eventPayload);
@@ -232,9 +247,86 @@ export async function sendMessage(conversationId: number, userId: number, conten
       .catch(() => {
         /* best-effort */
       });
+
+    // Persist a notification + best-effort email if the recipient is offline.
+    // Both are fire-and-forget so they cannot block (or fail) the POST.
+    void notifyRecipient({
+      conversationId,
+      recipientId,
+      senderName: message.sender_name,
+      preview: trimmed,
+      messageId: message.id,
+    }).catch((err) => {
+      logger.error("Messages", `notifyRecipient failed: ${err instanceof Error ? err.message : err}`);
+    });
   }
 
   return message;
+}
+
+interface NotifyRecipientArgs {
+  conversationId: number;
+  recipientId: number;
+  senderName: string;
+  preview: string;
+  messageId: number;
+}
+
+async function notifyRecipient(args: NotifyRecipientArgs): Promise<void> {
+  const { conversationId, recipientId, senderName, preview, messageId } = args;
+  const link = `/conversas/${conversationId}`;
+
+  // Always persist an in-app notification so the bell shows it even if the
+  // recipient was offline (they'll see it on next login).
+  await createNotification({
+    userId: recipientId,
+    kind: "message",
+    title: `Nova mensagem de ${senderName}`,
+    body: preview.length > 160 ? `${preview.slice(0, 157)}…` : preview,
+    link,
+    payload: { conversation_id: conversationId, message_id: messageId, sender_name: senderName },
+  });
+
+  // Decide whether to email: only when there's no live SSE subscriber AND
+  // the recipient hasn't been active for at least OFFLINE_THRESHOLD_MIN.
+  if (getActiveSubscriberCount(recipientId) > 0) {
+    return;
+  }
+  const { rows } = await query<{ email: string; name: string; offline_min: string | null }>(
+    `SELECT email, name,
+            EXTRACT(EPOCH FROM (NOW() - COALESCE(last_active_at, created_at)))::numeric / 60 AS offline_min
+     FROM users WHERE id = $1`,
+    [recipientId],
+  );
+  const row = rows[0];
+  if (!row) return;
+  const offlineMin = row.offline_min == null ? Number.POSITIVE_INFINITY : parseFloat(row.offline_min);
+  if (offlineMin < OFFLINE_THRESHOLD_MIN) {
+    return;
+  }
+
+  // Idempotency: at most one email per conversation per EMAIL_COOLDOWN_MIN.
+  // Single-statement upsert that updates only when the cooldown has passed
+  // and reports whether the row was actually written, so concurrent senders
+  // can't both emit emails for the same recipient/conversation pair.
+  const { rowCount } = await query(
+    `INSERT INTO dm_email_sent (conversation_id, recipient_id, last_sent_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT (conversation_id) DO UPDATE
+       SET last_sent_at = NOW(), recipient_id = EXCLUDED.recipient_id
+       WHERE dm_email_sent.last_sent_at < NOW() - INTERVAL '${EMAIL_COOLDOWN_MIN} minutes'`,
+    [conversationId, recipientId],
+  );
+  if (!rowCount) {
+    logger.info("Messages", `email cooldown active for conversation ${conversationId}; skip email`);
+    return;
+  }
+
+  const conversationLink = `${APP_URL.replace(/\/+$/, "")}${link}`;
+  logger.info("Messages", `queued email notification for offline recipient ${recipientId} (conv ${conversationId})`);
+  void sendNewMessageEmail(row.email, row.name, senderName, preview, conversationLink).catch(() => {
+    /* logged inside sendEmail */
+  });
 }
 
 export async function markConversationRead(conversationId: number, userId: number): Promise<{ marked: number }> {
