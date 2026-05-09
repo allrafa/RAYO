@@ -700,6 +700,35 @@ export async function initializeSchema() {
   await query(`CREATE INDEX IF NOT EXISTS idx_content_items_course_id ON content_items(course_id)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_content_items_segments ON content_items USING GIN(segments)`);
 
+  // Task #86 — colunas para integração Bunny Stream. `media_url` /
+  // `external_url` continuam servindo conteúdos legados (URL colada à mão);
+  // o novo fluxo grava `video_provider='bunny'` + `video_external_id=<guid>`
+  // e os campos derivados são preenchidos pelo webhook de transcode.
+  // Idempotente por COLUNA (não por bloco) pra cobrir bancos parcialmente
+  // migrados — ex.: rollback que apagou só algumas colunas.
+  await query(`ALTER TABLE content_items ADD COLUMN IF NOT EXISTS video_provider VARCHAR(20)`);
+  await query(`ALTER TABLE content_items ADD COLUMN IF NOT EXISTS video_external_id VARCHAR(200)`);
+  await query(`ALTER TABLE content_items ADD COLUMN IF NOT EXISTS video_status VARCHAR(20)`);
+  await query(`ALTER TABLE content_items ADD COLUMN IF NOT EXISTS video_duration_sec INTEGER`);
+  await query(`ALTER TABLE content_items ADD COLUMN IF NOT EXISTS video_thumbnail_url VARCHAR(500)`);
+  await query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'content_items_video_status_check'
+          AND conrelid = 'content_items'::regclass
+      ) THEN
+        ALTER TABLE content_items
+          ADD CONSTRAINT content_items_video_status_check
+          CHECK (video_status IS NULL OR video_status IN ('processing','ready','failed'));
+      END IF;
+    END$$;
+  `);
+  await query(
+    `CREATE INDEX IF NOT EXISTS idx_content_items_video_external_id ON content_items(video_external_id) WHERE video_external_id IS NOT NULL`,
+  );
+
   await query(`
     CREATE TABLE IF NOT EXISTS content_episodes (
       id SERIAL PRIMARY KEY,

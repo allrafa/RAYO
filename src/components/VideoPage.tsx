@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, MoreVertical, ThumbsUp, ThumbsDown, Share, Download, Plus, Eye, Clock, Loader2 } from "lucide-react";
+import { ArrowLeft, MoreVertical, ThumbsUp, ThumbsDown, Share, Plus, Eye, Clock, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { enhancedToast } from "./EnhancedToast";
 import { api } from "../lib/api";
+import { RayoVideoPlayer } from "./RayoVideoPlayer";
 
 interface VideoPageProps {
   videoId: string;
@@ -25,6 +26,11 @@ interface CmsVideo {
   interests: string[];
   external_url: string | null;
   media_url: string | null;
+  // Task #86 — Bunny Stream (campos derivados pelo backend).
+  video_provider: string | null;
+  video_status: string | null;
+  video_embed_url: string | null;
+  video_thumbnail_url: string | null;
 }
 
 interface VideoVM {
@@ -39,6 +45,13 @@ interface VideoVM {
   subscribers: string;
   likes: string;
   category: string;
+  video_provider: string | null;
+  video_status: string | null;
+  video_embed_url: string | null;
+  video_thumbnail_url: string | null;
+  external_url: string | null;
+  cover_url: string | null;
+  media_url: string | null;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -72,17 +85,22 @@ function mapVideo(v: CmsVideo): VideoVM {
     duration: formatDuration(v.duration_seconds),
     views: formatViews(v.view_count),
     uploadDate: relativeDate(v.published_at),
-    thumbnail: v.cover_url ?? "",
+    thumbnail: v.video_thumbnail_url ?? v.cover_url ?? "",
     channel: "RAYO Academy",
     subscribers: "2.3M",
     likes: "—",
     category: v.interests?.[0] ?? "Geral",
+    video_provider: v.video_provider,
+    video_status: v.video_status,
+    video_embed_url: v.video_embed_url,
+    video_thumbnail_url: v.video_thumbnail_url,
+    external_url: v.external_url,
+    cover_url: v.cover_url,
+    media_url: v.media_url,
   };
 }
 
 export function VideoPage({ videoId, onBack }: VideoPageProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const [showDescription, setShowDescription] = useState(false);
   const [videos, setVideos] = useState<VideoVM[]>([]);
   const [currentVideo, setCurrentVideo] = useState<VideoVM | null>(null);
@@ -106,14 +124,8 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
     return () => { cancelled = true; };
   }, [videoId]);
 
-  const handlePlayPause = () => {
-    setIsPlaying(!isPlaying);
-    if ('vibrate' in navigator) navigator.vibrate(10);
-  };
-
   const handleVideoClick = (video: VideoVM) => {
     setCurrentVideo(video);
-    setIsPlaying(false);
     enhancedToast.success(`Carregando: ${video.title}`);
   };
 
@@ -165,30 +177,16 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
 
       <div className="max-w-7xl mx-auto p-4 space-y-6">
         <div className="w-full">
-          <div className="relative aspect-video bg-black rounded-xl overflow-hidden group">
-            <ImageWithFallback
-              src={currentVideo.thumbnail}
-              alt={currentVideo.title}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Button
-                  size="lg"
-                  className="w-16 h-16 rounded-full bg-white/90 hover:bg-white text-black shadow-xl"
-                  onClick={handlePlayPause}
-                >
-                  {isPlaying ? <Pause className="w-8 h-8" fill="currentColor" /> : <Play className="w-8 h-8 ml-1" fill="currentColor" />}
-                </Button>
-              </div>
-              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-                <Badge variant="secondary" className="bg-black/80 text-white">{currentVideo.duration}</Badge>
-                <Button size="icon" variant="ghost" className="text-white hover:bg-white/20" onClick={() => setIsMuted(!isMuted)}>
-                  {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                </Button>
-              </div>
-            </div>
-          </div>
+          <RayoVideoPlayer
+            title={currentVideo.title}
+            cover_url={currentVideo.cover_url}
+            video_provider={currentVideo.video_provider}
+            video_status={currentVideo.video_status}
+            video_embed_url={currentVideo.video_embed_url}
+            video_thumbnail_url={currentVideo.video_thumbnail_url}
+            external_url={currentVideo.external_url}
+            media_url={currentVideo.media_url}
+          />
 
           <div className="mt-4 space-y-4">
             <div>

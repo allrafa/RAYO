@@ -11,6 +11,11 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
     - `PUBLIC_SITE_URL`: Domínio canônico usado em `/sitemap.xml` e `/robots.txt` (default: `https://rayo.app.br`).
     - `ADMIN_EMAILS`: Comma-separated emails for admin role on boot.
     - `CONTACT_EMAIL`: destinatário do formulário público `/contato` (default: `suporte@rayo.app.br`). Alias legado `CONTATO_TO_EMAIL` ainda é aceito como fallback.
+    - **Bunny Stream (opcional, Task #86)** — sem essas vars o uploader de vídeo no CMS fica desabilitado com mensagem "Configurar Bunny no admin antes de usar"; conteúdos com `external_url` continuam funcionando:
+        - `BUNNY_STREAM_LIBRARY_ID`: ID numérico da Stream Library no painel Bunny.
+        - `BUNNY_STREAM_API_KEY`: AccessKey da library (Stream → Library → API).
+        - `BUNNY_STREAM_CDN_HOSTNAME`: hostname do pull zone (ex `vz-abc123.b-cdn.net`).
+        - `BUNNY_STREAM_WEBHOOK_SECRET` (**obrigatória** pra webhook funcionar): segredo HMAC SHA256 configurado em Stream → Library → Webhook. Sem ela `/api/webhooks/bunny` rejeita 503.
     - **OAuth (opcional, Task #69 + #72)** — sem essas vars os botões aparecem como "Em breve". **OAuth Google e Facebook só funcionam no domínio de produção `https://rayo.app.br`** (no preview/dev o login social fica desabilitado de propósito; use email/senha):
         - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: credenciais OAuth 2.0 do Google Cloud.
         - `GOOGLE_REDIRECT_URI` (**obrigatória** para habilitar Google): deve ser exatamente `https://rayo.app.br/api/auth/google/callback` e estar registrada como Authorized redirect URI no Google Cloud Console. Sem essa var a estratégia não é registrada (log de erro no boot) e o botão fica como "Em breve".
@@ -44,6 +49,7 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
 - **Server-Sent Events (SSE) for Real-time Messaging**: Direct Messaging uses SSE for real-time updates.
 - **Dynamic Home Feed**: `recommendedSectionOrder` is computed from user segments, allowing dynamic rail rendering. "Hoje no RAIO" uses deterministic daily rotation.
 - **Static Assets in Object Storage**: Uploaded media uses Replit Object Storage via short-lived signed URLs. DB stores `objstore://<key>` sentinels which are resolved to signed URLs on read.
+- **Bunny Stream para vídeo (Task #86)**: vídeos do CMS (`kind=video|reels`) sobem direto pro Bunny Stream. DB grava o sentinel `bunny://<libraryId>/<videoGuid>` em `content_items.video_external_id` + `video_provider='bunny'`; webhook de transcode preenche `video_status`, `video_duration_sec`, `video_thumbnail_url`. Em leitura, o servidor adiciona `video_embed_url`/`video_hls_url` derivados (`withResolvedBunnyFields`). `media_url`/`external_url` legados continuam suportados como fallback.
 - **Image Optimization**: Uploaded images are optimized (resized, re-encoded) using `sharp` before storage.
 
 ## Product
@@ -89,6 +95,10 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
 - **DM swipe gestures**: `motion/react` (já no bundle). Threshold de 80 px. Arrastar p/ **esquerda** revela "Arquivar" (lado direito, âmbar). Arrastar p/ **direita** revela "Excluir" (lado esquerdo, vermelho) → AlertDialog confirma. Tap no card depois de revelado fecha o swipe em vez de abrir.
 - **DM lista única + Arquivadas colapsadas (Task #79)**: `ConversasPage` carrega ambos os escopos (`active` + `archived`) em paralelo e mostra UMA lista. As ativas vêm em cima; abaixo, uma seção colapsável "Arquivadas (N)" (default fechada). Clicar numa conversa arquivada **desarquiva e abre** (chama `/archive {archived:false}` e move pro topo das ativas). NÃO use Tabs. Pré-visualização de e-mail para áudio inclui duração: `🎤 Áudio (mm:ss)`.
 - **OG default image**: `useSeoMeta` injeta `https://rayo.app.br/og-default.png` quando a página não passa `ogImage`. Adicione esse arquivo nos assets antes do deploy de produção.
+- **Bunny upload contract (Task #86)**: `POST /api/admin/bunny/content/:id/upload` (producer+, multipart, campo `file`) cria o slot no Bunny e sobe os bytes em uma única chamada. Limites estritos: mime allowlist (`video/mp4|quicktime|webm|x-matroska`), ≤5 GB, rate-limit 20/h por usuário, ownership/membership checada ANTES do parse multer. Multer usa **disk storage** em `os.tmpdir()/rayo-bunny-uploads` (5 GB em RAM seria suicídio); arquivos são removidos no `finally`. Frontend dispara via XHR pra ter `upload.onprogress` real (`BunnyVideoUploader` em `AdminCmsForm.tsx`). Para itens novos, exige salvar antes (precisa de `contentId > 0`).
+- **Bunny webhook (Task #86)**: `POST /api/webhooks/bunny` é montado **fora** do `optionalAuth` (sem sessão; Bunny é quem chama). Validação por HMAC SHA256 do raw body com `BUNNY_STREAM_WEBHOOK_SECRET`, headers aceitos `X-Bunny-Signature`/`X-Webhook-Signature`/`Authorization` (prefixo `sha256=` opcional). Sem secret configurado, devolve 503. Aceita payloads `{VideoGuid, Status}` e snake_case. Em `Status=4` (ready) puxa duração/thumb via `getVideo` e dispara notificação `kind=video_status` pro `created_by` do conteúdo. Webhooks pra GUIDs órfãos (vídeos criados manualmente no painel) respondem 200 pra Bunny não reentregar.
+- **Bunny sentinel format**: `bunny://<libraryId>/<videoGuid>`. `parseBunnyRef` aceita o sentinel completo OU só o GUID puro (cai pro library_id da config). NÃO grave URLs cruas (`https://iframe.mediadelivery.net/...`) em `video_external_id` — quebra o resolver. URLs públicas só são geradas em leitura por `withResolvedBunnyFields` (embed customizado com `primaryColor=C8553D` = `--rayo-terra-500`).
+- **Bunny vs Object Storage**: vídeo é Bunny, áudio/imagem/PDF é Object Storage. NÃO confunda os sentinels (`bunny://` ≠ `objstore://`) e os endpoints (`/api/admin/bunny/*` ≠ `/api/admin/cms/media/upload`). Os limites de DM (`messages/routes.ts`) também usam Object Storage com regras próprias.
 
 ## Pointers
 - **Development Protocol**: `architecture.md`

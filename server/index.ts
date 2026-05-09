@@ -53,6 +53,14 @@ app.set("trust proxy", 1);
 
 app.use(securityMiddleware);
 app.use(cookieParser());
+
+// Task #86 — Webhook do Bunny precisa do RAW body pra validar HMAC, então
+// é montado ANTES do express.json global (que consumiria/parseraria o
+// body e quebraria a assinatura). O router interno usa `express.raw`
+// próprio. NÃO mover pra baixo de express.json.
+import { bunnyWebhookRouter as _bunnyWebhookRouterEarly } from "./features/bunny/routes.js";
+app.use("/api/webhooks/bunny", rateLimiter(300, 15 * 60 * 1000), _bunnyWebhookRouterEarly);
+
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -153,6 +161,14 @@ app.use("/api/bundles", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUs
 import { blogRouter, contatoRouter } from "./features/marketing/routes.js";
 app.use("/api/blog", rateLimiter(180, 15 * 60 * 1000, { keyByUser: false }), blogRouter);
 app.use("/api/contato", contatoRouter);
+
+// Task #86 — Bunny Stream admin (upload/status/delete). O webhook
+// (`/api/webhooks/bunny`) é montado lá em cima ANTES do express.json
+// pra preservar o raw body necessário pra HMAC.
+import { adminBunnyRouter } from "./features/bunny/routes.js";
+import { logBunnyBootStatus } from "./lib/bunnyStream.js";
+app.use("/api/admin/bunny", optionalAuth, rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }), adminBunnyRouter);
+logBunnyBootStatus();
 
 // Task #48 — `/uploads/*` is now backed by Replit Object Storage. The
 // URL contract is unchanged so `users.avatar_url` /

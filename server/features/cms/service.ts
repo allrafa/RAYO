@@ -5,6 +5,7 @@ import {
   resolveMediaFields,
   normalizeStorageRef,
 } from "../../lib/objectStorageBridge.js";
+import { withResolvedBunnyFields } from "../../lib/bunnyStream.js";
 
 // Task #48 — every public/admin read goes through these helpers so any
 // `objstore://` references stored in cover_url / media_url / public_url
@@ -216,7 +217,9 @@ export async function listAdminContent(filters: {
 
   const { rows } = await query(
     `SELECT id, kind, title, slug, short_description, cover_url, status,
-            is_premium, view_count, published_at, created_at, updated_at
+            is_premium, view_count, published_at, created_at, updated_at,
+            video_provider, video_external_id, video_status,
+            video_duration_sec, video_thumbnail_url
        FROM content_items
        ${whereClause}
        ORDER BY updated_at DESC
@@ -225,7 +228,12 @@ export async function listAdminContent(filters: {
   );
 
   const items = await Promise.all(
-    rows.map((r) => resolveMediaFields(r, CONTENT_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof r>)),
+    rows.map(async (r) => {
+      const resolved = await resolveMediaFields(r, CONTENT_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof r>);
+      return withResolvedBunnyFields(resolved as typeof resolved & {
+        video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
+      });
+    }),
   );
   return {
     items,
@@ -313,7 +321,9 @@ export async function listPublicContent(opts: {
   const { rows } = await query(
     `SELECT id, kind, title, slug, short_description, cover_url, segments, interests,
             tags, is_premium, price, duration_seconds, hook, author, pages, view_count,
-            published_at
+            published_at, external_url,
+            video_provider, video_external_id, video_status,
+            video_duration_sec, video_thumbnail_url
        FROM content_items
        ${whereClause}
        ORDER BY published_at DESC NULLS LAST, id DESC
@@ -322,7 +332,12 @@ export async function listPublicContent(opts: {
   );
 
   const items = await Promise.all(
-    rows.map((r) => resolveMediaFields(r, CONTENT_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof r>)),
+    rows.map(async (r) => {
+      const resolved = await resolveMediaFields(r, CONTENT_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof r>);
+      return withResolvedBunnyFields(resolved as typeof resolved & {
+        video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
+      });
+    }),
   );
   return {
     items,
@@ -351,7 +366,10 @@ export async function getAdminContentDetail(id: number) {
       resolveMediaFields(e, EPISODE_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof e>),
     ),
   );
-  return { ...resolvedItem, episodes: resolvedEpisodes };
+  const withBunny = withResolvedBunnyFields(resolvedItem as typeof resolvedItem & {
+    video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
+  });
+  return { ...withBunny, episodes: resolvedEpisodes };
 }
 
 export async function getPublicContentDetail(id: number) {
@@ -359,7 +377,9 @@ export async function getPublicContentDetail(id: number) {
     `SELECT id, kind, title, slug, short_description, long_description, cover_url,
             segments, interests, tags, is_premium, price, media_url, external_url,
             duration_seconds, transcript, hook, cta, author, pages, course_id,
-            view_count, published_at
+            view_count, published_at,
+            video_provider, video_external_id, video_status,
+            video_duration_sec, video_thumbnail_url
        FROM content_items WHERE id = $1 AND status = 'published'`,
     [id]
   );
@@ -384,7 +404,10 @@ export async function getPublicContentDetail(id: number) {
       resolveMediaFields(e, EPISODE_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof e>),
     ),
   );
-  return { ...resolvedItem, episodes: resolvedEpisodes };
+  const withBunny = withResolvedBunnyFields(resolvedItem as typeof resolvedItem & {
+    video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
+  });
+  return { ...withBunny, episodes: resolvedEpisodes };
 }
 
 function buildPayload(input: ContentInput) {

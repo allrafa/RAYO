@@ -32,6 +32,12 @@ interface ContentDetail {
   pages: number | null;
   course_id: number | null;
   episodes?: Episode[];
+  // Task #86 — Bunny Stream
+  video_provider?: string | null;
+  video_external_id?: string | null;
+  video_status?: string | null;
+  video_duration_sec?: number | null;
+  video_thumbnail_url?: string | null;
 }
 
 interface Episode {
@@ -458,7 +464,18 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
                 </Field>
               )}
               {(data.kind === "video" || data.kind === "reels") && (
-                <Field label="URL externa (YouTube / Vimeo)" hint="Use no lugar do upload se preferir referenciar um vídeo já hospedado.">
+                <BunnyVideoUploader
+                  contentId={data.id}
+                  videoProvider={data.video_provider ?? null}
+                  videoStatus={data.video_status ?? null}
+                  videoExternalId={data.video_external_id ?? null}
+                  videoThumbnailUrl={data.video_thumbnail_url ?? null}
+                  videoDurationSec={data.video_duration_sec ?? null}
+                  onChanged={(patch) => setData((prev) => ({ ...prev, ...patch }))}
+                />
+              )}
+              {(data.kind === "video" || data.kind === "reels") && (
+                <Field label="URL externa (YouTube / Vimeo)" hint="Fallback caso prefira referenciar um vídeo já hospedado em outro lugar. Tem prioridade menor que o upload Bunny acima.">
                   <input className={cls} style={inputStyle} value={data.external_url ?? ""}
                     onChange={(e) => set("external_url", e.target.value)} />
                 </Field>
@@ -614,6 +631,214 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
   );
 }
 
+
+// Task #86 — Uploader de vídeo Bunny embutido. Aparece para kinds video/reels.
+// Estados:
+//  - bunny disabled: card cinza com mensagem.
+//  - sem vídeo: botão "Enviar vídeo".
+//  - processing: badge âmbar + botão "Atualizar status".
+//  - ready: thumbnail + duração + botão "Substituir" / "Remover".
+//  - failed: badge vermelho + botão "Reenviar".
+//
+// Salva direto no item (precisa de `contentId > 0`); para itens novos, exige
+// salvar antes (igual ao fluxo de episódios da série).
+function BunnyVideoUploader(props: {
+  contentId: number;
+  videoProvider: string | null;
+  videoStatus: string | null;
+  videoExternalId: string | null;
+  videoThumbnailUrl: string | null;
+  videoDurationSec: number | null;
+  onChanged: (patch: Partial<ContentDetail>) => void;
+}) {
+  const [bunnyConfigured, setBunnyConfigured] = useState<boolean | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get<{ configured: boolean }>("/api/admin/bunny/status");
+        setBunnyConfigured(!!res.data?.configured);
+      } catch {
+        setBunnyConfigured(false);
+      }
+    })();
+  }, []);
+
+  async function doUpload(file: File) {
+    if (props.contentId === 0) {
+      toast.error("Salve o conteúdo antes de enviar o vídeo.");
+      return;
+    }
+    setUploading(true);
+    setProgress(0);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `/api/admin/bunny/content/${props.contentId}/upload`);
+        xhr.withCredentials = true;
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 100));
+        };
+        xhr.onerror = () => reject(new Error("Falha de rede ao enviar"));
+        xhr.onload = () => {
+          try {
+            const json = JSON.parse(xhr.responseText || "{}");
+            if (xhr.status >= 200 && xhr.status < 300 && json.success) {
+              const item = json.data?.item ?? {};
+              props.onChanged({
+                video_provider: item.video_provider ?? "bunny",
+                video_external_id: item.video_external_id ?? null,
+                video_status: item.video_status ?? "processing",
+                video_duration_sec: null,
+                video_thumbnail_url: null,
+              });
+              toast.success("Vídeo enviado. Bunny está processando…");
+              resolve();
+            } else {
+              reject(new Error(json.error?.message || `Upload falhou (HTTP ${xhr.status})`));
+            }
+          } catch {
+            reject(new Error("Resposta inválida do servidor"));
+          }
+        };
+        const fd = new FormData();
+        fd.append("file", file);
+        xhr.send(fd);
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro");
+    } finally {
+      setUploading(false);
+      setProgress(0);
+    }
+  }
+
+  async function refreshStatus() {
+    if (props.contentId === 0) return;
+    setRefreshing(true);
+    try {
+      const res = await api.get<{ status: string; duration_sec: number }>(`/api/admin/bunny/content/${props.contentId}`);
+      if (res.data) {
+        props.onChanged({
+          video_status: res.data.status,
+          video_duration_sec: res.data.duration_sec || null,
+        });
+        toast.success(`Status: ${res.data.status}`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao atualizar status");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  async function removeVideo() {
+    if (props.contentId === 0) return;
+    if (!confirm("Remover o vídeo do Bunny? O conteúdo continua, mas sem vídeo.")) return;
+    try {
+      await api.delete(`/api/admin/bunny/content/${props.contentId}`);
+      props.onChanged({
+        video_provider: null,
+        video_external_id: null,
+        video_status: null,
+        video_duration_sec: null,
+        video_thumbnail_url: null,
+      });
+      toast.success("Vídeo removido.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro");
+    }
+  }
+
+  if (bunnyConfigured === false) {
+    return (
+      <div className="p-3 rounded-md border text-sm" style={{
+        borderColor: "var(--rayo-sand-300)", background: "var(--rayo-sand-50)", color: "var(--rayo-ink-700)"
+      }}>
+        <p style={{ fontWeight: 600, marginBottom: 4 }}>Vídeo Bunny</p>
+        <p style={{ color: "var(--rayo-ink-400)" }}>
+          Configurar Bunny no admin antes de usar (env vars
+          <code> BUNNY_STREAM_LIBRARY_ID</code>, <code>BUNNY_STREAM_API_KEY</code>,
+          <code> BUNNY_STREAM_CDN_HOSTNAME</code>).
+        </p>
+      </div>
+    );
+  }
+  if (bunnyConfigured === null) return null;
+
+  const isBunny = props.videoProvider === "bunny" && !!props.videoExternalId;
+  const status = props.videoStatus;
+  const statusColor = status === "ready" ? "var(--rayo-forest-900)"
+    : status === "failed" ? "#b91c1c"
+    : status === "processing" ? "#b45309"
+    : "var(--rayo-ink-400)";
+  const statusLabel = status === "ready" ? "Pronto"
+    : status === "failed" ? "Falhou"
+    : status === "processing" ? "Processando…"
+    : "Sem vídeo";
+
+  return (
+    <div className="p-3 rounded-md border space-y-3" style={{
+      borderColor: "var(--rayo-sand-300)", background: "var(--rayo-sand-50)"
+    }}>
+      <div className="flex items-center justify-between">
+        <p style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}>Vídeo Bunny</p>
+        <span className="text-xs px-2 py-0.5 rounded-full border"
+          style={{ color: statusColor, borderColor: "var(--rayo-sand-300)" }}>
+          {statusLabel}
+        </span>
+      </div>
+
+      {isBunny && status === "ready" && props.videoThumbnailUrl && (
+        <div className="flex gap-3 items-start">
+          {/* eslint-disable-next-line jsx-a11y/img-redundant-alt */}
+          <img src={props.videoThumbnailUrl} alt="Thumbnail do vídeo" className="w-40 rounded-md border"
+            style={{ borderColor: "var(--rayo-sand-300)" }} />
+          <div className="text-sm" style={{ color: "var(--rayo-ink-700)" }}>
+            {props.videoDurationSec ? <p>Duração: {Math.round(props.videoDurationSec)}s</p> : null}
+            <p className="text-xs mt-1" style={{ color: "var(--rayo-ink-400)" }}>
+              {props.videoExternalId}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {props.contentId === 0 && (
+        <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
+          Salve o conteúdo antes de enviar o vídeo.
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" disabled={uploading || props.contentId === 0}
+          onClick={() => inputRef.current?.click()}>
+          {uploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+          {isBunny ? "Substituir vídeo" : "Enviar vídeo"}
+        </Button>
+        {isBunny && status === "processing" && (
+          <Button variant="outline" size="sm" onClick={refreshStatus} disabled={refreshing}>
+            {refreshing ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+            Atualizar status
+          </Button>
+        )}
+        {isBunny && (
+          <Button variant="ghost" size="sm" onClick={removeVideo} disabled={uploading}>
+            <Trash2 className="w-4 h-4 mr-1" style={{ color: "var(--rayo-terra-500)" }} />
+            Remover
+          </Button>
+        )}
+        <input ref={inputRef} type="file" hidden accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
+          onChange={(e) => e.target.files?.[0] && doUpload(e.target.files[0])} />
+      </div>
+
+      {uploading && <UploadProgressBar pct={progress} />}
+    </div>
+  );
+}
 
 function UploadProgressBar({ pct }: { pct: number }) {
   return (
