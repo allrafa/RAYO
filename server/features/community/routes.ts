@@ -22,8 +22,11 @@ import {
   getUserSavedPosts,
   getPostDetail,
   togglePostLike,
+  togglePostReaction,
   addComment,
   toggleCommentLike,
+  toggleCommentReaction,
+  ALLOWED_REACTION_EMOJIS,
   setForumSubscription,
   getUserPosts,
   getUserComments,
@@ -561,6 +564,54 @@ router.post("/comments/:id/like", requireAuth, async (req, res, next) => {
     }
     next(err);
   }
+});
+
+// Task #122 — reações multi-emoji em posts e comentários.
+// Body: `{ emoji: "❤️" | "😂" | "🙏" | "💡" | "🔥" | "👏" }`. Toggle:
+// mesmo emoji remove, emoji diferente troca, novo adiciona. Devolve o
+// agregado pra UI atualizar sem precisar re-fetch do post inteiro.
+router.post("/posts/:id/reactions", requireAuth, async (req, res, next) => {
+  try {
+    const postId = parseInt(req.params.id, 10);
+    if (isNaN(postId) || postId < 1) {
+      sendError(res, "ID de post inválido", "INVALID_POST_ID");
+      return;
+    }
+    const emoji = typeof req.body?.emoji === "string" ? req.body.emoji : "";
+    const result = await togglePostReaction(postId, req.user!.id, emoji);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+router.post("/comments/:id/reactions", requireAuth, async (req, res, next) => {
+  try {
+    const commentId = parseInt(req.params.id, 10);
+    if (isNaN(commentId) || commentId < 1) {
+      sendError(res, "ID de comentário inválido", "INVALID_COMMENT_ID");
+      return;
+    }
+    const emoji = typeof req.body?.emoji === "string" ? req.body.emoji : "";
+    const result = await toggleCommentReaction(commentId, req.user!.id, emoji);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+// Lista pública dos emojis permitidos — usado pelo frontend pra montar o
+// picker sem hardcode duplicado. Read-only, cacheável.
+router.get("/reactions/allowed", (_req, res) => {
+  success(res, { emojis: ALLOWED_REACTION_EMOJIS });
 });
 
 // ───── Perfil público (Reddit-style) ─────

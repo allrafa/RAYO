@@ -7,6 +7,66 @@ import { createNotification } from "../notifications/service.js";
 const POST_IMAGE_PREFIX = "objstore://posts/";
 const POST_MAX_IMAGES = 4;
 
+// Task #122 — set fechado de reações multi-emoji. Validado nos endpoints
+// de POST /reactions; qualquer emoji fora dessa lista vira 400. Mantemos
+// o set pequeno (6) pra UI caber sem scroll horizontal e a tabela não
+// virar bag de strings arbitrárias.
+export const ALLOWED_REACTION_EMOJIS = ["❤️", "😂", "🙏", "💡", "🔥", "👏"] as const;
+export type ReactionEmoji = (typeof ALLOWED_REACTION_EMOJIS)[number];
+const REACTION_SET = new Set<string>(ALLOWED_REACTION_EMOJIS);
+
+function assertValidReactionEmoji(emoji: unknown): asserts emoji is ReactionEmoji {
+  if (typeof emoji !== "string" || !REACTION_SET.has(emoji)) {
+    throw new AppError(
+      "Emoji de reação inválido",
+      "INVALID_REACTION_EMOJI",
+      400,
+    );
+  }
+}
+
+// Agrega reações de um conjunto de posts/comentários numa única query.
+// Retorna mapa id → { emoji → count }. Eficiente pra listagens.
+async function aggregateReactions(
+  table: "post_reactions" | "comment_reactions",
+  fk: "post_id" | "comment_id",
+  ids: number[],
+): Promise<Map<number, Array<{ emoji: string; count: number }>>> {
+  const out = new Map<number, Array<{ emoji: string; count: number }>>();
+  if (ids.length === 0) return out;
+  const { rows } = await query<{ tid: number; emoji: string; cnt: number }>(
+    `SELECT ${fk} AS tid, emoji, COUNT(*)::int AS cnt
+       FROM ${table}
+      WHERE ${fk} = ANY($1::int[])
+      GROUP BY ${fk}, emoji
+      ORDER BY cnt DESC, emoji ASC`,
+    [ids],
+  );
+  for (const r of rows) {
+    const arr = out.get(r.tid) || [];
+    arr.push({ emoji: r.emoji, count: r.cnt });
+    out.set(r.tid, arr);
+  }
+  return out;
+}
+
+async function userReactionsFor(
+  table: "post_reactions" | "comment_reactions",
+  fk: "post_id" | "comment_id",
+  ids: number[],
+  userId: number | undefined,
+): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  if (!userId || ids.length === 0) return out;
+  const { rows } = await query<{ tid: number; emoji: string }>(
+    `SELECT ${fk} AS tid, emoji FROM ${table}
+      WHERE user_id = $1 AND ${fk} = ANY($2::int[])`,
+    [userId, ids],
+  );
+  for (const r of rows) out.set(r.tid, r.emoji);
+  return out;
+}
+
 // Resolve images JSON column (array de sentinels) → array de URLs assinadas.
 async function resolvePostImages(images: unknown): Promise<string[]> {
   if (!Array.isArray(images)) return [];
@@ -25,16 +85,17 @@ async function hydratePostsRows<T extends Record<string, any>>(
 ): Promise<T[]> {
   // Task #93 — hidrata is_saved em batch (evita subquery em cada listagem).
   let savedSet: Set<number> = new Set();
-  if (viewerId && rows.length > 0) {
-    const ids = rows.map((r) => Number((r as any).id)).filter((n) => Number.isFinite(n));
-    if (ids.length > 0) {
-      const { rows: savedRows } = await query(
-        `SELECT post_id FROM post_saves WHERE user_id = $1 AND post_id = ANY($2::int[])`,
-        [viewerId, ids],
-      );
-      savedSet = new Set(savedRows.map((r) => Number(r.post_id)));
-    }
+  const ids = rows.map((r) => Number((r as any).id)).filter((n) => Number.isFinite(n));
+  if (viewerId && rows.length > 0 && ids.length > 0) {
+    const { rows: savedRows } = await query(
+      `SELECT post_id FROM post_saves WHERE user_id = $1 AND post_id = ANY($2::int[])`,
+      [viewerId, ids],
+    );
+    savedSet = new Set(savedRows.map((r) => Number(r.post_id)));
   }
+  // Task #122 — agregação de reações multi-emoji em batch (evita N+1).
+  const reactionsMap = await aggregateReactions("post_reactions", "post_id", ids);
+  const userReactionMap = await userReactionsFor("post_reactions", "post_id", ids, viewerId);
   return Promise.all(
     rows.map(async (r) => {
       // Task #93 — preserva os sentinels CRUS em `image_refs` ANTES de
@@ -45,12 +106,15 @@ async function hydratePostsRows<T extends Record<string, any>>(
             typeof it === "string" && it.startsWith(POST_IMAGE_PREFIX),
           )
         : [];
+      const pid = Number((r as any).id);
       return {
         ...r,
         images: await resolvePostImages(r.images),
         image_refs: rawRefs,
         author_avatar: await resolveStoredMediaUrl(r.author_avatar),
-        is_saved: viewerId ? savedSet.has(Number((r as any).id)) : false,
+        is_saved: viewerId ? savedSet.has(pid) : false,
+        reactions: reactionsMap.get(pid) || [],
+        user_reaction: userReactionMap.get(pid) || null,
       };
     }),
   );
@@ -419,11 +483,20 @@ export async function getPostDetail(postId: number, userId?: number) {
     userId ? [postId, userId] : [postId],
   );
 
+  // Task #122 — hidrata reações multi-emoji em batch também nos comentários.
+  const commentIds = comments.map((c) => Number(c.id)).filter((n) => Number.isFinite(n));
+  const cReactionsMap = await aggregateReactions("comment_reactions", "comment_id", commentIds);
+  const cUserReactionMap = await userReactionsFor("comment_reactions", "comment_id", commentIds, userId);
   const hydratedComments = await Promise.all(
-    comments.map(async (c) => ({
-      ...c,
-      author_avatar: await resolveStoredMediaUrl(c.author_avatar),
-    })),
+    comments.map(async (c) => {
+      const cid = Number(c.id);
+      return {
+        ...c,
+        author_avatar: await resolveStoredMediaUrl(c.author_avatar),
+        reactions: cReactionsMap.get(cid) || [],
+        user_reaction: cUserReactionMap.get(cid) || null,
+      };
+    }),
   );
 
   const post = (await hydratePostsRows([rows[0]], userId))[0];
@@ -669,7 +742,20 @@ async function assertCanInteractWithClassPost(classId: number | null | undefined
   }
 }
 
-export async function togglePostLike(postId: number, userId: number) {
+// Task #122 — toggle multi-emoji.
+//   • Sem reação atual + emoji novo  → INSERT, like_count += 1
+//   • Reação igual ao emoji enviado  → DELETE (toggle off), like_count -= 1
+//   • Reação diferente               → UPDATE emoji, like_count inalterado
+// like_count agora reflete o TOTAL de reações (qualquer emoji),
+// preservando o significado de engajamento usado em trending/karma.
+// Mantemos post_likes legado em sincronia (INSERT/DELETE espelhando o
+// flag user_liked) pra não quebrar consultas/joins ainda não migrados.
+export async function togglePostReaction(
+  postId: number,
+  userId: number,
+  emoji: string,
+) {
+  assertValidReactionEmoji(emoji);
   const { rows: postCheck } = await query(
     `SELECT id, class_id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
     [postId],
@@ -677,31 +763,110 @@ export async function togglePostLike(postId: number, userId: number) {
   if (postCheck.length === 0) {
     throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
   }
-  // Task #99 — like em post de turma exige matrícula (ou moderator+).
-  // Trata como 404 pra não vazar a existência do recurso.
   await assertCanInteractWithClassPost(postCheck[0].class_id, userId);
 
-  const { rows: existing } = await query(
-    `SELECT id FROM post_likes WHERE post_id = $1 AND user_id = $2`,
+  const { rows: existing } = await query<{ emoji: string }>(
+    `SELECT emoji FROM post_reactions WHERE post_id = $1 AND user_id = $2`,
     [postId, userId],
   );
 
-  if (existing.length > 0) {
-    const { rowCount } = await query(`DELETE FROM post_likes WHERE post_id = $1 AND user_id = $2`, [postId, userId]);
-    if (rowCount && rowCount > 0) {
-      await query(`UPDATE posts SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, [postId]);
-    }
-    return { liked: false };
-  } else {
-    const { rowCount } = await query(
+  let userReaction: string | null = null;
+  if (existing.length === 0) {
+    await query(
+      `INSERT INTO post_reactions (post_id, user_id, emoji) VALUES ($1, $2, $3)
+       ON CONFLICT (post_id, user_id) DO UPDATE SET emoji = EXCLUDED.emoji`,
+      [postId, userId, emoji],
+    );
+    await query(`UPDATE posts SET like_count = like_count + 1 WHERE id = $1`, [postId]);
+    await query(
       `INSERT INTO post_likes (post_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [postId, userId],
     );
-    if (rowCount && rowCount > 0) {
-      await query(`UPDATE posts SET like_count = like_count + 1 WHERE id = $1`, [postId]);
-    }
-    return { liked: true };
+    userReaction = emoji;
+  } else if (existing[0].emoji === emoji) {
+    await query(`DELETE FROM post_reactions WHERE post_id = $1 AND user_id = $2`, [postId, userId]);
+    await query(`UPDATE posts SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, [postId]);
+    await query(`DELETE FROM post_likes WHERE post_id = $1 AND user_id = $2`, [postId, userId]);
+    userReaction = null;
+  } else {
+    await query(
+      `UPDATE post_reactions SET emoji = $3 WHERE post_id = $1 AND user_id = $2`,
+      [postId, userId, emoji],
+    );
+    userReaction = emoji;
   }
+
+  const reactionsMap = await aggregateReactions("post_reactions", "post_id", [postId]);
+  return {
+    user_reaction: userReaction,
+    reactions: reactionsMap.get(postId) || [],
+  };
+}
+
+export async function toggleCommentReaction(
+  commentId: number,
+  userId: number,
+  emoji: string,
+) {
+  assertValidReactionEmoji(emoji);
+  const { rows: commentCheck } = await query<{ post_id: number }>(
+    `SELECT post_id FROM comments WHERE id = $1 AND is_hidden = FALSE`,
+    [commentId],
+  );
+  if (commentCheck.length === 0) {
+    throw new AppError("Comentário não encontrado", "COMMENT_NOT_FOUND", 404);
+  }
+  // Mesma autorização de turma do post pai (defesa em profundidade).
+  const { rows: parentRows } = await query<{ class_id: number | null }>(
+    `SELECT class_id FROM posts WHERE id = $1`,
+    [commentCheck[0].post_id],
+  );
+  await assertCanInteractWithClassPost(parentRows[0]?.class_id ?? null, userId);
+
+  const { rows: existing } = await query<{ emoji: string }>(
+    `SELECT emoji FROM comment_reactions WHERE comment_id = $1 AND user_id = $2`,
+    [commentId, userId],
+  );
+
+  let userReaction: string | null = null;
+  if (existing.length === 0) {
+    await query(
+      `INSERT INTO comment_reactions (comment_id, user_id, emoji) VALUES ($1, $2, $3)
+       ON CONFLICT (comment_id, user_id) DO UPDATE SET emoji = EXCLUDED.emoji`,
+      [commentId, userId, emoji],
+    );
+    await query(`UPDATE comments SET like_count = like_count + 1 WHERE id = $1`, [commentId]);
+    await query(
+      `INSERT INTO comment_likes (comment_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [commentId, userId],
+    );
+    userReaction = emoji;
+  } else if (existing[0].emoji === emoji) {
+    await query(`DELETE FROM comment_reactions WHERE comment_id = $1 AND user_id = $2`, [commentId, userId]);
+    await query(`UPDATE comments SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, [commentId]);
+    await query(`DELETE FROM comment_likes WHERE comment_id = $1 AND user_id = $2`, [commentId, userId]);
+    userReaction = null;
+  } else {
+    await query(
+      `UPDATE comment_reactions SET emoji = $3 WHERE comment_id = $1 AND user_id = $2`,
+      [commentId, userId, emoji],
+    );
+    userReaction = emoji;
+  }
+
+  const reactionsMap = await aggregateReactions("comment_reactions", "comment_id", [commentId]);
+  return {
+    user_reaction: userReaction,
+    reactions: reactionsMap.get(commentId) || [],
+  };
+}
+
+// Aliases legados — `/like` agora é equivalente a reagir com ❤️ (o emoji
+// padrão). Devolvem `{liked}` mantendo o contrato antigo do frontend
+// até a migração completa pro endpoint /reactions.
+export async function togglePostLike(postId: number, userId: number) {
+  const r = await togglePostReaction(postId, userId, "❤️");
+  return { liked: r.user_reaction === "❤️" };
 }
 
 export async function addComment(postId: number, userId: number, content: string, parentId?: number) {
@@ -757,35 +922,8 @@ export async function addComment(postId: number, userId: number, content: string
 }
 
 export async function toggleCommentLike(commentId: number, userId: number) {
-  const { rows: commentCheck } = await query(
-    `SELECT id FROM comments WHERE id = $1 AND is_hidden = FALSE`,
-    [commentId],
-  );
-  if (commentCheck.length === 0) {
-    throw new AppError("Comentário não encontrado", "COMMENT_NOT_FOUND", 404);
-  }
-
-  const { rows: existing } = await query(
-    `SELECT id FROM comment_likes WHERE comment_id = $1 AND user_id = $2`,
-    [commentId, userId],
-  );
-
-  if (existing.length > 0) {
-    const { rowCount } = await query(`DELETE FROM comment_likes WHERE comment_id = $1 AND user_id = $2`, [commentId, userId]);
-    if (rowCount && rowCount > 0) {
-      await query(`UPDATE comments SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, [commentId]);
-    }
-    return { liked: false };
-  } else {
-    const { rowCount } = await query(
-      `INSERT INTO comment_likes (comment_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-      [commentId, userId],
-    );
-    if (rowCount && rowCount > 0) {
-      await query(`UPDATE comments SET like_count = like_count + 1 WHERE id = $1`, [commentId]);
-    }
-    return { liked: true };
-  }
+  const r = await toggleCommentReaction(commentId, userId, "❤️");
+  return { liked: r.user_reaction === "❤️" };
 }
 
 // ───── Subscriptions / Comunidades ─────

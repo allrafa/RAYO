@@ -1,4 +1,4 @@
-import { Heart, MessageCircle, Share2, MoreHorizontal, Plus, TrendingUp, Users, Clock, Pin, Send, Search, Sparkles, Trophy, UserPlus, ChevronRight, CheckCircle, Lock, Globe, Mail, Image as ImageIcon, Video, Smile, Bookmark, BookmarkCheck, Pencil, Trash2, X } from "lucide-react";
+import { MessageCircle, Share2, MoreHorizontal, Plus, TrendingUp, Users, Clock, Pin, Send, Search, Sparkles, Trophy, UserPlus, ChevronRight, CheckCircle, Lock, Globe, Mail, Image as ImageIcon, Video, Smile, Bookmark, BookmarkCheck, Pencil, Trash2, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import { MobileSearchPage } from "./MobileSearchPage";
@@ -23,7 +23,7 @@ import { enhancedToast } from "./EnhancedToast";
 import { useApp } from "./AppContext";
 import { useAuth } from "./AuthContext";
 import { CreatePostModal } from "./CreatePostModal";
-import { EmojiReactionPicker, useReactions } from "./EmojiReactionPicker";
+import { EmojiReactionPicker, ReactionsSummary, type ReactionAggregate } from "./EmojiReactionPicker";
 import { FavoriteIcon } from "./FavoriteButton";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { ConversasPage } from "./ConversasPage";
@@ -63,6 +63,9 @@ interface CommentData {
   author_name: string;
   author_id: number;
   user_liked: boolean;
+  // Task #122 — reações multi-emoji por comentário.
+  reactions: ReactionAggregate[];
+  user_reaction: string | null;
 }
 
 export function ComunidadePage() {
@@ -87,9 +90,10 @@ export function ComunidadePage() {
   // no topo da lista e perde o contexto de onde estava.
   useScrollRestore("comunidade-feed", showComments || !!activeCommunitySlug);
   
-  const { posts, likePost, sharePost, loadPosts } = useApp();
+  // Task #122 — likePost removido daqui; reações vivem no PostCard via
+  // EmojiReactionPicker (que dispara o endpoint multi-emoji direto).
+  const { posts, sharePost, loadPosts } = useApp();
   const { user: authUser } = useAuth();
-  const { reactions, handleReaction } = useReactions();
   const { theme } = useTheme();
   const [forums, setForums] = useState<Forum[]>([]);
   const [trendingPosts, setTrendingPosts] = useState<any[]>([]);
@@ -142,6 +146,7 @@ export function ComunidadePage() {
         post: {
           id: number;
           author_name: string;
+          author_avatar?: string | null;
           content: string;
           category: string;
           like_count: number;
@@ -151,9 +156,15 @@ export function ComunidadePage() {
           user_liked: boolean;
           forum_id: number;
           forum_name?: string;
+          forum_slug?: string;
+          forum_icon?: string;
           author_id: number;
           created_at: string;
           title: string | null;
+          images?: string[];
+          // Task #122 — getPostDetail hidrata reações multi-emoji.
+          reactions?: ReactionAggregate[];
+          user_reaction?: string | null;
         };
       }>(`/api/community/posts/${id}`);
       if (res.success && res.data) {
@@ -161,7 +172,7 @@ export function ComunidadePage() {
         setSelectedPost({
           id: p.id,
           author: p.author_name,
-          avatar: "/placeholder-avatar.jpg",
+          avatar: p.author_avatar || "/placeholder-avatar.jpg",
           time: new Date(p.created_at).toLocaleDateString("pt-BR"),
           content: p.content,
           category: p.category || "",
@@ -173,7 +184,14 @@ export function ComunidadePage() {
           visibility: "comunidade",
           forum_id: p.forum_id,
           forum_name: p.forum_name,
+          forum_slug: p.forum_slug,
+          forum_icon: p.forum_icon,
           author_id: p.author_id,
+          images: Array.isArray(p.images) ? p.images : [],
+          image_refs: [],
+          is_saved: false,
+          reactions: Array.isArray(p.reactions) ? p.reactions : [],
+          user_reaction: p.user_reaction ?? null,
         });
         setShowComments(true);
         void loadPostComments(p.id);
@@ -283,29 +301,42 @@ export function ComunidadePage() {
   }, [currentView, loadTrendingPosts]);
 
   const submitComment = useCallback(async (postId: number, content: string) => {
-    const res = await api.post<{ comment: CommentData }>(`/api/community/posts/${postId}/comments`, { content });
+    const res = await api.post<{ comment: Omit<CommentData, "reactions" | "user_reaction"> & { reactions?: ReactionAggregate[]; user_reaction?: string | null } }>(`/api/community/posts/${postId}/comments`, { content });
     if (res.success && res.data) {
-      setPostComments(prev => [...prev, res.data!.comment]);
+      // Task #122 — comentário recém-criado nunca tem reações ainda.
+      const c = res.data!.comment;
+      setPostComments(prev => [...prev, {
+        ...c,
+        reactions: Array.isArray(c.reactions) ? c.reactions : [],
+        user_reaction: c.user_reaction ?? null,
+      }]);
       await loadPosts();
       return true;
     }
     return false;
   }, [loadPosts]);
 
-  const toggleCommentLike = useCallback(async (commentId: number) => {
-    const res = await api.post<{ liked: boolean }>(`/api/community/comments/${commentId}/like`);
-    if (res.success && res.data) {
-      setPostComments(prev => prev.map(c =>
-        c.id === commentId
-          ? { ...c, user_liked: res.data!.liked, like_count: res.data!.liked ? c.like_count + 1 : c.like_count - 1 }
-          : c
-      ));
-    }
-  }, []);
-
-  const handleReactionWithFeedback = (postId: number, emoji: string) => {
-    handleReaction(postId, emoji);
-  };
+  // Task #122 — atualiza reações de um comentário no estado local. O
+  // EmojiReactionPicker faz a requisição; aqui só sincronizamos o
+  // CommentsPanel sem refetch (otimista, mas usando dados do server).
+  const updateCommentReactions = useCallback(
+    (commentId: number, next: { reactions: ReactionAggregate[]; userReaction: string | null }) => {
+      setPostComments(prev =>
+        prev.map(c =>
+          c.id === commentId
+            ? {
+                ...c,
+                reactions: next.reactions,
+                user_reaction: next.userReaction,
+                like_count: next.reactions.reduce((acc, r) => acc + r.count, 0),
+                user_liked: next.userReaction === "❤️",
+              }
+            : c,
+        ),
+      );
+    },
+    [],
+  );
 
   const handleRefresh = async () => {
     setIsLoading(true);
@@ -541,8 +572,6 @@ export function ComunidadePage() {
           {currentView === "feed" && (
             <FeedView 
               posts={posts}
-              reactions={reactions}
-              onReact={handleReactionWithFeedback}
               onComment={(post) => {
                 setSelectedPost(post);
                 setShowComments(true);
@@ -572,8 +601,6 @@ export function ComunidadePage() {
             <TrendingView 
               posts={trendingPosts}
               loading={trendingLoading}
-              reactions={reactions}
-              onReact={handleReactionWithFeedback}
               onComment={(post) => {
                 setSelectedPost(post);
                 setShowComments(true);
@@ -603,7 +630,7 @@ export function ComunidadePage() {
             loadingComments={loadingComments}
             onClose={() => { setShowComments(false); setSelectedPost(null); setPostComments([]); setHighlightCommentId(null); }}
             onSubmitComment={(content) => submitComment(selectedPost.id, content)}
-            onLikeComment={toggleCommentLike}
+            onCommentReactionsChange={updateCommentReactions}
             highlightCommentId={highlightCommentId}
           />
         )}
@@ -633,8 +660,6 @@ export function ComunidadePage() {
 // FEED VIEW
 interface FeedViewProps {
   posts: any[];
-  reactions: any;
-  onReact: (postId: number, emoji: string) => void;
   onComment: (post: any) => void;
   onShare: (post: any) => void;
   trendingTopics: any[];
@@ -642,7 +667,7 @@ interface FeedViewProps {
   onEdit?: (post: any) => void;
 }
 
-function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopics, onMutated, onEdit }: FeedViewProps) {
+function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit }: FeedViewProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Main Feed */}
@@ -673,8 +698,6 @@ function FeedView({ posts, reactions, onReact, onComment, onShare, trendingTopic
           <PostCard 
             key={post.id} 
             post={post}
-            reactions={reactions}
-            onReact={onReact}
             onComment={() => onComment(post)}
             onShare={() => onShare(post)}
             onMutated={onMutated}
@@ -1011,15 +1034,13 @@ function GruposView({ groups, categories, loading, error, onRetry }: GruposViewP
 interface TrendingViewProps {
   posts: any[];
   loading?: boolean;
-  reactions: any;
-  onReact: (postId: number, emoji: string) => void;
   onComment: (post: any) => void;
   onShare: (post: any) => void;
   onMutated?: () => void;
   onEdit?: (post: any) => void;
 }
 
-function TrendingView({ posts, loading, reactions, onReact, onComment, onShare, onMutated, onEdit }: TrendingViewProps) {
+function TrendingView({ posts, loading, onComment, onShare, onMutated, onEdit }: TrendingViewProps) {
   return (
     <div className="space-y-6">
       <div 
@@ -1056,8 +1077,6 @@ function TrendingView({ posts, loading, reactions, onReact, onComment, onShare, 
             <PostCard 
               key={post.id} 
               post={post}
-              reactions={reactions}
-              onReact={onReact}
               onComment={() => onComment(post)}
               onShare={() => onShare(post)}
               onMutated={onMutated}
@@ -1075,8 +1094,6 @@ function TrendingView({ posts, loading, reactions, onReact, onComment, onShare, 
 // POST CARD COMPONENT
 interface PostCardProps {
   post: any;
-  reactions: any;
-  onReact: (postId: number, emoji: string) => void;
   onComment: () => void;
   onShare: () => void;
   // Task #93 — recarregar lista após delete; abrir modal de edição.
@@ -1086,8 +1103,24 @@ interface PostCardProps {
 
 // Task #99 — exportado pra ser reusado em contextos escopados (ex.:
 // TurmaCommunityTab). Requer AppProvider/AuthProvider no ascendente.
-export function PostCard({ post, reactions, onReact, onComment, onShare, onMutated, onEdit }: PostCardProps) {
-  const { likePost } = useApp();
+export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCardProps) {
+  // Task #122 — estado local de reações; hidratado a partir do que veio
+  // no payload (`/api/community/posts*` agora devolve `reactions[]` e
+  // `user_reaction`). EmojiReactionPicker faz a request e devolve o novo
+  // shape via onChange — atualizamos só localmente, sem refetch global.
+  const [reactionState, setReactionState] = useState<{
+    reactions: ReactionAggregate[];
+    userReaction: string | null;
+  }>({
+    reactions: Array.isArray(post.reactions) ? post.reactions : [],
+    userReaction: post.user_reaction ?? null,
+  });
+  useEffect(() => {
+    setReactionState({
+      reactions: Array.isArray(post.reactions) ? post.reactions : [],
+      userReaction: post.user_reaction ?? null,
+    });
+  }, [post.id, post.reactions, post.user_reaction]);
   const { user: viewer } = useAuth();
   const isAuthor = !!(viewer && post.author_id && viewer.id === post.author_id);
   const isModeratorPlus = userHasRole(viewer, "moderator");
@@ -1350,25 +1383,23 @@ export function PostCard({ post, reactions, onReact, onComment, onShare, onMutat
           </div>
         )}
 
-        {/* Actions */}
+        {/* Actions — Task #122: Heart estático virou EmojiReactionPicker
+            multi-emoji (❤️😂🙏💡🔥👏). Mantemos `likePost` como fallback
+            só pra registrar o engagement se o picker falhar — mas a
+            verdade do estado vive em reactionState. */}
         <div 
           className="flex items-center gap-6 pt-3"
           style={{ borderTop: '1px solid var(--rayo-sand-300)' }}
         >
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => likePost(post.id)}
-            className="gap-2"
-            style={{
-              color: post.userReacted ? '#FF5A5F' : 'var(--rayo-ink-400)',
-            }}
-          >
-            <Heart className={`w-4 h-4 ${post.userReacted ? 'fill-[#FF5A5F]' : ''}`} />
-            <span className="text-[13px]" style={{ fontWeight: 500 }}>
-              {post.likes}
-            </span>
-          </Button>
+          <EmojiReactionPicker
+            targetType="post"
+            targetId={post.id}
+            reactions={reactionState.reactions}
+            userReaction={reactionState.userReaction}
+            onChange={setReactionState}
+            variant="full"
+            className="px-2 py-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5"
+          />
           <Button
             variant="ghost"
             size="sm"
@@ -1613,11 +1644,16 @@ interface CommentsPanelProps {
   loadingComments: boolean;
   onClose: () => void;
   onSubmitComment: (content: string) => Promise<boolean>;
-  onLikeComment: (commentId: number) => void;
+  // Task #122 — reações multi-emoji por comentário; o pai sincroniza
+  // o estado quando o picker recebe a resposta do servidor.
+  onCommentReactionsChange: (
+    commentId: number,
+    next: { reactions: ReactionAggregate[]; userReaction: string | null },
+  ) => void;
   highlightCommentId?: number | null;
 }
 
-function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComment, onLikeComment, highlightCommentId }: CommentsPanelProps) {
+function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComment, onCommentReactionsChange, highlightCommentId }: CommentsPanelProps) {
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   // Task #117 — confirma descarte se houver rascunho não enviado.
@@ -1810,14 +1846,18 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
                   <p className="text-[13px] mt-1" style={{ color: 'var(--rayo-ink-700)' }}>
                     {c.content}
                   </p>
-                  <button
-                    onClick={() => onLikeComment(c.id)}
-                    className="flex items-center gap-1 mt-1 text-[12px] transition-colors"
-                    style={{ color: c.user_liked ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)' }}
-                  >
-                    <Heart className="w-3 h-3" fill={c.user_liked ? 'currentColor' : 'none'} />
-                    {c.like_count > 0 && <span>{c.like_count}</span>}
-                  </button>
+                  {/* Task #122 — reações multi-emoji em comentários
+                      (variant compact). Sem botão Heart legado. */}
+                  <div className="mt-1">
+                    <EmojiReactionPicker
+                      targetType="comment"
+                      targetId={c.id}
+                      reactions={c.reactions}
+                      userReaction={c.user_reaction}
+                      onChange={(next) => onCommentReactionsChange(c.id, next)}
+                      variant="compact"
+                    />
+                  </div>
                 </div>
               </div>
             ))

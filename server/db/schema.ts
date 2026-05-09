@@ -473,6 +473,53 @@ export async function initializeSchema() {
   await query(`CREATE INDEX IF NOT EXISTS idx_comment_likes_comment_id ON comment_likes(comment_id)`);
 
   // ──────────────────────────────────────────────────────────────────
+  // Task #122 — Reações multi-emoji em posts e comentários.
+  // Set fechado de 6 emojis (validado no service). UNIQUE(target,user)
+  // garante 1 reação por par — trocar de emoji UPDATE em vez de
+  // duplicar. like_count em posts/comments segue refletindo o TOTAL de
+  // reações (qualquer emoji conta como engajamento) — trending e karma
+  // continuam funcionando sem retrabalho. Backfill copia rows antigas
+  // de post_likes/comment_likes pra ❤️ (idempotente, ON CONFLICT).
+  // ──────────────────────────────────────────────────────────────────
+  await query(`
+    CREATE TABLE IF NOT EXISTS post_reactions (
+      id SERIAL PRIMARY KEY,
+      post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      emoji VARCHAR(8) NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(post_id, user_id)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_post_reactions_post_id ON post_reactions(post_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_post_reactions_user_id ON post_reactions(user_id)`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS comment_reactions (
+      id SERIAL PRIMARY KEY,
+      comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      emoji VARCHAR(8) NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(comment_id, user_id)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_comment_reactions_comment_id ON comment_reactions(comment_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_comment_reactions_user_id ON comment_reactions(user_id)`);
+
+  // Backfill — copia likes legados pra ❤️ (1x; idempotente via UNIQUE).
+  await query(`
+    INSERT INTO post_reactions (post_id, user_id, emoji, created_at)
+    SELECT post_id, user_id, '❤️', created_at FROM post_likes
+    ON CONFLICT (post_id, user_id) DO NOTHING
+  `);
+  await query(`
+    INSERT INTO comment_reactions (comment_id, user_id, emoji, created_at)
+    SELECT comment_id, user_id, '❤️', created_at FROM comment_likes
+    ON CONFLICT (comment_id, user_id) DO NOTHING
+  `);
+
+  // ──────────────────────────────────────────────────────────────────
   // Task #92 — Comunidade no estilo Reddit (subreddits + karma + follows).
   // Tudo idempotente. `slug` é gerado no boot abaixo (slugify do name)
   // para forums já existentes. `posts.images` guarda um array JSON de

@@ -59,6 +59,7 @@ interface DashboardData {
     id: number; content: string; category: string;
     likeCount: number; commentCount: number; createdAt: string;
     authorName: string; forumName: string; forumIcon: string;
+    forumSlug: string | null;
   }>;
   missions: Array<{
     id: number; title: string; description: string; type: string;
@@ -414,7 +415,23 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                       key={post.id}
                       type="button"
                       className="rh-disc"
-                      onClick={() => onNavigate?.("comunidade")}
+                      onClick={() => {
+                        // Task #122 — abre a discussão dedicada via deep-link.
+                        // Reusa o contrato `raio-pending-post` (mesma chave da
+                        // busca/perfil); ComunidadePage faz o fetch+render do
+                        // CommentsPanel completo. Slug vai junto pra a URL
+                        // canônica `/c/<slug>/p/<id>` (replaceState sem reload).
+                        try {
+                          sessionStorage.setItem("raio-pending-post", String(post.id));
+                          if (post.forumSlug) {
+                            sessionStorage.setItem("rayo-pending-discussion-slug", post.forumSlug);
+                            try {
+                              window.history.replaceState({}, "", `/c/${post.forumSlug}/p/${post.id}`);
+                            } catch { /* noop */ }
+                          }
+                        } catch { /* noop */ }
+                        onNavigate?.("comunidade");
+                      }}
                     >
                       <div className={`rh-disc-avatar ${color}`}>
                         {avatarInitials(post.authorName || "·")}

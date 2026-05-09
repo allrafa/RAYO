@@ -1,139 +1,230 @@
-import { useState } from "react";
-import { Heart } from "lucide-react";
+import { useState, useCallback } from "react";
+import { SmilePlus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Button } from "./ui/button";
+import { api } from "../lib/api";
+import { enhancedToast } from "./EnhancedToast";
 
-interface Reaction {
+// Task #122 — set fechado de 6 emojis. Espelha `ALLOWED_REACTION_EMOJIS`
+// no backend (server/features/community/service.ts). Ordem importa pra UI:
+// é a mesma exibida no picker.
+export const REACTION_EMOJIS = ["❤️", "😂", "🙏", "💡", "🔥", "👏"] as const;
+export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
+
+export interface ReactionAggregate {
   emoji: string;
-  name: string;
-  color: string;
+  count: number;
 }
 
-const reactions: Reaction[] = [
-  { emoji: "❤️", name: "Curtir", color: "text-red-500" },
-  { emoji: "😍", name: "Amei", color: "text-red-500" },
-  { emoji: "😂", name: "Hilário", color: "text-yellow-500" },
-  { emoji: "🥰", name: "Fofo", color: "text-pink-500" },
-  { emoji: "👏", name: "Parabéns", color: "text-blue-500" },
-  { emoji: "🙏", name: "Amém", color: "text-purple-500" },
-  { emoji: "💪", name: "Força", color: "text-orange-500" },
-  { emoji: "🔥", name: "Top", color: "text-red-600" },
-  { emoji: "✨", name: "Inspirador", color: "text-yellow-400" },
-  { emoji: "💕", name: "Love", color: "text-pink-400" }
-];
-
 interface EmojiReactionPickerProps {
-  postId: number;
-  currentReaction?: string;
-  reactionCount: number;
-  onReact: (postId: number, emoji: string) => void;
+  // Identifica o alvo. O componente faz POST no endpoint correto
+  // (`/api/community/posts|comments/:id/reactions`) sozinho.
+  targetType: "post" | "comment";
+  targetId: number;
+  reactions: ReactionAggregate[];
+  userReaction: string | null;
+  // Callback otimista — pai atualiza o estado local imediatamente. Em caso
+  // de erro a reverter, o componente expõe o resultado real do servidor.
+  onChange: (next: { reactions: ReactionAggregate[]; userReaction: string | null }) => void;
+  // Estilo: "full" mostra picker + barra de chips agregada (uso em PostCard);
+  // "compact" mostra só barra de chips inline (uso em comentários).
+  variant?: "full" | "compact";
   className?: string;
 }
 
-export function EmojiReactionPicker({ 
-  postId, 
-  currentReaction, 
-  reactionCount, 
-  onReact,
-  className = ""
+function totalReactionCount(reactions: ReactionAggregate[]): number {
+  return reactions.reduce((acc, r) => acc + r.count, 0);
+}
+
+export function EmojiReactionPicker({
+  targetType,
+  targetId,
+  reactions,
+  userReaction,
+  onChange,
+  variant = "full",
+  className = "",
 }: EmojiReactionPickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const handleReactionSelect = (emoji: string) => {
-    if ('vibrate' in navigator) {
-      navigator.vibrate(15);
-    }
-    
-    // Se já reagiu com o mesmo emoji, remove a reação
-    if (currentReaction === emoji) {
-      onReact(postId, "");
-    } else {
-      onReact(postId, emoji);
-    }
-    
-    setIsOpen(false);
-  };
+  const send = useCallback(
+    async (emoji: string) => {
+      if (busy) return;
+      setBusy(true);
+      try {
+        if ("vibrate" in navigator) navigator.vibrate(15);
+        const url =
+          targetType === "post"
+            ? `/api/community/posts/${targetId}/reactions`
+            : `/api/community/comments/${targetId}/reactions`;
+        const res = await api.post<{
+          reactions: ReactionAggregate[];
+          user_reaction: string | null;
+        }>(url, { emoji });
+        if (res.success && res.data) {
+          onChange({
+            reactions: res.data.reactions,
+            userReaction: res.data.user_reaction,
+          });
+        } else {
+          enhancedToast.error({
+            title: "Falha ao reagir",
+            description: res.error?.message || "Tente novamente",
+            haptic: true,
+          });
+        }
+      } finally {
+        setBusy(false);
+        setOpen(false);
+      }
+    },
+    [busy, onChange, targetId, targetType],
+  );
 
-  const getCurrentReactionColor = () => {
-    if (!currentReaction) return "text-muted-foreground";
-    
-    const reaction = reactions.find(r => r.emoji === currentReaction);
-    return reaction ? reaction.color : "text-red-500";
-  };
+  // Chips agregados — sempre que houver pelo menos 1 reação. Cada chip
+  // é clicável: tap aplica/troca/remove a reação correspondente.
+  const Chips = (
+    <div className="flex flex-wrap items-center gap-1">
+      {reactions.map((r) => {
+        const mine = userReaction === r.emoji;
+        return (
+          <button
+            key={r.emoji}
+            type="button"
+            onClick={() => send(r.emoji)}
+            disabled={busy}
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[12px] transition-colors"
+            style={{
+              border: `1px solid ${mine ? "var(--rayo-terra-500)" : "var(--rayo-sand-300)"}`,
+              background: mine ? "var(--rayo-terra-100)" : "var(--rayo-sand-50)",
+              color: mine ? "var(--rayo-terra-500)" : "var(--rayo-ink-700)",
+              fontWeight: mine ? 600 : 500,
+            }}
+            aria-pressed={mine}
+            aria-label={`${mine ? "Remover" : "Adicionar"} reação ${r.emoji}`}
+          >
+            <span aria-hidden="true">{r.emoji}</span>
+            <span>{r.count}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 
+  if (variant === "compact") {
+    // Modo inline (comentários): chips + botão "+" pra abrir o picker.
+    return (
+      <div className={`flex items-center gap-1 ${className}`}>
+        {reactions.length > 0 && Chips}
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[12px] transition-colors hover:bg-black/5"
+              style={{ color: "var(--rayo-ink-400)" }}
+              aria-label="Reagir ao comentário"
+              disabled={busy}
+            >
+              <SmilePlus className="w-3.5 h-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-1.5 bg-card/95 backdrop-blur-sm" align="start" side="top">
+            <div className="flex gap-1">
+              {REACTION_EMOJIS.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => send(e)}
+                  disabled={busy}
+                  className={`w-9 h-9 rounded-md text-xl transition-transform hover:scale-110 ${
+                    userReaction === e ? "bg-[var(--rayo-terra-100)]" : ""
+                  }`}
+                  aria-label={`Reagir com ${e}`}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+  }
+
+  // Modo "full" (PostCard) — botão único que mostra reação do usuário (ou
+  // "Reagir") + total. Ao tocar abre o picker. Os chips agregados são
+  // renderizados ABAIXO da action row pelo PostCard (não aqui), pra não
+  // poluir o alinhamento horizontal das ações.
+  const total = totalReactionCount(reactions);
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button 
-          className={`flex items-center gap-2 text-sm transition-all duration-200 mobile-touch-target hover:shadow-md ${getCurrentReactionColor()} hover:brightness-110 ${className}`}
-          aria-label={currentReaction ? `Reação atual: ${currentReaction}` : 'Reagir ao post'}
+        <button
+          type="button"
+          className={`flex items-center gap-2 transition-all duration-200 ${className}`}
+          style={{
+            color: userReaction ? "var(--rayo-terra-500)" : "var(--rayo-ink-400)",
+          }}
+          aria-label={userReaction ? `Reação atual: ${userReaction}` : "Reagir ao post"}
+          disabled={busy}
         >
-          {currentReaction ? (
-            <span className="text-base hover:brightness-125 transition-all duration-200">
-              {currentReaction}
-            </span>
+          {userReaction ? (
+            <span className="text-base">{userReaction}</span>
           ) : (
-            <Heart className="w-4 h-4 hover:fill-current transition-colors duration-200" />
+            <SmilePlus className="w-4 h-4" />
           )}
-          <span className="font-medium">{reactionCount > 0 ? reactionCount : ''}</span>
+          <span className="text-[13px]" style={{ fontWeight: 500 }}>
+            {total > 0 ? total : ""}
+          </span>
         </button>
       </PopoverTrigger>
-      
-      <PopoverContent 
-        className="w-auto p-2 bg-card/95 backdrop-blur-sm border shadow-lg" 
+      <PopoverContent
+        className="w-auto p-2 bg-card/95 backdrop-blur-sm border shadow-lg"
         align="start"
         side="top"
       >
-        <div className="grid grid-cols-5 gap-1">
-          {reactions.map((reaction) => (
-            <Button
-              key={reaction.emoji}
-              variant="ghost"
-              size="sm"
-              className="w-12 h-12 p-0 hover:bg-accent/50 hover:shadow-md transition-all duration-200 group"
-              onClick={() => handleReactionSelect(reaction.emoji)}
-              title={reaction.name}
+        <div className="flex gap-1">
+          {REACTION_EMOJIS.map((e) => (
+            <button
+              key={e}
+              type="button"
+              onClick={() => send(e)}
+              disabled={busy}
+              className={`w-11 h-11 rounded-lg text-2xl transition-transform hover:scale-110 ${
+                userReaction === e ? "bg-[var(--rayo-terra-100)]" : "hover:bg-accent/50"
+              }`}
+              aria-label={`Reagir com ${e}`}
+              title={e}
             >
-              <span 
-                className="text-xl group-hover:brightness-125 transition-all duration-200"
-                role="img" 
-                aria-label={reaction.name}
-              >
-                {reaction.emoji}
-              </span>
-            </Button>
+              {e}
+            </button>
           ))}
         </div>
-        
-        {/* Indicador visual quando já reagiu */}
-        {currentReaction && (
-          <div className="mt-2 pt-2 border-t text-center">
-            <p className="text-xs text-muted-foreground">
-              Clique novamente para remover sua reação
-            </p>
-          </div>
+        {userReaction && (
+          <p className="mt-2 pt-2 border-t text-center text-[11px]" style={{ color: "var(--rayo-ink-400)" }}>
+            Toque no mesmo emoji para remover
+          </p>
         )}
       </PopoverContent>
     </Popover>
   );
 }
 
-// Hook para gerenciar reações (pode ser movido para um arquivo separado se necessário)
-export function useReactions() {
-  const [reactions, setReactions] = useState<{[postId: number]: {emoji: string, count: number}}>({});
-
-  const handleReaction = (postId: number, emoji: string) => {
-    setReactions(prev => ({
-      ...prev,
-      [postId]: {
-        emoji: emoji || "",
-        count: emoji ? (prev[postId]?.count || 0) + (prev[postId]?.emoji === emoji ? -1 : 1) : 0
-      }
-    }));
-  };
-
-  return {
-    reactions,
-    handleReaction
-  };
+// Barra agregada standalone — usada no PostCard logo abaixo da action row
+// quando há reações. Compartilha o mesmo onChange do picker.
+export function ReactionsSummary(props: {
+  targetType: "post" | "comment";
+  targetId: number;
+  reactions: ReactionAggregate[];
+  userReaction: string | null;
+  onChange: (next: { reactions: ReactionAggregate[]; userReaction: string | null }) => void;
+}) {
+  if (props.reactions.length === 0) return null;
+  return (
+    <EmojiReactionPicker
+      {...props}
+      variant="compact"
+      className="mt-2"
+    />
+  );
 }

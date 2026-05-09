@@ -235,9 +235,33 @@ function AppContent() {
   // `/u/<id>`: mantém autenticado (NÃO é página pública), parqueia o slug
   // em sessionStorage e troca pra aba Comunidade. ComunidadePage lê
   // `rayo-pending-community-slug` e abre a vista da comunidade.
+  // Task #122 — também detecta `/c/<slug>/p/<id>` (discussão dedicada,
+  // compartilhável). Nesse caso parqueia também o id em `raio-pending-post`
+  // (mesma chave usada pela busca/perfil), e ComunidadePage abre o
+  // CommentsPanel direto — slug fica só pro SEO/canonical e pra UI sugerir
+  // a comunidade no header do post.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const match = window.location.pathname.match(/^\/c\/([a-z0-9-]+)\/?$/i);
+    const path = window.location.pathname;
+    const postMatch = path.match(/^\/c\/([a-z0-9-]+)\/p\/(\d+)\/?$/i);
+    if (postMatch) {
+      const slug = postMatch[1].toLowerCase();
+      const id = postMatch[2];
+      try {
+        sessionStorage.setItem("rayo-pending-discussion-slug", slug);
+        sessionStorage.setItem("raio-pending-post", id);
+      } catch {
+        // ignore
+      }
+      setCurrentTab("comunidade");
+      try {
+        window.history.replaceState({}, "", "/");
+      } catch {
+        // ignore
+      }
+      return;
+    }
+    const match = path.match(/^\/c\/([a-z0-9-]+)\/?$/i);
     if (!match) return;
     const slug = match[1].toLowerCase();
     try {

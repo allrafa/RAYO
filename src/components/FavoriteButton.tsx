@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Heart } from "lucide-react";
+import { Heart, Bookmark } from "lucide-react";
 import { Button } from "./ui/button";
 import { useApp } from "./AppContext";
 import { cn } from "./ui/utils";
@@ -154,6 +154,10 @@ export function FavoriteIcon({
     }
   };
 
+  // Task #122 — usamos Bookmark aqui (não Heart) pra eliminar a confusão
+  // dos "dois corações" no card de post: o ❤️ vira UMA das reações
+  // multi-emoji (gerenciado pelo EmojiReactionPicker), enquanto Salvar
+  // é uma ação completamente separada de "guardar pra ler depois".
   return (
     <button
       onClick={handleToggle}
@@ -161,14 +165,16 @@ export function FavoriteIcon({
         "p-1.5 rounded-full transition-all duration-200 hover:bg-black/10 dark:hover:bg-white/10",
         className
       )}
-      aria-label={`${isFavorite ? 'Remover dos' : 'Adicionar aos'} favoritos`}
+      aria-label={`${isFavorite ? 'Remover dos' : 'Adicionar aos'} salvos`}
+      aria-pressed={isFavorite}
+      title={isFavorite ? 'Remover dos salvos' : 'Salvar'}
     >
-      <Heart 
+      <Bookmark
         className={cn(
           "w-4 h-4 transition-all duration-200",
-          isFavorite 
-            ? "fill-red-500 text-red-500 scale-110" 
-            : "text-muted-foreground hover:text-red-500"
+          isFavorite
+            ? "fill-current text-[var(--rayo-terra-500)] scale-110"
+            : "text-muted-foreground hover:text-[var(--rayo-terra-500)]"
         )}
       />
     </button>

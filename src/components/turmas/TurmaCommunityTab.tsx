@@ -12,13 +12,9 @@ import { PostCard } from "../ComunidadePage";
 import { CreatePostModal } from "../CreatePostModal";
 import { mapAPIPost, type APIPost, type MappedPost } from "../../lib/postMapper";
 
-// Reactions/onReact não são providos pelo AppContext — em ComunidadePage
-// vivem em estado local da view. Como `PostCard` cuida dos likes
-// internamente (via `useApp().likePost`), aqui passamos um mapa vazio
-// + noop, mantendo a paridade visual com o feed global sem expandir o
-// AppContextType só pra esse uso.
-const EMPTY_REACTIONS: Record<string, unknown> = {};
-const noopReact = () => {};
+// Task #122 — PostCard não recebe mais `reactions`/`onReact`; cada card
+// gerencia seu próprio estado de reações multi-emoji internamente via
+// EmojiReactionPicker, falando direto com o backend.
 
 export function TurmaCommunityTab({ classId }: { classId: number }) {
   const [posts, setPosts] = useState<MappedPost[]>([]);
@@ -151,8 +147,6 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
             <div key={post.id} data-post-id={post.id}>
               <PostCard
                 post={post}
-                reactions={EMPTY_REACTIONS}
-                onReact={noopReact}
                 onComment={load}
                 onShare={load}
                 onMutated={load}

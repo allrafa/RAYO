@@ -27,6 +27,9 @@ export interface APIPost {
   image_refs?: string[];
   user_liked: boolean;
   is_saved?: boolean;
+  // Task #122 — agregação de reações multi-emoji + reação do usuário atual.
+  reactions?: Array<{ emoji: string; count: number }>;
+  user_reaction?: string | null;
 }
 
 export interface MappedPost {
@@ -50,6 +53,8 @@ export interface MappedPost {
   forum_icon?: string;
   author_id?: number;
   is_saved: boolean;
+  reactions: Array<{ emoji: string; count: number }>;
+  user_reaction: string | null;
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -88,5 +93,7 @@ export function mapAPIPost(p: APIPost): MappedPost {
     forum_icon: p.forum_icon,
     author_id: p.author_id,
     is_saved: !!p.is_saved,
+    reactions: Array.isArray(p.reactions) ? p.reactions : [],
+    user_reaction: p.user_reaction ?? null,
   };
 }

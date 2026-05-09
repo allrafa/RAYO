@@ -56,6 +56,7 @@ interface PostRow {
   author_name: string;
   forum_name: string;
   forum_icon: string;
+  forum_slug: string | null;
 }
 
 interface MissionRow {
@@ -278,11 +279,12 @@ export async function getDashboard(userId: number) {
   const forumParams = lifeContextFilter.length > 0 ? [lifeContextFilter] : [];
   const { rows: recentPosts } = await query<PostRow>(
     `SELECT p.id, p.content, p.category, p.like_count, p.comment_count,
-            p.created_at, u.name AS author_name, f.name AS forum_name, f.icon AS forum_icon
+            p.created_at, u.name AS author_name,
+            f.name AS forum_name, f.icon AS forum_icon, f.slug AS forum_slug
      FROM posts p
      JOIN users u ON u.id = p.user_id
      JOIN forums f ON f.id = p.forum_id
-     WHERE 1=1 ${forumWhere}
+     WHERE p.is_hidden = FALSE AND p.class_id IS NULL ${forumWhere}
      ORDER BY p.created_at DESC
      LIMIT 5`,
     forumParams
@@ -353,6 +355,7 @@ export async function getDashboard(userId: number) {
       authorName: p.author_name,
       forumName: p.forum_name,
       forumIcon: p.forum_icon,
+      forumSlug: p.forum_slug,
     })),
     missions: missionRows.map((m) => ({
       id: m.id,

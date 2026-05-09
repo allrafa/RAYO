@@ -451,6 +451,69 @@ async function resolveTurma(id: number): Promise<PublicMeta | null> {
   };
 }
 
+// Task #122 — meta da discussão dedicada `/c/<slug>/p/<id>`. Contrato:
+// post precisa estar visível (não hidden), pertencer ao forum do slug,
+// e NÃO ser de turma (class_id IS NULL). Cai pra null em qualquer
+// outro caso — middleware vai usar o fallback genérico do SPA.
+async function resolveCommunityPost(
+  slug: string,
+  id: number,
+): Promise<PublicMeta | null> {
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const { rows } = await query<{
+    content: string;
+    title: string | null;
+    forum_name: string;
+    forum_icon: string | null;
+    author_name: string;
+  }>(
+    `SELECT p.content, p.title, u.name AS author_name,
+            f.name AS forum_name, f.icon AS forum_icon
+       FROM posts p
+       JOIN forums f ON f.id = p.forum_id
+       JOIN users u ON u.id = p.user_id
+      WHERE p.id = $1
+        AND f.slug = $2
+        AND p.is_hidden = FALSE
+        AND p.class_id IS NULL
+      LIMIT 1`,
+    [id, slug],
+  );
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  const headline = r.title?.trim()
+    ? r.title.trim()
+    : truncate(stripMarkdown(r.content), 80) || "Discussão na comunidade";
+  const desc = truncate(
+    stripMarkdown(r.content) || `Discussão por ${r.author_name} em ${r.forum_name}.`,
+    200,
+  );
+  const canonical = `${SITE}/c/${slug}/p/${id}`;
+  const ogImage = await toAbsoluteImageUrl(null);
+  const discussionLd: JsonLd = {
+    "@context": "https://schema.org",
+    "@type": "DiscussionForumPosting",
+    headline,
+    articleBody: desc,
+    url: canonical,
+    inLanguage: "pt-BR",
+    author: { "@type": "Person", name: r.author_name },
+    isPartOf: {
+      "@type": "Thing",
+      name: r.forum_name,
+      url: `${SITE}/c/${slug}`,
+    },
+  };
+  return {
+    title: `${headline} · ${r.forum_name} · RAYO`,
+    description: desc,
+    canonical,
+    ogImage,
+    ogType: "article",
+    jsonLd: [discussionLd],
+  };
+}
+
 /**
  * Resolve um path em PublicMeta — primeiro consulta o registry estático,
  * depois tenta os padrões dinâmicos (/blog/:slug, /u/:id, /turmas/:id).
@@ -479,6 +542,8 @@ export async function resolvePublicMeta(rawPath: string): Promise<PublicMeta | n
       resolved = await resolveUserProfile(parseInt(m[1], 10));
     } else if ((m = path.match(/^\/turmas\/(\d{1,10})$/))) {
       resolved = await resolveTurma(parseInt(m[1], 10));
+    } else if ((m = path.match(/^\/c\/([a-z0-9-]{1,80})\/p\/(\d{1,10})$/i))) {
+      resolved = await resolveCommunityPost(m[1].toLowerCase(), parseInt(m[2], 10));
     }
   } catch {
     resolved = null;
