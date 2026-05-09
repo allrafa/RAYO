@@ -342,20 +342,28 @@ export async function sendMessage(
     if (!attachmentUrl) {
       throw new AppError("Anexo é obrigatório para esse tipo de mensagem", "ATTACHMENT_REQUIRED", 400);
     }
-    // Anexo só pode ser referência canônica do object storage do servidor.
-    // Bloqueia injeção de URL externa (phishing/abuso) ao montar a mensagem.
-    if (!attachmentUrl.startsWith("objstore://")) {
+    // Anexo só pode ser referência canônica do object storage do servidor,
+    // dentro do namespace de mensagens. Bloqueia injeção de URL externa
+    // (phishing/abuso) e reuso de chaves de outros módulos (ex.: CMS).
+    const expectedPrefix = `objstore://messages/${kind}/`;
+    if (!attachmentUrl.startsWith(expectedPrefix)) {
       throw new AppError("Anexo inválido", "INVALID_ATTACHMENT_URL", 400);
     }
-    // Valida coerência kind ↔ mime, quando o cliente informou o mime.
+    // Defesa em profundidade: meta confiável é exigida e o mime tem que
+    // bater com a allowlist do endpoint de upload.
     const mimeFromMeta = typeof attachmentMeta?.mime === "string" ? attachmentMeta.mime : "";
-    if (mimeFromMeta) {
-      if (kind === "image" && !mimeFromMeta.startsWith("image/")) {
-        throw new AppError("Mime do anexo não corresponde ao tipo", "ATTACHMENT_MIME_MISMATCH", 400);
-      }
-      if (kind === "audio" && !mimeFromMeta.startsWith("audio/")) {
-        throw new AppError("Mime do anexo não corresponde ao tipo", "ATTACHMENT_MIME_MISMATCH", 400);
-      }
+    if (!mimeFromMeta) {
+      throw new AppError("Metadata do anexo é obrigatória", "ATTACHMENT_META_REQUIRED", 400);
+    }
+    const ALLOWED_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+    const ALLOWED_AUDIO_MIMES = new Set([
+      "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav", "audio/x-m4a",
+    ]);
+    if (kind === "image" && !ALLOWED_IMAGE_MIMES.has(mimeFromMeta)) {
+      throw new AppError("Mime do anexo não corresponde ao tipo", "ATTACHMENT_MIME_MISMATCH", 400);
+    }
+    if (kind === "audio" && !ALLOWED_AUDIO_MIMES.has(mimeFromMeta)) {
+      throw new AppError("Mime do anexo não corresponde ao tipo", "ATTACHMENT_MIME_MISMATCH", 400);
     }
     if (content.length > MAX_MESSAGE_LENGTH) {
       throw new AppError(`Legenda excede ${MAX_MESSAGE_LENGTH} caracteres`, "MESSAGE_TOO_LONG", 400);
