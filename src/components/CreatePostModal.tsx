@@ -397,6 +397,8 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
     setUploadedImages([]);
     setExistingRefs([]);
     setExistingUrls([]);
+    setUploadingCount(0);
+    setUploadProgress([]);
     onOpenChange(false);
   };
 
