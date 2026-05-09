@@ -22,7 +22,7 @@ Oferecemos cursos, vídeos, áudios, livros, séries, missões de gamificação,
     },
     {
       title: "3. Cadastro e Conta",
-      content: `Para usar a maior parte do serviço você precisa criar uma conta com dados verdadeiros e atualizados, ou entrar com seu Google/Apple.
+      content: `Para usar a maior parte do serviço você precisa criar uma conta com dados verdadeiros e atualizados, ou entrar com seu Google/Facebook.
 
 • Você é responsável por manter suas credenciais em segurança e por toda atividade realizada na sua conta.
 • Avise-nos imediatamente em caso de uso não autorizado.

@@ -308,10 +308,10 @@ export async function loginUser(input: LoginInput, ip?: string, userAgent?: stri
 
   const row = result.rows[0];
 
-  // Task #69 — contas só-OAuth (Google/Apple) não têm `password_hash`.
+  // Task #69/#72 — contas só-OAuth (Google/Facebook) não têm `password_hash`.
   // Tratar como credencial inválida em vez de deixar o bcrypt estourar 500.
   if (!row.password_hash) {
-    const err = new Error("Esta conta usa login social. Entre com Google ou Apple.") as Error & { statusCode: number; code: string };
+    const err = new Error("Esta conta usa login social. Entre com Google ou Facebook.") as Error & { statusCode: number; code: string };
     err.statusCode = 401;
     err.code = "OAUTH_ONLY_ACCOUNT";
     throw err;
@@ -342,12 +342,13 @@ export async function loginUser(input: LoginInput, ip?: string, userAgent?: stri
 //  3) Senão cria uma conta nova (password_hash NULL, email já considerado verificado).
 // Mantém a forma funcional do resto do módulo: cada caminho retorna SafeUser pronto.
 export async function findOrCreateOAuthUser(params: {
-  provider: "google" | "apple";
+  provider: "google" | "facebook";
   providerId: string;
   email: string;
   name: string | null;
 }): Promise<SafeUser> {
-  const idCol = params.provider === "google" ? "google_id" : "apple_id";
+  // Task #72 — Apple removido, Facebook adicionado. O id col mapeia 1:1.
+  const idCol = params.provider === "google" ? "google_id" : "facebook_id";
   const email = params.email.trim().toLowerCase();
 
   const byId = await query(

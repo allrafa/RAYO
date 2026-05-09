@@ -103,8 +103,8 @@ const isOAuthPath = (req: import("express").Request) =>
   req.path === "/providers" ||
   req.path === "/google" ||
   req.path === "/google/callback" ||
-  req.path === "/apple" ||
-  req.path === "/apple/callback";
+  req.path === "/facebook" ||
+  req.path === "/facebook/callback";
 app.use(
   "/api/auth",
   // Strict per-IP limiter that ONLY applies to sensitive write endpoints

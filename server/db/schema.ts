@@ -211,16 +211,32 @@ export async function initializeSchema() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT
   `);
 
-  // Task #69 — OAuth social (Etapa 1: Google + Apple coexistindo com email/senha).
+  // Task #69/#72 — OAuth social (Google + Facebook). Apple removido em Maio/2026
+  // (#72) — coluna, índice e constraint dropados de forma idempotente; nenhum
+  // usuário Apple existia em produção, então é no-op em prática.
   // `password_hash` precisa virar nullable porque contas só-OAuth não têm senha local.
-  // `google_id` / `apple_id` guardam o `sub` do provider, com UNIQUE pra impedir duplicação.
+  // `google_id` / `facebook_id` guardam o `sub` do provider, com UNIQUE pra impedir duplicação.
   // Tudo idempotente: rodar de novo é no-op.
   await query(`
     ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255)
   `);
   await query(`
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_id VARCHAR(255)
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS facebook_id VARCHAR(255)
   `);
+  // Migração de remoção do Apple — drop idempotente. A ordem importa: índice
+  // antes da constraint antes da coluna.
+  await query(`DROP INDEX IF EXISTS idx_users_apple_id`);
+  await query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'users_apple_id_key'
+      ) THEN
+        ALTER TABLE users DROP CONSTRAINT users_apple_id_key;
+      END IF;
+    END$$;
+  `);
+  await query(`ALTER TABLE users DROP COLUMN IF EXISTS apple_id`);
   await query(`
     DO $$
     BEGIN
@@ -230,15 +246,15 @@ export async function initializeSchema() {
         ALTER TABLE users ADD CONSTRAINT users_google_id_key UNIQUE (google_id);
       END IF;
       IF NOT EXISTS (
-        SELECT 1 FROM pg_constraint WHERE conname = 'users_apple_id_key'
+        SELECT 1 FROM pg_constraint WHERE conname = 'users_facebook_id_key'
       ) THEN
-        ALTER TABLE users ADD CONSTRAINT users_apple_id_key UNIQUE (apple_id);
+        ALTER TABLE users ADD CONSTRAINT users_facebook_id_key UNIQUE (facebook_id);
       END IF;
     END$$;
   `);
   await query(`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`);
   await query(`CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id)`);
-  await query(`CREATE INDEX IF NOT EXISTS idx_users_apple_id ON users(apple_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_users_facebook_id ON users(facebook_id)`);
 
   await query(`CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)`);
 

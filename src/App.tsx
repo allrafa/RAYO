@@ -50,7 +50,7 @@ interface OnboardingData {
   interests: string[];
 }
 
-// Páginas públicas (Task #70). Funcionam SEM autenticação (Google/Apple
+// Páginas públicas (Task #70). Funcionam SEM autenticação (Google/Facebook
 // também precisam verificar /privacy e /terms antes do consentimento OAuth).
 // Detecta o path e renderiza a página direto, fora do fluxo welcome/auth.
 //

@@ -14,10 +14,11 @@ import {
 } from "lucide-react";
 
 /* ──────────────────────────────────────────────────────────────
-   OAuth (Google + Apple) — pergunta ao backend quais providers
+   OAuth (Google + Facebook) — pergunta ao backend quais providers
    estão configurados. Quando indisponível, mostra "Em breve".
+   Task #72 — Apple removido, Facebook entra no lugar.
    ────────────────────────────────────────────────────────────── */
-type ProvidersFlags = { google: boolean; apple: boolean };
+type ProvidersFlags = { google: boolean; facebook: boolean };
 
 function GoogleGlyph() {
   return (
@@ -42,12 +43,13 @@ function GoogleGlyph() {
   );
 }
 
-function AppleGlyph() {
+function FacebookGlyph() {
+  // Logomarca oficial "f" Facebook (azul #1877F2).
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
       <path
-        fill="currentColor"
-        d="M16.365 1.43c0 1.14-.42 2.22-1.13 3.04-.79.93-2.07 1.65-3.27 1.55-.14-1.13.42-2.3 1.1-3.04.78-.86 2.13-1.5 3.3-1.55zM20.5 17.18c-.55 1.27-.81 1.83-1.52 2.95-.99 1.56-2.39 3.5-4.13 3.51-1.55.02-1.95-1.01-4.06-1-2.1.01-2.55 1.02-4.1 1-1.74-.01-3.07-1.76-4.06-3.32-2.77-4.36-3.06-9.48-1.35-12.2 1.21-1.93 3.13-3.06 4.93-3.06 1.84 0 3 1.01 4.52 1.01 1.48 0 2.38-1.01 4.51-1.01 1.61 0 3.31.88 4.52 2.4-3.97 2.18-3.33 7.85.74 9.72z"
+        fill="#1877F2"
+        d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.413c0-3.007 1.792-4.668 4.533-4.668 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"
       />
     </svg>
   );
@@ -62,10 +64,10 @@ function useOAuthProviders(): ProvidersFlags | null {
       .then((res) => {
         if (cancelled) return;
         if (res.success && res.data) setProviders(res.data);
-        else setProviders({ google: false, apple: false });
+        else setProviders({ google: false, facebook: false });
       })
       .catch(() => {
-        if (!cancelled) setProviders({ google: false, apple: false });
+        if (!cancelled) setProviders({ google: false, facebook: false });
       });
     return () => {
       cancelled = true;
@@ -81,7 +83,7 @@ function SocialButton({
   enabled,
   ready,
 }: {
-  provider: "google" | "apple";
+  provider: "google" | "facebook";
   label: string;
   icon: React.ReactNode;
   enabled: boolean | undefined;
@@ -118,10 +120,10 @@ function SocialRow() {
         ready={ready}
       />
       <SocialButton
-        provider="apple"
-        label="Apple"
-        icon={<AppleGlyph />}
-        enabled={providers?.apple}
+        provider="facebook"
+        label="Facebook"
+        icon={<FacebookGlyph />}
+        enabled={providers?.facebook}
         ready={ready}
       />
     </div>

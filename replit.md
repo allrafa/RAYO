@@ -11,10 +11,11 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
     - `PUBLIC_SITE_URL`: Domínio canônico usado em `/sitemap.xml` e `/robots.txt` (default: `https://rayo.app.br`).
     - `ADMIN_EMAILS`: Comma-separated emails for admin role on boot.
     - `CONTACT_EMAIL`: destinatário do formulário público `/contato` (default: `suporte@rayo.app.br`). Alias legado `CONTATO_TO_EMAIL` ainda é aceito como fallback.
-    - **OAuth (opcional, Task #69)** — sem essas vars os botões aparecem como "Em breve". **OAuth Google só funciona no domínio de produção `https://rayo.app.br`** (no preview/dev o login social fica desabilitado de propósito; use email/senha):
+    - **OAuth (opcional, Task #69 + #72)** — sem essas vars os botões aparecem como "Em breve". **OAuth Google e Facebook só funcionam no domínio de produção `https://rayo.app.br`** (no preview/dev o login social fica desabilitado de propósito; use email/senha):
         - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: credenciais OAuth 2.0 do Google Cloud.
         - `GOOGLE_REDIRECT_URI` (**obrigatória** para habilitar Google): deve ser exatamente `https://rayo.app.br/api/auth/google/callback` e estar registrada como Authorized redirect URI no Google Cloud Console. Sem essa var a estratégia não é registrada (log de erro no boot) e o botão fica como "Em breve".
-        - `APPLE_CLIENT_ID` (Service ID), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` (P8 em texto). `APPLE_REDIRECT_URI` é **opcional** — se ausente, a callback é montada a partir de `APP_URL`/`REPLIT_DEV_DOMAIN` (comportamento legado preservado).
+        - `FACEBOOK_CLIENT_ID`, `FACEBOOK_CLIENT_SECRET`: App ID e App Secret do app criado em [Facebook Developers](https://developers.facebook.com) (produto "Facebook Login").
+        - `FACEBOOK_REDIRECT_URI` (**obrigatória** para habilitar Facebook): deve ser exatamente `https://rayo.app.br/api/auth/facebook/callback` e estar registrada como Valid OAuth Redirect URI nas configurações de Facebook Login. Sem essa var a estratégia não é registrada e o botão fica como "Em breve".
 
 ## Stack
 - **Frontend**: React 18, TypeScript, Tailwind CSS v4, Vite

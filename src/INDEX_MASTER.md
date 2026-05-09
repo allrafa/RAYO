@@ -117,11 +117,7 @@ Se você está começando **AGORA**, leia nesta ordem:
   - Burn down chart
   - Métricas de progresso
 
-**Aprovação Apple:**
-- **[`/APPLE_APPROVAL_PLAN.md`](/APPLE_APPROVAL_PLAN.md)** 🎯
   - Guideline 4.2 compliance
-  - O que Apple rejeita
-  - Como evitar rejeição
   - Review notes sugeridas
 
 - **[`/APP_STORE_READINESS.md`](/APP_STORE_READINESS.md)** 📈
@@ -375,8 +371,6 @@ Se você está começando **AGORA**, leia nesta ordem:
 1. [`/ROADMAP_VISUAL.md`](/ROADMAP_VISUAL.md) ← Roadmap visual
 2. [`/APP_STORE_LAUNCH_CHECKLIST.md`](/APP_STORE_LAUNCH_CHECKLIST.md) ← Timeline
 
-### "Quero garantir aprovação da Apple"
-1. [`/APPLE_APPROVAL_PLAN.md`](/APPLE_APPROVAL_PLAN.md) ← Plano
 2. [`/APP_STORE_READINESS.md`](/APP_STORE_READINESS.md) ← Prontidão
 3. [`/APP_STORE_SUBMISSION_PLAN.md`](/APP_STORE_SUBMISSION_PLAN.md) ← Review notes
 
@@ -433,7 +427,6 @@ Se você está começando **AGORA**, leia nesta ordem:
 ### Para Product/Marketing
 - [`/APP_STORE_SUBMISSION_PLAN.md`](/APP_STORE_SUBMISSION_PLAN.md) - Metadata
 - [`/SCREENSHOT_COPY_TEMPLATES.md`](/SCREENSHOT_COPY_TEMPLATES.md) - Copy
-- [`/APPLE_APPROVAL_PLAN.md`](/APPLE_APPROVAL_PLAN.md) - Aprovação
 
 ### Para Gestão
 - [`/FINAL_SUMMARY.md`](/FINAL_SUMMARY.md) - Resumo executivo
@@ -469,7 +462,6 @@ Se você está começando **AGORA**, leia nesta ordem:
 │   ├── APP_STORE_SUBMISSION_PLAN.md
 │   ├── APP_STORE_LAUNCH_CHECKLIST.md
 │   ├── SCREENSHOT_COPY_TEMPLATES.md
-│   ├── APPLE_APPROVAL_PLAN.md
 │   └── APP_STORE_READINESS.md
 │
 ├── 🏗️ ARQUITETURA
