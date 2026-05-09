@@ -1582,21 +1582,63 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // Task #115 — foco inicial no botão de fechar pra garantir que Esc/Tab
-  // funcionem como esperado num dialog (a11y mínima sem focus-trap completo).
+  // Task #115 — foco inicial: no desktop (pointer:fine), foca o input
+  // pra usuário poder digitar imediatamente; no mobile, foca o botão de
+  // fechar (não força abertura de teclado, mas mantém Tab/Esc utilizáveis).
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const sheetRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    closeBtnRef.current?.focus();
+    const isDesktop = typeof window !== "undefined"
+      && window.matchMedia?.("(pointer: fine)").matches;
+    if (isDesktop) inputRef.current?.focus();
+    else closeBtnRef.current?.focus();
   }, []);
 
-  // Esc fecha (a11y).
+  // Task #115 — Esc fecha + focus-trap simples (Tab cycle entre elementos
+  // focáveis dentro do sheet). Evita que Tab vaze pro fundo enquanto o
+  // dialog está aberto.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key !== "Tab" || !sheetRef.current) return;
+      const focusables = sheetRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Task #115 — swipe-down pra fechar o sheet no mobile. Arrasta a partir
+  // do header (não da lista de comentários, que precisa rolar). Threshold:
+  // > 80px OU velocidade > 0.5 px/ms = fecha. Animamos translateY durante
+  // o gesto pra dar feedback tátil.
+  const [dragY, setDragY] = useState(0);
+  const dragStateRef = useRef<{ startY: number; startT: number } | null>(null);
+  const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    dragStateRef.current = { startY: e.touches[0].clientY, startT: Date.now() };
+  };
+  const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!dragStateRef.current) return;
+    const dy = e.touches[0].clientY - dragStateRef.current.startY;
+    if (dy > 0) setDragY(dy);
+  };
+  const onTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!dragStateRef.current) return;
+    const dy = e.changedTouches[0].clientY - dragStateRef.current.startY;
+    const dt = Math.max(1, Date.now() - dragStateRef.current.startT);
+    const velocity = dy / dt;
+    dragStateRef.current = null;
+    if (dy > 80 || velocity > 0.5) onClose();
+    else setDragY(0);
+  };
 
   // Task #115 — quando o painel abre por um clique em "Comentários" no
   // perfil, rolamos até o comentário-alvo e aplicamos a classe
@@ -1652,10 +1694,21 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
+        ref={sheetRef}
         className="w-full max-w-lg rounded-t-2xl max-h-[80vh] flex flex-col"
-        style={{ background: 'var(--rayo-sand-100)' }}
+        style={{
+          background: 'var(--rayo-sand-100)',
+          transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
+          transition: dragY > 0 ? 'none' : 'transform 200ms ease-out',
+        }}
       >
-        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: 'var(--rayo-sand-300)' }}>
+        <div
+          className="flex items-center justify-between p-4 border-b touch-none"
+          style={{ borderColor: 'var(--rayo-sand-300)' }}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
           <h3 className="text-[16px]" style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}>
             Comentários ({post.comments})
           </h3>
@@ -1711,8 +1764,15 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
           )}
         </div>
 
-        <div className="p-4 border-t flex flex-shrink-0 items-center gap-2" style={{ borderColor: 'var(--rayo-sand-300)' }}>
+        <div
+          className="p-4 border-t flex flex-shrink-0 items-center gap-2"
+          style={{
+            borderColor: 'var(--rayo-sand-300)',
+            paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))',
+          }}
+        >
           <Input
+            ref={inputRef}
             placeholder="Escreva um comentário..."
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
