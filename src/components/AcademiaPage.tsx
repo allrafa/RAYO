@@ -90,7 +90,7 @@ export function AcademiaPage() {
               }}
             >
               <BookOpen className="w-4 h-4" />
-              Minha Biblioteca
+              Minhas Turmas
               {libraryItems.length > 0 && (
                 <Badge 
                   className="ml-2" 
