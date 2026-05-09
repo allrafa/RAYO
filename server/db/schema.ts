@@ -987,6 +987,12 @@ export async function initializeSchema() {
   // NULL = ainda não notificado. Idempotente.
   await query(`ALTER TABLE class_interests ADD COLUMN IF NOT EXISTS notified_at TIMESTAMP`);
   await query(`CREATE INDEX IF NOT EXISTS idx_class_interests_notified ON class_interests(course_id, notified_at)`);
+  // Task #109 — contador de quantas vezes o aviso de matrícula aberta
+  // foi enviado para cada interessado (bulk + reenvios individuais).
+  // Backfill: linhas que já tinham `notified_at` recebem 1 (uma entrega
+  // antes desta migração); demais ficam em 0.
+  await query(`ALTER TABLE class_interests ADD COLUMN IF NOT EXISTS notified_count INTEGER NOT NULL DEFAULT 0`);
+  await query(`UPDATE class_interests SET notified_count = 1 WHERE notified_at IS NOT NULL AND notified_count = 0`);
   await query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS class_id INTEGER REFERENCES courses(id) ON DELETE SET NULL`);
   await query(`CREATE INDEX IF NOT EXISTS idx_posts_class_id ON posts(class_id)`);
 

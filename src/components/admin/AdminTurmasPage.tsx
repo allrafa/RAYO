@@ -35,6 +35,7 @@ interface InterestRow {
   message: string | null;
   created_at: string;
   notified_at: string | null;
+  notified_count?: number;
 }
 
 interface NotifyResponse {
@@ -186,6 +187,7 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
   const [notifyMessage, setNotifyMessage] = useState("");
   const [notifying, setNotifying] = useState(false);
   const [resendingId, setResendingId] = useState<number | null>(null);
+  const [resendConfirm, setResendConfirm] = useState<InterestRow | null>(null);
   const limit = 50;
 
   // `pending_total` vem do backend e cobre a turma inteira (não só a
@@ -255,10 +257,29 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
     }
   }
 
+  function requestResend(row: InterestRow) {
+    // Aviso visual quando o aviso já foi reenviado nas últimas 24h —
+    // evita spammar a mesma pessoa por engano. Sem aviso recente, dispara
+    // direto. O dialog de confirmação cobre os dois casos.
+    // Aderente à task: alerta literalmente quando "já foi reenviado nas
+    // últimas 24h" — exige tanto janela <24h quanto notified_count > 1
+    // (i.e., já houve pelo menos um reenvio acima do envio inicial).
+    const recent = row.notified_at
+      ? Date.now() - new Date(row.notified_at).getTime() < 24 * 60 * 60 * 1000
+      : false;
+    const alreadyResent = (row.notified_count ?? 0) > 1;
+    if (recent && alreadyResent) {
+      setResendConfirm(row);
+    } else {
+      resendOne(row);
+    }
+  }
+
   async function resendOne(row: InterestRow) {
+    setResendConfirm(null);
     setResendingId(row.id);
     try {
-      const res = await api.post<{ sent: boolean; notified_at: string | null }>(
+      const res = await api.post<{ sent: boolean; notified_at: string | null; notified_count: number }>(
         `/api/admin/cms/courses/${course.id}/interests/${row.id}/resend`,
       );
       if (res.success && res.data?.sent) {
@@ -341,6 +362,41 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={!!resendConfirm} onOpenChange={(o) => !o && setResendConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reenviar aviso de novo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {resendConfirm && (
+                <>
+                  Você já enviou o aviso para <strong>{resendConfirm.email}</strong>{" "}
+                  {resendConfirm.notified_at
+                    ? `em ${new Date(resendConfirm.notified_at).toLocaleString("pt-BR")}`
+                    : "recentemente"}
+                  {(resendConfirm.notified_count ?? 0) > 1 && (
+                    <>
+                      {" "}— já foi reenviado{" "}
+                      {(resendConfirm.notified_count ?? 1) - 1}{" "}
+                      {(resendConfirm.notified_count ?? 1) - 1 === 1 ? "vez" : "vezes"}
+                    </>
+                  )}
+                  . Tem certeza que quer enviar de novo? Em menos de 24h pode parecer spam.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); if (resendConfirm) resendOne(resendConfirm); }}
+              style={{ background: "var(--rayo-terra-500)", color: "#fff" }}
+            >
+              Reenviar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={notifyOpen} onOpenChange={(o) => !notifying && setNotifyOpen(o)}>
         <AlertDialogContent>
@@ -450,10 +506,16 @@ function TurmaInterestsDetail({ course, onBack }: { course: CourseRow; onBack: (
                       <div style={{ color: "var(--rayo-sage-600, var(--rayo-ink-400))" }}>
                         Aviso enviado em {new Date(row.notified_at).toLocaleString("pt-BR")}
                       </div>
+                      {(row.notified_count ?? 0) > 1 && (
+                        <div style={{ color: "var(--rayo-ink-700)", fontWeight: 500 }}>
+                          Reenviado {(row.notified_count ?? 1) - 1}{" "}
+                          {(row.notified_count ?? 1) - 1 === 1 ? "vez" : "vezes"}
+                        </div>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => resendOne(row)}
+                        onClick={() => requestResend(row)}
                         disabled={resendingId === row.id}
                         title={`Reenviar o aviso para ${row.email} (ex.: caiu no spam)`}
                       >

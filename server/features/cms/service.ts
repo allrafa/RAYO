@@ -935,6 +935,7 @@ export async function listClassInterests(
 
   const { rows } = await query(
     `SELECT ci.id, ci.user_id, ci.name, ci.email, ci.message, ci.created_at, ci.notified_at,
+            ci.notified_count,
             u.name AS user_name
        FROM class_interests ci
        LEFT JOIN users u ON u.id = ci.user_id
@@ -1106,7 +1107,8 @@ export async function notifyClassInterests(
   if (sentIds.length > 0) {
     await query(
       `UPDATE class_interests
-          SET notified_at = NOW()
+          SET notified_at = NOW(),
+              notified_count = notified_count + 1
         WHERE course_id = $1
           AND notified_at IS NULL
           AND LOWER(email) IN (
@@ -1134,7 +1136,7 @@ export async function resendClassInterestNotification(
   user: SafeUser,
   courseId: number,
   interestId: number,
-): Promise<{ sent: boolean; email_configured: boolean; notified_at: string | null; error?: string }> {
+): Promise<{ sent: boolean; email_configured: boolean; notified_at: string | null; notified_count: number; error?: string }> {
   const cur = await getCourseAdmin(courseId);
   if (!cur) throw new CmsError("Turma não encontrada", "COURSE_NOT_FOUND", 404);
   assertCanMutate(user, (cur as { created_by: number | null }).created_by ?? null);
@@ -1151,7 +1153,7 @@ export async function resendClassInterestNotification(
 
   const { isEmailConfigured } = await import("../../lib/email.js");
   if (!isEmailConfigured()) {
-    return { sent: false, email_configured: false, notified_at: null };
+    return { sent: false, email_configured: false, notified_at: null, notified_count: 0 };
   }
 
   const courseTitle = String((cur as { title: string }).title || `Turma #${courseId}`);
@@ -1167,21 +1169,24 @@ export async function resendClassInterestNotification(
       sent: false,
       email_configured: true,
       notified_at: null,
+      notified_count: 0,
       error: result.error ?? "send_failed",
     };
   }
 
-  const { rows: upd } = await query<{ notified_at: string }>(
+  const { rows: upd } = await query<{ notified_at: string; notified_count: number }>(
     `UPDATE class_interests
-        SET notified_at = NOW()
+        SET notified_at = NOW(),
+            notified_count = notified_count + 1
       WHERE id = $1 AND course_id = $2
-      RETURNING notified_at`,
+      RETURNING notified_at, notified_count`,
     [row.id, courseId],
   );
   return {
     sent: true,
     email_configured: true,
     notified_at: upd[0]?.notified_at ?? null,
+    notified_count: upd[0]?.notified_count ?? 0,
   };
 }
 
