@@ -243,40 +243,13 @@ function AppContent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const path = window.location.pathname;
-    const postMatch = path.match(/^\/c\/([a-z0-9-]+)\/p\/(\d+)\/?$/i);
-    if (postMatch) {
-      const slug = postMatch[1].toLowerCase();
-      const id = postMatch[2];
-      try {
-        // Deep-link externo: origin "home" pra que o "Voltar" caia
-        // na Home (não tem feed pra voltar — usuário chegou pelo URL).
-        sessionStorage.setItem("rayo-pending-discussion-slug", slug);
-        sessionStorage.setItem("rayo-pending-discussion-id", id);
-        sessionStorage.setItem("rayo-pending-discussion-origin", "home");
-      } catch {
-        // ignore
-      }
+    // Task #122 — `/c/<slug>/p/<id>` é uma URL DE VERDADE: NÃO fazemos
+    // replaceState pra "/". A URL fica no address bar (compartilhável,
+    // refresh-safe) e ComunidadePage deriva o estado dela via popstate
+    // + leitura inicial do pathname. Aqui só trocamos pra aba Comunidade.
+    if (/^\/c\/[a-z0-9-]+(?:\/p\/\d+)?\/?$/i.test(path)) {
       setCurrentTab("comunidade");
-      try {
-        window.history.replaceState({}, "", "/");
-      } catch {
-        // ignore
-      }
       return;
-    }
-    const match = path.match(/^\/c\/([a-z0-9-]+)\/?$/i);
-    if (!match) return;
-    const slug = match[1].toLowerCase();
-    try {
-      sessionStorage.setItem("rayo-pending-community-slug", slug);
-    } catch {
-      // ignore
-    }
-    setCurrentTab("comunidade");
-    try {
-      window.history.replaceState({}, "", "/");
-    } catch {
-      // ignore
     }
   }, []);
 

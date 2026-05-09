@@ -416,19 +416,15 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                       type="button"
                       className="rh-disc"
                       onClick={() => {
-                        // Task #122 — abre a discussão dedicada como página
-                        // (não-modal). ComunidadePage lê o stash e renderiza
-                        // a DiscussionPage no lugar do feed; origin='home'
-                        // faz o "Voltar" devolver pra Home.
+                        // Task #122 — pushState pra URL canônica
+                        // `/c/<slug>/p/<id>` ANTES de trocar de aba; a
+                        // ComunidadePage lê o pathname no mount e
+                        // renderiza a DiscussionPage. Back button do
+                        // navegador devolve pra Home naturalmente
+                        // (porque foi pushState, não replace).
+                        const slug = post.forumSlug || "geral";
                         try {
-                          sessionStorage.setItem("rayo-pending-discussion-id", String(post.id));
-                          sessionStorage.setItem("rayo-pending-discussion-origin", "home");
-                          if (post.forumSlug) {
-                            sessionStorage.setItem("rayo-pending-discussion-slug", post.forumSlug);
-                            try {
-                              window.history.replaceState({}, "", `/c/${post.forumSlug}/p/${post.id}`);
-                            } catch { /* noop */ }
-                          }
+                          window.history.pushState({}, "", `/c/${slug}/p/${post.id}`);
                         } catch { /* noop */ }
                         onNavigate?.("comunidade");
                       }}

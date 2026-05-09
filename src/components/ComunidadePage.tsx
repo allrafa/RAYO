@@ -88,14 +88,21 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   // Task #92 — Community detail page por slug. Quando setado, sobrepõe
   // tudo (header de tabs + composer escondidos) e renderiza CommunityDetailPage.
   const [activeCommunitySlug, setActiveCommunitySlug] = useState<string | null>(null);
-  // Task #122 — Discussão dedicada. Quando setada, sobrepõe o feed e
-  // renderiza a DiscussionPage com o post completo + comentários.
-  // `origin` decide pra onde o "Voltar" devolve (Home vs feed).
-  const [activeDiscussion, setActiveDiscussion] = useState<{
-    postId: number;
-    slug: string | null;
-    origin: "home" | "community";
-  } | null>(null);
+  // Task #122 — Discussão dedicada `/c/<slug>/p/<id>`. URL é a fonte
+  // da verdade: derivamos o estado do pathname no mount e em popstate.
+  // Entrar em discussão = pushState; sair = history.back() (com
+  // fallback pra pushState("/") quando não há histórico).
+  const parseDiscussionFromPath = (): { postId: number; slug: string | null } | null => {
+    if (typeof window === "undefined") return null;
+    const m = window.location.pathname.match(/^\/c\/([a-z0-9-]+)\/p\/(\d+)\/?$/i);
+    if (!m) return null;
+    const id = parseInt(m[2], 10);
+    if (!Number.isFinite(id) || id <= 0) return null;
+    return { postId: id, slug: m[1].toLowerCase() };
+  };
+  const [activeDiscussion, setActiveDiscussion] = useState<
+    { postId: number; slug: string | null } | null
+  >(parseDiscussionFromPath);
 
   // Task #117 — restaura scrollY do feed quando o usuário fecha o painel
   // de comentários OU sai da página de uma comunidade. Sem isso ele cai
@@ -218,23 +225,24 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
       if (detail?.id) void openPostById(detail.id, detail.highlight_comment_id);
     };
     window.addEventListener("raio:open-post", handler as EventListener);
-    // Task #122 — stash de discussão dedicada (vem do App.tsx ou de cards
-    // de Discussões da Home). Renderiza DiscussionPage em vez do modal.
-    try {
-      const pendingDisc = sessionStorage.getItem("rayo-pending-discussion-id");
-      if (pendingDisc) {
-        const slug = sessionStorage.getItem("rayo-pending-discussion-slug");
-        const origin = sessionStorage.getItem("rayo-pending-discussion-origin") === "home"
-          ? "home" : "community";
-        sessionStorage.removeItem("rayo-pending-discussion-id");
-        sessionStorage.removeItem("rayo-pending-discussion-slug");
-        sessionStorage.removeItem("rayo-pending-discussion-origin");
-        const id = Number(pendingDisc);
-        if (Number.isFinite(id) && id > 0) {
-          setActiveDiscussion({ postId: id, slug, origin });
-        }
+    // Task #122 — popstate sincroniza activeDiscussion com a URL atual.
+    // Garante que back/forward do navegador entrem/saiam da DiscussionPage
+    // sem reload, e que /c/<slug> ainda funcione pelo handler abaixo.
+    // Sincroniza ambos: discussão (`/c/<slug>/p/<id>`) e detalhe de
+    // comunidade (`/c/<slug>`). Garante que back/forward do navegador
+    // restaurem o ecrã correto sem reload nem desync de estado/URL.
+    const onPop = () => {
+      const path = window.location.pathname;
+      const disc = parseDiscussionFromPath();
+      setActiveDiscussion(disc);
+      if (disc) {
+        setActiveCommunitySlug(null);
+      } else {
+        const m = path.match(/^\/c\/([a-z0-9-]+)\/?$/i);
+        setActiveCommunitySlug(m ? m[1].toLowerCase() : null);
       }
-    } catch { /* ignore */ }
+    };
+    window.addEventListener("popstate", onPop);
     try {
       const pending = sessionStorage.getItem("raio-pending-post");
       if (pending) {
@@ -251,6 +259,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     }
     return () => {
       window.removeEventListener("raio:open-post", handler as EventListener);
+      window.removeEventListener("popstate", onPop);
     };
   }, [openPostById]);
 
@@ -425,11 +434,14 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
           slug={activeCommunitySlug}
           onBack={() => setActiveCommunitySlug(null)}
           onOpenPost={(id) => {
-            // Task #122 — clicar num post da CommunityDetailPage também
-            // entra na DiscussionPage (não-modal). Origin "community"
-            // pra que o "Voltar" devolva pro feed do forum.
+            // Task #122 — clicar num post da CommunityDetailPage entra
+            // na DiscussionPage. URL é a fonte da verdade: pushState
+            // canônica `/c/<slug>/p/<id>` e popstate sincroniza state.
+            try {
+              window.history.pushState({}, "", `/c/${activeCommunitySlug}/p/${id}`);
+            } catch { /* noop */ }
             setActiveCommunitySlug(null);
-            setActiveDiscussion({ postId: id, slug: activeCommunitySlug, origin: "community" });
+            setActiveDiscussion({ postId: id, slug: activeCommunitySlug });
           }}
         />
       </div>
@@ -437,8 +449,9 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   }
 
   // Task #122 — Discussão dedicada (`/c/<slug>/p/<id>`). Sobrepõe o feed
-  // sem reload. Back origin-aware: home → onNavigate("home"); community
-  // → fecha a discussão e volta pro feed da Comunidade.
+  // sem reload. Back é history-aware: history.back() pra restaurar a URL
+  // anterior; quando não há histórico (deep-link com refresh), fallback
+  // pra pushState("/") + revertir tab pra Home.
   if (activeDiscussion) {
     return (
       <div
@@ -448,11 +461,20 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
         <DiscussionPage
           postId={activeDiscussion.postId}
           slug={activeDiscussion.slug}
-          origin={activeDiscussion.origin}
           onBack={() => {
-            const o = activeDiscussion.origin;
-            setActiveDiscussion(null);
-            if (o === "home") onNavigate?.("home");
+            // History-aware: se tem entrada anterior, usa back nativo
+            // (popstate sincroniza activeDiscussion via URL). Se for
+            // deep-link puro (history.length === 1), fallback pra Home.
+            if (typeof window === "undefined") return;
+            if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              try {
+                window.history.pushState({}, "", "/");
+              } catch { /* noop */ }
+              setActiveDiscussion(null);
+              onNavigate?.("home");
+            }
           }}
         />
       </div>

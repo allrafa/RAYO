@@ -57,9 +57,8 @@ interface DiscussionPageProps {
   // Slug opcional só pro header / link "voltar pra c/<slug>". Quando
   // ausente, escondemos o atalho e a página ainda funciona.
   slug?: string | null;
-  // Origin-aware back: "home" → onBack chama navegação pra Home;
-  // "community" → fecha a discussão e volta pro feed da Comunidade.
-  origin: "home" | "community";
+  // History-aware back: ComunidadePage decide se chama history.back()
+  // ou faz fallback (deep-link sem histórico). DiscussionPage só dispara.
   onBack: () => void;
 }
 
@@ -76,7 +75,7 @@ function formatTime(dateStr: string): string {
   return d.toLocaleDateString("pt-BR");
 }
 
-export function DiscussionPage({ postId, slug, origin, onBack }: DiscussionPageProps) {
+export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
   const { user: viewer } = useAuth();
   const [loading, setLoading] = useState(true);
   const [post, setPost] = useState<PostDetailData | null>(null);
