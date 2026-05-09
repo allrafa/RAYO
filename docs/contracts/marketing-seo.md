@@ -1,4 +1,4 @@
-# Site Público / Marketing & SEO (Tasks #70, #111)
+# Site Público / Marketing & SEO (Tasks #70, #99 SEO, #111)
 
 Contratos consolidados do site público (marketing, blog, contato) e do SEO server-side. Mexa aqui antes de tocar em `src/components/marketing/`, `src/styles/marketing-rayo.css`, `server/features/seo/` ou `server/features/blog/`.
 

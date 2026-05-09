@@ -59,5 +59,6 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
 Gotchas por feature → ver `docs/contracts/{dm,bunny-stream,comunidade,turmas,marketing-seo}.md`.
 
 ## Pointers
-- `architecture.md` (protocolo) · `docs/ui-ux-audit.md` · `docs/platform-spec.md` · `docs/contracts/*.md`
+- `architecture.md` (protocolo) · `docs/ui-ux-audit.md` · `docs/platform-spec.md`
+- Contratos: `docs/contracts/dm.md` · `bunny-stream.md` · `comunidade.md` · `turmas.md` · `marketing-seo.md`
 - `server/lib/email.ts` (Resend) · `server/middleware/auth.ts` (roles) · `server/features/seo/publicMeta.ts` (SEO server-side) · `src/lib/api.ts` (API client)
