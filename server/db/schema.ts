@@ -612,7 +612,21 @@ export async function initializeSchema() {
       ) THEN
         ALTER TABLE content_items
           ADD CONSTRAINT content_items_kind_check
-          CHECK (kind IN ('audio','video','reels','serie','curso','livro'));
+          CHECK (kind IN ('audio','video','reels','serie','curso','livro','artigo'));
+      ELSE
+        -- Task #70: widen the constraint to accept 'artigo' (blog posts).
+        -- DROP + re-ADD because CHECK constraints can't be altered in place.
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint
+          WHERE conname = 'content_items_kind_check'
+            AND conrelid = 'content_items'::regclass
+            AND pg_get_constraintdef(oid) ILIKE '%artigo%'
+        ) THEN
+          ALTER TABLE content_items DROP CONSTRAINT content_items_kind_check;
+          ALTER TABLE content_items
+            ADD CONSTRAINT content_items_kind_check
+            CHECK (kind IN ('audio','video','reels','serie','curso','livro','artigo'));
+        END IF;
       END IF;
       IF NOT EXISTS (
         SELECT 1 FROM information_schema.constraint_column_usage

@@ -259,3 +259,37 @@ function escapeHtml(input: string): string {
 export function isEmailConfigured(): boolean {
   return !!RESEND_API_KEY;
 }
+
+// Task #70 — destinatário do formulário público /contato. Configurável via env
+// (CONTATO_TO_EMAIL) com default explícito; nunca usa o e-mail do remetente
+// como destino.
+const CONTATO_TO_EMAIL = process.env.CONTATO_TO_EMAIL || "suporte@rayo.app.br";
+
+export interface ContatoPayload {
+  nome: string;
+  email: string;
+  assunto: string;
+  mensagem: string;
+}
+
+export async function sendContatoEmail(p: ContatoPayload): Promise<SendResult> {
+  const subject = `[Contato site] ${p.assunto} — ${p.nome}`;
+  const preheader = `${p.nome} <${p.email}> via formulário /contato`;
+  const safeNome = escapeHtml(p.nome);
+  const safeEmail = escapeHtml(p.email);
+  const safeAssunto = escapeHtml(p.assunto);
+  const safeMsg = escapeHtml(p.mensagem).replace(/\n/g, "<br>");
+  const html = layout(
+    `
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Nova mensagem em /contato</h1>
+      <p style="margin:0 0 8px 0;color:${RAIO_TEXT};"><strong>Nome:</strong> ${safeNome}</p>
+      <p style="margin:0 0 8px 0;color:${RAIO_TEXT};"><strong>E-mail:</strong> <a href="mailto:${safeEmail}" style="color:${RAIO_ACCENT};">${safeEmail}</a></p>
+      <p style="margin:0 0 16px 0;color:${RAIO_TEXT};"><strong>Assunto:</strong> ${safeAssunto}</p>
+      <div style="margin:0 0 16px 0;padding:16px;border-left:3px solid ${RAIO_ACCENT};background:${RAIO_BG};color:${RAIO_TEXT};border-radius:6px;">${safeMsg}</div>
+      <p style="margin:0;color:${RAIO_MUTED};font-size:13px;">Responda diretamente a este e-mail para falar com a pessoa.</p>
+    `,
+    preheader,
+  );
+  const text = `Nova mensagem em /contato\n\nNome: ${p.nome}\nE-mail: ${p.email}\nAssunto: ${p.assunto}\n\n${p.mensagem}\n`;
+  return sendEmail({ to: CONTATO_TO_EMAIL, subject, html, text });
+}

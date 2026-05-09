@@ -5,7 +5,7 @@ import { api } from "../../lib/api";
 import { toast } from "sonner@2.0.3";
 import { CourseModulesEditor } from "./CourseModulesEditor";
 
-type Kind = "audio" | "video" | "reels" | "serie" | "curso" | "livro";
+type Kind = "audio" | "video" | "reels" | "serie" | "curso" | "livro" | "artigo";
 type Status = "draft" | "published" | "archived";
 
 interface ContentDetail {
@@ -59,6 +59,7 @@ const KIND_OPTIONS: Array<{ value: Kind; label: string; help: string }> = [
   { value: "serie", label: "Série", help: "Conjunto de episódios (áudio ou vídeo)" },
   { value: "curso", label: "Curso", help: "Vincula a um curso existente" },
   { value: "livro", label: "Livro", help: "PDF/EPUB ou áudio-livro" },
+  { value: "artigo", label: "Artigo (Blog)", help: "Post do blog público em Markdown — usa título, slug, capa, resumo (short) e corpo (long)" },
 ];
 
 const SEGMENTS = ["solteiro", "namoro", "noivos", "casados", "pais"];

@@ -25,12 +25,21 @@ import { ConsentBanner } from "./components/ConsentBanner";
 import { LandingPage } from "./components/LandingPage";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
 import { TermsPage } from "./components/TermsPage";
+import { RecursosPage } from "./components/marketing/RecursosPage";
+import { ComoFuncionaPage } from "./components/marketing/ComoFuncionaPage";
+import { EmpresaPage } from "./components/marketing/EmpresaPage";
+import { ContatoPage } from "./components/marketing/ContatoPage";
+import { FaqPage } from "./components/marketing/FaqPage";
+import { ImprensaPage } from "./components/marketing/ImprensaPage";
+import { BlogIndexPage } from "./components/marketing/BlogIndexPage";
+import { BlogPostPage } from "./components/marketing/BlogPostPage";
 import { analytics } from "./lib/analytics/mixpanel";
 import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
 import "./styles/nav-rayo.css";
 import "./styles/playlists-rayo.css";
 import "./styles/app-rayo.css";
 import "./styles/auth-rayo.css";
+import "./styles/marketing-rayo.css";
 
 type PreAuthStage = "welcome" | "onboarding" | "auth";
 type AuthStartMode = "login" | "register";
@@ -41,16 +50,32 @@ interface OnboardingData {
   interests: string[];
 }
 
-// Páginas legais públicas. Precisam funcionar SEM autenticação (Google
-// e Apple verificam essas URLs antes do consentimento OAuth). Detecta
-// `/privacy` e `/terms` no path e renderiza a página direto, fora do
-// fluxo welcome/onboarding/auth.
-type LegalPage = "privacy" | "terms";
-function getLegalPageFromUrl(): LegalPage | null {
+// Páginas públicas (Task #70). Funcionam SEM autenticação (Google/Apple
+// também precisam verificar /privacy e /terms antes do consentimento OAuth).
+// Detecta o path e renderiza a página direto, fora do fluxo welcome/auth.
+//
+// Para o blog, captura também o slug em /blog/<slug>.
+type PublicPage =
+  | "privacy" | "terms"
+  | "recursos" | "como-funciona" | "empresa" | "contato"
+  | "faq" | "imprensa" | "blog";
+
+interface PublicRoute { page: PublicPage; blogSlug?: string }
+
+function getPublicPageFromUrl(): PublicRoute | null {
   if (typeof window === "undefined") return null;
-  const p = window.location.pathname.replace(/\/+$/, "");
-  if (p === "/privacy") return "privacy";
-  if (p === "/terms") return "terms";
+  const p = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (p === "/privacy") return { page: "privacy" };
+  if (p === "/terms") return { page: "terms" };
+  if (p === "/recursos") return { page: "recursos" };
+  if (p === "/como-funciona") return { page: "como-funciona" };
+  if (p === "/empresa") return { page: "empresa" };
+  if (p === "/contato") return { page: "contato" };
+  if (p === "/faq") return { page: "faq" };
+  if (p === "/imprensa") return { page: "imprensa" };
+  if (p === "/blog") return { page: "blog" };
+  const m = /^\/blog\/([a-z0-9-]+)$/.exec(p);
+  if (m) return { page: "blog", blogSlug: m[1] };
   return null;
 }
 
@@ -97,12 +122,12 @@ function AppContent() {
   );
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [showPrivacyOverlay, setShowPrivacyOverlay] = useState(false);
-  const [legalPage, setLegalPage] = useState<LegalPage | null>(() => getLegalPageFromUrl());
+  const [publicRoute, setPublicRoute] = useState<PublicRoute | null>(() => getPublicPageFromUrl());
 
-  // Quando a pessoa volta da página legal pra app principal, limpa a URL
-  // pra `/` sem recarregar — evita reabrir a página de Termos no refresh.
-  const closeLegalPage = () => {
-    setLegalPage(null);
+  // Quando a pessoa volta de uma página pública pra app principal, limpa a URL
+  // pra `/` sem recarregar — evita reabrir a mesma página no refresh.
+  const closePublicPage = () => {
+    setPublicRoute(null);
     if (typeof window !== "undefined") {
       try {
         window.history.replaceState({}, "", "/");
@@ -208,14 +233,24 @@ function AppContent() {
     }
   };
 
-  // Páginas legais (Privacy/Terms) — sempre acessíveis, mesmo sem login
-  // e antes do loading da sessão. Google/Apple precisam visitá-las pra
-  // aprovar o app OAuth.
-  if (legalPage === "privacy") {
-    return <PrivacyPolicyPage onBack={closeLegalPage} />;
-  }
-  if (legalPage === "terms") {
-    return <TermsPage onBack={closeLegalPage} />;
+  // Páginas públicas (Privacy/Terms + marketing + blog) — sempre acessíveis,
+  // mesmo sem login e antes do loading da sessão. Google/Apple precisam
+  // visitar /privacy e /terms para aprovar o app OAuth.
+  if (publicRoute) {
+    switch (publicRoute.page) {
+      case "privacy": return <PrivacyPolicyPage onBack={closePublicPage} />;
+      case "terms": return <TermsPage onBack={closePublicPage} />;
+      case "recursos": return <RecursosPage />;
+      case "como-funciona": return <ComoFuncionaPage />;
+      case "empresa": return <EmpresaPage />;
+      case "contato": return <ContatoPage />;
+      case "faq": return <FaqPage />;
+      case "imprensa": return <ImprensaPage />;
+      case "blog":
+        return publicRoute.blogSlug
+          ? <BlogPostPage slug={publicRoute.blogSlug} />
+          : <BlogIndexPage />;
+    }
   }
 
   if (isLoading) {

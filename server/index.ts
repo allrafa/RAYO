@@ -147,6 +147,13 @@ app.use("/api/admin/home-feed", optionalAuth, rateLimiter(300, 15 * 60 * 1000, {
 app.use("/api/home-feed", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), publicHomeFeedRouter);
 app.use("/api/bundles", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), bundlesRoutes);
 
+// Task #70 — Site público (marketing). Endpoints sem auth: leitura do blog
+// e formulário /contato. O rate-limit de /contato (3/h por IP) vive dentro
+// do próprio router para não conflitar com leitura do blog.
+import { blogRouter, contatoRouter } from "./features/marketing/routes.js";
+app.use("/api/blog", rateLimiter(180, 15 * 60 * 1000, { keyByUser: false }), blogRouter);
+app.use("/api/contato", contatoRouter);
+
 // Task #48 — `/uploads/*` is now backed by Replit Object Storage. The
 // URL contract is unchanged so `users.avatar_url` /
 // `media_assets.public_url` rows keep resolving. Falls back to the old
@@ -198,24 +205,59 @@ async function start() {
     // middleware do Vite/SPA pra não cair no fallback de index.html.
     // Domínio canônico configurável via env (default: rayo.app.br).
     const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL || "https://rayo.app.br").replace(/\/+$/, "");
+    // Task #70 — sitemap inclui todas as páginas públicas marketing + posts
+    // do blog (artigos publicados). Posts são lidos a quente do banco a cada
+    // request; com cache HTTP de 1h o custo é insignificante.
     const PUBLIC_PAGES: ReadonlyArray<{ path: string; priority: string; changefreq: string }> = [
       { path: "/", priority: "1.0", changefreq: "weekly" },
+      { path: "/recursos", priority: "0.9", changefreq: "monthly" },
+      { path: "/como-funciona", priority: "0.9", changefreq: "monthly" },
+      { path: "/empresa", priority: "0.7", changefreq: "monthly" },
+      { path: "/contato", priority: "0.6", changefreq: "yearly" },
+      { path: "/faq", priority: "0.7", changefreq: "monthly" },
+      { path: "/imprensa", priority: "0.6", changefreq: "monthly" },
+      { path: "/blog", priority: "0.8", changefreq: "weekly" },
       { path: "/privacy", priority: "0.5", changefreq: "yearly" },
       { path: "/terms", priority: "0.5", changefreq: "yearly" },
     ];
-    app.get("/sitemap.xml", (_req, res) => {
+    app.get("/sitemap.xml", async (_req, res) => {
       const today = new Date().toISOString().slice(0, 10);
-      const urls = PUBLIC_PAGES.map(
+      const urls: string[] = PUBLIC_PAGES.map(
         (p) =>
           `  <url>\n    <loc>${PUBLIC_SITE_URL}${p.path}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`,
-      ).join("\n");
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+      );
+      try {
+        const { query: dbQuery } = await import("./db/index.js");
+        const { rows } = await dbQuery(
+          `SELECT slug, COALESCE(updated_at, published_at, created_at) AS lastmod
+             FROM content_items
+            WHERE kind = 'artigo' AND status = 'published' AND slug IS NOT NULL
+            ORDER BY published_at DESC NULLS LAST
+            LIMIT 1000`,
+        );
+        for (const r of rows as Array<{ slug: string; lastmod: Date | null }>) {
+          const lm = r.lastmod ? new Date(r.lastmod).toISOString().slice(0, 10) : today;
+          urls.push(
+            `  <url>\n    <loc>${PUBLIC_SITE_URL}/blog/${encodeURIComponent(r.slug)}</loc>\n    <lastmod>${lm}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`,
+          );
+        }
+      } catch (err) {
+        logger.warn("Sitemap", `Failed to fetch blog posts for sitemap: ${(err as Error).message}`);
+      }
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
       res.set("Content-Type", "application/xml; charset=utf-8");
       res.set("Cache-Control", "public, max-age=3600");
       res.send(xml);
     });
     app.get("/robots.txt", (_req, res) => {
-      const body = `User-agent: *\nAllow: /$\nAllow: /privacy\nAllow: /terms\nDisallow: /api/\nDisallow: /admin\nDisallow: /perfil\nDisallow: /conversas\n\nSitemap: ${PUBLIC_SITE_URL}/sitemap.xml\n`;
+      const allows = [
+        "/$", "/recursos", "/como-funciona", "/empresa", "/contato",
+        "/faq", "/imprensa", "/blog", "/privacy", "/terms",
+      ];
+      const body =
+        `User-agent: *\n${allows.map((a) => `Allow: ${a}`).join("\n")}\n` +
+        `Disallow: /api/\nDisallow: /admin\nDisallow: /perfil\nDisallow: /conversas\nDisallow: /u/\n\n` +
+        `Sitemap: ${PUBLIC_SITE_URL}/sitemap.xml\n`;
       res.set("Content-Type", "text/plain; charset=utf-8");
       res.set("Cache-Control", "public, max-age=3600");
       res.send(body);

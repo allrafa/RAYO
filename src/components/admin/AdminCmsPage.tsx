@@ -15,7 +15,7 @@ import { api } from "../../lib/api";
 import { toast } from "sonner@2.0.3";
 import { AdminCmsForm } from "./AdminCmsForm";
 
-type Kind = "audio" | "video" | "reels" | "serie" | "curso" | "livro";
+type Kind = "audio" | "video" | "reels" | "serie" | "curso" | "livro" | "artigo";
 type Status = "draft" | "published" | "archived";
 
 interface LinkedHomeCard {
@@ -59,6 +59,7 @@ const KIND_LABELS: Record<Kind, string> = {
   serie: "Série",
   curso: "Curso",
   livro: "Livro",
+  artigo: "Artigo",
 };
 
 const KIND_FILTERS: Array<{ value: Kind | "all"; label: string }> = [
@@ -69,6 +70,7 @@ const KIND_FILTERS: Array<{ value: Kind | "all"; label: string }> = [
   { value: "serie", label: "Séries" },
   { value: "curso", label: "Cursos" },
   { value: "livro", label: "Livros" },
+  { value: "artigo", label: "Artigos" },
 ];
 
 export function AdminCmsPage() {

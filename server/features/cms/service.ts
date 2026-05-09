@@ -40,11 +40,14 @@ function assertCanMutate(user: SafeUser | undefined | null, ownerId: number | nu
   }
 }
 
-export type ContentKind = "audio" | "video" | "reels" | "serie" | "curso" | "livro";
+export type ContentKind = "audio" | "video" | "reels" | "serie" | "curso" | "livro" | "artigo";
 export type ContentStatus = "draft" | "published" | "archived";
 export type EpisodeKind = "audio" | "video";
 
-export const VALID_KINDS: ContentKind[] = ["audio", "video", "reels", "serie", "curso", "livro"];
+// Task #70 — `artigo` é o kind dos posts do blog público (/blog).
+// Reaproveita content_items + status='published' em vez de criar uma
+// nova tabela blog_posts. Frontend público filtra por kind='artigo'.
+export const VALID_KINDS: ContentKind[] = ["audio", "video", "reels", "serie", "curso", "livro", "artigo"];
 // `archived` is the third state (Task #26): used to retire content without
 // deleting it. Archived rows are excluded from every public listing/detail
 // just like drafts, but the admin UI surfaces them distinctly so producers
