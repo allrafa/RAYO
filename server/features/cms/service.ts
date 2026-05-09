@@ -352,7 +352,9 @@ export async function getAdminContentDetail(id: number) {
 
   const { rows: episodes } = await query(
     `SELECT id, title, description, episode_kind, media_url, external_url,
-            duration_seconds, transcript, sort_order
+            duration_seconds, transcript, sort_order,
+            video_provider, video_external_id, video_status,
+            video_duration_sec, video_thumbnail_url
        FROM content_episodes WHERE series_id = $1 ORDER BY sort_order, id`,
     [id]
   );
@@ -362,9 +364,12 @@ export async function getAdminContentDetail(id: number) {
     CONTENT_MEDIA_FIELDS as unknown as ReadonlyArray<string>,
   );
   const resolvedEpisodes = await Promise.all(
-    episodes.map((e) =>
-      resolveMediaFields(e, EPISODE_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof e>),
-    ),
+    episodes.map(async (e) => {
+      const r = await resolveMediaFields(e, EPISODE_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof e>);
+      return withResolvedBunnyFields(r as typeof r & {
+        video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
+      });
+    }),
   );
   const withBunny = withResolvedBunnyFields(resolvedItem as typeof resolvedItem & {
     video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
@@ -388,7 +393,9 @@ export async function getPublicContentDetail(id: number) {
 
   const { rows: episodes } = await query(
     `SELECT id, title, description, episode_kind, media_url, external_url,
-            duration_seconds, transcript, sort_order
+            duration_seconds, transcript, sort_order,
+            video_provider, video_external_id, video_status,
+            video_duration_sec, video_thumbnail_url
        FROM content_episodes WHERE series_id = $1 ORDER BY sort_order, id`,
     [id]
   );
@@ -400,9 +407,12 @@ export async function getPublicContentDetail(id: number) {
     CONTENT_MEDIA_FIELDS as unknown as ReadonlyArray<string>,
   );
   const resolvedEpisodes = await Promise.all(
-    episodes.map((e) =>
-      resolveMediaFields(e, EPISODE_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof e>),
-    ),
+    episodes.map(async (e) => {
+      const r = await resolveMediaFields(e, EPISODE_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof e>);
+      return withResolvedBunnyFields(r as typeof r & {
+        video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
+      });
+    }),
   );
   const withBunny = withResolvedBunnyFields(resolvedItem as typeof resolvedItem & {
     video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
@@ -659,9 +669,12 @@ export async function listEpisodes(seriesId: number) {
     [seriesId]
   );
   return Promise.all(
-    rows.map((r) =>
-      resolveMediaFields(r, EPISODE_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof r>),
-    ),
+    rows.map(async (r) => {
+      const resolved = await resolveMediaFields(r, EPISODE_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof r>);
+      return withResolvedBunnyFields(resolved as typeof resolved & {
+        video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
+      });
+    }),
   );
 }
 
@@ -688,7 +701,9 @@ export async function createEpisode(user: SafeUser, seriesId: number, input: Epi
       toNumberOrNull(input.sort_order) ?? 0,
     ]
   );
-  return rows[0];
+  return withResolvedBunnyFields(rows[0] as typeof rows[0] & {
+    video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
+  });
 }
 
 export async function updateEpisode(user: SafeUser, seriesId: number, episodeId: number, input: Partial<EpisodeInput>) {
@@ -722,7 +737,9 @@ export async function updateEpisode(user: SafeUser, seriesId: number, episodeId:
       episodeId,
     ]
   );
-  return rows[0];
+  return withResolvedBunnyFields(rows[0] as typeof rows[0] & {
+    video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
+  });
 }
 
 export async function deleteEpisode(user: SafeUser, seriesId: number, episodeId: number) {

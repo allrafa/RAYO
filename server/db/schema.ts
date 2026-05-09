@@ -759,6 +759,32 @@ export async function initializeSchema() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_content_episodes_series_id ON content_episodes(series_id, sort_order)`);
 
+  // ── Bunny Stream para episódios (Task #88) ────────────────────────
+  // Mesmo contrato de content_items: provider/external_id/status/duration/thumb.
+  // Webhook do Bunny atualiza ambos via lookup por GUID.
+  await query(`ALTER TABLE content_episodes ADD COLUMN IF NOT EXISTS video_provider VARCHAR(20)`);
+  await query(`ALTER TABLE content_episodes ADD COLUMN IF NOT EXISTS video_external_id VARCHAR(200)`);
+  await query(`ALTER TABLE content_episodes ADD COLUMN IF NOT EXISTS video_status VARCHAR(20)`);
+  await query(`ALTER TABLE content_episodes ADD COLUMN IF NOT EXISTS video_duration_sec INTEGER`);
+  await query(`ALTER TABLE content_episodes ADD COLUMN IF NOT EXISTS video_thumbnail_url VARCHAR(500)`);
+  await query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'content_episodes_video_status_check'
+          AND conrelid = 'content_episodes'::regclass
+      ) THEN
+        ALTER TABLE content_episodes
+          ADD CONSTRAINT content_episodes_video_status_check
+          CHECK (video_status IS NULL OR video_status IN ('processing','ready','failed'));
+      END IF;
+    END$$;
+  `);
+  await query(
+    `CREATE INDEX IF NOT EXISTS idx_content_episodes_video_external_id ON content_episodes(video_external_id) WHERE video_external_id IS NOT NULL`,
+  );
+
   // ──────────────────────────────────────────────────────────────────
   // Home Feed CMS — curated rails on HomePage (Task #20)
   // Self-contained card data per section; admin reorders / adds / edits.

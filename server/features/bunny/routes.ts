@@ -214,6 +214,228 @@ adminBunnyRouter.post(
   },
 );
 
+// ── Episódios de série (Task #88) ─────────────────────────────────────
+// Mesmo contrato do upload de content_items, mas mira `content_episodes`.
+// Ownership é herdada da série pai (content_items.created_by). Apenas
+// episódios marcados como `episode_kind='video'` aceitam upload.
+adminBunnyRouter.post(
+  "/series-episodes/:id/upload",
+  requireRole("producer"),
+  rateLimiter(20, 60 * 60 * 1000, { keyByUser: true }),
+  async (req, res, next) => {
+    if (!isBunnyConfigured()) {
+      sendError(res, "Bunny Stream não está configurado", "BUNNY_DISABLED", 503);
+      return;
+    }
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id) || id < 1) {
+      sendError(res, "ID inválido", "INVALID_ID", 400);
+      return;
+    }
+    try {
+      const { rows } = await query<{
+        id: number; series_id: number; title: string; episode_kind: string; series_owner: number | null;
+      }>(
+        `SELECT e.id, e.series_id, e.title, e.episode_kind, s.created_by AS series_owner
+           FROM content_episodes e
+           JOIN content_items s ON s.id = e.series_id
+          WHERE e.id = $1`,
+        [id],
+      );
+      if (rows.length === 0) {
+        sendError(res, "Episódio não encontrado", "EPISODE_NOT_FOUND", 404);
+        return;
+      }
+      const ep = rows[0];
+      const role = req.user!.role;
+      const elevated = role === "moderator" || role === "admin";
+      if (!elevated && ep.series_owner !== req.user!.id) {
+        sendError(res, "Sem permissão para este episódio", "FORBIDDEN", 403);
+        return;
+      }
+      if (ep.episode_kind !== "video") {
+        sendError(
+          res,
+          `Upload Bunny só é permitido para episódios de vídeo (episode_kind=${ep.episode_kind})`,
+          "INVALID_KIND",
+          400,
+        );
+        return;
+      }
+      next();
+    } catch (err) {
+      next(err);
+    }
+  },
+  (req, res, next) => videoUpload(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      sendError(res, "Vídeo excede o limite de 5 GB", "FILE_TOO_LARGE", 413);
+      return;
+    }
+    sendError(res, err instanceof Error ? err.message : "Upload inválido", "INVALID_UPLOAD", 400);
+  }),
+  async (req, res, next) => {
+    const file = req.file;
+    if (!file) {
+      sendError(res, "Arquivo é obrigatório", "FILE_REQUIRED", 400);
+      return;
+    }
+    const id = parseInt(req.params.id, 10);
+    try {
+      const cfg = getBunnyConfig()!;
+      const { rows: epRows } = await query<{ title: string; video_external_id: string | null; series_id: number }>(
+        `SELECT title, video_external_id, series_id FROM content_episodes WHERE id = $1`,
+        [id],
+      );
+      const title = epRows[0]?.title ?? `Episódio ${id}`;
+      const previousRef = epRows[0]?.video_external_id ?? null;
+      const previousParsed = previousRef ? parseBunnyRef(previousRef, cfg.libraryId) : null;
+
+      const created = await createBunnyVideo(title);
+      const stream = fs.createReadStream(file.path);
+      try {
+        await uploadBunnyVideo(created.guid, stream, file.size);
+      } finally {
+        stream.destroy();
+      }
+
+      const sentinel = buildBunnySentinel(cfg.libraryId, created.guid);
+      const { rows: updated } = await query(
+        `UPDATE content_episodes SET
+            video_provider = 'bunny',
+            video_external_id = $1,
+            video_status = 'processing',
+            video_duration_sec = NULL,
+            video_thumbnail_url = NULL
+          WHERE id = $2
+          RETURNING id, series_id, video_provider, video_external_id, video_status`,
+        [sentinel, id],
+      );
+
+      if (previousParsed && previousParsed.guid !== created.guid) {
+        try {
+          const { deleteBunnyVideo } = await import("../../lib/bunnyStream.js");
+          await deleteBunnyVideo(previousParsed.guid);
+        } catch (err) {
+          logger.warn(
+            "Bunny",
+            `Falha ao limpar vídeo anterior ${previousParsed.guid} (episódio): ${(err as Error).message}`,
+          );
+        }
+      }
+
+      success(res, {
+        episode: updated[0],
+        bunny: { library_id: cfg.libraryId, guid: created.guid, sentinel },
+      }, 201);
+    } catch (err) {
+      if (err instanceof BunnyError) {
+        sendError(res, err.message, "BUNNY_ERROR", err.statusCode);
+        return;
+      }
+      next(err);
+    } finally {
+      safeUnlink(file?.path);
+    }
+  },
+);
+
+// DELETE /api/admin/bunny/series-episodes/:id — desvincula o vídeo Bunny do
+// episódio. Mesmo padrão do endpoint de content_items.
+adminBunnyRouter.delete("/series-episodes/:id", requireRole("producer"), async (req, res, next) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    sendError(res, "ID inválido", "INVALID_ID", 400);
+    return;
+  }
+  try {
+    const { rows } = await query<{ video_external_id: string | null; series_owner: number | null }>(
+      `SELECT e.video_external_id, s.created_by AS series_owner
+         FROM content_episodes e
+         JOIN content_items s ON s.id = e.series_id
+        WHERE e.id = $1`,
+      [id],
+    );
+    if (rows.length === 0) {
+      sendError(res, "Episódio não encontrado", "EPISODE_NOT_FOUND", 404);
+      return;
+    }
+    const ep = rows[0];
+    const role = req.user!.role;
+    const elevated = role === "moderator" || role === "admin";
+    if (!elevated && ep.series_owner !== req.user!.id) {
+      sendError(res, "Sem permissão para este episódio", "FORBIDDEN", 403);
+      return;
+    }
+    const cfg = getBunnyConfig();
+    const parsed = ep.video_external_id ? parseBunnyRef(ep.video_external_id, cfg?.libraryId) : null;
+    if (parsed && cfg) {
+      try {
+        const { deleteBunnyVideo } = await import("../../lib/bunnyStream.js");
+        await deleteBunnyVideo(parsed.guid);
+      } catch (err) {
+        logger.warn("Bunny", `deleteVideo (episódio) falhou: ${(err as Error).message}`);
+      }
+    }
+    await query(
+      `UPDATE content_episodes SET
+          video_provider = NULL, video_external_id = NULL, video_status = NULL,
+          video_duration_sec = NULL, video_thumbnail_url = NULL
+        WHERE id = $1`,
+      [id],
+    );
+    success(res, { id, removed: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/bunny/series-episodes/:id — re-sincroniza com o Bunny.
+adminBunnyRouter.get("/series-episodes/:id", requireRole("producer"), async (req, res, next) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id) || id < 1) {
+    sendError(res, "ID inválido", "INVALID_ID", 400);
+    return;
+  }
+  try {
+    const { rows } = await query<{ video_external_id: string | null; series_owner: number | null }>(
+      `SELECT e.video_external_id, s.created_by AS series_owner
+         FROM content_episodes e
+         JOIN content_items s ON s.id = e.series_id
+        WHERE e.id = $1`,
+      [id],
+    );
+    if (rows.length === 0) {
+      sendError(res, "Episódio não encontrado", "EPISODE_NOT_FOUND", 404);
+      return;
+    }
+    const ep = rows[0];
+    const role = req.user!.role;
+    const elevated = role === "moderator" || role === "admin";
+    if (!elevated && ep.series_owner !== req.user!.id) {
+      sendError(res, "Sem permissão para este episódio", "FORBIDDEN", 403);
+      return;
+    }
+    const cfg = getBunnyConfig();
+    const parsed = ep.video_external_id ? parseBunnyRef(ep.video_external_id, cfg?.libraryId) : null;
+    if (!parsed) {
+      sendError(res, "Episódio sem vídeo Bunny", "NO_BUNNY_VIDEO", 404);
+      return;
+    }
+    const v = await getBunnyVideo(parsed.guid);
+    const status = bunnyStatusToInternal(v.status);
+    await applyEpisodeBunnyStatusUpdate(id, status, v.length, v.thumbnailFileName, parsed.guid);
+    success(res, { id, status, duration_sec: v.length });
+  } catch (err) {
+    if (err instanceof BunnyError) {
+      sendError(res, err.message, "BUNNY_ERROR", err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
 // DELETE /api/admin/bunny/content/:id — desvincula o vídeo Bunny do
 // content_item e remove no Bunny (idempotente em 404). Não apaga o item.
 adminBunnyRouter.delete("/content/:id", requireRole("producer"), async (req, res, next) => {
@@ -360,24 +582,69 @@ bunnyWebhookRouter.post(
     }
     const internal = bunnyStatusToInternal(statusNum);
 
-    // Acha o content_item pelo GUID. Aceita o sentinel completo OU o GUID
-    // sozinho gravado em video_external_id.
+    // Acha o alvo pelo GUID. Procura primeiro em content_items; se não
+    // achar, tenta content_episodes (Task #88). Aceita o sentinel completo
+    // OU o GUID sozinho gravado em video_external_id.
     const sentinel = buildBunnySentinel(cfg.libraryId, guid);
-    const { rows } = await query<{ id: number; created_by: number | null; title: string }>(
+    const { rows: itemRows } = await query<{ id: number; created_by: number | null; title: string }>(
       `SELECT id, created_by, title FROM content_items
         WHERE video_provider = 'bunny'
           AND (video_external_id = $1 OR video_external_id = $2)
         LIMIT 1`,
       [sentinel, guid],
     );
-    if (rows.length === 0) {
+
+    type Target = {
+      kind: "content" | "episode";
+      id: number;
+      created_by: number | null;
+      title: string;
+      link: string;
+      payload: Record<string, unknown>;
+    };
+    let target: Target | null = null;
+    if (itemRows.length > 0) {
+      const r = itemRows[0];
+      target = {
+        kind: "content",
+        id: r.id,
+        created_by: r.created_by,
+        title: r.title,
+        link: `/admin/cms?id=${r.id}`,
+        payload: { content_id: r.id, status: internal },
+      };
+    } else {
+      const { rows: epRows } = await query<{
+        id: number; series_id: number; title: string; series_title: string; series_owner: number | null;
+      }>(
+        `SELECT e.id, e.series_id, e.title, s.title AS series_title, s.created_by AS series_owner
+           FROM content_episodes e
+           JOIN content_items s ON s.id = e.series_id
+          WHERE e.video_provider = 'bunny'
+            AND (e.video_external_id = $1 OR e.video_external_id = $2)
+          LIMIT 1`,
+        [sentinel, guid],
+      );
+      if (epRows.length > 0) {
+        const r = epRows[0];
+        target = {
+          kind: "episode",
+          id: r.id,
+          created_by: r.series_owner,
+          title: `${r.series_title} — ${r.title}`,
+          link: `/admin/cms?id=${r.series_id}`,
+          payload: { episode_id: r.id, series_id: r.series_id, status: internal },
+        };
+      }
+    }
+
+    if (!target) {
       // Bunny manda webhook mesmo pra vídeos órfãos (criados manualmente
       // no painel). Respondemos 200 pra ele não ficar reentregando.
-      logger.info("Bunny", `Webhook ignorado: nenhum content_item para guid=${guid}`);
+      logger.info("Bunny", `Webhook ignorado: nenhum content/episódio para guid=${guid}`);
       success(res, { ok: true, matched: false });
       return;
     }
-    const target = rows[0];
 
     // Pra ready/failed buscamos a duração/thumb via getVideo (o webhook
     // nem sempre traz isso, e é barato).
@@ -392,10 +659,12 @@ bunnyWebhookRouter.post(
         logger.warn("Bunny", `getVideo após webhook falhou: ${(err as Error).message}`);
       }
     }
-    const changed = await applyBunnyStatusUpdate(target.id, internal, duration, thumbFile, guid);
+    const changed = target.kind === "content"
+      ? await applyBunnyStatusUpdate(target.id, internal, duration, thumbFile, guid)
+      : await applyEpisodeBunnyStatusUpdate(target.id, internal, duration, thumbFile, guid);
 
-    // Notifica o producer dono — apenas quando o status mudou de fato,
-    // pra não duplicar notificações em caso de reentrega de webhook.
+    // Notifica o dono — apenas quando o status mudou de fato, pra não
+    // duplicar notificações em caso de reentrega de webhook.
     if (changed && target.created_by) {
       const labelByStatus = {
         ready: "Vídeo pronto",
@@ -408,15 +677,15 @@ bunnyWebhookRouter.post(
           kind: "video_status",
           title: labelByStatus[internal],
           body: target.title,
-          link: `/admin/cms?id=${target.id}`,
-          payload: { content_id: target.id, status: internal },
+          link: target.link,
+          payload: target.payload,
         });
       } catch (err) {
         logger.warn("Bunny", `notify producer falhou: ${(err as Error).message}`);
       }
     }
 
-    success(res, { ok: true, matched: true, status: internal });
+    success(res, { ok: true, matched: true, kind: target.kind, status: internal });
   },
 );
 
@@ -463,6 +732,43 @@ async function applyBunnyStatusUpdate(
         )
       RETURNING id`,
     [status, durationSec, thumbUrl, contentId],
+  );
+  return rows.length > 0;
+}
+
+// Mesma lógica idempotente para episódios (Task #88). Mantida separada
+// porque content_episodes não tem updated_at e o set de colunas pode
+// divergir no futuro.
+async function applyEpisodeBunnyStatusUpdate(
+  episodeId: number,
+  status: "processing" | "ready" | "failed",
+  durationSec: number | null,
+  thumbnailFileName: string | null,
+  guid: string,
+): Promise<boolean> {
+  const cfg = getBunnyConfig();
+  let thumbUrl: string | null = null;
+  if (cfg) {
+    thumbUrl = thumbnailFileName
+      ? `https://${cfg.cdnHostname}/${guid}/${thumbnailFileName}`
+      : bunnyThumbnailUrl(cfg.cdnHostname, guid);
+  }
+  // Quando o Bunny devolve duração, também espelhamos em duration_seconds
+  // (campo legado usado pelo player do front) — mas só se o campo estava
+  // vazio, pra não sobrescrever valor editado à mão pelo producer.
+  const { rows } = await query<{ id: number }>(
+    `UPDATE content_episodes SET
+        video_status = $1,
+        video_duration_sec = COALESCE($2, video_duration_sec),
+        video_thumbnail_url = COALESCE($3, video_thumbnail_url),
+        duration_seconds = COALESCE(duration_seconds, $2)
+      WHERE id = $4
+        AND video_status IS DISTINCT FROM $1
+        AND NOT (
+          video_status IN ('ready','failed') AND $1 = 'processing'
+        )
+      RETURNING id`,
+    [status, durationSec, thumbUrl, episodeId],
   );
   return rows.length > 0;
 }

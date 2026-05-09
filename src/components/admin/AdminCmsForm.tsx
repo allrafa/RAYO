@@ -50,6 +50,12 @@ interface Episode {
   duration_seconds: number | null;
   transcript: string | null;
   sort_order: number;
+  // Task #88 — Bunny Stream para episódios
+  video_provider?: string | null;
+  video_external_id?: string | null;
+  video_status?: string | null;
+  video_duration_sec?: number | null;
+  video_thumbnail_url?: string | null;
 }
 
 interface Props {
@@ -437,9 +443,24 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
                           <Trash2 className="w-4 h-4" style={{ color: "var(--rayo-terra-500)" }} />
                         </Button>
                       </div>
-                      <input className={cls} style={inputStyle} placeholder="URL do arquivo / vídeo"
-                        value={ep.media_url ?? ep.external_url ?? ""}
-                        onChange={(e) => updateEp(ep, { media_url: e.target.value, external_url: null })} />
+                      {ep.episode_kind === "video" ? (
+                        <BunnyVideoUploader
+                          target={{ kind: "episode", id: ep.id }}
+                          videoProvider={ep.video_provider ?? null}
+                          videoStatus={ep.video_status ?? null}
+                          videoExternalId={ep.video_external_id ?? null}
+                          videoThumbnailUrl={ep.video_thumbnail_url ?? null}
+                          videoDurationSec={ep.video_duration_sec ?? null}
+                          onChanged={(patch) => set(
+                            "episodes",
+                            (data.episodes ?? []).map((x) => x.id === ep.id ? { ...x, ...patch } : x),
+                          )}
+                        />
+                      ) : (
+                        <input className={cls} style={inputStyle} placeholder="URL do arquivo de áudio"
+                          value={ep.media_url ?? ep.external_url ?? ""}
+                          onChange={(e) => updateEp(ep, { media_url: e.target.value, external_url: null })} />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -642,15 +663,44 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
 //
 // Salva direto no item (precisa de `contentId > 0`); para itens novos, exige
 // salvar antes (igual ao fluxo de episódios da série).
+// Task #88 — `target` distingue upload de content_item vs episódio de série.
+// As URLs do backend são as únicas que diferem; o resto do fluxo é igual.
+type BunnyTarget =
+  | { kind: "content"; id: number }
+  | { kind: "episode"; id: number };
+
+function bunnyEndpoints(target: BunnyTarget) {
+  const base = target.kind === "content"
+    ? `/api/admin/bunny/content/${target.id}`
+    : `/api/admin/bunny/series-episodes/${target.id}`;
+  return {
+    upload: `${base}/upload`,
+    status: base,
+    remove: base,
+  };
+}
+
 function BunnyVideoUploader(props: {
-  contentId: number;
+  // Compat: Task #86 form chama com `contentId`. Task #88 passa `target`.
+  contentId?: number;
+  target?: BunnyTarget;
   videoProvider: string | null;
   videoStatus: string | null;
   videoExternalId: string | null;
   videoThumbnailUrl: string | null;
   videoDurationSec: number | null;
-  onChanged: (patch: Partial<ContentDetail>) => void;
+  onChanged: (patch: {
+    video_provider?: string | null;
+    video_external_id?: string | null;
+    video_status?: string | null;
+    video_duration_sec?: number | null;
+    video_thumbnail_url?: string | null;
+  }) => void;
 }) {
+  const target: BunnyTarget = props.target
+    ?? { kind: "content", id: props.contentId ?? 0 };
+  const endpoints = bunnyEndpoints(target);
+  const targetSavedId = target.id;
   const [bunnyConfigured, setBunnyConfigured] = useState<boolean | null>(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -669,8 +719,8 @@ function BunnyVideoUploader(props: {
   }, []);
 
   async function doUpload(file: File) {
-    if (props.contentId === 0) {
-      toast.error("Salve o conteúdo antes de enviar o vídeo.");
+    if (targetSavedId === 0) {
+      toast.error("Salve antes de enviar o vídeo.");
       return;
     }
     setUploading(true);
@@ -678,7 +728,7 @@ function BunnyVideoUploader(props: {
     try {
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open("POST", `/api/admin/bunny/content/${props.contentId}/upload`);
+        xhr.open("POST", endpoints.upload);
         xhr.withCredentials = true;
         xhr.upload.onprogress = (ev) => {
           if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 100));
@@ -688,11 +738,12 @@ function BunnyVideoUploader(props: {
           try {
             const json = JSON.parse(xhr.responseText || "{}");
             if (xhr.status >= 200 && xhr.status < 300 && json.success) {
-              const item = json.data?.item ?? {};
+              // Backend devolve { item } pra content e { episode } pra episódio.
+              const row = json.data?.item ?? json.data?.episode ?? {};
               props.onChanged({
-                video_provider: item.video_provider ?? "bunny",
-                video_external_id: item.video_external_id ?? null,
-                video_status: item.video_status ?? "processing",
+                video_provider: row.video_provider ?? "bunny",
+                video_external_id: row.video_external_id ?? null,
+                video_status: row.video_status ?? "processing",
                 video_duration_sec: null,
                 video_thumbnail_url: null,
               });
@@ -718,10 +769,10 @@ function BunnyVideoUploader(props: {
   }
 
   async function refreshStatus() {
-    if (props.contentId === 0) return;
+    if (targetSavedId === 0) return;
     setRefreshing(true);
     try {
-      const res = await api.get<{ status: string; duration_sec: number }>(`/api/admin/bunny/content/${props.contentId}`);
+      const res = await api.get<{ status: string; duration_sec: number }>(endpoints.status);
       if (res.data) {
         props.onChanged({
           video_status: res.data.status,
@@ -737,10 +788,10 @@ function BunnyVideoUploader(props: {
   }
 
   async function removeVideo() {
-    if (props.contentId === 0) return;
-    if (!confirm("Remover o vídeo do Bunny? O conteúdo continua, mas sem vídeo.")) return;
+    if (targetSavedId === 0) return;
+    if (!confirm("Remover o vídeo do Bunny? O item continua, mas sem vídeo.")) return;
     try {
-      await api.delete(`/api/admin/bunny/content/${props.contentId}`);
+      await api.delete(endpoints.remove);
       props.onChanged({
         video_provider: null,
         video_external_id: null,
@@ -807,14 +858,14 @@ function BunnyVideoUploader(props: {
         </div>
       )}
 
-      {props.contentId === 0 && (
+      {targetSavedId === 0 && (
         <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
-          Salve o conteúdo antes de enviar o vídeo.
+          Salve antes de enviar o vídeo.
         </p>
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" disabled={uploading || props.contentId === 0}
+        <Button variant="outline" size="sm" disabled={uploading || targetSavedId === 0}
           onClick={() => inputRef.current?.click()}>
           {uploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
           {isBunny ? "Substituir vídeo" : "Enviar vídeo"}
