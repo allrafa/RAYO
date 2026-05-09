@@ -194,10 +194,25 @@ router.get("/forums/by-slug/:slug", async (req, res, next) => {
   }
 });
 
-router.get("/forums/:id/posts", async (req, res, next) => {
+// Task #92 — `:idOrSlug` aceita ID numérico OU slug (ex `c/casados`).
+router.get("/forums/:idOrSlug/posts", async (req, res, next) => {
   try {
-    const forumId = parseInt(req.params.id, 10);
-    if (isNaN(forumId) || forumId < 1) {
+    const raw = String(req.params.idOrSlug || "").trim();
+    let forumId: number;
+    if (/^\d+$/.test(raw)) {
+      forumId = parseInt(raw, 10);
+    } else if (/^[a-z0-9-]+$/i.test(raw)) {
+      try {
+        forumId = await getForumIdBySlug(raw.toLowerCase());
+      } catch {
+        sendError(res, "Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
+        return;
+      }
+    } else {
+      sendError(res, "ID/slug de fórum inválido", "INVALID_FORUM_ID");
+      return;
+    }
+    if (!Number.isFinite(forumId) || forumId < 1) {
       sendError(res, "ID de fórum inválido", "INVALID_FORUM_ID");
       return;
     }

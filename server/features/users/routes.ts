@@ -282,6 +282,42 @@ router.get("/me/activity-stats", requireAuth, async (req: Request, res: Response
   }
 });
 
+// Task #92 — Unfollow via DELETE (atalho REST além do POST {follow:false}).
+router.delete(
+  "/:id/follow",
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const targetId = Number.parseInt(req.params.id, 10);
+      if (!Number.isFinite(targetId) || targetId <= 0) {
+        error(res, "ID de usuário inválido", "INVALID_USER_ID", 400);
+        return;
+      }
+      if (targetId === req.user!.id) {
+        error(res, "Você não pode deixar de seguir a si mesmo", "SELF_FOLLOW", 400);
+        return;
+      }
+      await query(
+        `DELETE FROM user_follows WHERE follower_id = $1 AND followee_id = $2`,
+        [req.user!.id, targetId],
+      );
+      const counts = await query<{ followers: string; following: string }>(
+        `SELECT
+           (SELECT COUNT(*) FROM user_follows WHERE followee_id = $1)::text AS followers,
+           (SELECT COUNT(*) FROM user_follows WHERE follower_id = $1)::text AS following`,
+        [targetId],
+      );
+      success(res, {
+        following: false,
+        followers_count: Number.parseInt(counts.rows[0]?.followers ?? "0", 10),
+        following_count: Number.parseInt(counts.rows[0]?.following ?? "0", 10),
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 // Task #92 — Follow / Unfollow (Reddit-style). Idempotente, sem self-follow.
 router.post(
   "/:id/follow",

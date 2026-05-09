@@ -24,11 +24,24 @@ import { api } from "../lib/api";
 interface Forum {
   id: number;
   name: string;
+  slug: string;
   description: string;
   icon: string;
   life_context: string | null;
   category: string;
   post_count: string;
+  member_count: string | number;
+  is_subscribed: boolean;
+}
+
+interface TrendingPost {
+  id: number;
+  title: string;
+  likes: number;
+  comments: number;
+  forum_id: number | null;
+  forum_slug: string | null;
+  forum_name: string | null;
 }
 
 interface CommentData {
@@ -60,6 +73,8 @@ export function ComunidadePage() {
   const { reactions, handleReaction } = useReactions();
   const { theme } = useTheme();
   const [forums, setForums] = useState<Forum[]>([]);
+  const [trendingPosts, setTrendingPosts] = useState<any[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(false);
   const [forumsLoading, setForumsLoading] = useState(true);
   const [forumsError, setForumsError] = useState<string | null>(null);
   const [postComments, setPostComments] = useState<CommentData[]>([]);
@@ -191,6 +206,20 @@ export function ComunidadePage() {
     loadForums();
   }, [loadForums]);
 
+  // Task #92 — "Em alta" puxa do servidor (likes+comments 48h).
+  useEffect(() => {
+    if (currentView !== "trending") return;
+    let cancelled = false;
+    setTrendingLoading(true);
+    api.get<{ posts: any[] }>("/api/community/posts/trending?limit=20")
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success) setTrendingPosts(res.data?.posts ?? []);
+      })
+      .finally(() => { if (!cancelled) setTrendingLoading(false); });
+    return () => { cancelled = true; };
+  }, [currentView]);
+
   const loadPostComments = useCallback(async (postId: number) => {
     setLoadingComments(true);
     try {
@@ -251,22 +280,20 @@ export function ComunidadePage() {
 
   const groups = forums.map(f => ({
     id: f.id,
+    slug: f.slug,
     name: f.name,
-    members: parseInt(f.post_count) || 0,
-    isJoined: false,
+    members: Number(f.member_count) || 0,
+    isJoined: !!f.is_subscribed,
     category: f.category,
     activeNow: 0,
-    postsToday: 0,
+    postsToday: parseInt(String(f.post_count)) || 0,
     image: "",
     description: f.description,
     icon: f.icon,
   }));
 
-  const trendingTopics = [
-    { topic: "#ComunicacaoNaoViolenta", posts: 34, trend: "+12%" },
-    { topic: "#FinancasConjuntas", posts: 28, trend: "+8%" },
-    { topic: "#EducacaoPositiva", posts: 22, trend: "+15%" },
-    { topic: "#IntimidadeNoCasamento", posts: 19, trend: "+5%" }
+  // Trending topics legados — não exibidos mais (Em alta usa /posts/trending).
+  const trendingTopics: Array<{ topic: string; posts: number; trend: string }> = [
   ];
 
   if (isLoading) {
@@ -483,16 +510,7 @@ export function ComunidadePage() {
                     >
                       <ImageIcon className="w-5 h-5" />
                     </button>
-                    <button
-                      type="button"
-                      className="ra-action"
-                      aria-label="Adicionar vídeo"
-                      title="Vídeo"
-                      onClick={() => setShowCreatePost(true)}
-                      style={{ color: 'var(--rayo-terra-500)' }}
-                    >
-                      <Video className="w-5 h-5" />
-                    </button>
+                    {/* Task #92 — vídeo é proibido em posts da comunidade. */}
                     <button
                       type="button"
                       className="ra-action"
@@ -542,7 +560,8 @@ export function ComunidadePage() {
 
           {currentView === "trending" && (
             <TrendingView 
-              posts={posts.filter(p => p.likes > 20)}
+              posts={trendingPosts}
+              loading={trendingLoading}
               reactions={reactions}
               onReact={handleReactionWithFeedback}
               onComment={(post) => {
@@ -554,7 +573,6 @@ export function ComunidadePage() {
                 setSelectedPost(post);
                 setShowShare(true);
               }}
-              trendingTopics={trendingTopics}
             />
           )}
 
@@ -958,17 +976,18 @@ function GruposView({ groups, categories, loading, error, onRetry }: GruposViewP
   );
 }
 
-// TRENDING VIEW
+// TRENDING VIEW — Task #92: posts vêm de /api/community/posts/trending
+// (ranking por likes+comments nas últimas 48h, calculado no servidor).
 interface TrendingViewProps {
   posts: any[];
+  loading?: boolean;
   reactions: any;
   onReact: (postId: number, emoji: string) => void;
   onComment: (post: any) => void;
   onShare: (post: any) => void;
-  trendingTopics: any[];
 }
 
-function TrendingView({ posts, reactions, onReact, onComment, onShare, trendingTopics }: TrendingViewProps) {
+function TrendingView({ posts, loading, reactions, onReact, onComment, onShare }: TrendingViewProps) {
   return (
     <div className="space-y-6">
       <div 
@@ -989,8 +1008,18 @@ function TrendingView({ posts, reactions, onReact, onComment, onShare, trendingT
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
+      <div className="grid grid-cols-1 gap-6">
+        <div className="space-y-4">
+          {loading && (
+            <div className="ra-card p-6 text-center" style={{ color: 'var(--rayo-ink-400)' }}>
+              Carregando os posts em alta…
+            </div>
+          )}
+          {!loading && posts.length === 0 && (
+            <div className="ra-card p-6 text-center" style={{ color: 'var(--rayo-ink-400)' }}>
+              Ainda não há posts em alta nas últimas 48h.
+            </div>
+          )}
           {posts.map((post) => (
             <PostCard 
               key={post.id} 
@@ -1003,56 +1032,7 @@ function TrendingView({ posts, reactions, onReact, onComment, onShare, trendingT
           ))}
         </div>
 
-        <div className="space-y-4">
-          <div className="ra-card" style={{ padding: 0 }}>
-            <div className="p-6">
-              <h3 
-                className="text-[18px] mb-4" 
-                style={{ 
-                  fontWeight: 700, 
-                  color: 'var(--rayo-forest-900)' 
-                }}
-              >
-                Hashtags em Alta
-              </h3>
-              <div className="space-y-3">
-                {trendingTopics.map((topic, index) => (
-                  <div 
-                    key={index} 
-                    className="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors"
-                    style={{ background: 'transparent' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--rayo-sand-300)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    <span 
-                      className="text-[14px]" 
-                      style={{ 
-                        fontWeight: 600,
-                        color: 'var(--rayo-terra-500)' 
-                      }}
-                    >
-                      {topic.topic}
-                    </span>
-                    <Badge 
-                      style={{ 
-                        fontSize: '11px', 
-                        fontWeight: 600,
-                        background: 'var(--rayo-terra-100)',
-                        color: 'var(--rayo-terra-500)',
-                      }}
-                    >
-                      {topic.trend}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Sidebar legada de hashtags removida (Task #92). */}
       </div>
     </div>
   );
@@ -1261,15 +1241,48 @@ interface GroupCardProps {
 }
 
 function GroupCard({ group }: GroupCardProps) {
-  const [isJoined, setIsJoined] = useState(group.isJoined);
+  const [isJoined, setIsJoined] = useState<boolean>(!!group.isJoined);
+  const [members, setMembers] = useState<number>(Number(group.members) || 0);
+  const [busy, setBusy] = useState(false);
 
-  const handleJoinGroup = () => {
-    setIsJoined(!isJoined);
-    enhancedToast.success({
-      title: isJoined ? "Você saiu do grupo" : "Você entrou no grupo! 🎉",
-      description: isJoined ? `Você não faz mais parte de "${group.name}"` : `Bem-vindo ao grupo "${group.name}"`,
-      haptic: true
-    });
+  // Mantém estado em sincronia caso a lista recarregue.
+  useEffect(() => {
+    setIsJoined(!!group.isJoined);
+    setMembers(Number(group.members) || 0);
+  }, [group.isJoined, group.members]);
+
+  const handleJoinGroup = async () => {
+    if (busy || !group.slug) return;
+    const next = !isJoined;
+    setBusy(true);
+    setIsJoined(next);
+    setMembers((m) => Math.max(0, m + (next ? 1 : -1)));
+    try {
+      const res = next
+        ? await api.post<{ subscribed: boolean; member_count: number }>(
+            `/api/community/forums/by-slug/${encodeURIComponent(group.slug)}/subscribe`,
+            { subscribed: true },
+          )
+        : await api.delete<{ subscribed: boolean; member_count: number }>(
+            `/api/community/forums/by-slug/${encodeURIComponent(group.slug)}/subscribe`,
+          );
+      if (!res.success) throw new Error(res.error?.message || "Falha ao atualizar inscrição");
+      if (typeof res.data?.member_count === "number") {
+        setMembers(res.data.member_count);
+      }
+      enhancedToast.success({
+        title: next ? "Você entrou no grupo! 🎉" : "Você saiu do grupo",
+        description: next ? `Bem-vindo ao grupo "${group.name}"` : `Você não faz mais parte de "${group.name}"`,
+        haptic: true,
+      });
+    } catch (err: any) {
+      // Reverte otimismo em caso de erro.
+      setIsJoined(!next);
+      setMembers((m) => Math.max(0, m + (next ? -1 : 1)));
+      enhancedToast.error({ title: "Não foi possível atualizar a inscrição", description: err?.message });
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -1323,7 +1336,7 @@ function GroupCard({ group }: GroupCardProps) {
         >
           <div className="flex items-center gap-1">
             <Users className="w-3 h-3" />
-            <span>{group.members.toLocaleString()} membros</span>
+            <span>{members.toLocaleString()} membros</span>
           </div>
           <div className="flex items-center gap-1">
             <div 
