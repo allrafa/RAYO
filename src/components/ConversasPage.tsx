@@ -25,6 +25,7 @@ import { SkeletonLoader } from "./SkeletonLoader";
 import { useUnreadMessages, type MessageStreamEvent } from "./hooks/useUnreadMessages";
 import { onScrollTop } from "../lib/scrollTop";
 import { useAutofocusOnDesktop } from "../lib/useAutofocusOnDesktop";
+import { annotateMessages, isOnlyEmoji } from "../lib/messageGrouping";
 
 type MessageKind = "text" | "image" | "audio";
 
@@ -1095,61 +1096,97 @@ export function ConversasPage() {
                   <p className="ra-empty-sub">Envie a primeira para começar a conversa.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {messages.map((m) => {
+                <div>
+                  {annotateMessages(messages, currentUserId).map((info) => {
+                    const m = info.message;
                     const mine = m.sender_id === currentUserId;
                     const meta = (m.attachment_meta || {}) as { duration_sec?: number };
+                    const hasText = !!(m.content && m.content.trim());
+                    const isImageOnly = m.kind === "image" && !!m.attachment_url && !hasText;
+                    const isEmojiOnly = m.kind === "text" && isOnlyEmoji(m.content);
+
+                    const footer = (info.showTimestamp || (mine && info.showReadIndicator)) ? (
+                      <div className={`ra-chat-meta ${mine ? "justify-end" : "justify-start"}`}>
+                        {info.showTimestamp && <span>{formatTime(m.created_at)}</span>}
+                        {mine && info.showReadIndicator && (
+                          m.read_at ? (
+                            <span className="inline-flex items-center gap-0.5" title={`Lido às ${formatTime(m.read_at)}`} aria-label={`Lido às ${formatTime(m.read_at)}`}>
+                              <CheckCheck className="w-3.5 h-3.5" />
+                              <span>Lido</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5" title="Enviado" aria-label="Enviado">
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Enviado</span>
+                            </span>
+                          )
+                        )}
+                      </div>
+                    ) : null;
+
                     return (
-                      <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                        <div className={`ra-chat-bubble ${mine ? "user" : "assistant"} max-w-[80%]`}>
-                          {m.kind === "image" && m.attachment_url && (
-                            <button
-                              type="button"
-                              onClick={() => setLightboxUrl(m.attachment_url)}
-                              className="block focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
-                              aria-label="Abrir foto em tela cheia"
-                            >
-                              <img
-                                src={m.attachment_url}
-                                alt="Foto enviada"
-                                className="rounded-lg max-w-full max-h-72 object-cover mb-1 cursor-zoom-in"
-                                loading="lazy"
-                              />
-                            </button>
-                          )}
-                          {m.kind === "audio" && m.attachment_url && (
-                            <div className="flex items-center gap-2 mb-1">
-                              <audio
-                                controls
-                                src={m.attachment_url}
-                                className="max-w-full"
-                                preload="metadata"
-                                onPlay={() => sendListeningPing(m.conversation_id, m.id)}
-                                onTimeUpdate={() => sendListeningPing(m.conversation_id, m.id)}
-                              />
-                              {typeof meta.duration_sec === "number" && (
-                                <span className="text-xs opacity-70">{formatDuration(meta.duration_sec)}</span>
-                              )}
-                            </div>
-                          )}
-                          {m.content && (
-                            <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
-                          )}
-                          <p className={`text-xs mt-1 flex items-center gap-1 ${mine ? "opacity-70 justify-end" : "text-muted-foreground"}`}>
-                            <span>{formatTime(m.created_at)}</span>
-                            {mine && (
-                              m.read_at ? (
-                                <span className="inline-flex items-center gap-0.5" title={`Lido às ${formatTime(m.read_at)}`} aria-label={`Lido às ${formatTime(m.read_at)}`}>
-                                  <CheckCheck className="w-3.5 h-3.5" />
-                                  <span>Lido</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-0.5" title="Enviado" aria-label="Enviado">
-                                  <Check className="w-3.5 h-3.5" />
-                                </span>
-                              )
+                      <div key={m.id}>
+                        {info.dateSeparator && (
+                          <div className="ra-chat-date-pill-wrap">
+                            <span className="ra-chat-date-pill">{info.dateSeparator}</span>
+                          </div>
+                        )}
+                        <div
+                          className={`ra-chat-row flex ${mine ? "justify-end" : "justify-start"} ${
+                            !info.isFirstOfGroup ? "grouped" : ""
+                          }`}
+                        >
+                          <div className={`flex flex-col max-w-[80%] ${mine ? "items-end" : "items-start"}`}>
+                            {isImageOnly ? (
+                              <button
+                                type="button"
+                                onClick={() => setLightboxUrl(m.attachment_url)}
+                                className="ra-chat-attachment"
+                                aria-label="Abrir foto em tela cheia"
+                              >
+                                <img src={m.attachment_url!} alt="Foto enviada" loading="lazy" />
+                              </button>
+                            ) : isEmojiOnly ? (
+                              <p className="ra-chat-emoji-jumbo">{m.content}</p>
+                            ) : (
+                              <div className={`ra-chat-bubble ${mine ? "user" : "assistant"}`}>
+                                {m.kind === "image" && m.attachment_url && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setLightboxUrl(m.attachment_url)}
+                                    className="block focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
+                                    aria-label="Abrir foto em tela cheia"
+                                  >
+                                    <img
+                                      src={m.attachment_url}
+                                      alt="Foto enviada"
+                                      className="rounded-lg max-w-full max-h-72 object-cover mb-2 cursor-zoom-in"
+                                      loading="lazy"
+                                    />
+                                  </button>
+                                )}
+                                {m.kind === "audio" && m.attachment_url && (
+                                  <div className="flex items-center gap-2">
+                                    <audio
+                                      controls
+                                      src={m.attachment_url}
+                                      className="max-w-full"
+                                      preload="metadata"
+                                      onPlay={() => sendListeningPing(m.conversation_id, m.id)}
+                                      onTimeUpdate={() => sendListeningPing(m.conversation_id, m.id)}
+                                    />
+                                    {typeof meta.duration_sec === "number" && (
+                                      <span className="text-xs opacity-70">{formatDuration(meta.duration_sec)}</span>
+                                    )}
+                                  </div>
+                                )}
+                                {hasText && (
+                                  <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
+                                )}
+                              </div>
                             )}
-                          </p>
+                            {footer}
+                          </div>
                         </div>
                       </div>
                     );

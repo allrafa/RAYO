@@ -360,6 +360,72 @@
   border-top-right-radius: 6px;
 }
 
+/* ── DM render (Task #143) — agrupamento, anexo limpo, separadores ── */
+/* Gap denso entre mensagens do mesmo grupo, espaço normal entre grupos. */
+.ra-chat-row { margin-top: 12px; }
+.ra-chat-row.grouped { margin-top: 2px; }
+.ra-chat-row:first-child { margin-top: 0; }
+
+/* Anexo standalone (imagem sem texto): renderizado fora do balão. */
+.ra-chat-attachment {
+  display: block;
+  border-radius: 18px;
+  overflow: hidden;
+  background: transparent;
+  padding: 0;
+  border: none;
+  cursor: zoom-in;
+  line-height: 0;
+}
+.ra-chat-attachment:focus-visible {
+  outline: 2px solid var(--rayo-terra-500);
+  outline-offset: 2px;
+}
+.ra-chat-attachment img {
+  display: block;
+  border-radius: 18px;
+  max-width: 280px;
+  max-height: 360px;
+  object-fit: cover;
+}
+
+/* Mensagem composta só de emoji: jumbo, sem balão. */
+.ra-chat-emoji-jumbo {
+  font-size: 44px;
+  line-height: 1.1;
+  padding: 4px 6px;
+  margin: 0;
+}
+
+/* Footer da bolha (horário + Lido) — discreto, fora do balão. */
+.ra-chat-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  margin-top: 4px;
+  color: var(--rayo-ink-400);
+  white-space: nowrap;
+}
+
+/* Pílula central de separador de data (Hoje / Ontem / Quinta). */
+.ra-chat-date-pill-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 18px 0 6px;
+}
+.ra-chat-date-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--rayo-ink-500);
+  background: var(--rayo-sand-100);
+  border-radius: 999px;
+  border: 1px solid var(--rayo-sand-300);
+  letter-spacing: 0.02em;
+}
+
 /* ── ADMIN SHELL (densidade tabular, paleta DS) ──────────────── */
 .ra-admin-shell {
   min-height: 100vh;
