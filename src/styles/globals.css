@@ -1560,9 +1560,15 @@
     display: none !important;
   }
   /* No mobile não queremos o pb=8rem do `.ra-page` cortando a altura;
-     em desktop (≥768px) voltamos a deixar a margem do app respirar. */
+     em desktop (≥768px) voltamos a deixar a margem do app respirar.
+     Quando estamos no estado lista-only (sem conversa aberta), a
+     bottom nav continua visível — reservamos espaço pra ela ali no
+     padding-bottom do shell pra última conversa não cair atrás dela. */
   @media (max-width: 767px) {
     .rayo-dm-shell.ra-page { padding-bottom: 0; min-height: 0; }
+    .rayo-dm-shell--list.ra-page {
+      padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    }
   }
 
   /* Welcome Screen Animations - Minimalista */

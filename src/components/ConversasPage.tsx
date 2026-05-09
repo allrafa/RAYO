@@ -847,7 +847,7 @@ export function ConversasPage() {
 
   return (
     <div
-      className="ra-page flex max-w-6xl mx-auto rayo-dm-shell"
+      className={`ra-page flex max-w-6xl mx-auto rayo-dm-shell ${activeId == null ? "rayo-dm-shell--list" : ""}`}
       style={{ background: 'var(--rayo-sand-100)' }}
     >
       {/* Lista de Conversas */}
