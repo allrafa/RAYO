@@ -112,6 +112,18 @@ adminBunnyRouter.post(
         sendError(res, "Sem permissão para este conteúdo", "FORBIDDEN", 403);
         return;
       }
+      // Guard server-side: Bunny só faz sentido pra video/reels. Sem
+      // isso, um cliente malicioso (ou bug futuro) poderia anexar
+      // metadados de vídeo a um audio/livro/curso/serie.
+      if (item.kind !== "video" && item.kind !== "reels") {
+        sendError(
+          res,
+          `Upload Bunny só é permitido para conteúdos de vídeo ou reels (kind=${item.kind})`,
+          "INVALID_KIND",
+          400,
+        );
+        return;
+      }
       next();
     } catch (err) {
       next(err);
@@ -141,6 +153,9 @@ adminBunnyRouter.post(
         [id],
       );
       const title = itemRows[0]?.title ?? `Vídeo ${id}`;
+      // Guarda o GUID anterior pra cleanup pós-sucesso (replace = troca).
+      const previousRef = itemRows[0]?.video_external_id ?? null;
+      const previousParsed = previousRef ? parseBunnyRef(previousRef, cfg.libraryId) : null;
 
       // Cria slot no Bunny.
       const created = await createBunnyVideo(title);
@@ -167,6 +182,21 @@ adminBunnyRouter.post(
           RETURNING id, video_provider, video_external_id, video_status`,
         [sentinel, id],
       );
+
+      // Cleanup do vídeo Bunny anterior (apenas após o UPDATE bem-sucedido,
+      // pra evitar deletar o vídeo bom se o INSERT/UPDATE falhar). Falha
+      // de delete não derruba a request — Bunny segue cobrando até retry.
+      if (previousParsed && previousParsed.guid !== created.guid) {
+        try {
+          const { deleteBunnyVideo } = await import("../../lib/bunnyStream.js");
+          await deleteBunnyVideo(previousParsed.guid);
+        } catch (err) {
+          logger.warn(
+            "Bunny",
+            `Falha ao limpar vídeo anterior ${previousParsed.guid} após replace: ${(err as Error).message}`,
+          );
+        }
+      }
 
       success(res, {
         item: updated[0],
