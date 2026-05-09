@@ -19,7 +19,22 @@ export function AcademiaPage() {
   const { courses, books, setCurrentCourseId, setIsInCourseDetail, setCurrentBookId, setIsInBookDetail, setCurrentVideoId, setIsInVideoPage, startCourse, enrollInCourse, enrollInBook, toggleBookFavorite, userData } = useApp();
   const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentView, setCurrentView] = useState<"minha-biblioteca" | "marketplace">("marketplace");
+  // Task #128 — `currentView` persiste em sessionStorage. Sem isso,
+  // abrir um livro/vídeo do catálogo desmonta a AcademiaPage (via
+  // AcademiaWithBookReader) e ao voltar o usuário cairia em
+  // "marketplace" mesmo se estava na "minha-biblioteca" — ou perderia
+  // o filtro de kind escolhido (ver MarketplaceView.selectedKind).
+  const [currentView, setCurrentView] = useState<"minha-biblioteca" | "marketplace">(() => {
+    try {
+      const v = sessionStorage.getItem('rayo-academia-view');
+      return v === 'minha-biblioteca' ? 'minha-biblioteca' : 'marketplace';
+    } catch {
+      return 'marketplace';
+    }
+  });
+  useEffect(() => {
+    try { sessionStorage.setItem('rayo-academia-view', currentView); } catch {}
+  }, [currentView]);
   const [libraryFilter, setLibraryFilter] = useState<'all' | 'courses' | 'books'>('all');
   const [showAllPopular, setShowAllPopular] = useState(false);
 
@@ -743,8 +758,18 @@ function MarketplaceView({
   const [bundlesLoading, setBundlesLoading] = useState<boolean>(true);
   const [bundlesError, setBundlesError] = useState<string | null>(null);
 
-  // Active format filter ("curso" scrolls; others render an inline showcase)
-  const [selectedKind, setSelectedKind] = useState<string | null>(null);
+  // Active format filter ("curso" scrolls; others render an inline showcase).
+  // Task #128 — persiste em sessionStorage para sobreviver à
+  // remontagem causada por abrir um item do catálogo (livro/vídeo).
+  const [selectedKind, setSelectedKind] = useState<string | null>(() => {
+    try { return sessionStorage.getItem('rayo-academia-kind') || null; } catch { return null; }
+  });
+  useEffect(() => {
+    try {
+      if (selectedKind) sessionStorage.setItem('rayo-academia-kind', selectedKind);
+      else sessionStorage.removeItem('rayo-academia-kind');
+    } catch {}
+  }, [selectedKind]);
   const [kindItems, setKindItems] = useState<Array<{
     id: number;
     title: string;
@@ -1315,9 +1340,11 @@ function MarketplaceView({
                               setIsInVideoPage(true);
                               break;
                             case 'serie':
-                              // Séries hoje compartilham CourseDetailPage.
-                              setCurrentCourseId(it.id);
-                              setIsInCourseDetail(true);
+                              // Séries são content_items (não courses) e
+                              // ainda não têm página dedicada de detalhe.
+                              // Evitamos abrir CourseDetailPage com um id
+                              // de content_item (abriria turma errada/vazia).
+                              toast.info('Página de séries em breve');
                               break;
                             default:
                               break;
