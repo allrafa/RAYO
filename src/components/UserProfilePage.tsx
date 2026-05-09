@@ -123,13 +123,16 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
       return;
     }
     setAvatarUploading(true);
-    const res = await uploadAvatar(file);
-    setAvatarUploading(false);
-    if (res.success) {
-      enhancedToast.success({ title: "Foto atualizada", haptic: true });
-      void loadAll();
-    } else {
-      enhancedToast.error({ title: "Falha ao enviar foto", description: res.error || "Tente novamente", haptic: true });
+    try {
+      const res = await uploadAvatar(file);
+      if (res.success) {
+        enhancedToast.success({ title: "Foto atualizada", haptic: true });
+        void loadAll();
+      } else {
+        enhancedToast.error({ title: "Falha ao enviar foto", description: res.error || "Tente novamente", haptic: true });
+      }
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
