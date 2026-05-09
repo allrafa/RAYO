@@ -420,6 +420,19 @@ export function ConversasPage() {
     }
     return () => document.body.classList.remove(cls);
   }, [activeId]);
+
+  // Task #144 — enquanto ConversasPage está montada (com ou sem conversa
+  // aberta), marca body com `rayo-dm-page` pra neutralizar paddings do
+  // <main> que faziam a janela inteira rolar fora da viewport. Sem isso,
+  // mesmo no estado lista-only, main.navbar-bottom-spacing (mobile) e
+  // main.desktop-layout* (desktop) mantinham padding-bottom que somava
+  // com o shell de 100dvh e empurrava a página pra rolar.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const cls = "rayo-dm-page";
+    document.body.classList.add(cls);
+    return () => document.body.classList.remove(cls);
+  }, []);
   useEffect(() => { streamConnectedRef.current = streamConnected; }, [streamConnected]);
 
   // Task #115 — re-tap na aba Mensagens fecha a conversa aberta (quando
@@ -852,7 +865,7 @@ export function ConversasPage() {
       style={{ background: 'var(--rayo-sand-100)' }}
     >
       {/* Lista de Conversas */}
-      <div className={`${activeId != null ? "hidden md:block" : "block"} w-full md:w-1/3 border-r border-border bg-card flex flex-col`}>
+      <div className={`${activeId != null ? "hidden md:block" : "block"} w-full md:w-1/3 border-r border-border bg-card flex flex-col min-h-0`}>
         <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-4">
             <h1 className="font-display font-bold">Mensagens</h1>
@@ -1009,7 +1022,7 @@ export function ConversasPage() {
       </div>
 
       {/* Área de Conversa */}
-      <div className={`${activeId != null ? "flex" : "hidden md:flex"} flex-1 flex-col`}>
+      <div className={`${activeId != null ? "flex" : "hidden md:flex"} flex-1 flex-col min-h-0 overflow-hidden`}>
         {activeConversation ? (
           <>
             <div className="p-4 border-b bg-card flex items-center justify-between">

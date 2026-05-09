@@ -1552,23 +1552,61 @@
      `100vh`. Sem isso, no Safari iOS o `100vh` inclui a área da
      barra de URL retrátil e o composer cai fora da viewport visível
      — usuário não consegue tocar o input pra abrir o teclado. */
-  .rayo-dm-shell {
+  /* DM shell precisa travar a altura no viewport (Task #144). Sem isso,
+     `.ra-page` (min-height: 100vh) deixa o shell crescer com o conteúdo
+     e composer/header param de ficar fixos — a página inteira passa a
+     rolar em vez de só a lista de mensagens. Usamos 100dvh pra lidar com
+     o address bar dinâmico do Safari mobile. O `min-height: 0` neutraliza
+     o min-height herdado de `.ra-page` e o `overflow: hidden` impede que
+     filhos overflowing empurrem o shell além da viewport (a ScrollArea
+     interna passa a rolar por dentro, em vez de a janela inteira). */
+  .rayo-dm-shell.ra-page {
     height: 100vh;
     height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
   }
   body.rayo-dm-conversation-open .rn-bottom {
     display: none !important;
   }
-  /* No mobile não queremos o pb=8rem do `.ra-page` cortando a altura;
-     em desktop (≥768px) voltamos a deixar a margem do app respirar.
-     Quando estamos no estado lista-only (sem conversa aberta), a
-     bottom nav continua visível — reservamos espaço pra ela ali no
-     padding-bottom do shell pra última conversa não cair atrás dela. */
-  @media (max-width: 767px) {
-    .rayo-dm-shell.ra-page { padding-bottom: 0; min-height: 0; }
+  /* Desktop (≥1024px) tem TopNavbar fixed (64px) e `<main>` com
+     padding-top: 80px. Se o shell for 100dvh, a parte de baixo (composer)
+     cai 80px abaixo da viewport visível. Descontamos pra encaixar
+     exatamente abaixo do TopNavbar. Em qualquer estado da página DM
+     (lista-only ou conversa aberta) zeramos o padding-bottom do <main>
+     — sem isso a soma main_padding_bottom + shell_height excede a
+     viewport e a janela inteira passa a rolar uns 80-112px. */
+  @media (min-width: 1024px) {
+    .rayo-dm-shell.ra-page {
+      height: calc(100vh - 80px);
+      height: calc(100dvh - 80px);
+    }
+    body.rayo-dm-page main.desktop-layout,
+    body.rayo-dm-page main.desktop-layout-minimized {
+      padding-bottom: 0 !important;
+    }
+  }
+  /* Mobile/tablet (até 1023px): `.navbar-bottom-spacing` reserva ~80px
+     de padding-bottom no <main> pra bottom nav. Esse espaço some quando
+     a página DM trata o reserve por conta própria — zeramos sempre que
+     a página está montada. O reserve pra última conversa não cair
+     atrás da bottom nav é feito mais abaixo via `.rayo-dm-shell--list`. */
+  @media (max-width: 1023px) {
+    body.rayo-dm-page main.navbar-bottom-spacing {
+      padding-bottom: 0 !important;
+    }
+    /* Lista-only: bottom nav está VISÍVEL (cobre só convo aberta).
+       Reservamos espaço dentro do shell pra última conversa não ficar
+       atrás da nav. Range estendido pra cobrir todo o range em que a
+       bottom nav aparece (não só ≤767px). */
     .rayo-dm-shell--list.ra-page {
       padding-bottom: calc(72px + env(safe-area-inset-bottom));
     }
+  }
+  /* Mobile estrito: zerar padding-bottom no estado conversa aberta
+     (já é o default do shell, mas garantia explícita). */
+  @media (max-width: 767px) {
+    .rayo-dm-shell.ra-page { padding-bottom: 0; }
   }
 
   /* Welcome Screen Animations - Minimalista */
