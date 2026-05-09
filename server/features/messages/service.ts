@@ -5,10 +5,8 @@ import { publishToUser, getActiveSubscriberCount } from "./events.js";
 import { createNotification } from "../notifications/service.js";
 import { sendNewMessageEmail } from "../../lib/email.js";
 import { logger } from "../../utils/logger.js";
+import { resolveStoredMediaUrl } from "../../lib/objectStorageBridge.js";
 
-// Recipient is considered "offline" if they have no live SSE subscriber AND
-// their last_active_at is older than this threshold. We then enqueue an email
-// (idempotent via dm_email_sent — at most one per conversation per hour).
 const OFFLINE_THRESHOLD_MIN = 10;
 const EMAIL_COOLDOWN_MIN = 60;
 const APP_URL =
@@ -19,7 +17,10 @@ const MAX_MESSAGE_LENGTH = 4000;
 const SEARCH_MIN_LENGTH = 2;
 const SEARCH_MAX_RESULTS = 10;
 
-interface ConversationRow {
+export type MessageKind = "text" | "image" | "audio";
+const ALLOWED_KINDS: ReadonlySet<MessageKind> = new Set(["text", "image", "audio"]);
+
+export interface ConversationItem {
   id: number;
   user_a_id: number;
   user_b_id: number;
@@ -27,18 +28,54 @@ interface ConversationRow {
   created_at: string;
   other_user_id: number;
   other_user_name: string;
+  other_user_avatar_url: string | null;
+  last_message_kind: MessageKind | null;
   last_message_content: string | null;
   last_message_sender_id: number | null;
   last_message_created_at: string | null;
   unread_count: number;
+  archived_at: string | null;
 }
 
-interface MessageRow {
+export interface MessageItem {
   id: number;
   conversation_id: number;
   sender_id: number;
   sender_name: string;
+  kind: MessageKind;
   content: string;
+  attachment_url: string | null;
+  attachment_meta: Record<string, unknown> | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+interface ConversationRowDb {
+  id: number;
+  user_a_id: number;
+  user_b_id: number;
+  last_message_at: string;
+  created_at: string;
+  other_user_id: number;
+  other_user_name: string;
+  other_user_avatar_url: string | null;
+  last_message_kind: MessageKind | null;
+  last_message_content: string | null;
+  last_message_sender_id: number | null;
+  last_message_created_at: string | null;
+  unread_count: number;
+  archived_at: string | null;
+}
+
+interface MessageRowDb {
+  id: number;
+  conversation_id: number;
+  sender_id: number;
+  sender_name: string;
+  kind: MessageKind;
+  content: string;
+  attachment_url: string | null;
+  attachment_meta: Record<string, unknown> | null;
   read_at: string | null;
   created_at: string;
 }
@@ -61,8 +98,41 @@ async function assertConversationMember(conversationId: number, userId: number):
   return rows[0];
 }
 
-export async function listConversations(userId: number): Promise<ConversationRow[]> {
-  const { rows } = await query<ConversationRow>(
+async function resolveMessageRow(row: MessageRowDb): Promise<MessageItem> {
+  return {
+    id: row.id,
+    conversation_id: row.conversation_id,
+    sender_id: row.sender_id,
+    sender_name: row.sender_name,
+    kind: row.kind,
+    content: row.content,
+    attachment_url: await resolveStoredMediaUrl(row.attachment_url),
+    attachment_meta: row.attachment_meta,
+    read_at: row.read_at,
+    created_at: row.created_at,
+  };
+}
+
+async function resolveConversationRow(row: ConversationRowDb): Promise<ConversationItem> {
+  return {
+    ...row,
+    other_user_avatar_url: await resolveStoredMediaUrl(row.other_user_avatar_url),
+  };
+}
+
+// Lista conversas. Por padrão devolve só as não-excluídas e não-arquivadas
+// do ponto de vista do usuário. Quando `scope === "archived"` retorna só as
+// arquivadas (ainda não excluídas).
+export async function listConversations(
+  userId: number,
+  scope: "active" | "archived" = "active",
+): Promise<ConversationItem[]> {
+  const whereScope =
+    scope === "archived"
+      ? `s.archived_at IS NOT NULL AND s.deleted_at IS NULL`
+      : `s.deleted_at IS NULL AND s.archived_at IS NULL`;
+
+  const { rows } = await query<ConversationRowDb>(
     `SELECT
        c.id,
        c.user_a_id,
@@ -71,16 +141,22 @@ export async function listConversations(userId: number): Promise<ConversationRow
        c.created_at,
        CASE WHEN c.user_a_id = $1 THEN c.user_b_id ELSE c.user_a_id END AS other_user_id,
        u.name AS other_user_name,
+       u.avatar_url AS other_user_avatar_url,
+       lm.kind AS last_message_kind,
        lm.content AS last_message_content,
        lm.sender_id AS last_message_sender_id,
        lm.created_at AS last_message_created_at,
-       COALESCE(uc.unread_count, 0)::int AS unread_count
+       COALESCE(uc.unread_count, 0)::int AS unread_count,
+       s.archived_at
      FROM conversations c
      JOIN users u ON u.id = (CASE WHEN c.user_a_id = $1 THEN c.user_b_id ELSE c.user_a_id END)
+     LEFT JOIN conversation_user_state s
+       ON s.conversation_id = c.id AND s.user_id = $1
      LEFT JOIN LATERAL (
-       SELECT m.content, m.sender_id, m.created_at
+       SELECT m.kind, m.content, m.sender_id, m.created_at
        FROM messages m
        WHERE m.conversation_id = c.id
+         AND (s.cleared_at IS NULL OR m.created_at > s.cleared_at)
        ORDER BY m.created_at DESC
        LIMIT 1
      ) lm ON true
@@ -90,15 +166,20 @@ export async function listConversations(userId: number): Promise<ConversationRow
        WHERE m.conversation_id = c.id
          AND m.sender_id <> $1
          AND m.read_at IS NULL
+         AND (s.cleared_at IS NULL OR m.created_at > s.cleared_at)
      ) uc ON true
-     WHERE c.user_a_id = $1 OR c.user_b_id = $1
+     WHERE (c.user_a_id = $1 OR c.user_b_id = $1)
+       AND (${whereScope})
      ORDER BY c.last_message_at DESC`,
     [userId]
   );
-  return rows;
+  return Promise.all(rows.map(resolveConversationRow));
 }
 
-export async function getOrCreateConversation(userId: number, otherUserId: number): Promise<{ id: number; created: boolean; other_user_id: number; other_user_name: string }> {
+export async function getOrCreateConversation(
+  userId: number,
+  otherUserId: number,
+): Promise<{ id: number; created: boolean; other_user_id: number; other_user_name: string }> {
   if (!Number.isInteger(otherUserId) || otherUserId < 1) {
     throw new AppError("ID de usuário inválido", "INVALID_USER_ID", 400);
   }
@@ -116,9 +197,6 @@ export async function getOrCreateConversation(userId: number, otherUserId: numbe
 
   const [aId, bId] = orderUsers(userId, otherUserId);
 
-  // Atomic upsert: avoids race condition between two concurrent
-  // POST /conversations calls for the same pair (would otherwise
-  // hit UNIQUE constraint and return 500).
   const { rows: inserted } = await query<{ id: number }>(
     `INSERT INTO conversations (user_a_id, user_b_id)
      VALUES ($1, $2)
@@ -127,28 +205,34 @@ export async function getOrCreateConversation(userId: number, otherUserId: numbe
     [aId, bId]
   );
 
+  let convId: number;
   if (inserted.length > 0) {
-    trackEvent(userId, "conversation_started", { conversation_id: inserted[0].id, other_user_id: otherUserId });
-    return {
-      id: inserted[0].id,
-      created: true,
-      other_user_id: targetRows[0].id,
-      other_user_name: targetRows[0].name,
-    };
+    convId = inserted[0].id;
+    trackEvent(userId, "conversation_started", { conversation_id: convId, other_user_id: otherUserId });
+  } else {
+    const { rows: existing } = await query<{ id: number }>(
+      `SELECT id FROM conversations WHERE user_a_id = $1 AND user_b_id = $2`,
+      [aId, bId]
+    );
+    if (existing.length === 0) {
+      throw new AppError("Falha ao criar conversa", "CONVERSATION_CREATE_FAILED", 500);
+    }
+    convId = existing[0].id;
   }
 
-  const { rows: existing } = await query<{ id: number }>(
-    `SELECT id FROM conversations WHERE user_a_id = $1 AND user_b_id = $2`,
-    [aId, bId]
+  // Reabrir: se o usuário tinha excluído/arquivado essa conversa, reativa
+  // o estado dele ao iniciar uma nova interação.
+  await query(
+    `INSERT INTO conversation_user_state (conversation_id, user_id)
+     VALUES ($1, $2)
+     ON CONFLICT (conversation_id, user_id) DO UPDATE
+       SET archived_at = NULL, deleted_at = NULL`,
+    [convId, userId]
   );
 
-  if (existing.length === 0) {
-    throw new AppError("Falha ao criar conversa", "CONVERSATION_CREATE_FAILED", 500);
-  }
-
   return {
-    id: existing[0].id,
-    created: false,
+    id: convId,
+    created: inserted.length > 0,
     other_user_id: targetRows[0].id,
     other_user_name: targetRows[0].name,
   };
@@ -159,7 +243,7 @@ export async function getMessages(
   userId: number,
   page: number = 1,
   limit: number = 50
-): Promise<{ messages: MessageRow[]; total: number; page: number; limit: number; totalPages: number; other_user_id: number; other_user_name: string }> {
+): Promise<{ messages: MessageItem[]; total: number; page: number; limit: number; totalPages: number; other_user_id: number; other_user_name: string }> {
   const conv = await assertConversationMember(conversationId, userId);
   const otherUserId = conv.user_a_id === userId ? conv.user_b_id : conv.user_a_id;
 
@@ -168,27 +252,41 @@ export async function getMessages(
     [otherUserId]
   );
 
+  // Corte de "limpar histórico" (após excluir o lado dele e voltar a abrir).
+  const { rows: stateRows } = await query<{ cleared_at: string | null }>(
+    `SELECT cleared_at FROM conversation_user_state
+      WHERE conversation_id = $1 AND user_id = $2`,
+    [conversationId, userId]
+  );
+  const clearedAt = stateRows[0]?.cleared_at ?? null;
+
   const { rows: countRows } = await query<{ total: string }>(
-    `SELECT COUNT(*) AS total FROM messages WHERE conversation_id = $1`,
-    [conversationId]
+    `SELECT COUNT(*) AS total FROM messages
+      WHERE conversation_id = $1
+        AND ($2::timestamp IS NULL OR created_at > $2)`,
+    [conversationId, clearedAt]
   );
   const total = parseInt(countRows[0].total, 10);
 
   const offset = (page - 1) * limit;
 
-  const { rows } = await query<MessageRow>(
+  const { rows } = await query<MessageRowDb>(
     `SELECT m.id, m.conversation_id, m.sender_id, u.name AS sender_name,
-            m.content, m.read_at, m.created_at
+            m.kind, m.content, m.attachment_url, m.attachment_meta,
+            m.read_at, m.created_at
      FROM messages m
      JOIN users u ON u.id = m.sender_id
      WHERE m.conversation_id = $1
+       AND ($4::timestamp IS NULL OR m.created_at > $4)
      ORDER BY m.created_at DESC
      LIMIT $2 OFFSET $3`,
-    [conversationId, limit, offset]
+    [conversationId, limit, offset, clearedAt]
   );
 
+  const resolved = await Promise.all(rows.reverse().map(resolveMessageRow));
+
   return {
-    messages: rows.reverse(),
+    messages: resolved,
     total,
     page,
     limit,
@@ -198,63 +296,117 @@ export async function getMessages(
   };
 }
 
-export async function sendMessage(conversationId: number, userId: number, content: string): Promise<MessageRow> {
-  if (!content || content.trim().length === 0) {
-    throw new AppError("Conteúdo da mensagem é obrigatório", "EMPTY_MESSAGE", 400);
+export interface SendMessageInput {
+  kind?: MessageKind;
+  content?: string;
+  attachmentUrl?: string | null; // referência canônica ("objstore://...")
+  attachmentMeta?: Record<string, unknown> | null;
+}
+
+// Reabre a conversa do lado de quem ainda tem estado "excluído/arquivado",
+// para que mensagens novas sempre apareçam para os dois participantes.
+async function reopenConversation(conversationId: number, userId: number): Promise<void> {
+  await query(
+    `INSERT INTO conversation_user_state (conversation_id, user_id)
+     VALUES ($1, $2)
+     ON CONFLICT (conversation_id, user_id) DO UPDATE
+       SET deleted_at = NULL, archived_at = NULL`,
+    [conversationId, userId]
+  );
+}
+
+export async function sendMessage(
+  conversationId: number,
+  userId: number,
+  input: SendMessageInput,
+): Promise<MessageItem> {
+  const kind = (input.kind ?? "text") as MessageKind;
+  if (!ALLOWED_KINDS.has(kind)) {
+    throw new AppError("Tipo de mensagem inválido", "INVALID_MESSAGE_KIND", 400);
   }
-  const trimmed = content.trim();
-  if (trimmed.length > MAX_MESSAGE_LENGTH) {
-    throw new AppError(`Mensagem excede ${MAX_MESSAGE_LENGTH} caracteres`, "MESSAGE_TOO_LONG", 400);
+  const rawContent = (input.content ?? "").trim();
+  let content = rawContent;
+  let attachmentUrl: string | null = input.attachmentUrl ?? null;
+  let attachmentMeta: Record<string, unknown> | null = input.attachmentMeta ?? null;
+
+  if (kind === "text") {
+    if (!content) {
+      throw new AppError("Conteúdo da mensagem é obrigatório", "EMPTY_MESSAGE", 400);
+    }
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      throw new AppError(`Mensagem excede ${MAX_MESSAGE_LENGTH} caracteres`, "MESSAGE_TOO_LONG", 400);
+    }
+    attachmentUrl = null;
+    attachmentMeta = null;
+  } else {
+    if (!attachmentUrl) {
+      throw new AppError("Anexo é obrigatório para esse tipo de mensagem", "ATTACHMENT_REQUIRED", 400);
+    }
+    // Anexo só pode ser referência canônica do object storage do servidor.
+    // Bloqueia injeção de URL externa (phishing/abuso) ao montar a mensagem.
+    if (!attachmentUrl.startsWith("objstore://")) {
+      throw new AppError("Anexo inválido", "INVALID_ATTACHMENT_URL", 400);
+    }
+    // Valida coerência kind ↔ mime, quando o cliente informou o mime.
+    const mimeFromMeta = typeof attachmentMeta?.mime === "string" ? attachmentMeta.mime : "";
+    if (mimeFromMeta) {
+      if (kind === "image" && !mimeFromMeta.startsWith("image/")) {
+        throw new AppError("Mime do anexo não corresponde ao tipo", "ATTACHMENT_MIME_MISMATCH", 400);
+      }
+      if (kind === "audio" && !mimeFromMeta.startsWith("audio/")) {
+        throw new AppError("Mime do anexo não corresponde ao tipo", "ATTACHMENT_MIME_MISMATCH", 400);
+      }
+    }
+    if (content.length > MAX_MESSAGE_LENGTH) {
+      throw new AppError(`Legenda excede ${MAX_MESSAGE_LENGTH} caracteres`, "MESSAGE_TOO_LONG", 400);
+    }
+    // Para mensagens de mídia, content guarda apenas legenda opcional.
   }
 
   const conv = await assertConversationMember(conversationId, userId);
   const recipientId = conv.user_a_id === userId ? conv.user_b_id : conv.user_a_id;
 
-  const { rows } = await query<MessageRow>(
-    `INSERT INTO messages (conversation_id, sender_id, content)
-     VALUES ($1, $2, $3)
-     RETURNING id, conversation_id, sender_id, content, read_at, created_at`,
-    [conversationId, userId, trimmed]
+  const { rows } = await query<MessageRowDb>(
+    `INSERT INTO messages (conversation_id, sender_id, kind, content, attachment_url, attachment_meta)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, conversation_id, sender_id, kind, content, attachment_url, attachment_meta, read_at, created_at`,
+    [conversationId, userId, kind, content, attachmentUrl, attachmentMeta]
   );
 
-  await query(
-    `UPDATE conversations SET last_message_at = NOW() WHERE id = $1`,
-    [conversationId]
-  );
+  await query(`UPDATE conversations SET last_message_at = NOW() WHERE id = $1`, [conversationId]);
+
+  // Reabrir o lado do destinatário se ele tinha arquivado/excluído a conversa.
+  await reopenConversation(conversationId, recipientId);
 
   const { rows: senderRows } = await query<{ name: string }>(
     `SELECT name FROM users WHERE id = $1`,
     [userId]
   );
-  const message = rows[0];
-  message.sender_name = senderRows[0]?.name || "Usuário";
+  const dbRow = rows[0];
+  dbRow.sender_name = senderRows[0]?.name || "Usuário";
+  const message = await resolveMessageRow(dbRow);
 
-  trackEvent(userId, "message_sent", { conversation_id: conversationId, message_id: message.id });
+  trackEvent(userId, "message_sent", {
+    conversation_id: conversationId,
+    message_id: message.id,
+    kind,
+  });
 
-  // Real-time fan-out: notify both participants so the UI updates without polling.
-  // We publish AFTER the DB writes succeed; fire-and-forget for unread refresh.
   const eventPayload = { conversation_id: conversationId, message };
-  // Fan-out to other open tabs/devices of the SENDER too — they should also
-  // see the new message. Client-side dedupe (by message id) prevents the
-  // tab that originated the POST from rendering it twice.
   publishToUser(userId, "message:new", eventPayload);
   if (recipientId !== userId) {
     publishToUser(recipientId, "message:new", eventPayload);
-    // The recipient's unread count may have changed (a new conversation may
-    // now contain unread messages). Compute & broadcast asynchronously.
     void getUnreadConversationCount(recipientId)
       .then((count) => publishToUser(recipientId, "unread:changed", { count }))
-      .catch(() => {
-        /* best-effort */
-      });
+      .catch(() => {});
 
-    // Persist a notification + best-effort email if the recipient is offline.
-    // Both are fire-and-forget so they cannot block (or fail) the POST.
+    const preview =
+      kind === "image" ? "📷 Foto" : kind === "audio" ? "🎤 Áudio" : content;
     void notifyRecipient({
       conversationId,
       recipientId,
       senderName: message.sender_name,
-      preview: trimmed,
+      preview,
       messageId: message.id,
     }).catch((err) => {
       logger.error("Messages", `notifyRecipient failed: ${err instanceof Error ? err.message : err}`);
@@ -276,8 +428,6 @@ async function notifyRecipient(args: NotifyRecipientArgs): Promise<void> {
   const { conversationId, recipientId, senderName, preview, messageId } = args;
   const link = `/conversas/${conversationId}`;
 
-  // Always persist an in-app notification so the bell shows it even if the
-  // recipient was offline (they'll see it on next login).
   await createNotification({
     userId: recipientId,
     kind: "message",
@@ -287,11 +437,7 @@ async function notifyRecipient(args: NotifyRecipientArgs): Promise<void> {
     payload: { conversation_id: conversationId, message_id: messageId, sender_name: senderName },
   });
 
-  // Decide whether to email: only when there's no live SSE subscriber AND
-  // the recipient hasn't been active for at least OFFLINE_THRESHOLD_MIN.
-  if (getActiveSubscriberCount(recipientId) > 0) {
-    return;
-  }
+  if (getActiveSubscriberCount(recipientId) > 0) return;
   const { rows } = await query<{ email: string; name: string; offline_min: string | null }>(
     `SELECT email, name,
             EXTRACT(EPOCH FROM (NOW() - COALESCE(last_active_at, created_at)))::numeric / 60 AS offline_min
@@ -301,14 +447,8 @@ async function notifyRecipient(args: NotifyRecipientArgs): Promise<void> {
   const row = rows[0];
   if (!row) return;
   const offlineMin = row.offline_min == null ? Number.POSITIVE_INFINITY : parseFloat(row.offline_min);
-  if (offlineMin < OFFLINE_THRESHOLD_MIN) {
-    return;
-  }
+  if (offlineMin < OFFLINE_THRESHOLD_MIN) return;
 
-  // Idempotency: at most one email per conversation per EMAIL_COOLDOWN_MIN.
-  // Single-statement upsert that updates only when the cooldown has passed
-  // and reports whether the row was actually written, so concurrent senders
-  // can't both emit emails for the same recipient/conversation pair.
   const { rowCount } = await query(
     `INSERT INTO dm_email_sent (conversation_id, recipient_id, last_sent_at)
      VALUES ($1, $2, NOW())
@@ -324,36 +464,38 @@ async function notifyRecipient(args: NotifyRecipientArgs): Promise<void> {
 
   const conversationLink = `${APP_URL.replace(/\/+$/, "")}${link}`;
   logger.info("Messages", `queued email notification for offline recipient ${recipientId} (conv ${conversationId})`);
-  void sendNewMessageEmail(row.email, row.name, senderName, preview, conversationLink).catch(() => {
-    /* logged inside sendEmail */
-  });
+  void sendNewMessageEmail(row.email, row.name, senderName, preview, conversationLink).catch(() => {});
 }
 
 export async function markConversationRead(conversationId: number, userId: number): Promise<{ marked: number }> {
   const conv = await assertConversationMember(conversationId, userId);
+
+  // Respeita o corte cleared_at do leitor: mensagens antes do corte estão
+  // escondidas para ele, então não devem virar "lido" e nem disparar
+  // recibo para o remetente original (Task #79 review).
+  const { rows: stateRows } = await query<{ cleared_at: string | null }>(
+    `SELECT cleared_at FROM conversation_user_state
+      WHERE conversation_id = $1 AND user_id = $2`,
+    [conversationId, userId]
+  );
+  const clearedAt = stateRows[0]?.cleared_at ?? null;
 
   const { rows: updated, rowCount } = await query<{ id: number; read_at: string }>(
     `UPDATE messages SET read_at = NOW()
      WHERE conversation_id = $1
        AND sender_id <> $2
        AND read_at IS NULL
+       AND ($3::timestamp IS NULL OR created_at > $3)
      RETURNING id, read_at`,
-    [conversationId, userId]
+    [conversationId, userId, clearedAt]
   );
 
   const marked = rowCount || 0;
   if (marked > 0) {
-    // Broadcast the new unread total so the navbar badge updates in real time
-    // without the user needing to wait for the next poll cycle.
     void getUnreadConversationCount(userId)
       .then((count) => publishToUser(userId, "unread:changed", { count }))
-      .catch(() => {
-        /* best-effort */
-      });
+      .catch(() => {});
 
-    // Notify the OTHER participant (the sender of the messages we just marked
-    // as read) so their UI can flip the "Enviado" indicator to "Lido" in real
-    // time without polling.
     const otherUserId = conv.user_a_id === userId ? conv.user_b_id : conv.user_a_id;
     if (otherUserId !== userId) {
       const readAt = updated[0]?.read_at ?? new Date().toISOString();
@@ -375,51 +517,106 @@ export async function getUnreadConversationCount(userId: number): Promise<number
     `SELECT COUNT(DISTINCT m.conversation_id) AS count
      FROM messages m
      JOIN conversations c ON c.id = m.conversation_id
+     LEFT JOIN conversation_user_state s
+       ON s.conversation_id = c.id AND s.user_id = $1
      WHERE m.read_at IS NULL
        AND m.sender_id <> $1
-       AND (c.user_a_id = $1 OR c.user_b_id = $1)`,
+       AND (c.user_a_id = $1 OR c.user_b_id = $1)
+       AND (s.deleted_at IS NULL)
+       AND (s.cleared_at IS NULL OR m.created_at > s.cleared_at)`,
     [userId]
   );
   return parseInt(rows[0]?.count || "0", 10);
 }
 
-export async function searchUsers(userId: number, queryStr: string): Promise<Array<{ id: number; name: string }>> {
+// ─────────────────────────── Archive / Delete ───────────────────────────
+
+export async function setConversationArchived(
+  conversationId: number,
+  userId: number,
+  archived: boolean,
+): Promise<void> {
+  await assertConversationMember(conversationId, userId);
+  await query(
+    `INSERT INTO conversation_user_state (conversation_id, user_id, archived_at)
+     VALUES ($1, $2, ${archived ? "NOW()" : "NULL"})
+     ON CONFLICT (conversation_id, user_id) DO UPDATE
+       SET archived_at = ${archived ? "NOW()" : "NULL"}`,
+    [conversationId, userId]
+  );
+  trackEvent(userId, archived ? "conversation_archived" : "conversation_unarchived", {
+    conversation_id: conversationId,
+  });
+}
+
+// "Excluir" do ponto de vista de um participante: marca deleted_at e
+// cleared_at = NOW(), de modo que a conversa some da listagem dele e o
+// histórico antigo seja escondido. Se a outra pessoa enviar uma mensagem
+// nova, a conversa volta a aparecer (sem o histórico anterior ao corte).
+export async function deleteConversationForUser(
+  conversationId: number,
+  userId: number,
+): Promise<void> {
+  await assertConversationMember(conversationId, userId);
+  await query(
+    `INSERT INTO conversation_user_state (conversation_id, user_id, deleted_at, cleared_at, archived_at)
+     VALUES ($1, $2, NOW(), NOW(), NULL)
+     ON CONFLICT (conversation_id, user_id) DO UPDATE
+       SET deleted_at = NOW(), cleared_at = NOW(), archived_at = NULL`,
+    [conversationId, userId]
+  );
+  trackEvent(userId, "conversation_deleted", { conversation_id: conversationId });
+  void getUnreadConversationCount(userId)
+    .then((count) => publishToUser(userId, "unread:changed", { count }))
+    .catch(() => {});
+}
+
+// ─────────────────────────── Search ───────────────────────────
+
+export async function searchUsers(userId: number, queryStr: string): Promise<Array<{ id: number; name: string; avatar_url: string | null }>> {
   const trimmed = (queryStr || "").trim();
-  if (trimmed.length < SEARCH_MIN_LENGTH) {
-    return [];
-  }
-  // Match by exact email (case-insensitive) OR partial name (anti-enumeration: only return name).
+  if (trimmed.length < SEARCH_MIN_LENGTH) return [];
   const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
 
-  if (isEmail) {
-    const { rows } = await query<{ id: number; name: string }>(
-      `SELECT id, name FROM users
-       WHERE LOWER(email) = LOWER($1)
+  const rowsRaw = await (async () => {
+    if (isEmail) {
+      const { rows } = await query<{ id: number; name: string; avatar_url: string | null }>(
+        `SELECT id, name, avatar_url FROM users
+         WHERE LOWER(email) = LOWER($1)
+           AND id <> $2
+           AND password_hash <> 'DELETED'
+         LIMIT 1`,
+        [trimmed, userId]
+      );
+      return rows;
+    }
+    const namePattern = `%${trimmed.replace(/[%_\\]/g, "\\$&")}%`;
+    const { rows } = await query<{ id: number; name: string; avatar_url: string | null }>(
+      `SELECT id, name, avatar_url FROM users
+       WHERE name ILIKE $1
          AND id <> $2
          AND password_hash <> 'DELETED'
-       LIMIT 1`,
-      [trimmed, userId]
+       ORDER BY name ASC
+       LIMIT $3`,
+      [namePattern, userId, SEARCH_MAX_RESULTS]
     );
     return rows;
-  }
+  })();
 
-  const namePattern = `%${trimmed.replace(/[%_\\]/g, "\\$&")}%`;
-  const { rows } = await query<{ id: number; name: string }>(
-    `SELECT id, name FROM users
-     WHERE name ILIKE $1
-       AND id <> $2
-       AND password_hash <> 'DELETED'
-     ORDER BY name ASC
-     LIMIT $3`,
-    [namePattern, userId, SEARCH_MAX_RESULTS]
+  return Promise.all(
+    rowsRaw.map(async (r) => ({
+      id: r.id,
+      name: r.name,
+      avatar_url: await resolveStoredMediaUrl(r.avatar_url),
+    }))
   );
-  return rows;
 }
 
 export async function anonymizeUserMessages(userId: number, client?: { query: typeof query }): Promise<void> {
   const exec = client?.query || query;
   await exec(
-    `UPDATE messages SET content = '[mensagem removida por solicitação LGPD]'
+    `UPDATE messages SET content = '[mensagem removida por solicitação LGPD]',
+            kind = 'text', attachment_url = NULL, attachment_meta = NULL
      WHERE sender_id = $1`,
     [userId]
   );

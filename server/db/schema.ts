@@ -530,6 +530,29 @@ export async function initializeSchema() {
   await query(`CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_messages_unread ON messages(conversation_id, sender_id) WHERE read_at IS NULL`);
 
+  // Task #79 — anexos (foto/áudio) e marcadores per-participante para
+  // arquivar/excluir. `kind` define o tipo do payload; `attachment_url`
+  // guarda a referência canônica (`objstore://...` ou URL externa); o
+  // `attachment_meta` é JSONB livre (mime, tamanho, duração, etc).
+  await query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS kind VARCHAR(20) NOT NULL DEFAULT 'text'`);
+  await query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url VARCHAR(500)`);
+  await query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_meta JSONB`);
+
+  // Estado per-participante da conversa: arquivar e excluir só afetam
+  // o lado de quem clicou. Excluir também marca um corte (`cleared_at`)
+  // para a listagem de mensagens, sem mexer no histórico do outro lado.
+  await query(`
+    CREATE TABLE IF NOT EXISTS conversation_user_state (
+      conversation_id INTEGER NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      archived_at TIMESTAMP,
+      deleted_at TIMESTAMP,
+      cleared_at TIMESTAMP,
+      PRIMARY KEY (conversation_id, user_id)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_conv_user_state_user ON conversation_user_state(user_id)`);
+
   // ──────────────────────────────────────────────────────────────────
   // Task #71 — Notifications (DM + room for system kinds in the future).
   // Persisted feed shown in the bell dropdown; payload is JSONB so

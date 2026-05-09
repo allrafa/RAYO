@@ -9,27 +9,26 @@ import {
   markConversationRead,
   getUnreadConversationCount,
   searchUsers,
+  setConversationArchived,
+  deleteConversationForUser,
+  type MessageKind,
 } from "./service.js";
 import { subscribeUser, publishToUser } from "./events.js";
 import { query } from "../../db/index.js";
 import { AppError } from "../academia/service.js";
+import { uploadMiddleware } from "../cms/upload.js";
 
 const router = Router();
 
-// Real-time event stream (SSE). Replaces the legacy polling on the conversations
-// list and the unread-count badge. The connection is kept alive with periodic
-// comment heartbeats; EventSource auto-reconnects if the link drops.
 router.get("/stream", requireAuth, (req, res) => {
   const userId = req.user!.id;
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
-  // Disable proxy buffering (nginx/Replit) so events flush immediately.
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders?.();
 
-  // Initial handshake so the client knows the stream is live.
   res.write(`event: connected\ndata: {}\n\n`);
 
   const send = (event: string, payload: unknown) => {
@@ -37,18 +36,17 @@ router.get("/stream", requireAuth, (req, res) => {
       res.write(`event: ${event}\n`);
       res.write(`data: ${JSON.stringify(payload)}\n\n`);
     } catch {
-      // If the socket is gone, cleanup will run via the 'close' handler.
+      /* socket gone */
     }
   };
 
   const unsubscribe = subscribeUser(userId, send);
 
-  // Heartbeat (SSE comment) to keep proxies and the browser from idling out.
   const heartbeat = setInterval(() => {
     try {
       res.write(`: keepalive\n\n`);
     } catch {
-      // Ignored; close handler will run.
+      /* */
     }
   }, 25_000);
 
@@ -63,7 +61,8 @@ router.get("/stream", requireAuth, (req, res) => {
 
 router.get("/conversations", requireAuth, async (req, res, next) => {
   try {
-    const conversations = await listConversations(req.user!.id);
+    const scope = req.query.scope === "archived" ? "archived" : "active";
+    const conversations = await listConversations(req.user!.id, scope);
     success(res, { conversations });
   } catch (err) {
     if (err instanceof AppError) {
@@ -120,8 +119,14 @@ router.post("/conversations/:id/messages", requireAuth, async (req, res, next) =
       sendError(res, "ID de conversa inválido", "INVALID_CONVERSATION_ID", 400);
       return;
     }
-    const { content } = req.body || {};
-    const message = await sendMessage(conversationId, req.user!.id, content);
+    const { content, kind, attachment_url, attachment_meta } = req.body || {};
+    const message = await sendMessage(conversationId, req.user!.id, {
+      kind: (kind as MessageKind) || "text",
+      content: typeof content === "string" ? content : "",
+      attachmentUrl: typeof attachment_url === "string" ? attachment_url : null,
+      attachmentMeta:
+        attachment_meta && typeof attachment_meta === "object" ? attachment_meta : null,
+    });
     success(res, { message }, 201);
   } catch (err) {
     if (err instanceof AppError) {
@@ -131,6 +136,81 @@ router.post("/conversations/:id/messages", requireAuth, async (req, res, next) =
     next(err);
   }
 });
+
+// Membership check ANTES do upload, para evitar gravar bytes em object
+// storage para conversas inexistentes/sem permissão (Task #79 review).
+async function assertConversationMembership(req: import("express").Request, res: import("express").Response): Promise<boolean> {
+  const conversationId = parseInt(req.params.id, 10);
+  if (isNaN(conversationId) || conversationId < 1) {
+    sendError(res, "ID de conversa inválido", "INVALID_CONVERSATION_ID", 400);
+    return false;
+  }
+  const { rows } = await query<{ user_a_id: number; user_b_id: number }>(
+    `SELECT user_a_id, user_b_id FROM conversations WHERE id = $1`,
+    [conversationId]
+  );
+  if (rows.length === 0) {
+    sendError(res, "Conversa não encontrada", "CONVERSATION_NOT_FOUND", 404);
+    return false;
+  }
+  const conv = rows[0];
+  const userId = req.user!.id;
+  if (conv.user_a_id !== userId && conv.user_b_id !== userId) {
+    sendError(res, "Acesso negado a esta conversa", "FORBIDDEN", 403);
+    return false;
+  }
+  return true;
+}
+
+// Upload de anexo (foto/áudio). Retorna a referência canônica
+// (`objstore://...`) que o cliente envia em seguida via POST /messages.
+router.post(
+  "/conversations/:id/attachments",
+  requireAuth,
+  // Membership ANTES do uploadMiddleware: rejeita 403/404 sem gravar
+  // bytes em object storage.
+  async (req, res, next) => {
+    try {
+      const ok = await assertConversationMembership(req, res);
+      if (!ok) return;
+      next();
+    } catch (err) {
+      next(err);
+    }
+  },
+  (req, res, next) => uploadMiddleware(req, res, (err) => err ? next(err) : next()),
+  async (req, res, next) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        sendError(res, "Arquivo é obrigatório", "FILE_REQUIRED", 400);
+        return;
+      }
+      const mime = file.mimetype;
+      let kind: MessageKind;
+      if (mime.startsWith("image/")) kind = "image";
+      else if (mime.startsWith("audio/")) kind = "audio";
+      else {
+        sendError(res, "Tipo de arquivo não suportado para mensagens", "UNSUPPORTED_ATTACHMENT", 400);
+        return;
+      }
+      success(res, {
+        attachment: {
+          kind,
+          // file.path é a referência canônica `objstore://...`
+          attachment_url: file.path,
+          attachment_meta: {
+            mime,
+            size: file.size,
+            name: file.originalname,
+          },
+        },
+      }, 201);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 router.post("/conversations/:id/read", requireAuth, async (req, res, next) => {
   try {
@@ -150,11 +230,43 @@ router.post("/conversations/:id/read", requireAuth, async (req, res, next) => {
   }
 });
 
-// Ephemeral "typing" signal. Validates that the caller belongs to the
-// conversation, then fans out a `typing` event to the OTHER participant
-// via SSE. Nothing is persisted — if no SSE subscriber is listening,
-// the signal is silently dropped (which is fine; recipients auto-clear
-// the indicator after a few seconds without new pings).
+router.post("/conversations/:id/archive", requireAuth, async (req, res, next) => {
+  try {
+    const conversationId = parseInt(req.params.id, 10);
+    if (isNaN(conversationId) || conversationId < 1) {
+      sendError(res, "ID de conversa inválido", "INVALID_CONVERSATION_ID", 400);
+      return;
+    }
+    const archived = req.body?.archived !== false; // default = arquivar
+    await setConversationArchived(conversationId, req.user!.id, archived);
+    success(res, { archived });
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+router.delete("/conversations/:id", requireAuth, async (req, res, next) => {
+  try {
+    const conversationId = parseInt(req.params.id, 10);
+    if (isNaN(conversationId) || conversationId < 1) {
+      sendError(res, "ID de conversa inválido", "INVALID_CONVERSATION_ID", 400);
+      return;
+    }
+    await deleteConversationForUser(conversationId, req.user!.id);
+    success(res, { deleted: true });
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
 router.post("/conversations/:id/typing", requireAuth, async (req, res, next) => {
   try {
     const conversationId = parseInt(req.params.id, 10);

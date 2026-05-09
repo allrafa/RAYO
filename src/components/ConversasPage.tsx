@@ -1,18 +1,30 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { MessageCircle, UserPlus, Search, MoreVertical, Send, ArrowLeft, Loader2, Check, CheckCheck } from "lucide-react";
+import {
+  MessageCircle, UserPlus, Search, MoreVertical, Send, ArrowLeft, Loader2,
+  Check, CheckCheck, Archive, Trash2, ArchiveRestore, Image as ImageIcon,
+  Mic, Square, X, Paperclip,
+} from "lucide-react";
+import { motion, type PanInfo } from "motion/react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "./ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "./ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useAuth } from "./AuthContext";
 import { toast } from "sonner@2.0.3";
 import { api } from "../lib/api";
 import { EmptyStateNoConversations, EmptyStateError } from "./EmptyState";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { useUnreadMessages, type MessageStreamEvent } from "./hooks/useUnreadMessages";
+
+type MessageKind = "text" | "image" | "audio";
 
 interface ConversationItem {
   id: number;
@@ -22,10 +34,13 @@ interface ConversationItem {
   created_at: string;
   other_user_id: number;
   other_user_name: string;
+  other_user_avatar_url: string | null;
+  last_message_kind: MessageKind | null;
   last_message_content: string | null;
   last_message_sender_id: number | null;
   last_message_created_at: string | null;
   unread_count: number;
+  archived_at: string | null;
 }
 
 interface MessageItem {
@@ -33,7 +48,10 @@ interface MessageItem {
   conversation_id: number;
   sender_id: number;
   sender_name: string;
+  kind: MessageKind;
   content: string;
+  attachment_url: string | null;
+  attachment_meta: Record<string, unknown> | null;
   read_at: string | null;
   created_at: string;
 }
@@ -41,22 +59,20 @@ interface MessageItem {
 interface UserSearchResult {
   id: number;
   name: string;
+  avatar_url: string | null;
 }
 
-// Slow safety-net polls: only used when the realtime stream is not connected.
-// Realtime updates arrive via SSE, so these are now strictly a fallback.
 const CONVERSATION_FALLBACK_POLL_MS = 60_000;
 const MESSAGES_FALLBACK_POLL_MS = 30_000;
+const SWIPE_THRESHOLD = 80;
 
 function getInitials(name: string): string {
   return (name || "?").trim().slice(0, 2).toUpperCase();
 }
-
 function formatTime(dateStr: string): string {
   const d = new Date(dateStr);
   return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(d);
 }
-
 function formatRelative(dateStr: string): string {
   const d = new Date(dateStr);
   const now = new Date();
@@ -70,12 +86,129 @@ function formatRelative(dateStr: string): string {
   if (diffD < 7) return `${diffD}d`;
   return d.toLocaleDateString("pt-BR");
 }
+function formatDuration(sec: number): string {
+  const s = Math.max(0, Math.floor(sec));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${r.toString().padStart(2, "0")}`;
+}
+function previewFor(conv: ConversationItem, currentUserId: number): string {
+  const isMine = conv.last_message_sender_id === currentUserId;
+  const prefix = isMine ? "Você: " : "";
+  if (!conv.last_message_kind && !conv.last_message_content) return "Comece a conversa...";
+  if (conv.last_message_kind === "image") return `${prefix}📷 Foto`;
+  if (conv.last_message_kind === "audio") return `${prefix}🎤 Mensagem de áudio`;
+  return prefix + (conv.last_message_content || "");
+}
+
+interface SwipeRowProps {
+  conv: ConversationItem;
+  isActive: boolean;
+  isArchivedView: boolean;
+  currentUserId: number;
+  onOpen: () => void;
+  onArchiveToggle: () => void;
+  onDelete: () => void;
+}
+
+function SwipeRow({ conv, isActive, isArchivedView, currentUserId, onOpen, onArchiveToggle, onDelete }: SwipeRowProps) {
+  const [revealed, setRevealed] = useState<"none" | "left" | "right">("none");
+
+  const handleDragEnd = (_e: unknown, info: PanInfo) => {
+    if (info.offset.x < -SWIPE_THRESHOLD) {
+      setRevealed("left"); // exibe ações à direita (delete)
+    } else if (info.offset.x > SWIPE_THRESHOLD) {
+      setRevealed("right"); // exibe ação à esquerda (archive)
+    } else {
+      setRevealed("none");
+    }
+  };
+
+  const x = revealed === "left" ? -96 : revealed === "right" ? 96 : 0;
+
+  return (
+    <div className="relative overflow-hidden rounded-lg">
+      {/* Ação esquerda (revelada ao arrastar pra direita): arquivar */}
+      <div className="absolute inset-y-0 left-0 flex items-center pl-4 pr-2 bg-amber-500/90 text-white">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onArchiveToggle(); setRevealed("none"); }}
+          className="flex flex-col items-center gap-1 px-3 py-2 text-xs"
+          aria-label={isArchivedView ? "Desarquivar conversa" : "Arquivar conversa"}
+        >
+          {isArchivedView ? <ArchiveRestore className="w-5 h-5" /> : <Archive className="w-5 h-5" />}
+          <span>{isArchivedView ? "Desarquivar" : "Arquivar"}</span>
+        </button>
+      </div>
+      {/* Ação direita (revelada ao arrastar pra esquerda): excluir */}
+      <div className="absolute inset-y-0 right-0 flex items-center pl-2 pr-4 bg-destructive text-destructive-foreground">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onDelete(); setRevealed("none"); }}
+          className="flex flex-col items-center gap-1 px-3 py-2 text-xs"
+          aria-label="Excluir conversa"
+        >
+          <Trash2 className="w-5 h-5" />
+          <span>Excluir</span>
+        </button>
+      </div>
+
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: -96, right: 96 }}
+        dragElastic={0.15}
+        animate={{ x }}
+        transition={{ type: "spring", stiffness: 400, damping: 40 }}
+        onDragEnd={handleDragEnd}
+        className="relative bg-card touch-pan-y"
+      >
+        <button
+          type="button"
+          onClick={() => { if (revealed !== "none") { setRevealed("none"); return; } onOpen(); }}
+          className={`ra-disc-item w-full ${isActive ? "active" : ""}`}
+        >
+          <Avatar className="ra-disc-avatar terra w-12 h-12">
+            {conv.other_user_avatar_url && (
+              <AvatarImage src={conv.other_user_avatar_url} alt={conv.other_user_name} />
+            )}
+            <AvatarFallback>{getInitials(conv.other_user_name)}</AvatarFallback>
+          </Avatar>
+          <div className="ra-disc-body">
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="ra-disc-title">{conv.other_user_name}</h3>
+              {conv.last_message_created_at && (
+                <span className="ra-disc-meta shrink-0">
+                  {formatRelative(conv.last_message_created_at)}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <p className="ra-disc-snippet">{previewFor(conv, currentUserId)}</p>
+              {conv.unread_count > 0 && (
+                <Badge className="ml-2 shrink-0">{conv.unread_count}</Badge>
+              )}
+            </div>
+          </div>
+        </button>
+      </motion.div>
+    </div>
+  );
+}
+
+interface PendingAttachment {
+  kind: "image" | "audio";
+  attachment_url: string;
+  attachment_meta: Record<string, unknown>;
+  previewUrl: string;
+  durationSec?: number;
+}
 
 export function ConversasPage() {
   const { user } = useAuth();
   const currentUserId = user?.id ?? 0;
   const { subscribe: subscribeStream, streamConnected } = useUnreadMessages();
 
+  const [view, setView] = useState<"active" | "archived">("active");
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [conversationsLoading, setConversationsLoading] = useState(true);
   const [conversationsError, setConversationsError] = useState<string | null>(null);
@@ -89,24 +222,31 @@ export function ConversasPage() {
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordSec, setRecordSec] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordChunksRef = useRef<Blob[]>([]);
+  const recordStartRef = useRef<number>(0);
+  const recordTickRef = useRef<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [showNewConvDialog, setShowNewConvDialog] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userSearchResults, setUserSearchResults] = useState<UserSearchResult[]>([]);
   const [userSearching, setUserSearching] = useState(false);
   const [creatingConversation, setCreatingConversation] = useState(false);
 
-  // Map of conversation_id -> { user_id, expiresAt } for typing indicators.
+  const [confirmDelete, setConfirmDelete] = useState<ConversationItem | null>(null);
+
   const [typingByConv, setTypingByConv] = useState<Record<number, { user_id: number; expiresAt: number }>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageIdRef = useRef<number | null>(null);
-  // Refs let our stable stream subscriber read fresh values without
-  // re-subscribing on every render.
   const activeIdRef = useRef<number | null>(null);
   const streamConnectedRef = useRef(false);
-  // Throttle: timestamp of the last typing POST we sent for the active conv.
   const lastTypingSentAtRef = useRef<number>(0);
-  // Per-conversation auto-expiry timers so we clear stale indicators.
   const typingExpiryTimersRef = useRef<Map<number, number>>(new Map());
 
   const activeConversation = useMemo(
@@ -114,8 +254,10 @@ export function ConversasPage() {
     [conversations, activeId]
   );
 
-  const loadConversations = useCallback(async () => {
-    const res = await api.get<{ conversations: ConversationItem[] }>("/api/messages/conversations");
+  const loadConversations = useCallback(async (scope: "active" | "archived" = view) => {
+    const res = await api.get<{ conversations: ConversationItem[] }>(
+      `/api/messages/conversations?scope=${scope}`,
+    );
     if (res.success && res.data) {
       setConversations(res.data.conversations);
       setConversationsError(null);
@@ -123,7 +265,7 @@ export function ConversasPage() {
       setConversationsError(res.error.message);
     }
     setConversationsLoading(false);
-  }, []);
+  }, [view]);
 
   const loadMessages = useCallback(async (conversationId: number, silent = false): Promise<{ hasNewIncoming: boolean }> => {
     if (!silent) {
@@ -140,12 +282,8 @@ export function ConversasPage() {
       const prevNewest = lastMessageIdRef.current;
       setMessages(res.data.messages);
       lastMessageIdRef.current = newest;
-      // Only consider it "new incoming" if a newer message arrived AND it's from the other user.
       hasNewIncoming =
-        newest !== null &&
-        newest !== prevNewest &&
-        !!newestMsg &&
-        newestMsg.sender_id !== currentUserId;
+        newest !== null && newest !== prevNewest && !!newestMsg && newestMsg.sender_id !== currentUserId;
       if (!silent || (newest !== null && newest !== prevNewest)) {
         requestAnimationFrame(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: silent ? "smooth" : "auto" });
@@ -167,28 +305,24 @@ export function ConversasPage() {
     }
   }, []);
 
-  // Clear any pending typing-expiry timers when the page unmounts so we
-  // don't leave dangling setTimeout callbacks running after navigation.
   useEffect(() => {
     return () => {
       for (const handle of typingExpiryTimersRef.current.values()) {
         window.clearTimeout(handle);
       }
       typingExpiryTimersRef.current.clear();
+      if (recordTickRef.current) window.clearInterval(recordTickRef.current);
+      const rec = mediaRecorderRef.current;
+      if (rec && rec.state !== "inactive") {
+        try { rec.stop(); } catch { /* */ }
+        rec.stream.getTracks().forEach((t) => t.stop());
+      }
     };
   }, []);
 
-  // Keep refs in sync with React state so the stable SSE subscriber can read them.
-  useEffect(() => {
-    activeIdRef.current = activeId;
-  }, [activeId]);
-  useEffect(() => {
-    streamConnectedRef.current = streamConnected;
-  }, [streamConnected]);
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+  useEffect(() => { streamConnectedRef.current = streamConnected; }, [streamConnected]);
 
-  // Task #71 — deep-link / notification handoff. App.tsx (and NotificationBell)
-  // park a target conversation id in sessionStorage; pick it up here so the
-  // page opens directly on the right thread. Same contract as PerfilPage.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -198,26 +332,21 @@ export function ConversasPage() {
         const id = Number.parseInt(pending, 10);
         if (Number.isFinite(id) && id > 0) setActiveId(id);
       }
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }, []);
 
-  // Initial load + slow safety-net poll for the conversation list. The poll
-  // only runs when the realtime stream is NOT connected.
+  // Recarrega ao trocar de aba ativa/arquivada.
   useEffect(() => {
-    void loadConversations();
+    setConversationsLoading(true);
+    void loadConversations(view);
     const interval = window.setInterval(() => {
       if (streamConnectedRef.current) return;
-      if (document.visibilityState === "visible") void loadConversations();
+      if (document.visibilityState === "visible") void loadConversations(view);
     }, CONVERSATION_FALLBACK_POLL_MS);
     return () => window.clearInterval(interval);
-  }, [loadConversations]);
+  }, [loadConversations, view]);
 
-  // Load messages when a conversation is opened. Realtime updates (SSE) drive
-  // appends after that; the interval below is only a safety-net fallback.
   useEffect(() => {
-    // Reset typing throttle when switching conversations.
     lastTypingSentAtRef.current = 0;
     if (activeId == null) {
       setMessages([]);
@@ -235,14 +364,9 @@ export function ConversasPage() {
     return () => window.clearInterval(interval);
   }, [activeId, loadMessages, markRead]);
 
-  // Realtime: react to push events so the user sees new messages and updated
-  // conversation rows in <1s without polling.
   useEffect(() => {
     const unsubscribe = subscribeStream((event: MessageStreamEvent) => {
       if (event.type === "connected") {
-        // (Re)connect signal — events that fired while the SSE was down were
-        // lost (the server does not replay). Force a full resync so we don't
-        // miss messages that arrived during a brief network drop.
         void loadConversations();
         const openId = activeIdRef.current;
         if (openId != null) {
@@ -259,8 +383,7 @@ export function ConversasPage() {
           setMessages((prev) =>
             prev.map((m) =>
               m.sender_id === currentUserId && m.read_at == null && (idSet.size === 0 || idSet.has(m.id))
-                ? { ...m, read_at }
-                : m
+                ? { ...m, read_at } : m
             )
           );
         }
@@ -288,8 +411,7 @@ export function ConversasPage() {
         return;
       }
       if (event.type === "message:new") {
-        const { conversation_id, message } = event.payload;
-        // A new message from someone supersedes their "typing" indicator.
+        const { conversation_id, message } = event.payload as { conversation_id: number; message: MessageItem };
         if (message.sender_id !== currentUserId) {
           setTypingByConv((prev) => {
             if (!prev[conversation_id]) return prev;
@@ -305,36 +427,15 @@ export function ConversasPage() {
         }
         const openId = activeIdRef.current;
         if (openId === conversation_id) {
-          // Append to the active conversation, dedupe by id (the sender will
-          // also have already added the message via the POST response).
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === message.id)) return prev;
-            return [
-              ...prev,
-              {
-                id: message.id,
-                conversation_id: message.conversation_id,
-                sender_id: message.sender_id,
-                sender_name: message.sender_name || "",
-                content: message.content,
-                read_at: message.read_at,
-                created_at: message.created_at,
-              },
-            ];
-          });
+          setMessages((prev) => prev.some((m) => m.id === message.id) ? prev : [...prev, message]);
           lastMessageIdRef.current = message.id;
-          // Auto-scroll only for incoming messages (outgoing already scrolled).
           if (message.sender_id !== currentUserId) {
             requestAnimationFrame(() => {
               messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             });
-            // Their message is being viewed right now → mark as read so the
-            // sidebar badge doesn't briefly tick up.
             void markRead(conversation_id);
           }
         }
-        // Always refresh the conversation list so previews/timestamps and
-        // unread badges stay accurate.
         void loadConversations();
       }
     });
@@ -345,28 +446,19 @@ export function ConversasPage() {
   useEffect(() => {
     if (!showNewConvDialog) return;
     const q = userSearchQuery.trim();
-    if (q.length < 2) {
-      setUserSearchResults([]);
-      return;
-    }
+    if (q.length < 2) { setUserSearchResults([]); return; }
     setUserSearching(true);
     const handle = window.setTimeout(async () => {
       const res = await api.get<{ users: UserSearchResult[] }>(
         `/api/messages/users/search?q=${encodeURIComponent(q)}`
       );
-      if (res.success && res.data) {
-        setUserSearchResults(res.data.users);
-      } else {
-        setUserSearchResults([]);
-      }
+      if (res.success && res.data) setUserSearchResults(res.data.users);
+      else setUserSearchResults([]);
       setUserSearching(false);
     }, 300);
     return () => window.clearTimeout(handle);
   }, [userSearchQuery, showNewConvDialog]);
 
-  // Throttled "I'm typing" ping: at most one POST every 3s while the user
-  // keeps typing. The recipient auto-clears the indicator ~4.5s after the
-  // last ping, so this gives a continuous indicator with minimal traffic.
   const sendTypingPing = useCallback((conversationId: number) => {
     const now = Date.now();
     if (now - lastTypingSentAtRef.current < 3000) return;
@@ -374,29 +466,152 @@ export function ConversasPage() {
     void api.post(`/api/messages/conversations/${conversationId}/typing`);
   }, []);
 
+  // ─────────── Anexos ───────────
+
+  const uploadAttachment = async (file: File, kind: "image" | "audio", durationSec?: number) => {
+    if (activeId == null) return;
+    setUploadingAttachment(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch(`/api/messages/conversations/${activeId}/attachments`, {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.data?.attachment) {
+        throw new Error(json?.error?.message || "Falha ao enviar anexo");
+      }
+      const att = json.data.attachment as { kind: "image" | "audio"; attachment_url: string; attachment_meta: Record<string, unknown> };
+      const previewUrl = URL.createObjectURL(file);
+      setPendingAttachment({
+        kind: att.kind,
+        attachment_url: att.attachment_url,
+        attachment_meta: { ...att.attachment_meta, ...(durationSec != null ? { duration_sec: durationSec } : {}) },
+        previewUrl,
+        durationSec,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao enviar anexo");
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const handlePickPhoto = () => {
+    if (activeId == null) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      toast.error("Selecione uma imagem");
+      return;
+    }
+    await uploadAttachment(f, "image");
+  };
+
+  const cancelPendingAttachment = () => {
+    if (pendingAttachment?.previewUrl) URL.revokeObjectURL(pendingAttachment.previewUrl);
+    setPendingAttachment(null);
+  };
+
+  // ─────────── Gravação de áudio ───────────
+
+  const startRecording = async () => {
+    if (activeId == null) return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      toast.error("Gravação de áudio não disponível neste navegador");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const preferred = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+      const mimeType = preferred.find((m) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported?.(m));
+      const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = rec;
+      recordChunksRef.current = [];
+      rec.ondataavailable = (ev) => {
+        if (ev.data && ev.data.size > 0) recordChunksRef.current.push(ev.data);
+      };
+      rec.onstop = async () => {
+        const durationSec = Math.round((Date.now() - recordStartRef.current) / 1000);
+        const blob = new Blob(recordChunksRef.current, { type: rec.mimeType || "audio/webm" });
+        stream.getTracks().forEach((t) => t.stop());
+        if (recordTickRef.current) {
+          window.clearInterval(recordTickRef.current);
+          recordTickRef.current = null;
+        }
+        setRecording(false);
+        setRecordSec(0);
+        if (blob.size === 0) return;
+        const ext = (rec.mimeType || "audio/webm").includes("mp4") ? "m4a" : "webm";
+        const file = new File([blob], `audio-${Date.now()}.${ext}`, { type: blob.type });
+        await uploadAttachment(file, "audio", durationSec);
+      };
+      recordStartRef.current = Date.now();
+      setRecordSec(0);
+      recordTickRef.current = window.setInterval(() => {
+        setRecordSec(Math.round((Date.now() - recordStartRef.current) / 1000));
+      }, 250);
+      setRecording(true);
+      rec.start();
+    } catch {
+      toast.error("Permissão de microfone negada");
+    }
+  };
+
+  const stopRecording = () => {
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state !== "inactive") rec.stop();
+  };
+
+  const cancelRecording = () => {
+    const rec = mediaRecorderRef.current;
+    if (rec && rec.state !== "inactive") {
+      recordChunksRef.current = [];
+      try { rec.stop(); } catch { /* */ }
+    }
+    if (recordTickRef.current) {
+      window.clearInterval(recordTickRef.current);
+      recordTickRef.current = null;
+    }
+    setRecording(false);
+    setRecordSec(0);
+  };
+
+  // ─────────── Enviar / Ações ───────────
+
   const handleSendMessage = async () => {
     const content = newMessage.trim();
-    if (!content || activeId == null || sending) return;
+    if (activeId == null || sending) return;
+    if (!pendingAttachment && !content) return;
     setSending(true);
+    const body: Record<string, unknown> = pendingAttachment
+      ? {
+          kind: pendingAttachment.kind,
+          content,
+          attachment_url: pendingAttachment.attachment_url,
+          attachment_meta: pendingAttachment.attachment_meta,
+        }
+      : { kind: "text", content };
     const res = await api.post<{ message: MessageItem }>(
       `/api/messages/conversations/${activeId}/messages`,
-      { content }
+      body,
     );
     setSending(false);
     if (res.success && res.data) {
       setNewMessage("");
-      // Reset throttle so the next keystroke sends a fresh "typing" ping.
+      cancelPendingAttachment();
       lastTypingSentAtRef.current = 0;
-      // Dedupe by id: the SSE `message:new` event for our own message can
-      // arrive BEFORE this POST resolves (server publishes immediately after
-      // the INSERT). Without this guard we render the message twice — once
-      // from the SSE handler and once here.
       const sent = res.data.message;
       setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
       lastMessageIdRef.current = sent.id;
-      requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      });
+      requestAnimationFrame(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); });
       void loadConversations();
     } else if (res.error) {
       toast.error(res.error.message);
@@ -416,8 +631,38 @@ export function ConversasPage() {
       setShowNewConvDialog(false);
       setUserSearchQuery("");
       setUserSearchResults([]);
-      await loadConversations();
+      setView("active");
+      await loadConversations("active");
       setActiveId(id);
+    } else if (res.error) {
+      toast.error(res.error.message);
+    }
+  };
+
+  const handleArchiveToggle = async (conv: ConversationItem) => {
+    const archived = conv.archived_at == null;
+    const res = await api.post<{ archived: boolean }>(
+      `/api/messages/conversations/${conv.id}/archive`,
+      { archived },
+    );
+    if (res.success) {
+      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+      if (activeId === conv.id) setActiveId(null);
+      toast.success(archived ? "Conversa arquivada" : "Conversa desarquivada");
+    } else if (res.error) {
+      toast.error(res.error.message);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    const conv = confirmDelete;
+    if (!conv) return;
+    setConfirmDelete(null);
+    const res = await api.delete<{ deleted: boolean }>(`/api/messages/conversations/${conv.id}`);
+    if (res.success) {
+      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+      if (activeId === conv.id) setActiveId(null);
+      toast.success("Conversa excluída");
     } else if (res.error) {
       toast.error(res.error.message);
     }
@@ -427,10 +672,13 @@ export function ConversasPage() {
     c.other_user_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const composerDisabled = sending || uploadingAttachment;
+  const canSend = !composerDisabled && (!!pendingAttachment || newMessage.trim().length > 0);
+
   return (
     <div className="ra-page flex h-[calc(100vh-8rem)] max-w-6xl mx-auto" style={{ background: 'var(--rayo-sand-100)' }}>
       {/* Lista de Conversas */}
-      <div className={`${activeId != null ? "hidden md:block" : "block"} w-full md:w-1/3 border-r border-border bg-card`}>
+      <div className={`${activeId != null ? "hidden md:block" : "block"} w-full md:w-1/3 border-r border-border bg-card flex flex-col`}>
         <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-4">
             <h1 className="font-display font-bold">Mensagens</h1>
@@ -484,6 +732,7 @@ export function ConversasPage() {
                             className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-accent text-left disabled:opacity-50"
                           >
                             <Avatar className="w-8 h-8">
+                              {u.avatar_url && <AvatarImage src={u.avatar_url} alt={u.name} />}
                               <AvatarFallback>{getInitials(u.name)}</AvatarFallback>
                             </Avatar>
                             <span className="text-sm font-medium">{u.name}</span>
@@ -496,6 +745,13 @@ export function ConversasPage() {
               </DialogContent>
             </Dialog>
           </div>
+
+          <Tabs value={view} onValueChange={(v) => setView(v as "active" | "archived")} className="mb-3">
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="active">Ativas</TabsTrigger>
+              <TabsTrigger value="archived">Arquivadas</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           <div className="relative">
             <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
@@ -514,42 +770,30 @@ export function ConversasPage() {
               <SkeletonLoader type="list" count={4} />
             </div>
           ) : conversationsError ? (
-            <EmptyStateError onRetry={() => { setConversationsLoading(true); void loadConversations(); }} />
+            <EmptyStateError onRetry={() => { setConversationsLoading(true); void loadConversations(view); }} />
           ) : filteredConversations.length === 0 ? (
-            <EmptyStateNoConversations onStart={() => setShowNewConvDialog(true)} />
+            view === "archived" ? (
+              <div className="ra-empty p-8">
+                <div className="ra-empty-icon"><Archive className="w-5 h-5" /></div>
+                <p className="ra-empty-title">Nenhuma conversa arquivada.</p>
+                <p className="ra-empty-sub">Arraste uma conversa para a direita para arquivá-la.</p>
+              </div>
+            ) : (
+              <EmptyStateNoConversations onStart={() => setShowNewConvDialog(true)} />
+            )
           ) : (
-            <div className="ra-disc-list p-3">
+            <div className="ra-disc-list p-3 space-y-1">
               {filteredConversations.map((conv) => (
-                <button
+                <SwipeRow
                   key={conv.id}
-                  type="button"
-                  onClick={() => setActiveId(conv.id)}
-                  className={`ra-disc-item ${activeId === conv.id ? "active" : ""}`}
-                >
-                  <div className="ra-disc-avatar terra">
-                    {getInitials(conv.other_user_name)}
-                  </div>
-                  <div className="ra-disc-body">
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="ra-disc-title">{conv.other_user_name}</h3>
-                      {conv.last_message_created_at && (
-                        <span className="ra-disc-meta shrink-0">
-                          {formatRelative(conv.last_message_created_at)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="ra-disc-snippet">
-                        {conv.last_message_content
-                          ? (conv.last_message_sender_id === currentUserId ? "Você: " : "") + conv.last_message_content
-                          : "Comece a conversa..."}
-                      </p>
-                      {conv.unread_count > 0 && (
-                        <Badge className="ml-2 shrink-0">{conv.unread_count}</Badge>
-                      )}
-                    </div>
-                  </div>
-                </button>
+                  conv={conv}
+                  isActive={activeId === conv.id}
+                  isArchivedView={view === "archived"}
+                  currentUserId={currentUserId}
+                  onOpen={() => setActiveId(conv.id)}
+                  onArchiveToggle={() => handleArchiveToggle(conv)}
+                  onDelete={() => setConfirmDelete(conv)}
+                />
               ))}
             </div>
           )}
@@ -572,6 +816,9 @@ export function ConversasPage() {
                   <ArrowLeft className="w-4 h-4" />
                 </Button>
                 <Avatar className="w-10 h-10">
+                  {activeConversation.other_user_avatar_url && (
+                    <AvatarImage src={activeConversation.other_user_avatar_url} alt={activeConversation.other_user_name} />
+                  )}
                   <AvatarFallback>{getInitials(activeConversation.other_user_name)}</AvatarFallback>
                 </Avatar>
                 <div>
@@ -580,10 +827,7 @@ export function ConversasPage() {
                     const t = typingByConv[activeConversation.id];
                     if (!t || t.user_id !== activeConversation.other_user_id) return null;
                     return (
-                      <p
-                        className="text-xs text-muted-foreground italic"
-                        aria-live="polite"
-                      >
+                      <p className="text-xs text-muted-foreground italic" aria-live="polite">
                         {activeConversation.other_user_name} está digitando...
                       </p>
                     );
@@ -600,6 +844,20 @@ export function ConversasPage() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => void loadMessages(activeConversation.id, false)}>
                     Atualizar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleArchiveToggle(activeConversation)}>
+                    {activeConversation.archived_at ? (
+                      <><ArchiveRestore className="w-4 h-4 mr-2" /> Desarquivar</>
+                    ) : (
+                      <><Archive className="w-4 h-4 mr-2" /> Arquivar</>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setConfirmDelete(activeConversation)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" /> Excluir conversa
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -628,32 +886,41 @@ export function ConversasPage() {
                 <div className="space-y-3">
                   {messages.map((m) => {
                     const mine = m.sender_id === currentUserId;
+                    const meta = (m.attachment_meta || {}) as { duration_sec?: number };
                     return (
                       <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                        <div className={`ra-chat-bubble ${mine ? "user" : "assistant"}`}>
-                          <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
-                          <p
-                            className={`text-xs mt-1 flex items-center gap-1 ${
-                              mine ? "opacity-70 justify-end" : "text-muted-foreground"
-                            }`}
-                          >
+                        <div className={`ra-chat-bubble ${mine ? "user" : "assistant"} max-w-[80%]`}>
+                          {m.kind === "image" && m.attachment_url && (
+                            <a href={m.attachment_url} target="_blank" rel="noreferrer" className="block">
+                              <img
+                                src={m.attachment_url}
+                                alt="Foto enviada"
+                                className="rounded-lg max-w-full max-h-72 object-cover mb-1"
+                                loading="lazy"
+                              />
+                            </a>
+                          )}
+                          {m.kind === "audio" && m.attachment_url && (
+                            <div className="flex items-center gap-2 mb-1">
+                              <audio controls src={m.attachment_url} className="max-w-full" preload="metadata" />
+                              {typeof meta.duration_sec === "number" && (
+                                <span className="text-xs opacity-70">{formatDuration(meta.duration_sec)}</span>
+                              )}
+                            </div>
+                          )}
+                          {m.content && (
+                            <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
+                          )}
+                          <p className={`text-xs mt-1 flex items-center gap-1 ${mine ? "opacity-70 justify-end" : "text-muted-foreground"}`}>
                             <span>{formatTime(m.created_at)}</span>
                             {mine && (
                               m.read_at ? (
-                                <span
-                                  className="inline-flex items-center gap-0.5"
-                                  title={`Lido às ${formatTime(m.read_at)}`}
-                                  aria-label={`Lido às ${formatTime(m.read_at)}`}
-                                >
+                                <span className="inline-flex items-center gap-0.5" title={`Lido às ${formatTime(m.read_at)}`} aria-label={`Lido às ${formatTime(m.read_at)}`}>
                                   <CheckCheck className="w-3.5 h-3.5" />
                                   <span>Lido</span>
                                 </span>
                               ) : (
-                                <span
-                                  className="inline-flex items-center gap-0.5"
-                                  title="Enviado"
-                                  aria-label="Enviado"
-                                >
+                                <span className="inline-flex items-center gap-0.5" title="Enviado" aria-label="Enviado">
                                   <Check className="w-3.5 h-3.5" />
                                 </span>
                               )
@@ -669,36 +936,99 @@ export function ConversasPage() {
             </ScrollArea>
 
             <div className="p-4 border-t bg-card">
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Digite sua mensagem..."
-                    value={newMessage}
-                    onChange={(e) => {
-                      setNewMessage(e.target.value);
-                      if (e.target.value.trim().length > 0 && activeId != null) {
-                        sendTypingPing(activeId);
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        void handleSendMessage();
-                      }
-                    }}
-                    disabled={sending}
-                    maxLength={4000}
-                  />
+              {pendingAttachment && (
+                <div className="mb-3 p-2 rounded-lg bg-muted/50 flex items-center gap-3">
+                  {pendingAttachment.kind === "image" ? (
+                    <img src={pendingAttachment.previewUrl} alt="Pré-visualização" className="w-14 h-14 rounded object-cover" />
+                  ) : (
+                    <div className="flex items-center gap-2 flex-1">
+                      <Mic className="w-4 h-4 text-primary" />
+                      <audio controls src={pendingAttachment.previewUrl} className="flex-1" preload="metadata" />
+                      {pendingAttachment.durationSec != null && (
+                        <span className="text-xs text-muted-foreground">{formatDuration(pendingAttachment.durationSec)}</span>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex-1 text-sm text-muted-foreground">
+                    {pendingAttachment.kind === "image" ? "Foto pronta para enviar" : "Áudio pronto para enviar"}
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={cancelPendingAttachment} aria-label="Remover anexo">
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
-                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || sending} aria-label="Enviar mensagem">
-                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                </Button>
-              </div>
+              )}
+
+              {recording ? (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-red-500/10 border border-red-500/30">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-sm flex-1">Gravando... {formatDuration(recordSec)}</span>
+                  <Button variant="ghost" size="sm" onClick={cancelRecording} aria-label="Cancelar gravação">
+                    <X className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" onClick={stopRecording} aria-label="Parar gravação">
+                    <Square className="w-4 h-4 mr-1" /> Parar
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handlePickPhoto}
+                    disabled={composerDisabled || !!pendingAttachment}
+                    aria-label="Anexar foto"
+                  >
+                    {uploadingAttachment ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={startRecording}
+                    disabled={composerDisabled || !!pendingAttachment}
+                    aria-label="Gravar áudio"
+                  >
+                    <Mic className="w-4 h-4" />
+                  </Button>
+                  <div className="flex-1">
+                    <Input
+                      placeholder={pendingAttachment ? "Adicionar legenda (opcional)..." : "Digite sua mensagem..."}
+                      value={newMessage}
+                      onChange={(e) => {
+                        setNewMessage(e.target.value);
+                        if (e.target.value.trim().length > 0 && activeId != null) {
+                          sendTypingPing(activeId);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void handleSendMessage();
+                        }
+                      }}
+                      disabled={sending}
+                      maxLength={4000}
+                    />
+                  </div>
+                  <Button onClick={handleSendMessage} disabled={!canSend} aria-label="Enviar mensagem">
+                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-muted/20">
             <div className="text-center">
+              <Paperclip className="w-12 h-12 mx-auto text-muted-foreground mb-4 opacity-30" />
               <MessageCircle className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
               <h2 className="font-display font-medium mb-2">Selecione uma conversa</h2>
               <p className="font-body text-muted-foreground">
@@ -708,6 +1038,25 @@ export function ConversasPage() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conversa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A conversa com <strong>{confirmDelete?.other_user_name}</strong> será removida da sua lista
+              e o histórico anterior ficará oculto para você. A outra pessoa não é avisada e o histórico
+              dela continua intacto. Se vocês trocarem novas mensagens, a conversa volta a aparecer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
