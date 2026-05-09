@@ -430,6 +430,24 @@ router.get("/posts/:id", async (req, res, next) => {
     success(res, { post });
   } catch (err) {
     if (err instanceof AppError) {
+      // Task #130 — quando getPostDetail bloqueia por trilha paga, propaga
+      // os campos extras (trail_id/trail_slug/class_id) no payload pra que
+      // o frontend renderize <TrailPaywall> em vez de toast genérico.
+      if (err.code === "TRAIL_PAYMENT_REQUIRED") {
+        const extra = err as unknown as { trail_id?: number; trail_slug?: string; class_id?: number };
+        res.status(err.statusCode).json({
+          success: false,
+          data: null,
+          error: {
+            code: err.code,
+            message: err.message,
+            trail_id: extra.trail_id ?? null,
+            trail_slug: extra.trail_slug ?? null,
+            class_id: extra.class_id ?? null,
+          },
+        });
+        return;
+      }
       sendError(res, err.message, err.code, err.statusCode);
       return;
     }

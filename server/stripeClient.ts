@@ -1,8 +1,37 @@
 import Stripe from "stripe";
 
-let connectionSettings: any;
+// Task #130 (fix code-review type-safety): tipagem explícita do payload
+// do connector Replit e do StripeSync — sem `any` em código de billing.
+interface ReplitConnectionItem {
+  settings: {
+    publishable: string;
+    secret: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
 
-async function getCredentials() {
+interface StripeSyncCtor {
+  new (opts: {
+    poolConfig: { connectionString: string; max?: number };
+    stripeSecretKey: string;
+  }): StripeSyncInstance;
+}
+
+interface StripeSyncInstance {
+  processWebhook(payload: Buffer, signature: string): Promise<{
+    event?: unknown;
+    [key: string]: unknown;
+  }>;
+  runMigrations?(): Promise<void>;
+  syncBackfill?(): Promise<void>;
+  findOrCreateManagedWebhook?(opts: { url: string; events?: string[] }): Promise<unknown>;
+  [key: string]: unknown;
+}
+
+let connectionSettings: ReplitConnectionItem | null = null;
+
+async function getCredentials(): Promise<{ publishableKey: string; secretKey: string }> {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? "repl " + process.env.REPL_IDENTITY
@@ -30,8 +59,8 @@ async function getCredentials() {
     },
   });
 
-  const data = await response.json();
-  connectionSettings = data.items?.[0];
+  const data = (await response.json()) as { items?: ReplitConnectionItem[] };
+  connectionSettings = data.items?.[0] ?? null;
 
   if (
     !connectionSettings ||
@@ -42,36 +71,36 @@ async function getCredentials() {
   }
 
   return {
-    publishableKey: connectionSettings.settings.publishable as string,
-    secretKey: connectionSettings.settings.secret as string,
+    publishableKey: connectionSettings.settings.publishable,
+    secretKey: connectionSettings.settings.secret,
   };
 }
 
 // WARNING: Never cache this client. Tokens expire.
-export async function getUncachableStripeClient() {
+export async function getUncachableStripeClient(): Promise<Stripe> {
   const { secretKey } = await getCredentials();
   return new Stripe(secretKey, {
     apiVersion: "2025-08-27.basil",
   });
 }
 
-export async function getStripePublishableKey() {
+export async function getStripePublishableKey(): Promise<string> {
   const { publishableKey } = await getCredentials();
   return publishableKey;
 }
 
-export async function getStripeSecretKey() {
+export async function getStripeSecretKey(): Promise<string> {
   const { secretKey } = await getCredentials();
   return secretKey;
 }
 
-let stripeSync: any = null;
+let stripeSync: StripeSyncInstance | null = null;
 
-export async function getStripeSync() {
+export async function getStripeSync(): Promise<StripeSyncInstance> {
   if (!stripeSync) {
-    const { StripeSync } = await import("stripe-replit-sync");
+    const mod = (await import("stripe-replit-sync")) as { StripeSync: StripeSyncCtor };
     const secretKey = await getStripeSecretKey();
-    stripeSync = new StripeSync({
+    stripeSync = new mod.StripeSync({
       poolConfig: {
         connectionString: process.env.DATABASE_URL!,
         max: 2,

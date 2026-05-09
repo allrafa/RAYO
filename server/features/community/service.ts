@@ -452,21 +452,56 @@ export async function getPostDetail(postId: number, userId?: number) {
     throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
   }
 
-  // Task #99 — post de turma só é visível para matriculados (ou moderator+).
-  // Trata como 404 pra não vazar a existência do recurso.
+  // Task #99/#130 — post de turma exige (a) trilha paga liberada, depois
+  // (b) matrícula (ou moderator+). Sem o trail gate, links diretos pra
+  // posts de turma paga abriam pra quem cancelou mas continuou matriculado.
   const classId = rows[0].class_id;
   if (classId) {
     if (!userId) {
       throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
     }
-    const { rows: m } = await query(
-      `SELECT 1 FROM user_course_progress WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
-      [userId, classId],
-    );
-    if (m.length === 0) {
-      const { rows: r } = await query(`SELECT role FROM users WHERE id = $1`, [userId]);
-      const role = r[0]?.role;
-      if (role !== "moderator" && role !== "admin") {
+    const { rows: r } = await query(`SELECT role FROM users WHERE id = $1`, [userId]);
+    const role = r[0]?.role;
+    const isModeratorPlus = role === "moderator" || role === "admin";
+    if (!isModeratorPlus) {
+      // (a) trail gate
+      const { rows: tr } = await query<{ trail_id: number; slug: string }>(
+        `SELECT t.id AS trail_id, t.slug
+           FROM trail_courses tc
+           JOIN trails t ON t.id = tc.trail_id
+          WHERE tc.course_id = $1 AND t.active = TRUE
+          LIMIT 1`,
+        [classId],
+      );
+      if (tr.length > 0) {
+        const trailId = tr[0].trail_id;
+        const { rows: sub } = await query<{ exists: boolean }>(
+          `SELECT EXISTS(
+             SELECT 1 FROM subscriptions
+              WHERE user_id = $1 AND trail_id = $2
+                AND status = ANY(ARRAY['active','trialing','past_due']::text[])
+           ) AS exists`,
+          [userId, trailId],
+        );
+        if (!sub[0]?.exists) {
+          // Erro semântico de paywall — frontend renderiza <TrailPaywall>.
+          const err = new AppError(
+            "Esta publicação faz parte de uma trilha paga. Assine para acessar.",
+            "TRAIL_PAYMENT_REQUIRED",
+            402,
+          );
+          (err as unknown as { trail_id: number; trail_slug: string; class_id: number }).trail_id = trailId;
+          (err as unknown as { trail_id: number; trail_slug: string; class_id: number }).trail_slug = tr[0].slug;
+          (err as unknown as { trail_id: number; trail_slug: string; class_id: number }).class_id = classId;
+          throw err;
+        }
+      }
+      // (b) matrícula — 404 pra não vazar
+      const { rows: m } = await query(
+        `SELECT 1 FROM user_course_progress WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
+        [userId, classId],
+      );
+      if (m.length === 0) {
         throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
       }
     }

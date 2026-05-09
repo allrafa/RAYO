@@ -179,6 +179,10 @@ router.get("/:id/posts", requireAuth, async (req, res, next) => {
       sendError(res, "ID de turma inválido", "INVALID_COURSE_ID");
       return;
     }
+    // Task #130 (fix code-review): trail gate ANTES da matrícula. Se a turma
+    // pertence a uma trilha paga e o usuário não assina, devolve 402
+    // TRAIL_PAYMENT_REQUIRED com trail_slug pra paywall inline funcionar.
+    if (!(await ensureTrailAccess(req, res, courseId))) return;
     const member = await isCourseMember(req.user!.id, courseId);
     if (!member && !hasRole(req.user, "moderator")) {
       // 404 pra não vazar a existência do recurso.
@@ -201,6 +205,8 @@ router.post("/:id/posts", requireAuth, async (req, res, next) => {
       sendError(res, "ID de turma inválido", "INVALID_COURSE_ID");
       return;
     }
+    // Task #130 (fix code-review): trail gate antes de criar post.
+    if (!(await ensureTrailAccess(req, res, courseId))) return;
     const { forum_id, content, category, title, images } = req.body;
     const parsedForumId = parseInt(forum_id, 10);
     if (!forum_id || isNaN(parsedForumId) || parsedForumId < 1) {

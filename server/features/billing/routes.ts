@@ -37,6 +37,15 @@ trailsRouter.get("/:slug", async (req, res, next) => {
   }
 });
 
+// Task #130 (fix code-review security): URL base de redirect Stripe vem de
+// config trusted, NUNCA do header Origin (que é controlado pelo cliente e
+// vira open-redirect/phishing vector). Ordem: PUBLIC_SITE_URL → APP_URL →
+// fallback hardcoded de produção.
+function trustedSiteBaseUrl(): string {
+  const base = process.env.PUBLIC_SITE_URL || process.env.APP_URL || "https://rayo.app.br";
+  return base.replace(/\/+$/, "");
+}
+
 // Checkout — exige auth e tem rate-limit duro (5/h).
 const checkoutLimiter = rateLimiter(5, 60 * 60 * 1000, { keyByUser: true });
 trailsRouter.post("/:slug/checkout", requireAuth, checkoutLimiter, async (req, res, next) => {
@@ -46,15 +55,15 @@ trailsRouter.post("/:slug/checkout", requireAuth, checkoutLimiter, async (req, r
       sendError(res, "Interval inválido (use month|year)", "INVALID_INTERVAL", 400);
       return;
     }
-    const origin = (req.headers.origin as string) || `https://${req.get("host")}`;
+    const base = trustedSiteBaseUrl();
     const result = await createCheckoutSession({
       userId: req.user!.id,
       userEmail: req.user!.email,
       userName: req.user!.name ?? null,
       trailSlug: req.params.slug,
       interval,
-      successUrl: `${origin}/trilhas/sucesso?slug=${encodeURIComponent(req.params.slug)}&session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${origin}/trilhas/${encodeURIComponent(req.params.slug)}`,
+      successUrl: `${base}/trilhas/sucesso?slug=${encodeURIComponent(req.params.slug)}&session_id={CHECKOUT_SESSION_ID}`,
+      cancelUrl: `${base}/trilhas/${encodeURIComponent(req.params.slug)}`,
     });
     success(res, result);
   } catch (err) {
@@ -68,8 +77,10 @@ trailsRouter.post("/:slug/checkout", requireAuth, checkoutLimiter, async (req, r
 
 billingRouter.post("/portal", requireAuth, async (req, res, next) => {
   try {
-    const origin = (req.headers.origin as string) || `https://${req.get("host")}`;
-    const returnUrl = String(req.body?.return_url || `${origin}/perfil`);
+    // Task #130 (fix code-review security): return_url é IGNORADO se vier
+    // no body — usamos sempre a base trusted pra evitar open-redirect.
+    const base = trustedSiteBaseUrl();
+    const returnUrl = `${base}/perfil`;
     const result = await createBillingPortalSession({
       userId: req.user!.id,
       userEmail: req.user!.email,
