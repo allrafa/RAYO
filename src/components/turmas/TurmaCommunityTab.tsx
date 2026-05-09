@@ -11,28 +11,7 @@ import { Button } from "../ui/button";
 import { useApp } from "../AppContext";
 import { PostCard } from "../ComunidadePage";
 import { CreatePostModal } from "../CreatePostModal";
-
-// Shape mínimo do post como vem do backend e como `PostCard` consome.
-// Não importamos do AppContext porque `mapAPIPost` é interno; o feed da
-// turma renderiza direto a resposta da API (PostCard tolera ambos os
-// shapes — vide src/components/ComunidadePage.tsx).
-interface TurmaPost {
-  id: number;
-  author_id?: number;
-  author_name?: string;
-  forum_id: number;
-  class_id: number | null;
-  content: string;
-  category: string | null;
-  is_pinned: boolean;
-  like_count: number;
-  comment_count: number;
-  share_count: number;
-  created_at: string;
-  images?: string[];
-  is_saved?: boolean;
-  user_liked?: boolean;
-}
+import { mapAPIPost, type APIPost, type MappedPost } from "../../lib/postMapper";
 
 type ReactionsMap = Record<string, unknown>;
 
@@ -46,18 +25,20 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
   const reactions: ReactionsMap = ctx.reactions ?? {};
   const reactToPost = ctx.reactToPost;
 
-  const [posts, setPosts] = useState<TurmaPost[]>([]);
+  const [posts, setPosts] = useState<MappedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
-  const [editingPost, setEditingPost] = useState<TurmaPost | null>(null);
+  const [editingPost, setEditingPost] = useState<MappedPost | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await api.get<{ posts: TurmaPost[] }>(
+    const res = await api.get<{ posts: APIPost[] }>(
       `/api/community/posts?class_id=${classId}&limit=50`,
     );
     if (res.success && res.data) {
-      setPosts(res.data.posts || []);
+      // Mapeia pra mesma shape consumida pelo feed global; PostCard
+      // espera `author`, `time`, `likes`… (vide src/lib/postMapper.ts).
+      setPosts((res.data.posts || []).map(mapAPIPost));
     }
     setLoading(false);
   }, [classId]);
@@ -109,7 +90,7 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
               onComment={load}
               onShare={load}
               onMutated={load}
-              onEdit={(p: TurmaPost) => {
+              onEdit={(p: MappedPost) => {
                 setEditingPost(p);
                 setComposerOpen(true);
               }}
