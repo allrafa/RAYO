@@ -65,6 +65,7 @@ interface UserSearchResult {
 const CONVERSATION_FALLBACK_POLL_MS = 60_000;
 const MESSAGES_FALLBACK_POLL_MS = 30_000;
 const SWIPE_THRESHOLD = 80;
+const RECORD_MAX_SEC = 120;
 
 function getInitials(name: string): string {
   return (name || "?").trim().slice(0, 2).toUpperCase();
@@ -111,6 +112,46 @@ interface SwipeRowProps {
   onDelete: () => void;
 }
 
+// Menu desktop por item (hover/click no "..."), independente do swipe
+// (que continua sendo o caminho mobile).
+function ConversationItemMenu({ isArchivedView, onArchiveToggle, onDelete }: {
+  isArchivedView: boolean;
+  onArchiveToggle: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity hidden md:block">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 bg-card/80 backdrop-blur-sm"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Mais ações"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchiveToggle(); }}>
+            {isArchivedView
+              ? <><ArchiveRestore className="w-4 h-4 mr-2" /> Desarquivar</>
+              : <><Archive className="w-4 h-4 mr-2" /> Arquivar</>}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          >
+            <Trash2 className="w-4 h-4 mr-2" /> Excluir conversa
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 function SwipeRow({ conv, isActive, isArchivedView, currentUserId, onOpen, onArchiveToggle, onDelete }: SwipeRowProps) {
   // Spec Task #79:
   //  ← swipe à esquerda  → revela "Arquivar" (lado direito do card)
@@ -132,7 +173,7 @@ function SwipeRow({ conv, isActive, isArchivedView, currentUserId, onOpen, onArc
   const x = revealed === "archive" ? -96 : revealed === "delete" ? 96 : 0;
 
   return (
-    <div className="relative overflow-hidden rounded-lg">
+    <div className="group relative overflow-hidden rounded-lg">
       {/* Lado esquerdo do card → revelado ao arrastar pra direita: EXCLUIR */}
       <div className="absolute inset-y-0 left-0 flex items-center pl-4 pr-2 bg-destructive text-destructive-foreground">
         <button
@@ -167,6 +208,11 @@ function SwipeRow({ conv, isActive, isArchivedView, currentUserId, onOpen, onArc
         onDragEnd={handleDragEnd}
         className="relative bg-card touch-pan-y"
       >
+        <ConversationItemMenu
+          isArchivedView={isArchivedView}
+          onArchiveToggle={() => { onArchiveToggle(); setRevealed("none"); }}
+          onDelete={() => { onDelete(); setRevealed("none"); }}
+        />
         <button
           type="button"
           onClick={() => { if (revealed !== "none") { setRevealed("none"); return; } onOpen(); }}
@@ -248,6 +294,7 @@ export function ConversasPage() {
   const [creatingConversation, setCreatingConversation] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState<ConversationItem | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const [typingByConv, setTypingByConv] = useState<Record<number, { user_id: number; expiresAt: number }>>({});
 
@@ -571,7 +618,16 @@ export function ConversasPage() {
       recordStartRef.current = Date.now();
       setRecordSec(0);
       recordTickRef.current = window.setInterval(() => {
-        setRecordSec(Math.round((Date.now() - recordStartRef.current) / 1000));
+        const sec = Math.round((Date.now() - recordStartRef.current) / 1000);
+        setRecordSec(sec);
+        // Auto-stop ao bater no limite (server reforça em 120s).
+        if (sec >= RECORD_MAX_SEC) {
+          const r = mediaRecorderRef.current;
+          if (r && r.state !== "inactive") {
+            try { r.stop(); } catch { /* */ }
+            toast.info("Gravação encerrada automaticamente em 2 minutos");
+          }
+        }
       }, 250);
       setRecording(true);
       rec.start();
@@ -954,14 +1010,19 @@ export function ConversasPage() {
                       <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                         <div className={`ra-chat-bubble ${mine ? "user" : "assistant"} max-w-[80%]`}>
                           {m.kind === "image" && m.attachment_url && (
-                            <a href={m.attachment_url} target="_blank" rel="noreferrer" className="block">
+                            <button
+                              type="button"
+                              onClick={() => setLightboxUrl(m.attachment_url)}
+                              className="block focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
+                              aria-label="Abrir foto em tela cheia"
+                            >
                               <img
                                 src={m.attachment_url}
                                 alt="Foto enviada"
-                                className="rounded-lg max-w-full max-h-72 object-cover mb-1"
+                                className="rounded-lg max-w-full max-h-72 object-cover mb-1 cursor-zoom-in"
                                 loading="lazy"
                               />
-                            </a>
+                            </button>
                           )}
                           {m.kind === "audio" && m.attachment_url && (
                             <div className="flex items-center gap-2 mb-1">
@@ -1101,6 +1162,23 @@ export function ConversasPage() {
           </div>
         )}
       </div>
+
+      {/* Lightbox in-app para fotos enviadas */}
+      <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
+        <DialogContent className="max-w-4xl p-2 bg-black/95 border-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Foto em tela cheia</DialogTitle>
+            <DialogDescription>Pressione Esc para fechar</DialogDescription>
+          </DialogHeader>
+          {lightboxUrl && (
+            <img
+              src={lightboxUrl}
+              alt="Foto em tela cheia"
+              className="w-full h-auto max-h-[80vh] object-contain rounded"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
         <AlertDialogContent>
