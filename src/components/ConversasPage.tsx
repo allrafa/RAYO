@@ -24,6 +24,7 @@ import { EmptyStateNoConversations, EmptyStateError } from "./EmptyState";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { useUnreadMessages, type MessageStreamEvent } from "./hooks/useUnreadMessages";
 import { onScrollTop } from "../lib/scrollTop";
+import { useAutofocusOnDesktop } from "../lib/useAutofocusOnDesktop";
 
 type MessageKind = "text" | "image" | "audio";
 
@@ -306,6 +307,11 @@ export function ConversasPage() {
   const [listeningByConv, setListeningByConv] = useState<Record<number, { user_id: number; expiresAt: number }>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Task #117 — autofocus desktop no input de mensagem ao abrir uma
+  // conversa (matchMedia pointer:fine pra não roubar o foco no mobile,
+  // que abriria teclado virtual sem necessidade).
+  const messageInputRef = useRef<HTMLInputElement>(null);
+  useAutofocusOnDesktop(messageInputRef, activeId != null);
   const lastMessageIdRef = useRef<number | null>(null);
   const activeIdRef = useRef<number | null>(null);
   const streamConnectedRef = useRef(false);
@@ -1200,6 +1206,7 @@ export function ConversasPage() {
                   </Button>
                   <div className="flex-1">
                     <Input
+                      ref={messageInputRef}
                       placeholder={pendingAttachment ? "Adicionar legenda (opcional)..." : "Digite sua mensagem..."}
                       value={newMessage}
                       onChange={(e) => {
