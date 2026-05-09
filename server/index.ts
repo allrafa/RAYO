@@ -238,6 +238,7 @@ async function start() {
       { path: "/blog", priority: "0.8", changefreq: "weekly" },
       { path: "/privacy", priority: "0.5", changefreq: "yearly" },
       { path: "/terms", priority: "0.5", changefreq: "yearly" },
+      { path: "/excluir-dados", priority: "0.5", changefreq: "yearly" },
     ];
     app.get("/sitemap.xml", async (_req, res) => {
       const today = new Date().toISOString().slice(0, 10);
@@ -271,7 +272,7 @@ async function start() {
     app.get("/robots.txt", (_req, res) => {
       const allows = [
         "/$", "/recursos", "/como-funciona", "/empresa", "/contato",
-        "/faq", "/imprensa", "/blog", "/privacy", "/terms",
+        "/faq", "/imprensa", "/blog", "/privacy", "/terms", "/excluir-dados",
       ];
       const body =
         `User-agent: *\n${allows.map((a) => `Allow: ${a}`).join("\n")}\n` +

@@ -560,3 +560,15 @@
   
 }
 
+
+/* Páginas legais (Privacidade, Termos, Exclusão de dados) — conteúdo
+   long-form simples sem grid lateral. */
+.marketing-page .legal-content { max-width:760px; margin:0 auto; color:var(--ink-700, #2a2520); line-height:1.7; font-size:16px; }
+.marketing-page .legal-content h2 { font-size:24px; font-weight:600; margin:40px 0 12px; color:var(--ink-900, #1a1612); }
+.marketing-page .legal-content h2:first-child { margin-top:0; }
+.marketing-page .legal-content p { margin:0 0 16px; }
+.marketing-page .legal-content ul, .marketing-page .legal-content ol { margin:0 0 16px; padding-left:24px; }
+.marketing-page .legal-content li { margin-bottom:8px; }
+.marketing-page .legal-content a { color:var(--terra-700, #8a3a26); text-decoration:underline; }
+.marketing-page .legal-content strong { font-weight:600; color:var(--ink-900, #1a1612); }
+.marketing-page .legal-updated { margin-top:32px; padding-top:24px; border-top:1px solid rgba(0,0,0,0.08); font-size:13px; color:var(--ink-500, #6a6258); font-style:italic; }

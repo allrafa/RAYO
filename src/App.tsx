@@ -31,6 +31,7 @@ import { EmpresaPage } from "./components/marketing/EmpresaPage";
 import { ContatoPage } from "./components/marketing/ContatoPage";
 import { FaqPage } from "./components/marketing/FaqPage";
 import { ImprensaPage } from "./components/marketing/ImprensaPage";
+import { ExcluirDadosPage } from "./components/marketing/ExcluirDadosPage";
 import { BlogIndexPage } from "./components/marketing/BlogIndexPage";
 import { BlogPostPage } from "./components/marketing/BlogPostPage";
 import { TurmaLandingPage } from "./components/turmas/TurmaLandingPage";
@@ -57,7 +58,7 @@ interface OnboardingData {
 //
 // Para o blog, captura também o slug em /blog/<slug>.
 type PublicPage =
-  | "privacy" | "terms"
+  | "privacy" | "terms" | "excluir-dados"
   | "recursos" | "como-funciona" | "empresa" | "contato"
   | "faq" | "imprensa" | "blog"
   | "turma-landing";
@@ -69,6 +70,7 @@ function getPublicPageFromUrl(): PublicRoute | null {
   const p = window.location.pathname.replace(/\/+$/, "") || "/";
   if (p === "/privacy") return { page: "privacy" };
   if (p === "/terms") return { page: "terms" };
+  if (p === "/excluir-dados") return { page: "excluir-dados" };
   if (p === "/recursos") return { page: "recursos" };
   if (p === "/como-funciona") return { page: "como-funciona" };
   if (p === "/empresa") return { page: "empresa" };
@@ -548,6 +550,7 @@ function PublicShell({ route }: { route: PublicRoute }) {
   switch (route.page) {
     case "privacy": return <PrivacyPolicyPage onBack={goHome} />;
     case "terms": return <TermsPage onBack={goHome} />;
+    case "excluir-dados": return <ExcluirDadosPage />;
     case "recursos": return <RecursosPage />;
     case "como-funciona": return <ComoFuncionaPage />;
     case "empresa": return <EmpresaPage />;

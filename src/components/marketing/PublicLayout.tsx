@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 interface Props {
-  active?: "recursos" | "como-funciona" | "empresa" | "blog" | "faq" | "imprensa" | "contato" | null;
+  active?: "recursos" | "como-funciona" | "empresa" | "blog" | "faq" | "imprensa" | "contato" | "excluir-dados" | null;
   children: ReactNode;
 }
 
@@ -74,6 +74,7 @@ export function PublicLayout({ active, children }: Props) {
               <h4>Legal</h4>
               <a href="/terms">Termos de uso</a>
               <a href="/privacy">Privacidade</a>
+              <a href="/excluir-dados">Exclusão de dados</a>
             </div>
           </div>
           <div className="foot-bottom">
