@@ -215,6 +215,37 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
     onNavigateToCommunity?.();
   };
 
+  // Task #115 — cards de Posts/Comentários/Salvos clicáveis abrem o post na
+  // Comunidade. `highlightCommentId` (opcional) é entregue via sessionStorage
+  // pra que o CommentsPanel role/destaque o comentário ao montar — mesmo
+  // contrato do `rayo-pending-post`/CustomEvent já existente em ComunidadePage.
+  const openPost = (postId: number, highlightCommentId?: number) => {
+    try {
+      sessionStorage.setItem("raio-pending-post", String(postId));
+      if (highlightCommentId) {
+        sessionStorage.setItem("raio-pending-post-comment", String(highlightCommentId));
+      } else {
+        sessionStorage.removeItem("raio-pending-post-comment");
+      }
+    } catch { /* noop */ }
+    window.dispatchEvent(
+      new CustomEvent("raio:open-post", {
+        detail: { id: postId, highlight_comment_id: highlightCommentId },
+      }),
+    );
+    onClose?.();
+    onNavigateToCommunity?.();
+  };
+
+  // Helpers de a11y/UX comum aos três cards clicáveis.
+  const cardKeyHandler = (fn: () => void) => (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fn();
+    }
+  };
+  const stopPropagationClick = (e: React.MouseEvent) => e.stopPropagation();
+
   const totalKarma = useMemo(
     () => (karma ? karma.post_karma + karma.comment_karma : 0),
     [karma],
@@ -358,14 +389,19 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
               savedPosts.map((p) => (
                 <div
                   key={p.id}
-                  className="rounded-lg p-3 text-sm"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openPost(p.id)}
+                  onKeyDown={cardKeyHandler(() => openPost(p.id))}
+                  className="rounded-lg p-3 text-sm cursor-pointer hover:bg-[var(--rayo-sand-200)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
                   style={{ background: "var(--rayo-sand-100)", border: "1px solid var(--rayo-sand-300)" }}
+                  aria-label={`Abrir publicação salva`}
                 >
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1">
                     {p.forum_slug && (
                       <button
                         type="button"
-                        onClick={() => openCommunity(p.forum_slug!)}
+                        onClick={(e) => { stopPropagationClick(e); openCommunity(p.forum_slug!); }}
                         className="hover:underline"
                         style={{ color: "var(--rayo-terra-500)", fontWeight: 600 }}
                       >
@@ -392,14 +428,19 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
             posts.map((p) => (
               <div
                 key={p.id}
-                className="rounded-lg p-3 text-sm"
+                role="button"
+                tabIndex={0}
+                onClick={() => openPost(p.id)}
+                onKeyDown={cardKeyHandler(() => openPost(p.id))}
+                className="rounded-lg p-3 text-sm cursor-pointer hover:bg-[var(--rayo-sand-200)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
                 style={{ background: "var(--rayo-sand-100)", border: "1px solid var(--rayo-sand-300)" }}
+                aria-label="Abrir publicação"
               >
                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1">
                   {p.forum_slug && (
                     <button
                       type="button"
-                      onClick={() => openCommunity(p.forum_slug!)}
+                      onClick={(e) => { stopPropagationClick(e); openCommunity(p.forum_slug!); }}
                       className="hover:underline"
                       style={{ color: "var(--rayo-terra-500)", fontWeight: 600 }}
                     >
@@ -438,14 +479,19 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
             comments.map((c) => (
               <div
                 key={c.id}
-                className="rounded-lg p-3 text-sm"
+                role="button"
+                tabIndex={0}
+                onClick={() => openPost(c.post_id, c.id)}
+                onKeyDown={cardKeyHandler(() => openPost(c.post_id, c.id))}
+                className="rounded-lg p-3 text-sm cursor-pointer hover:bg-[var(--rayo-sand-200)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
                 style={{ background: "var(--rayo-sand-100)", border: "1px solid var(--rayo-sand-300)" }}
+                aria-label="Abrir publicação no comentário"
               >
                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1">
                   {c.forum_slug && (
                     <button
                       type="button"
-                      onClick={() => openCommunity(c.forum_slug!)}
+                      onClick={(e) => { stopPropagationClick(e); openCommunity(c.forum_slug!); }}
                       className="hover:underline"
                       style={{ color: "var(--rayo-terra-500)", fontWeight: 600 }}
                     >

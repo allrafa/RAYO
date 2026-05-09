@@ -23,6 +23,7 @@ import { api } from "../lib/api";
 import { EmptyStateNoConversations, EmptyStateError } from "./EmptyState";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { useUnreadMessages, type MessageStreamEvent } from "./hooks/useUnreadMessages";
+import { onScrollTop } from "../lib/scrollTop";
 
 type MessageKind = "text" | "image" | "audio";
 
@@ -398,6 +399,15 @@ export function ConversasPage() {
 
   useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
   useEffect(() => { streamConnectedRef.current = streamConnected; }, [streamConnected]);
+
+  // Task #115 — re-tap na aba Mensagens fecha a conversa aberta (quando
+  // houver), devolvendo o usuário à lista de conversas. Sem isso o
+  // re-tap parece inerte porque o chat ocupa a tela inteira no mobile.
+  useEffect(() => {
+    return onScrollTop(() => {
+      if (activeIdRef.current != null) setActiveId(null);
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

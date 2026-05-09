@@ -5,6 +5,7 @@ import { useAuth, userHasRole } from "./AuthContext";
 import { useTheme } from "./ThemeProvider";
 import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { toast } from "sonner@2.0.3";
+import { dispatchScrollTop } from "../lib/scrollTop";
 
 interface DesktopSidebarProps {
   currentTab: string;
@@ -100,7 +101,12 @@ export function DesktopSidebar({
               type="button"
               className={`rn-item ${isActive ? "active" : ""}`}
               onClick={() => {
-                onTabChange(item.id);
+                // Task #115 — re-clique na aba ativa volta ao topo.
+                if (isActive) {
+                  dispatchScrollTop(item.id);
+                } else {
+                  onTabChange(item.id);
+                }
                 if ("vibrate" in navigator) navigator.vibrate(10);
               }}
               title={isMinimized ? item.label : undefined}

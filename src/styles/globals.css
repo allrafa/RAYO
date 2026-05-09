@@ -1939,3 +1939,16 @@
 html {
   font-size: var(--font-size);
 }
+
+/* Task #115 — destaque temporário do comentário-alvo quando o painel é
+   aberto via clique num card de comentário no UserProfilePage. Aplicado
+   por 2,2s e removido — fade-in/out suave usando o terra-100 do tema. */
+@keyframes rayoCommentHighlight {
+  0%   { background-color: transparent; }
+  15%  { background-color: var(--rayo-terra-100); }
+  85%  { background-color: var(--rayo-terra-100); }
+  100% { background-color: transparent; }
+}
+.rayo-comment-highlight {
+  animation: rayoCommentHighlight 2.2s ease-in-out;
+}

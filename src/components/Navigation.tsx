@@ -1,4 +1,5 @@
 import { Home, GraduationCap, Users, User } from "lucide-react";
+import { dispatchScrollTop } from "../lib/scrollTop";
 
 interface NavigationProps {
   currentTab: string;
@@ -27,7 +28,12 @@ export function Navigation({ currentTab, onTabChange }: NavigationProps) {
               type="button"
               className={`rn-bottom-item ${isActive ? "active" : ""}`}
               onClick={() => {
-                onTabChange(tab.id);
+                // Task #115 — re-tap na aba ativa volta ao topo (sem trocar tab).
+                if (isActive) {
+                  dispatchScrollTop(tab.id);
+                } else {
+                  onTabChange(tab.id);
+                }
                 if ("vibrate" in navigator) navigator.vibrate(10);
               }}
               aria-label={tab.label}

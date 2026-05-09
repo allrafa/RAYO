@@ -37,6 +37,7 @@ import { BlogPostPage } from "./components/marketing/BlogPostPage";
 import { TurmaLandingPage } from "./components/turmas/TurmaLandingPage";
 import { analytics } from "./lib/analytics/mixpanel";
 import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
+import { RAYO_SCROLL_TOP } from "./lib/scrollTop";
 import "./styles/nav-rayo.css";
 import "./styles/playlists-rayo.css";
 import "./styles/app-rayo.css";
@@ -189,6 +190,22 @@ function AppContent() {
 
   useEffect(() => {
     analytics.trackAppOpened();
+  }, []);
+
+  // Task #115 — listener global "voltar ao topo" disparado quando o usuário
+  // clica numa aba que já está ativa. Páginas que precisam de side-effect
+  // adicional (PerfilPage, ConversasPage) instalam seus próprios listeners.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => {
+      try {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+    };
+    window.addEventListener(RAYO_SCROLL_TOP, handler);
+    return () => window.removeEventListener(RAYO_SCROLL_TOP, handler);
   }, []);
 
   // Task #45 — deep-link `/u/<id>` para perfis compartilhados. Captura

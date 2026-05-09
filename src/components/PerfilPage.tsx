@@ -18,6 +18,7 @@ import { toast } from "sonner@2.0.3";
 import { api } from "../lib/api";
 import { EditProfileModal, ChangePasswordModal, LanguageModal } from "./perfil/PerfilModals";
 import { UserProfilePage } from "./UserProfilePage";
+import { onScrollTop } from "../lib/scrollTop";
 
 const LANGUAGE_LABELS: Record<string, string> = {
   "pt-BR": "Português",
@@ -208,6 +209,17 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       );
     }
     setOtherProfileLoading(false);
+  }, []);
+
+  // Task #115 — re-tap na aba Perfil fecha o overlay de perfil público
+  // (quando aberto via /u/:id ou clique em outro usuário) e devolve o
+  // usuário pra própria área pessoal. Scroll global continua acontecendo
+  // pelo listener em App.tsx.
+  useEffect(() => {
+    return onScrollTop(() => {
+      setOtherProfile(null);
+      setOtherProfileError(null);
+    });
   }, []);
 
   useEffect(() => {

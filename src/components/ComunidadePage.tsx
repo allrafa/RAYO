@@ -12,6 +12,8 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { onScrollTop } from "../lib/scrollTop";
 import { PullToRefresh } from "./PullToRefresh";
 import { SkeletonLoader } from "./SkeletonLoader";
 import { EmptyStateError, EmptyStateNoCommunity } from "./EmptyState";
@@ -89,17 +91,28 @@ export function ComunidadePage() {
   const [forumsError, setForumsError] = useState<string | null>(null);
   const [postComments, setPostComments] = useState<CommentData[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  // Task #115 — quando o post é aberto a partir de um card de comentário no
+  // perfil, este id pede pro CommentsPanel rolar até esse comentário e
+  // destacá-lo brevemente. Limpado no fechar do painel.
+  const [highlightCommentId, setHighlightCommentId] = useState<number | null>(null);
 
   // Task #44 — deep-link de busca: quando um resultado de busca de
   // post é clicado, recebemos o id por CustomEvent. Tentamos abrir o
   // post da memória; se não estiver carregado, buscamos via
   // /api/community/posts/:id e abrimos do mesmo jeito.
   const openPostById = useCallback(
-    async (id: number) => {
+    async (id: number, highlight_comment_id?: number) => {
+      // Task #115 — pré-seta o id de destaque ANTES do post entrar em
+      // tela; CommentsPanel lê esse valor pra rolar quando os comments
+      // carregarem. Se vier 0/undefined, limpa pra evitar carry-over.
+      setHighlightCommentId(highlight_comment_id ?? null);
       const cached = posts.find((p) => p.id === id);
       if (cached) {
         setSelectedPost(cached);
         setShowComments(true);
+        // Task #115 — sem isso o painel abre vazio quando vindo do perfil
+        // (deep-link/search também). loadPostComments hidrata o painel.
+        void loadPostComments(id);
         return;
       }
       const res = await api.get<{
@@ -140,22 +153,28 @@ export function ComunidadePage() {
           author_id: p.author_id,
         });
         setShowComments(true);
+        void loadPostComments(p.id);
       }
     },
-    [posts],
+    [posts, loadPostComments],
   );
 
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ id: number }>).detail;
-      if (detail?.id) void openPostById(detail.id);
+      const detail = (e as CustomEvent<{ id: number; highlight_comment_id?: number }>).detail;
+      if (detail?.id) void openPostById(detail.id, detail.highlight_comment_id);
     };
     window.addEventListener("raio:open-post", handler as EventListener);
     try {
       const pending = sessionStorage.getItem("raio-pending-post");
       if (pending) {
         sessionStorage.removeItem("raio-pending-post");
-        void openPostById(Number(pending));
+        const pendingComment = sessionStorage.getItem("raio-pending-post-comment");
+        if (pendingComment) sessionStorage.removeItem("raio-pending-post-comment");
+        void openPostById(
+          Number(pending),
+          pendingComment ? Number(pendingComment) : undefined,
+        );
       }
     } catch {
       // ignore
@@ -164,6 +183,15 @@ export function ComunidadePage() {
       window.removeEventListener("raio:open-post", handler as EventListener);
     };
   }, [openPostById]);
+
+  // Task #115 — re-tap na aba Comunidade volta ao topo (handler global em
+  // App.tsx já rola a window). Aqui aproveitamos pra resetar o subreddit
+  // ativo se houver, devolvendo o usuário ao Feed sem precisar do botão Voltar.
+  useEffect(() => {
+    return onScrollTop(() => {
+      setActiveCommunitySlug(null);
+    });
+  }, []);
 
   // Task #92 — deep-link `/c/<slug>`. Recebe via sessionStorage
   // (`rayo-pending-community-slug`) ou CustomEvent `rayo:open-community`.
@@ -564,9 +592,10 @@ export function ComunidadePage() {
             post={selectedPost}
             comments={postComments}
             loadingComments={loadingComments}
-            onClose={() => { setShowComments(false); setSelectedPost(null); setPostComments([]); }}
+            onClose={() => { setShowComments(false); setSelectedPost(null); setPostComments([]); setHighlightCommentId(null); }}
             onSubmitComment={(content) => submitComment(selectedPost.id, content)}
             onLikeComment={toggleCommentLike}
+            highlightCommentId={highlightCommentId}
           />
         )}
 
@@ -1535,11 +1564,49 @@ interface CommentsPanelProps {
   onClose: () => void;
   onSubmitComment: (content: string) => Promise<boolean>;
   onLikeComment: (commentId: number) => void;
+  highlightCommentId?: number | null;
 }
 
-function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComment, onLikeComment }: CommentsPanelProps) {
+function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComment, onLikeComment, highlightCommentId }: CommentsPanelProps) {
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Task #115 — body-scroll-lock enquanto o painel está aberto. Sem isso a
+  // página de fundo rola atrás do overlay no mobile e os 80vh de altura
+  // ficam confusos.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // Esc fecha (a11y).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Task #115 — quando o painel abre por um clique em "Comentários" no
+  // perfil, rolamos até o comentário-alvo e aplicamos a classe
+  // `rayo-comment-highlight` (animação CSS de 2s). Roda quando a lista
+  // de comentários termina de carregar.
+  useEffect(() => {
+    if (loadingComments || !highlightCommentId) return;
+    const node = document.querySelector<HTMLElement>(
+      `[data-comment-id="${highlightCommentId}"]`,
+    );
+    if (!node) return;
+    // Pequeno delay garante que o painel já fez layout antes do scroll.
+    const t = window.setTimeout(() => {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+      node.classList.add("rayo-comment-highlight");
+      window.setTimeout(() => node.classList.remove("rayo-comment-highlight"), 2200);
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, [loadingComments, highlightCommentId, comments.length]);
 
   const handleSubmit = async () => {
     if (!commentText.trim() || submitting) return;
@@ -1560,8 +1627,21 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
     return `${Math.floor(hours / 24)}d`;
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+  // Task #115 — Renderizado via portal pra escapar do `transform: translateY`
+  // que `PullToRefresh` aplica no wrapper de conteúdo. Um ancestral com
+  // `transform` quebra `position: fixed` em descendentes (a fixed passa a
+  // ser relativa ao ancestral transformado), e por isso o painel aparecia
+  // "fora da viewport" no mobile.
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: 'rgba(0,0,0,0.5)' }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Comentários"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div
         className="w-full max-w-lg rounded-t-2xl max-h-[80vh] flex flex-col"
         style={{ background: 'var(--rayo-sand-100)' }}
@@ -1584,7 +1664,7 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
             </div>
           ) : (
             comments.map((c) => (
-              <div key={c.id} className="flex gap-3">
+              <div key={c.id} data-comment-id={c.id} className="flex gap-3 rounded-md p-1 -mx-1 transition-colors">
                 <Avatar className="w-8 h-8 flex-shrink-0">
                   <AvatarFallback style={{ background: 'var(--rayo-terra-100)', color: 'var(--rayo-terra-500)', fontSize: '12px' }}>
                     {c.author_name.charAt(0).toUpperCase()}
@@ -1635,6 +1715,7 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
