@@ -404,6 +404,21 @@ export function ConversasPage() {
   }, []);
 
   useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+
+  // Task #123 — quando uma conversa está aberta no mobile, marca o
+  // body com `rayo-dm-conversation-open` pra esconder a bottom nav
+  // (CSS em globals.css). Sem isso a nav fica por cima do composer
+  // OU empurra o composer pra fora da viewport visível no iOS.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const cls = "rayo-dm-conversation-open";
+    if (activeId != null) {
+      document.body.classList.add(cls);
+    } else {
+      document.body.classList.remove(cls);
+    }
+    return () => document.body.classList.remove(cls);
+  }, [activeId]);
   useEffect(() => { streamConnectedRef.current = streamConnected; }, [streamConnected]);
 
   // Task #115 — re-tap na aba Mensagens fecha a conversa aberta (quando
@@ -831,7 +846,10 @@ export function ConversasPage() {
   const canSend = !composerDisabled && (!!pendingAttachment || newMessage.trim().length > 0);
 
   return (
-    <div className="ra-page flex h-[calc(100vh-8rem)] max-w-6xl mx-auto" style={{ background: 'var(--rayo-sand-100)' }}>
+    <div
+      className="ra-page flex max-w-6xl mx-auto rayo-dm-shell"
+      style={{ background: 'var(--rayo-sand-100)' }}
+    >
       {/* Lista de Conversas */}
       <div className={`${activeId != null ? "hidden md:block" : "block"} w-full md:w-1/3 border-r border-border bg-card flex flex-col`}>
         <div className="p-4 border-b">
@@ -1141,7 +1159,12 @@ export function ConversasPage() {
               )}
             </ScrollArea>
 
-            <div className="p-4 border-t bg-card">
+            <div
+              className="p-4 border-t bg-card rayo-dm-composer"
+              style={{
+                paddingBottom: "max(1rem, calc(1rem + env(safe-area-inset-bottom)))",
+              }}
+            >
               {pendingAttachment && (
                 <div className="mb-3 p-2 rounded-lg bg-muted/50 flex items-center gap-3">
                   {pendingAttachment.kind === "image" ? (
@@ -1220,6 +1243,17 @@ export function ConversasPage() {
                           e.preventDefault();
                           void handleSendMessage();
                         }
+                      }}
+                      onFocus={() => {
+                        // Task #123 — quando o teclado virtual abre no
+                        // iOS, a viewport encolhe e a última mensagem
+                        // pode ficar atrás do composer. Disparamos
+                        // scrollIntoView no próximo frame pra empurrar
+                        // a lista até o fim e manter o contexto visível.
+                        if (typeof window === "undefined") return;
+                        window.requestAnimationFrame(() => {
+                          messagesEndRef.current?.scrollIntoView({ block: "end" });
+                        });
                       }}
                       disabled={sending}
                       maxLength={4000}

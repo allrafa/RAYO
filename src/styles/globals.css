@@ -1545,6 +1545,26 @@
     width: 100% !important;
   }
 
+  /* Task #123 — Conserto do composer no iPhone.
+     Quando uma conversa de DM está aberta no mobile, escondemos a
+     bottom nav (que é position:fixed e cobriria o composer) e damos
+     ao shell de conversa altura DINÂMICA (`100dvh`) com fallback
+     `100vh`. Sem isso, no Safari iOS o `100vh` inclui a área da
+     barra de URL retrátil e o composer cai fora da viewport visível
+     — usuário não consegue tocar o input pra abrir o teclado. */
+  .rayo-dm-shell {
+    height: 100vh;
+    height: 100dvh;
+  }
+  body.rayo-dm-conversation-open .rn-bottom {
+    display: none !important;
+  }
+  /* No mobile não queremos o pb=8rem do `.ra-page` cortando a altura;
+     em desktop (≥768px) voltamos a deixar a margem do app respirar. */
+  @media (max-width: 767px) {
+    .rayo-dm-shell.ra-page { padding-bottom: 0; min-height: 0; }
+  }
+
   /* Welcome Screen Animations - Minimalista */
   @keyframes gentle-pulse {
     0%, 100% {
