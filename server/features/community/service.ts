@@ -35,12 +35,23 @@ async function hydratePostsRows<T extends Record<string, any>>(
     }
   }
   return Promise.all(
-    rows.map(async (r) => ({
-      ...r,
-      images: await resolvePostImages(r.images),
-      author_avatar: await resolveStoredMediaUrl(r.author_avatar),
-      is_saved: viewerId ? savedSet.has(Number((r as any).id)) : false,
-    })),
+    rows.map(async (r) => {
+      // Task #93 — preserva os sentinels CRUS em `image_refs` ANTES de
+      // resolver `images` em URLs assinadas. O frontend precisa dos refs
+      // crus pra editar (PATCH /posts/:id valida `objstore://posts/`).
+      const rawRefs: string[] = Array.isArray(r.images)
+        ? r.images.filter((it: unknown): it is string =>
+            typeof it === "string" && it.startsWith(POST_IMAGE_PREFIX),
+          )
+        : [];
+      return {
+        ...r,
+        images: await resolvePostImages(r.images),
+        image_refs: rawRefs,
+        author_avatar: await resolveStoredMediaUrl(r.author_avatar),
+        is_saved: viewerId ? savedSet.has(Number((r as any).id)) : false,
+      };
+    }),
   );
 }
 

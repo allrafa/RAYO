@@ -118,6 +118,8 @@ interface Post {
   userShared?: boolean;
   visibility?: 'publico' | 'comunidade' | 'amigos';
   images?: string[];
+  /** Sentinels crus (objstore://posts/<file>) — usados em edição. */
+  image_refs?: string[];
   forum_id?: number;
   forum_name?: string;
   forum_slug?: string;
@@ -556,6 +558,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     forum_slug?: string;
     forum_icon?: string;
     images?: string[];
+    image_refs?: string[];
     user_liked: boolean;
     is_saved?: boolean;
   }
@@ -575,6 +578,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       userReacted: p.user_liked,
       visibility: "comunidade",
       images: Array.isArray(p.images) ? p.images : [],
+      image_refs: Array.isArray(p.image_refs) ? p.image_refs : [],
       forum_id: p.forum_id,
       forum_name: p.forum_name,
       forum_slug: p.forum_slug,

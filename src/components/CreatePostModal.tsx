@@ -30,8 +30,10 @@ interface CreatePostModalProps {
     content?: string;
     category?: string;
     forum_id?: number;
-    /** Sentinels existentes (objstore://posts/<file>) — preservados no PATCH. */
+    /** URLs assinadas (resolvidas) — usadas só pra renderizar thumbs. */
     images?: string[];
+    /** Sentinels CRUS (objstore://posts/<file>) — únicos aceitos no PATCH. */
+    image_refs?: string[];
   } | null;
 }
 
@@ -65,6 +67,13 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
     editingPost?.forum_id ?? initialForumId ?? null,
   );
 
+  // Task #93 — em modo edição mantemos DOIS arrays paralelos:
+  // `existingRefs` (sentinels crus pra mandar no PATCH) e `existingUrls`
+  // (URLs assinadas pra renderizar). Remover um item remove dos dois ao
+  // mesmo tempo (mesmo índice).
+  const [existingRefs, setExistingRefs] = useState<string[]>(editingPost?.image_refs || []);
+  const [existingUrls, setExistingUrls] = useState<string[]>(editingPost?.images || []);
+
   // Task #93 — quando o modal abre em modo edição, hidrata os campos com
   // o post sendo editado. Em modo criação, reseta tudo.
   useEffect(() => {
@@ -73,9 +82,19 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
       setContent(editingPost.content || "");
       setSelectedCategory(editingPost.category || "Relacionamento");
       setSelectedForumId(editingPost.forum_id ?? null);
+      setExistingRefs(editingPost.image_refs || []);
+      setExistingUrls(editingPost.images || []);
+    } else {
+      setExistingRefs([]);
+      setExistingUrls([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editingPost?.id]);
+
+  const removeExistingImage = (idx: number) => {
+    setExistingRefs((prev) => prev.filter((_, i) => i !== idx));
+    setExistingUrls((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -181,7 +200,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
     const files = Array.from(event.target.files || []);
     event.target.value = ""; // permite re-selecionar o mesmo arquivo
 
-    if (files.length + uploadedImages.length > POST_MAX_IMAGES) {
+    if (files.length + uploadedImages.length + existingRefs.length > POST_MAX_IMAGES) {
       enhancedToast.error({
         title: "Muitas imagens",
         description: `Você pode adicionar no máximo ${POST_MAX_IMAGES} imagens`,
@@ -261,7 +280,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
       });
       return;
     }
-    if (!content.trim() && uploadedImages.length === 0) {
+    if (!content.trim() && uploadedImages.length === 0 && existingRefs.length === 0) {
       enhancedToast.error({
         title: "Conteúdo necessário",
         description: "Adicione texto ou imagens para publicar",
@@ -292,17 +311,15 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
       if (isEditing && editingPost) {
         // Task #93 — edição via PATCH. Conteúdo, categoria e fotos podem
         // ser alterados; comunidade (forum_id) é IMUTÁVEL no servidor.
-        // Imagens já existentes vivem em `editingPost.images` (sentinels
-        // objstore://posts/...); novas vêm de `uploadedImages` (mesmo
-        // formato após upload).
-        const existingImages = Array.isArray(editingPost.images) ? editingPost.images : [];
-        const newImages = uploadedImages.map((i) => i.storedUrl);
+        // SEMPRE mandamos sentinels CRUS (`existingRefs` + storedUrl das
+        // novas) — o backend rejeita URL resolvida (`INVALID_IMAGE_REF`).
+        const newRefs = uploadedImages.map((i) => i.storedUrl);
         const res = await api.patch<{ post: { id: number } }>(
           `/api/community/posts/${editingPost.id}`,
           {
             content,
             category: selectedCategory,
-            images: [...existingImages, ...newImages].slice(0, POST_MAX_IMAGES),
+            images: [...existingRefs, ...newRefs].slice(0, POST_MAX_IMAGES),
           },
         );
         ok = res.success;
@@ -444,6 +461,37 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
             )}
           </div>
 
+          {/* Task #93 — Imagens já existentes (modo edição). Click no X
+              remove do array `existingRefs` (e do PATCH subsequente). */}
+          {isEditing && existingUrls.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-medium text-sm text-muted-foreground">
+                Fotos atuais ({existingUrls.length})
+              </h4>
+              <div className="grid grid-cols-2 gap-3">
+                {existingUrls.map((url, index) => (
+                  <div key={existingRefs[index] || `existing-${index}`} className="relative group">
+                    <img
+                      src={url}
+                      alt={`Foto atual ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg border"
+                    />
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="absolute top-2 right-2 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removeExistingImage(index)}
+                      type="button"
+                      title="Remover foto"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Image Preview Grid */}
           {uploadedImages.length > 0 && (
             <div className="space-y-3">
@@ -491,7 +539,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
                 size="sm"
                 className="h-10 w-10 p-0 hover:bg-[var(--rayo-sand-100)] hover:text-[var(--rayo-forest-700)] transition-colors"
                 onClick={handleImageSelect}
-                disabled={uploadedImages.length >= POST_MAX_IMAGES || uploadingCount > 0}
+                disabled={uploadedImages.length + existingRefs.length >= POST_MAX_IMAGES || uploadingCount > 0}
                 title="Adicionar fotos"
                 type="button"
               >
@@ -556,7 +604,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
                 !selectedForumId ||
                 isSubmitting ||
                 uploadingCount > 0 ||
-                (!content.trim() && uploadedImages.length === 0) ||
+                (!content.trim() && uploadedImages.length === 0 && existingRefs.length === 0) ||
                 (content.trim().length > 0 && content.trim().length < 5)
               }
               className="flex-1 h-12 font-medium"
