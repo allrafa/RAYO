@@ -26,7 +26,7 @@ export function DiscardDraftDialog({
   title = "Descartar rascunho?",
   description = "Você tem texto ou anexos não publicados. Se sair agora, vai perder esse conteúdo.",
   confirmLabel = "Descartar",
-  cancelLabel = "Continuar editando",
+  cancelLabel = "Cancelar",
 }: DiscardDraftDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>

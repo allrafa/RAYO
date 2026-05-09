@@ -386,10 +386,17 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
     return uploadingCount > 0 || uploadedImages.length > 0 || contentChanged;
   })();
 
+  // Task #117 — descarte total: além de texto/uploads novos, reseta
+  // categoria, comunidade e estado de edição pra próxima abertura
+  // começar limpa.
   const doClose = () => {
     setConfirmDiscard(false);
     setContent("");
+    setSelectedCategory("Relacionamento");
+    setSelectedForumId(initialForumId ?? null);
     setUploadedImages([]);
+    setExistingRefs([]);
+    setExistingUrls([]);
     onOpenChange(false);
   };
 

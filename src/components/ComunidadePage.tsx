@@ -15,7 +15,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { onScrollTop } from "../lib/scrollTop";
 import { useScrollRestore } from "../lib/scrollRestore";
-import { useAutofocusOnDesktop } from "../lib/useAutofocusOnDesktop";
 import { DiscardDraftDialog } from "./DiscardDraftDialog";
 import { PullToRefresh } from "./PullToRefresh";
 import { SkeletonLoader } from "./SkeletonLoader";
