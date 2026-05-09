@@ -10,7 +10,7 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
     - `APP_URL`: Public URL for email links (default: `https://${REPLIT_DEV_DOMAIN}`).
     - `PUBLIC_SITE_URL`: Domínio canônico usado em `/sitemap.xml` e `/robots.txt` (default: `https://rayo.app.br`).
     - `ADMIN_EMAILS`: Comma-separated emails for admin role on boot.
-    - `CONTATO_TO_EMAIL`: destinatário do formulário público `/contato` (default: `suporte@rayo.app.br`).
+    - `CONTACT_EMAIL`: destinatário do formulário público `/contato` (default: `suporte@rayo.app.br`). Alias legado `CONTATO_TO_EMAIL` ainda é aceito como fallback.
     - **OAuth (opcional, Task #69)** — sem essas vars os botões aparecem como "Em breve". **OAuth Google só funciona no domínio de produção `https://rayo.app.br`** (no preview/dev o login social fica desabilitado de propósito; use email/senha):
         - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: credenciais OAuth 2.0 do Google Cloud.
         - `GOOGLE_REDIRECT_URI` (**obrigatória** para habilitar Google): deve ser exatamente `https://rayo.app.br/api/auth/google/callback` e estar registrada como Authorized redirect URI no Google Cloud Console. Sem essa var a estratégia não é registrada (log de erro no boot) e o botão fica como "Em breve".
@@ -79,6 +79,10 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
 - **Idempotent Daily Completions**: `POST /api/home/today/complete` uses `ON CONFLICT DO NOTHING` to prevent duplicate XP/streak awards.
 - **CMS kind 'artigo'**: `content_items.kind` aceita `artigo` desde Maio/2026 (Task #70). A constraint `content_items_kind_check` é re-criada idempotentemente no boot (`DROP + ADD`) se ainda não tiver `artigo`. O blog público filtra por `kind='artigo' AND status='published' AND slug IS NOT NULL`. NÃO use uma tabela `blog_posts` separada.
 - **Marketing CSS scope**: `src/styles/marketing-rayo.css` tem todos os seletores prefixados por `.marketing-page` para não vazar nos demais layouts. NÃO crie regras globais (sem prefixo) nesse arquivo.
+- **Public route gate (Task #70)**: `App` (default export em `src/App.tsx`) chama `getPublicPageFromUrl()` ANTES de instanciar `AuthProvider` e renderiza `<PublicShell />` direto quando o path é uma página pública. Isso garante que crawlers e visitantes anônimos NUNCA disparem `GET /api/auth/me` em first paint. Para adicionar nova rota pública, atualize `getPublicPageFromUrl`, `PublicPage` e o `switch` em `PublicShell`.
+- **Auth deep links (Task #70)**: `/login` e `/cadastro` são entradas diretas no fluxo de auth — `getInitialAuthIntent()` em `App.tsx` mapeia o path para `preAuthStage='auth'` + `authStartMode` correto, pulando welcome/onboarding. CTAs do site marketing devem usar essas URLs (não `/?auth=...`).
+- **Blog read cache**: `GET /api/blog/posts` e `GET /api/blog/posts/:slug` enviam `Cache-Control: public, max-age=300, s-maxage=300` (5min). Cuidado ao mudar — view_count++ ainda corre no servidor a cada hit que chega na origem.
+- **OG default image**: `useSeoMeta` injeta `https://rayo.app.br/og-default.png` quando a página não passa `ogImage`. Adicione esse arquivo nos assets antes do deploy de produção.
 
 ## Pointers
 - **Development Protocol**: `architecture.md`

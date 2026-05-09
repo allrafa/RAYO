@@ -126,7 +126,7 @@ export function FaqPage() {
           <h2 className="help-title">Estamos a um <span className="light">clique.</span></h2>
           <div className="help-grid">
             <div className="help-card"><h4>Falar com suporte</h4><p>Resposta em até 1 dia útil, de seg a sex. Para dúvidas técnicas, conta, planos ou bugs.</p><a href="/contato" className="link">Abrir contato →</a></div>
-            <div className="help-card"><h4>Comunidade do RAYO</h4><p>Pergunte para outras famílias que já passaram pelo que você está passando. Curadoria ativa.</p><a href="/?auth=signup" className="link">Entrar na Comunidade →</a></div>
+            <div className="help-card"><h4>Comunidade do RAYO</h4><p>Pergunte para outras famílias que já passaram pelo que você está passando. Curadoria ativa.</p><a href="/cadastro" className="link">Entrar na Comunidade →</a></div>
             <div className="help-card"><h4>Status do serviço</h4><p>Veja em tempo real se há instabilidade no app, no streaming ou no pagamento.</p><a href="/status" className="link">Ver status →</a></div>
           </div>
         </div>

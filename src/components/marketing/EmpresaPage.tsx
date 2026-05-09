@@ -140,7 +140,7 @@ export function EmpresaPage() {
       <div className="wrap">
         <div className="cta-strip">
           <h2 className="cta-strip-title">Quer entender o RAYO <span className="light">por</span> dentro?</h2>
-          <a href="/?auth=signup" className="btn-primary" style={{ background: "var(--terra-500)", padding: "16px 28px", fontSize: "14px" }}>Experimentar grátis →</a>
+          <a href="/cadastro" className="btn-primary" style={{ background: "var(--terra-500)", padding: "16px 28px", fontSize: "14px" }}>Experimentar grátis →</a>
         </div>
       </div>
     </PublicLayout>

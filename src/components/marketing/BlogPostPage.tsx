@@ -110,7 +110,7 @@ export function BlogPostPage({ slug }: Props) {
       <div className="wrap">
         <div className="cta-strip">
           <h2 className="cta-strip-title">Quer aplicar isso na <span className="light">sua</span> família?</h2>
-          <a href="/?auth=signup" className="btn-primary">Começar grátis →</a>
+          <a href="/cadastro" className="btn-primary">Começar grátis →</a>
         </div>
       </div>
     </PublicLayout>

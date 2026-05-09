@@ -260,10 +260,11 @@ export function isEmailConfigured(): boolean {
   return !!RESEND_API_KEY;
 }
 
-// Task #70 — destinatário do formulário público /contato. Configurável via env
-// (CONTATO_TO_EMAIL) com default explícito; nunca usa o e-mail do remetente
-// como destino.
-const CONTATO_TO_EMAIL = process.env.CONTATO_TO_EMAIL || "suporte@rayo.app.br";
+// Task #70 — destinatário do formulário público /contato. Lê primeiro
+// `CONTACT_EMAIL` (nome canônico), depois `CONTATO_TO_EMAIL` (alias legado),
+// e cai num default explícito. Nunca usa o e-mail do remetente como destino.
+const CONTATO_TO_EMAIL =
+  process.env.CONTACT_EMAIL || process.env.CONTATO_TO_EMAIL || "suporte@rayo.app.br";
 
 export interface ContatoPayload {
   nome: string;

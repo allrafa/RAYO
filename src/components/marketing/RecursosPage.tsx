@@ -18,7 +18,7 @@ export function RecursosPage() {
               <h1 className="hero-title">Tudo o que sua família <span className="light">precisa</span> em um só lugar.</h1>
               <p className="hero-lede">Cinco pilares construídos para acompanhar todas as fases — Solteiro, Namoro, Noivos, Casados e Pais — com conteúdo prático, comunidade real e missões diárias para fortalecer laços.</p>
               <div className="hero-cta-row">
-                <a href="/?auth=signup" className="btn-primary">Experimentar grátis →</a>
+                <a href="/cadastro" className="btn-primary">Experimentar grátis →</a>
                 <a href="/como-funciona" className="btn-ghost">Ver como funciona</a>
               </div>
             </div>
@@ -76,7 +76,7 @@ export function RecursosPage() {
                 <li>Shorts: vídeos de até 90s com uma ideia prática por dia</li>
                 <li>Trilhas curadas para cada fase, com sequência sugerida</li>
               </ul>
-              <a href="/?auth=signup" className="feature-link">Ver tudo da Academia →</a>
+              <a href="/cadastro" className="feature-link">Ver tudo da Academia →</a>
             </div>
             <div className="feature-visual dark">
               <div className="feature-visual-mock">
@@ -103,7 +103,7 @@ export function RecursosPage() {
                 <li>Mentores convidados respondem ao vivo uma vez por semana</li>
                 <li>Sem feed infinito, sem curtidas, sem comparação</li>
               </ul>
-              <a href="/?auth=signup" className="feature-link">Conhecer a Comunidade →</a>
+              <a href="/cadastro" className="feature-link">Conhecer a Comunidade →</a>
             </div>
             <div className="feature-visual sage">
               <div className="feature-visual-mock">
@@ -168,7 +168,7 @@ export function RecursosPage() {
       <div className="wrap">
         <div className="cta-strip">
           <h2 className="cta-strip-title">Comece <span className="light">hoje.</span> A sua família agradece amanhã.</h2>
-          <a href="/?auth=signup" className="btn-primary">Criar conta grátis →</a>
+          <a href="/cadastro" className="btn-primary">Criar conta grátis →</a>
         </div>
       </div>
     </PublicLayout>

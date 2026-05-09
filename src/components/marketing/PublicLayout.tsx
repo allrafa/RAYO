@@ -29,8 +29,8 @@ export function PublicLayout({ active, children }: Props) {
             <a href="/faq" className={`nav-link${active === "faq" ? " active" : ""}`}>FAQ</a>
           </nav>
           <div className="nav-cta">
-            <a href="/?auth=login" className="btn-ghost">Entrar</a>
-            <a href="/?auth=signup" className="btn-primary">Começar agora →</a>
+            <a href="/login" className="btn-ghost">Entrar</a>
+            <a href="/cadastro" className="btn-primary">Começar agora →</a>
           </div>
         </div>
       </header>

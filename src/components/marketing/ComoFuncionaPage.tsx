@@ -123,7 +123,7 @@ export function ComoFuncionaPage() {
       <div className="wrap">
         <div className="cta-strip">
           <h2 className="cta-strip-title">Começa em <span className="light">90 segundos.</span></h2>
-          <a href="/?auth=signup" className="btn-primary">Criar minha conta →</a>
+          <a href="/cadastro" className="btn-primary">Criar minha conta →</a>
         </div>
       </div>
     </PublicLayout>

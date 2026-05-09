@@ -79,6 +79,17 @@ function getPublicPageFromUrl(): PublicRoute | null {
   return null;
 }
 
+// Task #70 — `/login` e `/cadastro` são entradas diretas no fluxo de auth
+// (sem welcome / onboarding). Mantidos como rotas reais para serem
+// linkáveis das páginas marketing e de e-mails transacionais.
+function getInitialAuthIntent(): "login" | "register" | null {
+  if (typeof window === "undefined") return null;
+  const p = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (p === "/login") return "login";
+  if (p === "/cadastro") return "register";
+  return null;
+}
+
 function getResetTokenFromUrl(): string | null {
   if (typeof window === "undefined") return null;
   try {
@@ -115,27 +126,22 @@ function AppContent() {
   // straight on the reset form, never on welcome/onboarding.
   const [preAuthStage, setPreAuthStage] = useState<PreAuthStage>(() => {
     if (getResetTokenFromUrl()) return "auth";
+    if (getInitialAuthIntent()) return "auth";
     return isReturningDevice() ? "auth" : "welcome";
   });
-  const [authStartMode, setAuthStartMode] = useState<AuthStartMode>(() =>
-    isReturningDevice() ? "login" : "register",
-  );
+  const [authStartMode, setAuthStartMode] = useState<AuthStartMode>(() => {
+    const intent = getInitialAuthIntent();
+    if (intent) return intent;
+    return isReturningDevice() ? "login" : "register";
+  });
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [showPrivacyOverlay, setShowPrivacyOverlay] = useState(false);
-  const [publicRoute, setPublicRoute] = useState<PublicRoute | null>(() => getPublicPageFromUrl());
-
-  // Quando a pessoa volta de uma página pública pra app principal, limpa a URL
-  // pra `/` sem recarregar — evita reabrir a mesma página no refresh.
-  const closePublicPage = () => {
-    setPublicRoute(null);
-    if (typeof window !== "undefined") {
-      try {
-        window.history.replaceState({}, "", "/");
-      } catch {
-        // ignore
-      }
-    }
-  };
+  // Public marketing routes are now hard-gated em `App` (default export)
+  // ANTES do AuthProvider — garante que /recursos, /blog etc. nunca chamem
+  // `GET /api/auth/me`. Aqui dentro do `AppContent` ainda mantemos a rota
+  // legada /privacy /terms (compatibilidade c/ fluxo OAuth) por baixo do
+  // gate, mas nunca renderizamos páginas marketing — esse caminho não é
+  // mais alcançado para elas.
 
   const appContext = useApp();
   const isInBookReader = appContext?.isInBookReader || false;
@@ -233,25 +239,8 @@ function AppContent() {
     }
   };
 
-  // Páginas públicas (Privacy/Terms + marketing + blog) — sempre acessíveis,
-  // mesmo sem login e antes do loading da sessão. Google/Apple precisam
-  // visitar /privacy e /terms para aprovar o app OAuth.
-  if (publicRoute) {
-    switch (publicRoute.page) {
-      case "privacy": return <PrivacyPolicyPage onBack={closePublicPage} />;
-      case "terms": return <TermsPage onBack={closePublicPage} />;
-      case "recursos": return <RecursosPage />;
-      case "como-funciona": return <ComoFuncionaPage />;
-      case "empresa": return <EmpresaPage />;
-      case "contato": return <ContatoPage />;
-      case "faq": return <FaqPage />;
-      case "imprensa": return <ImprensaPage />;
-      case "blog":
-        return publicRoute.blogSlug
-          ? <BlogPostPage slug={publicRoute.blogSlug} />
-          : <BlogIndexPage />;
-    }
-  }
+  // (Páginas públicas são gateadas em App() ANTES do AuthProvider para evitar
+  // chamadas a /api/auth/me em first paint de crawler. Ver default export.)
 
   if (isLoading) {
     return (
@@ -468,7 +457,45 @@ function AppContent() {
   );
 }
 
+// Task #70 — Public/marketing shell renderizado SEM AuthProvider para que
+// crawlers e visitantes anônimos nunca disparem `GET /api/auth/me` no first
+// paint. Cobre /privacy, /terms e todas as páginas marketing + blog.
+function PublicShell({ route }: { route: PublicRoute }) {
+  // Em vez de fazer setState pra "fechar" uma página pública, o botão Voltar
+  // faz hard-navigate pra "/" — recarrega o app no fluxo normal de auth, sem
+  // precisar manter providers para essa transição rara.
+  const goHome = () => {
+    if (typeof window !== "undefined") window.location.href = "/";
+  };
+  switch (route.page) {
+    case "privacy": return <PrivacyPolicyPage onBack={goHome} />;
+    case "terms": return <TermsPage onBack={goHome} />;
+    case "recursos": return <RecursosPage />;
+    case "como-funciona": return <ComoFuncionaPage />;
+    case "empresa": return <EmpresaPage />;
+    case "contato": return <ContatoPage />;
+    case "faq": return <FaqPage />;
+    case "imprensa": return <ImprensaPage />;
+    case "blog":
+      return route.blogSlug
+        ? <BlogPostPage slug={route.blogSlug} />
+        : <BlogIndexPage />;
+  }
+}
+
 export default function App() {
+  // Detect na inicialização do bundle, antes de qualquer provider de auth.
+  const publicRoute = getPublicPageFromUrl();
+  if (publicRoute) {
+    return (
+      <ThemeProvider>
+        <AccessibilityProvider>
+          <PublicShell route={publicRoute} />
+          <Toaster />
+        </AccessibilityProvider>
+      </ThemeProvider>
+    );
+  }
   return (
     <ThemeProvider>
       <AccessibilityProvider>

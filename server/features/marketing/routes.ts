@@ -47,6 +47,10 @@ function shapePost(r: ArtigoRow) {
 
 export const blogRouter = Router();
 
+// Cache HTTP de 5min nas leituras públicas (Task #70). O conteúdo do blog
+// muda raramente; um cache curto reduz carga sem comprometer ttl perceptível.
+const BLOG_CACHE_HEADER = "public, max-age=300, s-maxage=300";
+
 blogRouter.get("/posts", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? "20"), 10) || 20));
@@ -66,6 +70,7 @@ blogRouter.get("/posts", async (req: Request, res: Response, next: NextFunction)
         LIMIT ${limit}`,
       params,
     );
+    res.set("Cache-Control", BLOG_CACHE_HEADER);
     success(res, { items: (rows as ArtigoRow[]).map(shapePost) });
   } catch (err) {
     next(err);
@@ -92,6 +97,7 @@ blogRouter.get("/posts/:slug", async (req: Request, res: Response, next: NextFun
       return;
     }
     void query(`UPDATE content_items SET view_count = view_count + 1 WHERE id = $1`, [rows[0].id]);
+    res.set("Cache-Control", BLOG_CACHE_HEADER);
     success(res, { post: shapePost(rows[0] as ArtigoRow) });
   } catch (err) {
     next(err);

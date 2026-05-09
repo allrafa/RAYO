@@ -8,6 +8,10 @@ interface SeoOptions {
 }
 
 const PUBLIC_SITE_URL = "https://rayo.app.br";
+// Imagem default de OpenGraph/Twitter — usada em todas as páginas marketing
+// quando `ogImage` não é passado explicitamente. Garante que crawlers
+// (Facebook, LinkedIn, X, WhatsApp) sempre tenham um card visual.
+const DEFAULT_OG_IMAGE = `${PUBLIC_SITE_URL}/og-default.png`;
 
 function setMeta(attr: "name" | "property", key: string, content: string) {
   let el = document.head.querySelector<HTMLMetaElement>(`meta[${attr}="${key}"]`);
@@ -44,11 +48,12 @@ export function useSeoMeta({ title, description, canonical, ogImage }: SeoOption
     setMeta("property", "og:url", canonicalUrl);
     setMeta("property", "og:type", "website");
     setMeta("property", "og:site_name", "RAYO");
-    if (ogImage) setMeta("property", "og:image", ogImage);
-    setMeta("name", "twitter:card", ogImage ? "summary_large_image" : "summary");
+    const finalOgImage = ogImage || DEFAULT_OG_IMAGE;
+    setMeta("property", "og:image", finalOgImage);
+    setMeta("name", "twitter:card", "summary_large_image");
     setMeta("name", "twitter:title", title);
     setMeta("name", "twitter:description", description);
-    if (ogImage) setMeta("name", "twitter:image", ogImage);
+    setMeta("name", "twitter:image", finalOgImage);
     return () => {
       document.title = prevTitle;
     };
