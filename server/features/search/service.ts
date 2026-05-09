@@ -1,4 +1,5 @@
 import { query } from "../../db/index.js";
+import { withResolvedBunnyFields } from "../../lib/bunnyStream.js";
 
 // Task #44 — Busca textual unificada simples (ILIKE) sobre cursos,
 // content_items publicados, posts visíveis e usuários. Cada categoria
@@ -52,9 +53,15 @@ export async function searchAll(qRaw: string): Promise<SearchResponse> {
       cover_url: string | null;
       media_url: string | null;
       external_url: string | null;
+      video_provider: string | null;
+      video_external_id: string | null;
+      video_thumbnail_url: string | null;
     }>(
+      // Task #86 — busca também precisa entender o sentinel Bunny pra que
+      // os cards de resultado tragam thumb/embed corretos.
       `SELECT id, kind, title, short_description, cover_url,
-              media_url, external_url
+              media_url, external_url,
+              video_provider, video_external_id, video_thumbnail_url
          FROM content_items
         WHERE status = 'published'
           AND kind IN ('audio','video','reels','podcast')
@@ -95,14 +102,21 @@ export async function searchAll(qRaw: string): Promise<SearchResponse> {
       thumbnail: c.thumbnail,
       ctaTarget: null,
     })),
-    ...contentRes.rows.map<SearchResult>((c) => ({
-      kind: normalizeContentKind(c.kind),
-      id: c.id,
-      title: c.title,
-      subtitle: c.short_description ? truncate(c.short_description, 80) : null,
-      thumbnail: c.cover_url,
-      ctaTarget: c.external_url?.trim() || c.media_url?.trim() || null,
-    })),
+    ...contentRes.rows.map<SearchResult>((c) => {
+      const resolved = withResolvedBunnyFields(c);
+      return {
+        kind: normalizeContentKind(c.kind),
+        id: c.id,
+        title: c.title,
+        subtitle: c.short_description ? truncate(c.short_description, 80) : null,
+        thumbnail: resolved.video_thumbnail_url || c.cover_url,
+        ctaTarget:
+          resolved.video_embed_url ||
+          c.external_url?.trim() ||
+          c.media_url?.trim() ||
+          null,
+      };
+    }),
     ...postsRes.rows.map<SearchResult>((p) => ({
       kind: "post",
       id: p.id,

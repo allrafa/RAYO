@@ -1,5 +1,6 @@
 import { query } from "../../db/index.js";
 import { addXP, updateStreak } from "../gamification/service.js";
+import { withResolvedBunnyFields } from "../../lib/bunnyStream.js";
 
 const TODAY_KINDS = ["audio", "video", "reels"];
 const TODAY_XP = 15;
@@ -16,6 +17,10 @@ interface ContentItemRow {
   cta: string | null;
   media_url: string | null;
   external_url: string | null;
+  // Task #86 — Bunny: derivados resolvidos no app via withResolvedBunnyFields.
+  video_provider: string | null;
+  video_external_id: string | null;
+  video_thumbnail_url: string | null;
 }
 
 function epochDay(d = new Date()): number {
@@ -46,7 +51,8 @@ async function pickTodayItem(userId: number): Promise<ContentItemRow | null> {
   const segmentFiltered = await query<ContentItemRow>(
     `SELECT id, kind, title, short_description, cover_url,
             duration_seconds, segments, hook, cta,
-            media_url, external_url
+            media_url, external_url,
+            video_provider, video_external_id, video_thumbnail_url
        FROM content_items
       WHERE status = 'published'
         AND kind = ANY($1::text[])
@@ -60,7 +66,8 @@ async function pickTodayItem(userId: number): Promise<ContentItemRow | null> {
     const fallback = await query<ContentItemRow>(
       `SELECT id, kind, title, short_description, cover_url,
               duration_seconds, segments, hook, cta,
-              media_url, external_url
+              media_url, external_url,
+              video_provider, video_external_id, video_thumbnail_url
          FROM content_items
         WHERE status = 'published'
           AND kind = ANY($1::text[])
@@ -86,19 +93,28 @@ export async function getTodayItem(userId: number): Promise<TodayItem | null> {
     [userId],
   );
 
+  // Task #86 — quando o vídeo do dia veio do Bunny, ctaTarget aponta pro
+  // embed Bunny (frontend abre direto no <iframe>). Senão cai no legado
+  // external_url → media_url. Cards de capa também usam a thumb resolvida.
+  const resolved = withResolvedBunnyFields(picked);
+  const bunnyTarget = resolved.video_embed_url;
+
   return {
     id: picked.id,
     kind: picked.kind,
     title: picked.title,
     subtitle: picked.short_description,
-    coverUrl: picked.cover_url,
+    coverUrl: resolved.video_thumbnail_url || picked.cover_url,
     durationSeconds: picked.duration_seconds,
     hook: picked.hook,
     ctaLabel:
       picked.cta?.trim() ||
       (picked.kind === "audio" ? "Ouvir agora" : "Assistir agora"),
     ctaTarget:
-      picked.external_url?.trim() || picked.media_url?.trim() || null,
+      bunnyTarget ||
+      picked.external_url?.trim() ||
+      picked.media_url?.trim() ||
+      null,
     segments: picked.segments ?? [],
     completedAt: compRows[0]?.completed_at ?? null,
   };
@@ -235,10 +251,14 @@ export async function getContinueItems(userId: number): Promise<ContinueItem[]> 
     cover_url: string | null;
     media_url: string | null;
     external_url: string | null;
+    video_provider: string | null;
+    video_external_id: string | null;
+    video_thumbnail_url: string | null;
     completed_at: string;
   }>(
     `SELECT ci.id, ci.kind, ci.title, ci.short_description,
             ci.cover_url, ci.media_url, ci.external_url,
+            ci.video_provider, ci.video_external_id, ci.video_thumbnail_url,
             htc.completed_at
        FROM home_today_completions htc
        JOIN content_items ci ON ci.id = htc.content_item_id
@@ -251,17 +271,24 @@ export async function getContinueItems(userId: number): Promise<ContinueItem[]> 
     [userId, TODAY_KINDS],
   );
 
-  const cmsItems: ContinueItem[] = cmsRows.map((r) => ({
-    id: `cms-${r.id}`,
-    kind: r.kind as ContinueItem["kind"],
-    title: r.title,
-    subtitle: r.short_description,
-    thumbnail: r.cover_url,
-    progress: 100,
-    lastAccessedAt: r.completed_at,
-    ctaTarget: r.external_url?.trim() || r.media_url?.trim() || null,
-    contentItemId: r.id,
-  }));
+  const cmsItems: ContinueItem[] = cmsRows.map((r) => {
+    const resolved = withResolvedBunnyFields(r);
+    return {
+      id: `cms-${r.id}`,
+      kind: r.kind as ContinueItem["kind"],
+      title: r.title,
+      subtitle: r.short_description,
+      thumbnail: resolved.video_thumbnail_url || r.cover_url,
+      progress: 100,
+      lastAccessedAt: r.completed_at,
+      ctaTarget:
+        resolved.video_embed_url ||
+        r.external_url?.trim() ||
+        r.media_url?.trim() ||
+        null,
+      contentItemId: r.id,
+    };
+  });
 
   return [...courseItems, ...cmsItems].sort(
     (a, b) =>
