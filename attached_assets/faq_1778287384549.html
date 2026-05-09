@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FAQ — RAYO | Perguntas frequentes sobre o app, planos, conta e privacidade</title>
+<meta name="description" content="Tire dúvidas sobre o RAYO: como começar, planos e preços, conteúdo, comunidade, modo casal, privacidade dos dados, cancelamento e suporte." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand-50:#FAF4E8; --sand-100:#F2E9D5; --sand-200:#E8DBBF; --sand-300:#D9C89E; --sand-400:#BFA87A;
+    --forest-900:#0C3B2E; --forest-700:#144D3C; --forest-500:#1E6A52;
+    --sage-100:#DCE8D2; --sage-300:#A9C396; --sage-500:#6D9773; --sage-700:#4F7253;
+    --terra-100:#F2D6CC; --terra-300:#E08770; --terra-500:#C8553D; --terra-700:#9C3A26; --terra-900:#5E2113;
+    --ochre-300:#E8C77E; --ochre-500:#D4A24C; --ochre-700:#A37A2D;
+    --ink-900:#0E1A14; --ink-700:#1F2A22; --ink-500:#4A5247; --ink-400:#6E7569; --ink-300:#9CA098;
+    --r-sm:10px; --r-md:16px; --r-lg:24px; --r-xl:32px; --r-pill:999px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--sand-100); color:var(--ink-900); font-family:'Outfit', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:inherit; text-decoration:none; }
+  .mono { font-family: ui-monospace, 'SF Mono', monospace; }
+
+  .nav { background:rgba(250,244,232,0.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--sand-300); position:sticky; top:0; z-index:50; }
+  .nav-inner { max-width:1280px; margin:0 auto; padding:18px 32px; display:flex; align-items:center; gap:32px; }
+  .nav-brand { display:flex; align-items:center; gap:10px; }
+  .nav-mark { width:36px; height:36px; border-radius:10px; background:var(--terra-500); display:grid; place-items:center; color:var(--sand-50); font-weight:700; font-size:18px; }
+  .nav-name { font-size:18px; font-weight:700; letter-spacing:-0.03em; color:var(--forest-900); }
+  .nav-links { display:flex; align-items:center; gap:4px; margin-left:32px; }
+  .nav-link { padding:8px 14px; border-radius:var(--r-pill); font-size:14px; color:var(--ink-700); font-weight:500; }
+  .nav-link:hover { background:var(--sand-200); color:var(--forest-900); }
+  .nav-link.active { color:var(--forest-900); font-weight:600; background:var(--sand-200); }
+  .nav-cta { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .btn-ghost { padding:10px 18px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--forest-900); border:1px solid var(--forest-900); background:transparent; cursor:pointer; }
+  .btn-ghost:hover { background:var(--forest-900); color:var(--sand-100); }
+  .btn-primary { padding:10px 20px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--sand-50); background:var(--terra-500); border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary:hover { background:var(--terra-700); }
+
+  .wrap { max-width:1280px; margin:0 auto; padding:0 32px; }
+
+  /* HERO */
+  .hero { padding:120px 0 64px; }
+  .hero-grid { display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:end; }
+  .hero-eyebrow { font-family:ui-monospace,monospace; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .hero-title { font-size:88px; font-weight:600; letter-spacing:-0.05em; line-height:0.95; color:var(--forest-900); margin-top:20px; }
+  .hero-title .light { font-weight:200; color:var(--terra-500); }
+  .hero-lede { font-size:18px; color:var(--ink-500); line-height:1.6; }
+  .hero-search { margin-top:24px; display:flex; align-items:center; gap:12px; background:var(--sand-50); border:1px solid var(--sand-300); border-radius:var(--r-pill); padding:14px 22px; font-size:15px; color:var(--ink-400); }
+  .hero-search input { flex:1; border:none; background:transparent; outline:none; font-family:inherit; font-size:15px; color:var(--ink-700); }
+
+  /* CATEGORY NAV */
+  .cat-nav { display:flex; flex-wrap:wrap; gap:8px; padding:24px 0 64px; border-bottom:1px solid var(--sand-300); }
+  .cat-pill { padding:10px 18px; background:var(--sand-50); border:1px solid var(--sand-300); border-radius:var(--r-pill); font-size:13px; font-weight:500; color:var(--ink-700); cursor:pointer; transition:all 0.15s; }
+  .cat-pill:hover { background:var(--sand-200); color:var(--forest-900); }
+  .cat-pill.active { background:var(--forest-900); color:var(--sand-100); border-color:var(--forest-900); }
+
+  /* FAQ SECTIONS */
+  .faq-section { padding:64px 0; border-bottom:1px solid var(--sand-300); }
+  .faq-section-head { display:grid; grid-template-columns:280px 1fr; gap:64px; align-items:start; }
+  .faq-section-head .num { font-family:ui-monospace,monospace; font-size:12px; letter-spacing:0.18em; color:var(--terra-500); font-weight:600; }
+  .faq-section-head h2 { font-size:42px; font-weight:600; letter-spacing:-0.04em; color:var(--forest-900); line-height:1; margin-top:14px; }
+  .faq-section-head h2 .light { font-weight:200; color:var(--terra-500); }
+  .faq-section-head p { font-size:14px; color:var(--ink-500); line-height:1.6; margin-top:14px; }
+  .faq-list { display:flex; flex-direction:column; gap:0; }
+  details.faq-item { border-top:1px solid var(--sand-300); padding:24px 0; }
+  details.faq-item:last-child { border-bottom:1px solid var(--sand-300); }
+  details.faq-item summary { list-style:none; cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start; gap:24px; font-size:19px; font-weight:600; letter-spacing:-0.01em; color:var(--forest-900); }
+  details.faq-item summary::-webkit-details-marker { display:none; }
+  details.faq-item summary::after { content:"+"; font-size:28px; font-weight:300; color:var(--terra-500); line-height:1; flex-shrink:0; transition:transform 0.2s; }
+  details.faq-item[open] summary::after { content:"−"; }
+  details.faq-item summary:hover { color:var(--terra-500); }
+  details.faq-item .answer { margin-top:16px; font-size:15px; color:var(--ink-500); line-height:1.7; max-width:72ch; }
+  details.faq-item .answer p + p { margin-top:12px; }
+  details.faq-item .answer a { color:var(--terra-500); border-bottom:1px solid var(--terra-300); }
+
+  /* HELP CTA */
+  .help { background:var(--forest-900); color:var(--sand-100); padding:80px 0; }
+  .help-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; margin-top:48px; }
+  .help-card { background:var(--forest-700); border:1px solid rgba(242,233,213,0.1); border-radius:var(--r-lg); padding:32px; display:flex; flex-direction:column; gap:14px; }
+  .help-card h4 { font-size:22px; font-weight:600; letter-spacing:-0.02em; color:var(--sand-50); }
+  .help-card p { font-size:14px; color:var(--sand-300); line-height:1.6; }
+  .help-card .link { margin-top:auto; font-size:14px; font-weight:600; color:var(--ochre-300); padding-top:14px; border-top:1px solid rgba(242,233,213,0.1); }
+  .help-eyebrow { font-family:ui-monospace,monospace; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ochre-300); font-weight:600; }
+  .help-title { font-size:48px; font-weight:600; letter-spacing:-0.04em; color:var(--sand-50); line-height:1; margin-top:14px; }
+  .help-title .light { font-weight:200; color:var(--terra-300); }
+
+  /* FOOTER */
+  footer { background:var(--forest-900); color:var(--sand-200); padding:80px 0 32px; }
+  .foot-grid { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr; gap:48px; }
+  .foot-brand-name { font-size:24px; font-weight:700; color:var(--sand-50); letter-spacing:-0.03em; }
+  .foot-brand-sub { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-300); margin-top:6px; font-family:ui-monospace,monospace; }
+  .foot-tagline { font-size:14px; color:var(--sand-300); margin-top:24px; max-width:32ch; line-height:1.6; }
+  .foot-col h4 { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ochre-300); margin-bottom:18px; font-weight:600; }
+  .foot-col a { display:block; padding:6px 0; font-size:14px; color:var(--sand-200); }
+  .foot-col a:hover { color:var(--sand-50); }
+  .foot-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:64px; padding-top:24px; border-top:1px solid rgba(242,233,213,0.15); font-size:12px; color:var(--sand-400); }
+
+  @media (max-width:900px) {
+    .nav-links { display:none; }
+    .foot-grid { grid-template-columns:1fr 1fr; }
+    .hero-title, .help-title { font-size:48px; }
+    .hero-grid, .faq-section-head, .help-grid { grid-template-columns:1fr; gap:24px; }
+    .hero { padding:64px 0; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <span class="nav-mark">R</span>
+      <span class="nav-name">RAYO</span>
+    </a>
+    <nav class="nav-links">
+      <a href="/recursos" class="nav-link">Recursos</a>
+      <a href="/como-funciona" class="nav-link">Como funciona</a>
+      <a href="/empresa" class="nav-link">Empresa</a>
+      <a href="/blog" class="nav-link">Blog</a>
+      <a href="/faq" class="nav-link active">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="/login" class="btn-ghost">Entrar</a>
+      <a href="/cadastro" class="btn-primary">Começar agora →</a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <span class="hero-eyebrow">Central de ajuda · FAQ</span>
+        <h1 class="hero-title">Perguntas <span class="light">frequentes.</span></h1>
+      </div>
+      <div>
+        <p class="hero-lede">Aqui ficam as dúvidas que mais aparecem. Se não encontrar o que procura, fale com a gente — respondemos em até um dia útil.</p>
+        <div class="hero-search">
+          <span style="font-size:18px;">⌕</span>
+          <input type="text" placeholder="Buscar por palavra-chave (ex.: cancelamento, modo casal)" />
+        </div>
+      </div>
+    </div>
+
+    <div class="cat-nav">
+      <span class="cat-pill active">Tudo</span>
+      <span class="cat-pill">Conta &amp; Cadastro</span>
+      <span class="cat-pill">Conteúdo &amp; Trilhas</span>
+      <span class="cat-pill">Comunidade</span>
+      <span class="cat-pill">Modo Casal &amp; Família</span>
+      <span class="cat-pill">Planos &amp; Pagamento</span>
+      <span class="cat-pill">Privacidade &amp; Dados</span>
+      <span class="cat-pill">Suporte técnico</span>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: Conta -->
+<section class="faq-section">
+  <div class="wrap">
+    <div class="faq-section-head">
+      <div>
+        <span class="num mono">CATEGORIA 01</span>
+        <h2>Conta &amp; <span class="light">Cadastro</span></h2>
+        <p>Como criar conta, fazer login, recuperar senha e gerenciar seus dados básicos.</p>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>Preciso pagar para criar conta?</summary>
+          <div class="answer"><p>Não. A criação de conta é gratuita e dá acesso à primeira trilha completa, missões diárias e à Comunidade. Os planos pagos liberam toda a Academia, modo casal e funcionalidades premium.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Posso usar o RAYO sem informar minha fase de vida?</summary>
+          <div class="answer"><p>Pode, mas a recomendação fica genérica. As 5 perguntas iniciais existem para a curadoria fazer sentido para você desde o primeiro dia. Você pode pular e responder depois.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Como mudo minha fase quando algo na vida muda?</summary>
+          <div class="answer"><p>É só ir em Perfil → Editar fase. Você pode mudar quantas vezes quiser. As trilhas em andamento continuam acessíveis no histórico, e as próximas recomendações se ajustam à nova fase.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Esqueci minha senha. Como recupero?</summary>
+          <div class="answer"><p>Na tela de login, toque em "Esqueci minha senha" e informe seu e-mail. Você recebe um link em até 5 minutos. Se não chegar, confira a caixa de spam ou fale com a gente em suporte@rayo.app.br.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Como excluo minha conta permanentemente?</summary>
+          <div class="answer"><p>Vá em Perfil → Configurações → Excluir conta. A exclusão é definitiva: missões, trilhas em andamento, posts na Comunidade e dados do perfil são removidos em até 30 dias. Confira a <a href="/privacy">Política de Privacidade</a> para detalhes.</p></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: Conteúdo -->
+<section class="faq-section">
+  <div class="wrap">
+    <div class="faq-section-head">
+      <div>
+        <span class="num mono">CATEGORIA 02</span>
+        <h2>Conteúdo &amp; <span class="light">Trilhas</span></h2>
+        <p>Como funciona a curadoria, quem produz o conteúdo, formatos disponíveis e progresso.</p>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>Quem produz o conteúdo do RAYO?</summary>
+          <div class="answer"><p>Temos um time interno de curadoria e uma rede de especialistas convidados — psicólogos, terapeutas de casal, educadores e famílias com histórias para contar. Todo conteúdo passa por revisão antes de entrar na Academia.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>O RAYO é religioso ou tem orientação espiritual específica?</summary>
+          <div class="answer"><p>O RAYO é uma plataforma para todas as famílias. Temos curadoria com diferentes vozes e perspectivas, incluindo conteúdo de raiz cristã e conteúdo laico. Você escolhe o que faz sentido para você — e pode filtrar conteúdo religioso nas configurações.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Quanto tempo dura uma trilha?</summary>
+          <div class="answer"><p>As trilhas variam de 7 a 30 dias, com 10 a 20 minutos por dia. Você pode pausar a qualquer momento — a trilha espera por você e retoma de onde parou.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Posso baixar conteúdo para ouvir offline?</summary>
+          <div class="answer"><p>Sim, no plano pago. Podcasts e cursos podem ser baixados para ouvir sem conexão. Shorts continuam streaming.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Tem certificado nos cursos?</summary>
+          <div class="answer"><p>Cursos completos da Academia geram certificado de conclusão em PDF. Você baixa a partir de Perfil → Conquistas. Trilhas e missões não geram certificado — são jornadas pessoais.</p></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: Modo Casal -->
+<section class="faq-section">
+  <div class="wrap">
+    <div class="faq-section-head">
+      <div>
+        <span class="num mono">CATEGORIA 03</span>
+        <h2>Modo Casal &amp; <span class="light">Família</span></h2>
+        <p>Como conectar o app com seu parceiro ou com sua família, e o que cada um vê.</p>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>Como ativo o Modo Casal?</summary>
+          <div class="answer"><p>Vá em Perfil → Modo Casal → Convidar parceiro(a). Você gera um link ou um código de 6 dígitos para seu parceiro entrar. Os dois precisam ter conta no RAYO.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Meu parceiro vê o que eu escrevo nas anotações privadas?</summary>
+          <div class="answer"><p>Não. Anotações, diários e respostas de reflexões são sempre privadas — nem o parceiro vê. O Modo Casal compartilha apenas a missão atual e o status (concluído ou pendente). O conteúdo da reflexão é seu.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Funciona em famílias com filhos?</summary>
+          <div class="answer"><p>Sim. Existe um Modo Família que permite conectar até 4 pessoas (casal + filhos adolescentes a partir de 13 anos). Os pais têm controle sobre o que cada filho vê, e cada um tem seu próprio perfil e progresso.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Posso desconectar o Modo Casal depois?</summary>
+          <div class="answer"><p>Pode, a qualquer momento. As missões individuais ficam, e as missões marcadas como casal viram histórico privado para cada um.</p></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: Planos -->
+<section class="faq-section">
+  <div class="wrap">
+    <div class="faq-section-head">
+      <div>
+        <span class="num mono">CATEGORIA 04</span>
+        <h2>Planos &amp; <span class="light">Pagamento</span></h2>
+        <p>Quanto custa, formas de pagamento, cancelamento, reembolso e mudança de plano.</p>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>Quais são os planos do RAYO?</summary>
+          <div class="answer"><p>Temos três planos: Free (gratuito, com 1 trilha completa e missões diárias), Premium (Academia inteira, podcasts ilimitados e Modo Casal) e Família (até 4 perfis e Modo Família). A página de <a href="/planos">Planos</a> tem o comparativo completo e os preços atuais.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Posso cancelar quando quiser?</summary>
+          <div class="answer"><p>Sim. Você cancela em Perfil → Assinatura → Cancelar. O acesso continua até o fim do período já pago. Não há multa, taxa ou renovação automática depois do cancelamento.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Tem reembolso se eu não gostar?</summary>
+          <div class="answer"><p>Sim. Se você cancelar nos primeiros 14 dias da assinatura, devolvemos 100% do valor — sem perguntas. Basta pedir em suporte@rayo.app.br.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Quais formas de pagamento vocês aceitam?</summary>
+          <div class="answer"><p>Cartão de crédito (Visa, Mastercard, Elo, Amex), Pix e boleto. Pelo app da Apple ou Google, o pagamento é processado pela loja correspondente.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Posso mudar de plano no meio do mês?</summary>
+          <div class="answer"><p>Pode. Se você fizer upgrade, cobramos a diferença proporcional ao tempo restante. Se fizer downgrade, a mudança acontece no início do próximo ciclo.</p></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: Privacidade -->
+<section class="faq-section">
+  <div class="wrap">
+    <div class="faq-section-head">
+      <div>
+        <span class="num mono">CATEGORIA 05</span>
+        <h2>Privacidade &amp; <span class="light">Dados</span></h2>
+        <p>O que coletamos, como protegemos, com quem compartilhamos e o que você pode controlar.</p>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>O RAYO vende ou compartilha meus dados?</summary>
+          <div class="answer"><p>Não. Não vendemos seus dados nem compartilhamos com anunciantes. Só usamos dados internamente para melhorar a recomendação e a curadoria — e tudo está descrito na nossa <a href="/privacy">Política de Privacidade</a>, em linguagem clara.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Quem vê meu progresso e minhas missões?</summary>
+          <div class="answer"><p>Por padrão, só você. Você pode ativar o Modo Casal para que seu parceiro veja a missão atual e o status, mas o conteúdo das suas reflexões é sempre privado. A Comunidade só vê o que você posta ativamente nela.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Vocês têm conformidade com a LGPD?</summary>
+          <div class="answer"><p>Sim. Somos uma empresa brasileira e seguimos a LGPD (Lei nº 13.709/2018). Você pode pedir acesso, correção ou exclusão dos seus dados a qualquer momento via dpo@rayo.app.br.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Posso baixar tudo que tenho no RAYO antes de excluir minha conta?</summary>
+          <div class="answer"><p>Pode. Em Perfil → Configurações → Exportar dados, você baixa um arquivo .zip com tudo que produziu na plataforma (anotações, missões concluídas, posts da Comunidade) em até 24h.</p></div>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HELP CTA -->
+<section class="help">
+  <div class="wrap">
+    <span class="help-eyebrow">Não achou o que procurava?</span>
+    <h2 class="help-title">Estamos a um <span class="light">clique.</span></h2>
+
+    <div class="help-grid">
+      <div class="help-card">
+        <h4>Falar com suporte</h4>
+        <p>Resposta em até 1 dia útil, de seg a sex. Para dúvidas técnicas, conta, planos ou bugs.</p>
+        <a href="/contato" class="link">Abrir contato →</a>
+      </div>
+      <div class="help-card">
+        <h4>Comunidade do RAYO</h4>
+        <p>Pergunte para outras famílias que já passaram pelo que você está passando. Curadoria ativa.</p>
+        <a href="/comunidade" class="link">Entrar na Comunidade →</a>
+      </div>
+      <div class="help-card">
+        <h4>Status do serviço</h4>
+        <p>Veja em tempo real se há instabilidade no app, no streaming ou no pagamento.</p>
+        <a href="/status" class="link">Ver status →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand-name">RAYO</div>
+        <div class="foot-brand-sub">Ecossistema · Famílias</div>
+        <p class="foot-tagline">Conteúdo, comunidade e práticas para iluminar todas as fases da sua família.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Produto</h4>
+        <a href="/recursos">Recursos</a>
+        <a href="/como-funciona">Como funciona</a>
+        <a href="/planos">Planos</a>
+        <a href="/baixar">Baixar app</a>
+      </div>
+      <div class="foot-col">
+        <h4>Empresa</h4>
+        <a href="/empresa">Sobre a empresa</a>
+        <a href="/imprensa">Imprensa</a>
+        <a href="/carreiras">Carreiras</a>
+        <a href="/contato">Contato</a>
+      </div>
+      <div class="foot-col">
+        <h4>Suporte</h4>
+        <a href="/faq">FAQ</a>
+        <a href="/blog">Blog</a>
+        <a href="/comunidade">Comunidade</a>
+        <a href="/status">Status</a>
+      </div>
+      <div class="foot-col">
+        <h4>Legal</h4>
+        <a href="/terms">Termos de uso</a>
+        <a href="/privacy">Privacidade</a>
+        <a href="/cookies">Cookies</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 RAYO. Todos os direitos reservados.</span>
+      <span class="mono">rayo.app.br</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

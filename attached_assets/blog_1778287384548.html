@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blog — RAYO | Ideias, histórias e práticas para a vida em família</title>
+<meta name="description" content="O blog do RAYO: artigos sobre relacionamento, parentalidade, autoconhecimento e as fases da vida em família, com curadoria de especialistas e histórias reais." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand-50:#FAF4E8; --sand-100:#F2E9D5; --sand-200:#E8DBBF; --sand-300:#D9C89E; --sand-400:#BFA87A;
+    --forest-900:#0C3B2E; --forest-700:#144D3C; --forest-500:#1E6A52;
+    --sage-100:#DCE8D2; --sage-300:#A9C396; --sage-500:#6D9773; --sage-700:#4F7253;
+    --terra-100:#F2D6CC; --terra-300:#E08770; --terra-500:#C8553D; --terra-700:#9C3A26; --terra-900:#5E2113;
+    --ochre-300:#E8C77E; --ochre-500:#D4A24C; --ochre-700:#A37A2D;
+    --ink-900:#0E1A14; --ink-700:#1F2A22; --ink-500:#4A5247; --ink-400:#6E7569; --ink-300:#9CA098;
+    --r-sm:10px; --r-md:16px; --r-lg:24px; --r-xl:32px; --r-pill:999px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--sand-100); color:var(--ink-900); font-family:'Outfit', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:inherit; text-decoration:none; }
+  .mono { font-family: ui-monospace, 'SF Mono', monospace; }
+
+  .nav { background:rgba(250,244,232,0.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--sand-300); position:sticky; top:0; z-index:50; }
+  .nav-inner { max-width:1280px; margin:0 auto; padding:18px 32px; display:flex; align-items:center; gap:32px; }
+  .nav-brand { display:flex; align-items:center; gap:10px; }
+  .nav-mark { width:36px; height:36px; border-radius:10px; background:var(--terra-500); display:grid; place-items:center; color:var(--sand-50); font-weight:700; font-size:18px; }
+  .nav-name { font-size:18px; font-weight:700; letter-spacing:-0.03em; color:var(--forest-900); }
+  .nav-links { display:flex; align-items:center; gap:4px; margin-left:32px; }
+  .nav-link { padding:8px 14px; border-radius:var(--r-pill); font-size:14px; color:var(--ink-700); font-weight:500; }
+  .nav-link:hover { background:var(--sand-200); color:var(--forest-900); }
+  .nav-link.active { color:var(--forest-900); font-weight:600; background:var(--sand-200); }
+  .nav-cta { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .btn-ghost { padding:10px 18px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--forest-900); border:1px solid var(--forest-900); background:transparent; cursor:pointer; }
+  .btn-ghost:hover { background:var(--forest-900); color:var(--sand-100); }
+  .btn-primary { padding:10px 20px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--sand-50); background:var(--terra-500); border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary:hover { background:var(--terra-700); }
+
+  .wrap { max-width:1280px; margin:0 auto; padding:0 32px; }
+
+  /* HERO */
+  .hero { padding:120px 0 48px; }
+  .hero-eyebrow { font-family:ui-monospace,monospace; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .hero-title { font-size:96px; font-weight:600; letter-spacing:-0.05em; line-height:0.92; color:var(--forest-900); margin-top:20px; max-width:14ch; }
+  .hero-title .light { font-weight:200; color:var(--terra-500); }
+  .hero-lede { font-size:18px; color:var(--ink-500); line-height:1.6; max-width:54ch; margin-top:24px; }
+
+  /* CATEGORIES */
+  .cats { display:flex; flex-wrap:wrap; gap:8px; margin-top:48px; padding-bottom:48px; border-bottom:1px solid var(--sand-300); }
+  .cat-pill { padding:10px 18px; background:var(--sand-50); border:1px solid var(--sand-300); border-radius:var(--r-pill); font-size:13px; font-weight:500; color:var(--ink-700); cursor:pointer; }
+  .cat-pill:hover { background:var(--sand-200); color:var(--forest-900); }
+  .cat-pill.active { background:var(--forest-900); color:var(--sand-100); border-color:var(--forest-900); }
+
+  /* FEATURED POST */
+  .featured { padding:48px 0 96px; }
+  .featured-grid { display:grid; grid-template-columns:1.2fr 1fr; gap:48px; align-items:stretch; }
+  .featured-img { background:var(--forest-900); border-radius:var(--r-xl); aspect-ratio:4/3; position:relative; overflow:hidden; }
+  .featured-img::before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse 70% 60% at 70% 40%, rgba(232,199,126,0.4) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 20% 80%, rgba(200,85,61,0.35) 0%, transparent 60%); }
+  .featured-img::after { content:""; position:absolute; inset:0; background-image:repeating-linear-gradient(135deg,transparent 0,transparent 14px,rgba(255,255,255,0.04) 14px,rgba(255,255,255,0.04) 15px); }
+  .featured-img-tag { position:absolute; top:24px; left:24px; background:rgba(250,244,232,0.92); padding:8px 14px; border-radius:var(--r-pill); font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--terra-500); font-weight:600; z-index:2; }
+  .featured-text { display:flex; flex-direction:column; justify-content:center; gap:16px; padding:24px 0; }
+  .featured-meta { display:flex; align-items:center; gap:14px; font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .featured-meta .dot { width:4px; height:4px; border-radius:50%; background:var(--ink-300); }
+  .featured-text h2 { font-size:48px; font-weight:600; letter-spacing:-0.04em; line-height:1.05; color:var(--forest-900); }
+  .featured-text h2 .light { font-weight:200; color:var(--terra-500); }
+  .featured-text p { font-size:17px; color:var(--ink-500); line-height:1.6; max-width:48ch; }
+  .featured-author { display:flex; align-items:center; gap:12px; margin-top:8px; }
+  .author-avatar { width:40px; height:40px; border-radius:50%; background:var(--terra-500); color:var(--sand-50); display:grid; place-items:center; font-weight:600; font-size:14px; }
+  .author-name { font-size:14px; font-weight:600; color:var(--forest-900); }
+  .author-meta { font-size:12px; color:var(--ink-400); }
+
+  /* GRID */
+  .grid-section { padding:0 0 96px; }
+  .grid-head { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:48px; padding-bottom:24px; border-bottom:1px solid var(--sand-300); }
+  .grid-head h2 { font-size:36px; font-weight:600; letter-spacing:-0.03em; color:var(--forest-900); }
+  .grid-head h2 .light { font-weight:200; color:var(--terra-500); }
+  .grid-head .meta { font-family:ui-monospace,monospace; font-size:12px; color:var(--ink-400); }
+
+  .post-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:32px; }
+  .post-card { display:flex; flex-direction:column; gap:16px; cursor:pointer; transition:transform 0.2s; }
+  .post-card:hover { transform:translateY(-4px); }
+  .post-img { aspect-ratio:4/3; border-radius:var(--r-lg); position:relative; overflow:hidden; background:var(--sand-300); }
+  .post-img.forest { background:var(--forest-900); }
+  .post-img.forest::before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse 60% 50% at 70% 40%, rgba(232,199,126,0.35) 0%, transparent 60%); }
+  .post-img.terra { background:var(--terra-500); }
+  .post-img.terra::before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse 60% 50% at 30% 70%, rgba(94,33,19,0.45) 0%, transparent 60%); }
+  .post-img.sage { background:var(--sage-300); }
+  .post-img.sage::before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse 60% 50% at 70% 30%, rgba(12,59,46,0.3) 0%, transparent 60%); }
+  .post-img.sand { background:linear-gradient(135deg, var(--sand-300), var(--sand-200)); }
+  .post-img.ochre { background:var(--ochre-500); }
+  .post-img.ochre::before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse 60% 50% at 50% 50%, rgba(94,33,19,0.25) 0%, transparent 60%); }
+  .post-img.ink { background:var(--ink-700); }
+  .post-img.ink::before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse 60% 50% at 70% 30%, rgba(200,85,61,0.4) 0%, transparent 60%); }
+  .post-img-tag { position:absolute; bottom:16px; left:16px; background:rgba(250,244,232,0.92); padding:6px 12px; border-radius:var(--r-pill); font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .post-meta { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-400); display:flex; gap:10px; align-items:center; }
+  .post-meta .dot { width:3px; height:3px; border-radius:50%; background:var(--ink-300); }
+  .post-card h3 { font-size:22px; font-weight:600; letter-spacing:-0.02em; line-height:1.2; color:var(--forest-900); }
+  .post-card p { font-size:14px; color:var(--ink-500); line-height:1.5; }
+
+  /* NEWSLETTER */
+  .newsletter { background:var(--forest-900); color:var(--sand-100); padding:96px 0; }
+  .nl-grid { display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:center; }
+  .nl-eyebrow { font-family:ui-monospace,monospace; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ochre-300); font-weight:600; }
+  .nl-title { font-size:54px; font-weight:600; letter-spacing:-0.04em; line-height:1; color:var(--sand-50); margin-top:14px; }
+  .nl-title .light { font-weight:200; color:var(--terra-300); }
+  .nl-lede { font-size:16px; color:var(--sand-300); line-height:1.6; margin-top:18px; max-width:42ch; }
+  .nl-form { display:flex; gap:8px; background:rgba(250,244,232,0.08); border:1px solid rgba(242,233,213,0.2); border-radius:var(--r-pill); padding:6px; }
+  .nl-form input { flex:1; background:transparent; border:none; outline:none; padding:14px 20px; font-family:inherit; font-size:15px; color:var(--sand-50); }
+  .nl-form input::placeholder { color:var(--sand-300); }
+  .nl-form button { background:var(--terra-500); color:var(--sand-50); border:none; padding:14px 28px; border-radius:var(--r-pill); font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; }
+  .nl-form button:hover { background:var(--terra-700); }
+  .nl-note { font-size:12px; color:var(--sand-400); margin-top:14px; }
+
+  /* FOOTER */
+  footer { background:var(--ink-900); color:var(--sand-200); padding:80px 0 32px; }
+  .foot-grid { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr; gap:48px; }
+  .foot-brand-name { font-size:24px; font-weight:700; color:var(--sand-50); letter-spacing:-0.03em; }
+  .foot-brand-sub { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-300); margin-top:6px; font-family:ui-monospace,monospace; }
+  .foot-tagline { font-size:14px; color:var(--sand-300); margin-top:24px; max-width:32ch; line-height:1.6; }
+  .foot-col h4 { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ochre-300); margin-bottom:18px; font-weight:600; }
+  .foot-col a { display:block; padding:6px 0; font-size:14px; color:var(--sand-200); }
+  .foot-col a:hover { color:var(--sand-50); }
+  .foot-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:64px; padding-top:24px; border-top:1px solid rgba(242,233,213,0.15); font-size:12px; color:var(--sand-400); }
+
+  @media (max-width:900px) {
+    .nav-links { display:none; }
+    .foot-grid { grid-template-columns:1fr 1fr; }
+    .hero-title { font-size:54px; }
+    .featured-text h2, .nl-title { font-size:36px; }
+    .hero, .grid-section, .featured, .newsletter { padding:64px 0; }
+    .featured-grid, .post-grid, .nl-grid { grid-template-columns:1fr; gap:32px; }
+    .post-grid { grid-template-columns:1fr; }
+    .grid-head { flex-direction:column; align-items:flex-start; gap:8px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <span class="nav-mark">R</span>
+      <span class="nav-name">RAYO</span>
+    </a>
+    <nav class="nav-links">
+      <a href="/recursos" class="nav-link">Recursos</a>
+      <a href="/como-funciona" class="nav-link">Como funciona</a>
+      <a href="/empresa" class="nav-link">Empresa</a>
+      <a href="/blog" class="nav-link active">Blog</a>
+      <a href="/faq" class="nav-link">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="/login" class="btn-ghost">Entrar</a>
+      <a href="/cadastro" class="btn-primary">Começar agora →</a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <span class="hero-eyebrow">Blog do RAYO · Ideias para a família</span>
+    <h1 class="hero-title">Onde a teoria <span class="light">vira</span> conversa.</h1>
+    <p class="hero-lede">Artigos, histórias reais, entrevistas com especialistas e práticas testadas — sobre relacionamento, parentalidade, autoconhecimento e as fases da vida em família.</p>
+
+    <div class="cats">
+      <span class="cat-pill active">Tudo</span>
+      <span class="cat-pill">Solteiro</span>
+      <span class="cat-pill">Namoro</span>
+      <span class="cat-pill">Noivos</span>
+      <span class="cat-pill">Casados</span>
+      <span class="cat-pill">Pais</span>
+      <span class="cat-pill">Histórias reais</span>
+      <span class="cat-pill">Especialistas</span>
+      <span class="cat-pill">Bastidores RAYO</span>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURED -->
+<section class="featured">
+  <div class="wrap">
+    <div class="featured-grid">
+      <div class="featured-img">
+        <span class="featured-img-tag">Em destaque · Casados</span>
+      </div>
+      <div class="featured-text">
+        <div class="featured-meta">
+          <span>06 mai 2026</span>
+          <span class="dot"></span>
+          <span>Leitura · 7 min</span>
+          <span class="dot"></span>
+          <span>Casados</span>
+        </div>
+        <h2>Os 6 anos em que paramos <span class="light">de</span> conversar (sem perceber).</h2>
+        <p>Quando o casamento entra no ritmo, o silêncio vira combustível. A história de Marina e Pedro — e por que eles voltaram a fazer perguntas que pareciam óbvias depois de uma década juntos.</p>
+        <div class="featured-author">
+          <div class="author-avatar">MR</div>
+          <div>
+            <div class="author-name">Marina Rossi</div>
+            <div class="author-meta">Editora-chefe · RAYO</div>
+          </div>
+        </div>
+        <a href="/blog/seis-anos-sem-conversar" class="btn-primary" style="margin-top:16px; align-self:flex-start;">Ler matéria completa →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GRID: Mais recentes -->
+<section class="grid-section">
+  <div class="wrap">
+    <div class="grid-head">
+      <h2>Mais <span class="light">recentes</span></h2>
+      <span class="meta mono">Atualizado · sex 08 mai</span>
+    </div>
+
+    <div class="post-grid">
+      <article class="post-card">
+        <div class="post-img forest"><span class="post-img-tag">Pais</span></div>
+        <div class="post-meta"><span>05 mai 2026</span><span class="dot"></span><span>5 min</span></div>
+        <h3>Como falar de telas em casa sem virar guerra de gerações.</h3>
+        <p>Um guia prático para combinados de tempo de tela com filhos de 8 a 14 anos — sem proibição vazia.</p>
+      </article>
+
+      <article class="post-card">
+        <div class="post-img terra"><span class="post-img-tag">Noivos</span></div>
+        <div class="post-meta"><span>03 mai 2026</span><span class="dot"></span><span>9 min</span></div>
+        <h3>Antes do altar: as 7 conversas que ninguém quer puxar.</h3>
+        <p>Finanças, religião, filhos, sogros, planos de carreira: o roteiro que vale revisar nos 90 dias antes do casamento.</p>
+      </article>
+
+      <article class="post-card">
+        <div class="post-img sage"><span class="post-img-tag">Solteiro</span></div>
+        <div class="post-meta"><span>30 abr 2026</span><span class="dot"></span><span>6 min</span></div>
+        <h3>Estar bem sozinho não é meta. É ponto de partida.</h3>
+        <p>Por que a fase solteiro merece mais que esperar — e como construir clareza antes de qualquer relação.</p>
+      </article>
+
+      <article class="post-card">
+        <div class="post-img sand"><span class="post-img-tag">Namoro</span></div>
+        <div class="post-meta"><span>27 abr 2026</span><span class="dot"></span><span>4 min</span></div>
+        <h3>Os 5 sinais que o seu namoro está pronto para o próximo passo.</h3>
+        <p>Não é sobre tempo, é sobre conversa. Como identificar a maturidade do vínculo antes de decidir.</p>
+      </article>
+
+      <article class="post-card">
+        <div class="post-img ochre"><span class="post-img-tag">Casados</span></div>
+        <div class="post-meta"><span>23 abr 2026</span><span class="dot"></span><span>8 min</span></div>
+        <h3>O ritual das 18h: como uma família reaprendeu a se ver.</h3>
+        <p>História real de uma família de SP que mudou um único hábito e transformou o clima da casa em duas semanas.</p>
+      </article>
+
+      <article class="post-card">
+        <div class="post-img ink"><span class="post-img-tag">Especialistas</span></div>
+        <div class="post-meta"><span>20 abr 2026</span><span class="dot"></span><span>12 min</span></div>
+        <h3>Entrevista: Dra. Beatriz Lemos sobre limites na adolescência.</h3>
+        <p>"Limite sem afeto vira ressentimento. Afeto sem limite vira insegurança." Conversa com a psicanalista.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- NEWSLETTER -->
+<section class="newsletter">
+  <div class="wrap">
+    <div class="nl-grid">
+      <div>
+        <span class="nl-eyebrow">Newsletter semanal</span>
+        <h2 class="nl-title">Uma <span class="light">ideia</span> nova, todo domingo.</h2>
+      </div>
+      <div>
+        <p class="nl-lede">A "Carta de domingo" do RAYO chega uma vez por semana com uma ideia, uma história e uma missão para experimentar com a sua família. Sem spam, sem promo.</p>
+        <form class="nl-form" style="margin-top:24px;">
+          <input type="email" placeholder="seu@email.com" />
+          <button type="submit">Assinar grátis</button>
+        </form>
+        <p class="nl-note">Mais de 8 mil famílias já recebem. Cancela quando quiser.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand-name">RAYO</div>
+        <div class="foot-brand-sub">Ecossistema · Famílias</div>
+        <p class="foot-tagline">Conteúdo, comunidade e práticas para iluminar todas as fases da sua família.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Produto</h4>
+        <a href="/recursos">Recursos</a>
+        <a href="/como-funciona">Como funciona</a>
+        <a href="/planos">Planos</a>
+        <a href="/baixar">Baixar app</a>
+      </div>
+      <div class="foot-col">
+        <h4>Empresa</h4>
+        <a href="/empresa">Sobre a empresa</a>
+        <a href="/imprensa">Imprensa</a>
+        <a href="/carreiras">Carreiras</a>
+        <a href="/contato">Contato</a>
+      </div>
+      <div class="foot-col">
+        <h4>Suporte</h4>
+        <a href="/faq">FAQ</a>
+        <a href="/blog">Blog</a>
+        <a href="/comunidade">Comunidade</a>
+        <a href="/status">Status</a>
+      </div>
+      <div class="foot-col">
+        <h4>Legal</h4>
+        <a href="/terms">Termos de uso</a>
+        <a href="/privacy">Privacidade</a>
+        <a href="/cookies">Cookies</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 RAYO. Todos os direitos reservados.</span>
+      <span class="mono">rayo.app.br</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

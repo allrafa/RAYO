@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Imprensa — RAYO | Press kit, releases e contato para mídia</title>
+<meta name="description" content="Sala de imprensa do RAYO: press kit com logos e fotos em alta, releases mais recentes, fatos institucionais e contato direto com a assessoria." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand-50:#FAF4E8; --sand-100:#F2E9D5; --sand-200:#E8DBBF; --sand-300:#D9C89E; --sand-400:#BFA87A;
+    --forest-900:#0C3B2E; --forest-700:#144D3C; --forest-500:#1E6A52;
+    --sage-100:#DCE8D2; --sage-300:#A9C396; --sage-500:#6D9773; --sage-700:#4F7253;
+    --terra-100:#F2D6CC; --terra-300:#E08770; --terra-500:#C8553D; --terra-700:#9C3A26; --terra-900:#5E2113;
+    --ochre-300:#E8C77E; --ochre-500:#D4A24C; --ochre-700:#A37A2D;
+    --ink-900:#0E1A14; --ink-700:#1F2A22; --ink-500:#4A5247; --ink-400:#6E7569; --ink-300:#9CA098;
+    --r-sm:10px; --r-md:16px; --r-lg:24px; --r-xl:32px; --r-pill:999px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--sand-100); color:var(--ink-900); font-family:'Outfit', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:inherit; text-decoration:none; }
+  .mono { font-family: ui-monospace, 'SF Mono', monospace; }
+
+  .nav { background:rgba(250,244,232,0.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--sand-300); position:sticky; top:0; z-index:50; }
+  .nav-inner { max-width:1280px; margin:0 auto; padding:18px 32px; display:flex; align-items:center; gap:32px; }
+  .nav-brand { display:flex; align-items:center; gap:10px; }
+  .nav-mark { width:36px; height:36px; border-radius:10px; background:var(--terra-500); display:grid; place-items:center; color:var(--sand-50); font-weight:700; font-size:18px; }
+  .nav-name { font-size:18px; font-weight:700; letter-spacing:-0.03em; color:var(--forest-900); }
+  .nav-links { display:flex; align-items:center; gap:4px; margin-left:32px; }
+  .nav-link { padding:8px 14px; border-radius:var(--r-pill); font-size:14px; color:var(--ink-700); font-weight:500; }
+  .nav-link:hover { background:var(--sand-200); color:var(--forest-900); }
+  .nav-link.active { color:var(--forest-900); font-weight:600; background:var(--sand-200); }
+  .nav-cta { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .btn-ghost { padding:10px 18px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--forest-900); border:1px solid var(--forest-900); background:transparent; cursor:pointer; }
+  .btn-ghost:hover { background:var(--forest-900); color:var(--sand-100); }
+  .btn-primary { padding:10px 20px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--sand-50); background:var(--terra-500); border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary:hover { background:var(--terra-700); }
+
+  .wrap { max-width:1280px; margin:0 auto; padding:0 32px; }
+  section { padding:96px 0; }
+  .section-eyebrow { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .section-title { font-size:48px; font-weight:600; letter-spacing:-0.04em; line-height:1; color:var(--forest-900); margin-top:14px; }
+  .section-title .light { font-weight:200; color:var(--terra-500); }
+
+  /* HERO */
+  .hero { padding:120px 0 64px; }
+  .hero-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:64px; align-items:end; padding-bottom:48px; border-bottom:1px solid var(--sand-300); }
+  .hero-eyebrow { font-family:ui-monospace,monospace; font-size:13px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .hero-title { font-size:96px; font-weight:600; letter-spacing:-0.06em; line-height:0.92; color:var(--forest-900); margin-top:24px; max-width:14ch; }
+  .hero-title .light { font-weight:200; color:var(--terra-500); }
+  .hero-side { padding-bottom:14px; }
+  .hero-side h3 { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-400); font-weight:600; margin-bottom:14px; }
+  .hero-side p { font-size:15px; color:var(--ink-500); line-height:1.6; margin-bottom:8px; }
+  .hero-side strong { color:var(--forest-900); font-weight:600; }
+  .hero-side a { color:var(--terra-500); border-bottom:1px solid var(--terra-300); }
+
+  /* QUICK FACTS */
+  .facts { padding:48px 0 96px; }
+  .facts-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .fact { background:var(--sand-50); border:1px solid var(--sand-300); border-radius:var(--r-lg); padding:32px; }
+  .fact-num { font-size:48px; font-weight:600; letter-spacing:-0.04em; line-height:1; color:var(--terra-500); }
+  .fact-num .light { font-weight:200; color:var(--forest-900); }
+  .fact-label { font-size:13px; color:var(--ink-500); margin-top:14px; line-height:1.4; }
+  .fact-meta { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-400); margin-top:12px; padding-top:12px; border-top:1px solid var(--sand-300); }
+
+  /* BOILERPLATE */
+  .boiler { background:var(--forest-900); color:var(--sand-100); border-radius:var(--r-xl); padding:64px; }
+  .boiler .section-eyebrow { color:var(--ochre-300); }
+  .boiler h2 { font-size:42px; font-weight:600; letter-spacing:-0.04em; color:var(--sand-50); margin-top:14px; line-height:1.05; }
+  .boiler h2 .light { font-weight:200; color:var(--terra-300); }
+  .boiler-text { font-size:17px; line-height:1.7; color:var(--sand-200); max-width:72ch; margin-top:32px; }
+  .boiler-text p + p { margin-top:18px; }
+  .boiler-actions { margin-top:32px; display:flex; gap:12px; }
+  .boiler-actions .btn-ghost { color:var(--sand-100); border-color:var(--sand-100); }
+  .boiler-actions .btn-ghost:hover { background:var(--sand-100); color:var(--forest-900); }
+
+  /* DOWNLOADS */
+  .downloads-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:48px; }
+  .dl-card { background:var(--sand-50); border:1px solid var(--sand-300); border-radius:var(--r-lg); padding:32px; display:flex; flex-direction:column; gap:14px; cursor:pointer; transition:transform 0.2s; }
+  .dl-card:hover { transform:translateY(-3px); }
+  .dl-card.dark { background:var(--forest-900); color:var(--sand-100); border-color:var(--forest-900); }
+  .dl-card.terra { background:var(--terra-500); color:var(--sand-50); border-color:var(--terra-700); }
+  .dl-preview { aspect-ratio:16/10; border-radius:var(--r-md); display:grid; place-items:center; font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; }
+  .dl-card .dl-preview { background:var(--sand-100); color:var(--ink-400); border:1px solid var(--sand-300); }
+  .dl-card.dark .dl-preview { background:var(--forest-700); color:var(--ochre-300); border:1px solid var(--forest-500); }
+  .dl-card.terra .dl-preview { background:var(--terra-700); color:var(--sand-200); border:1px solid var(--terra-700); }
+  .dl-preview .logo-circle { width:60px; height:60px; border-radius:50%; background:var(--terra-500); color:var(--sand-50); display:grid; place-items:center; font-size:28px; font-weight:700; letter-spacing:-0.03em; }
+  .dl-card.terra .dl-preview .logo-circle { background:var(--sand-50); color:var(--terra-500); }
+  .dl-card.dark .dl-preview .logo-circle { background:var(--ochre-500); color:var(--forest-900); }
+  .dl-name { font-size:18px; font-weight:600; letter-spacing:-0.02em; }
+  .dl-meta { font-size:13px; opacity:0.85; }
+  .dl-link { font-size:13px; font-weight:600; color:var(--terra-500); padding-top:14px; border-top:1px solid var(--sand-300); margin-top:auto; }
+  .dl-card.dark .dl-link { color:var(--ochre-300); border-top-color:rgba(242,233,213,0.15); }
+  .dl-card.terra .dl-link { color:var(--sand-100); border-top-color:rgba(250,244,232,0.2); }
+
+  /* RELEASES */
+  .releases-list { margin-top:48px; }
+  .release { display:grid; grid-template-columns:140px 1fr 32px; gap:32px; padding:32px 0; border-top:1px solid var(--sand-300); align-items:center; cursor:pointer; }
+  .release:hover { background:var(--sand-50); padding-left:24px; padding-right:24px; border-radius:var(--r-md); border-color:transparent; }
+  .release:last-child { border-bottom:1px solid var(--sand-300); }
+  .release-date { font-family:ui-monospace,monospace; font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .release-content h3 { font-size:22px; font-weight:600; letter-spacing:-0.02em; color:var(--forest-900); line-height:1.3; }
+  .release-content p { font-size:14px; color:var(--ink-500); line-height:1.6; margin-top:8px; max-width:62ch; }
+  .release-tag { display:inline-block; font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--sage-700); margin-top:10px; padding:3px 10px; background:var(--sage-100); border-radius:var(--r-pill); font-weight:600; }
+  .release-arrow { color:var(--terra-500); font-size:24px; }
+
+  /* COVERAGE */
+  .coverage { background:var(--sand-50); border-top:1px solid var(--sand-300); border-bottom:1px solid var(--sand-300); }
+  .coverage-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:48px; }
+  .clip { background:var(--sand-100); border:1px solid var(--sand-300); border-radius:var(--r-lg); padding:32px; display:flex; flex-direction:column; gap:18px; }
+  .clip-source { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .clip-quote { font-size:18px; font-weight:500; color:var(--forest-900); line-height:1.4; letter-spacing:-0.01em; }
+  .clip-meta { font-family:ui-monospace,monospace; font-size:11px; color:var(--ink-400); padding-top:14px; border-top:1px solid var(--sand-300); margin-top:auto; }
+
+  /* CONTACT BOX */
+  .contact { background:var(--terra-500); color:var(--sand-50); border-radius:var(--r-xl); padding:64px; display:grid; grid-template-columns:1.4fr 1fr; gap:48px; align-items:center; margin:64px 0 96px; }
+  .contact h2 { font-size:42px; font-weight:600; letter-spacing:-0.04em; color:var(--sand-50); line-height:1.05; }
+  .contact h2 .light { font-weight:200; color:var(--sand-200); }
+  .contact p { font-size:16px; color:var(--sand-100); line-height:1.6; margin-top:18px; max-width:48ch; }
+  .contact-channels { background:rgba(94,33,19,0.4); border-radius:var(--r-lg); padding:32px; border:1px solid rgba(250,244,232,0.15); }
+  .channel { padding:12px 0; border-top:1px solid rgba(250,244,232,0.15); }
+  .channel:first-of-type { border-top:none; padding-top:0; }
+  .channel-label { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:var(--sand-200); display:block; margin-bottom:4px; font-weight:600; }
+  .channel-value { font-size:16px; color:var(--sand-50); font-weight:500; }
+
+  /* FOOTER */
+  footer { background:var(--ink-900); color:var(--sand-200); padding:80px 0 32px; }
+  .foot-grid { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr; gap:48px; }
+  .foot-brand-name { font-size:24px; font-weight:700; color:var(--sand-50); letter-spacing:-0.03em; }
+  .foot-brand-sub { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-300); margin-top:6px; font-family:ui-monospace,monospace; }
+  .foot-tagline { font-size:14px; color:var(--sand-300); margin-top:24px; max-width:32ch; line-height:1.6; }
+  .foot-col h4 { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ochre-300); margin-bottom:18px; font-weight:600; }
+  .foot-col a { display:block; padding:6px 0; font-size:14px; color:var(--sand-200); }
+  .foot-col a:hover { color:var(--sand-50); }
+  .foot-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:64px; padding-top:24px; border-top:1px solid rgba(242,233,213,0.15); font-size:12px; color:var(--sand-400); }
+
+  @media (max-width:900px) {
+    .nav-links { display:none; }
+    .foot-grid { grid-template-columns:1fr 1fr; }
+    .hero-title, .boiler h2, .contact h2 { font-size:48px; }
+    .hero-grid, .contact { grid-template-columns:1fr; gap:32px; }
+    .facts-grid, .downloads-grid, .coverage-grid { grid-template-columns:1fr 1fr; }
+    .release { grid-template-columns:1fr; gap:8px; }
+    .release-arrow { display:none; }
+    section, .hero { padding:64px 0; }
+    .boiler, .contact { padding:40px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <span class="nav-mark">R</span>
+      <span class="nav-name">RAYO</span>
+    </a>
+    <nav class="nav-links">
+      <a href="/recursos" class="nav-link">Recursos</a>
+      <a href="/como-funciona" class="nav-link">Como funciona</a>
+      <a href="/empresa" class="nav-link">Empresa</a>
+      <a href="/blog" class="nav-link">Blog</a>
+      <a href="/faq" class="nav-link">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="/login" class="btn-ghost">Entrar</a>
+      <a href="/cadastro" class="btn-primary">Começar agora →</a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <span class="hero-eyebrow">Sala de imprensa</span>
+        <h1 class="hero-title">Press kit do <span class="light">RAYO.</span></h1>
+      </div>
+      <div class="hero-side">
+        <h3 class="mono">Atendimento à imprensa</h3>
+        <p><strong>Marina Rossi</strong> — Diretora de Comunicação</p>
+        <p><a href="mailto:imprensa@rayo.app.br">imprensa@rayo.app.br</a></p>
+        <p>+55 11 9 0000-0000 (WhatsApp)</p>
+        <p>Resposta em até 1 dia útil</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUICK FACTS -->
+<section class="facts">
+  <div class="wrap">
+    <span class="section-eyebrow">Fatos rápidos · Maio 2026</span>
+    <h2 class="section-title">RAYO em <span class="light">um</span> piscar de olhos.</h2>
+    <div class="facts-grid" style="margin-top:48px;">
+      <div class="fact">
+        <div class="fact-num">2024</div>
+        <div class="fact-label">Ano de fundação</div>
+        <div class="fact-meta mono">São Paulo · BR</div>
+      </div>
+      <div class="fact">
+        <div class="fact-num">12<span class="light">k+</span></div>
+        <div class="fact-label">Famílias ativas no Brasil</div>
+        <div class="fact-meta mono">Maio · 2026</div>
+      </div>
+      <div class="fact">
+        <div class="fact-num">7</div>
+        <div class="fact-label">Pessoas no time</div>
+        <div class="fact-meta mono">100% remoto BR</div>
+      </div>
+      <div class="fact">
+        <div class="fact-num">5</div>
+        <div class="fact-label">Fases de vida cobertas</div>
+        <div class="fact-meta mono">Solteiro → Pais</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BOILERPLATE -->
+<section style="padding-top:0;">
+  <div class="wrap">
+    <div class="boiler">
+      <span class="section-eyebrow">Boilerplate · texto institucional para citação</span>
+      <h2>Sobre o <span class="light">RAYO.</span></h2>
+      <div class="boiler-text">
+        <p>RAYO é uma plataforma brasileira de bem-estar familiar fundada em 2024 e sediada em São Paulo. Reunimos conteúdo curado, comunidade moderada e missões diárias num mesmo app, com o objetivo de fortalecer famílias em todas as fases — Solteiro, Namoro, Noivos, Casados e Pais.</p>
+        <p>Construímos contra três coisas: o feed infinito, o casal de vitrine e a fórmula milagrosa. Por isso o produto é privado por padrão, sem comparação social e baseado em prática, não só conhecimento. Hoje, mais de 12 mil famílias ativas usam o RAYO no Brasil.</p>
+        <p>Pode ser citado como: <em>"RAYO, plataforma brasileira de bem-estar familiar"</em>.</p>
+      </div>
+      <div class="boiler-actions">
+        <a href="#" class="btn-ghost">Copiar texto</a>
+        <a href="#" class="btn-ghost">Baixar como .txt</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOADS -->
+<section>
+  <div class="wrap">
+    <span class="section-eyebrow">Press kit · Download</span>
+    <h2 class="section-title">Logos, fotos e <span class="light">assets</span> de marca.</h2>
+
+    <div class="downloads-grid">
+      <div class="dl-card">
+        <div class="dl-preview"><div class="logo-circle">R</div></div>
+        <div class="dl-name">Logos · Pacote completo</div>
+        <div class="dl-meta">PNG, SVG, AI · Versões claro, escuro e mono · 14 MB</div>
+        <div class="dl-link">Baixar .zip →</div>
+      </div>
+
+      <div class="dl-card dark">
+        <div class="dl-preview"><div class="logo-circle">R</div></div>
+        <div class="dl-name">Logos · Versão escura</div>
+        <div class="dl-meta">Para uso em fundos claros, materiais editoriais e reportagens.</div>
+        <div class="dl-link">Baixar .zip →</div>
+      </div>
+
+      <div class="dl-card terra">
+        <div class="dl-preview"><div class="logo-circle">R</div></div>
+        <div class="dl-name">Logos · Versão monocromática</div>
+        <div class="dl-meta">Versões em uma cor para impressão, jornal e reaproveitamento gráfico.</div>
+        <div class="dl-link">Baixar .zip →</div>
+      </div>
+
+      <div class="dl-card">
+        <div class="dl-preview">FOTOS DE PRODUTO</div>
+        <div class="dl-name">Screenshots do app</div>
+        <div class="dl-meta">12 telas em alta · iPhone e Android · PNG transparente</div>
+        <div class="dl-link">Baixar .zip →</div>
+      </div>
+
+      <div class="dl-card">
+        <div class="dl-preview">FOTOS DA EQUIPE</div>
+        <div class="dl-name">Retratos da liderança</div>
+        <div class="dl-meta">Fundador, CTO e editora-chefe · 300dpi · Uso editorial</div>
+        <div class="dl-link">Baixar .zip →</div>
+      </div>
+
+      <div class="dl-card">
+        <div class="dl-preview">GUIA DE MARCA</div>
+        <div class="dl-name">Brand guidelines</div>
+        <div class="dl-meta">Cores, tipografia, espaçamento, usos permitidos e proibidos · PDF · 22 págs</div>
+        <div class="dl-link">Baixar PDF →</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RELEASES -->
+<section>
+  <div class="wrap">
+    <span class="section-eyebrow">Releases mais recentes</span>
+    <h2 class="section-title">O que <span class="light">anunciamos.</span></h2>
+
+    <div class="releases-list">
+      <div class="release">
+        <span class="release-date mono">06 mai 2026</span>
+        <div class="release-content">
+          <h3>RAYO chega a 12 mil famílias e lança o Modo Família</h3>
+          <p>Nova funcionalidade conecta até 4 perfis (casal e filhos adolescentes) num mesmo plano e libera missões adaptadas para a dinâmica de família com filhos.</p>
+          <span class="release-tag mono">Lançamento</span>
+        </div>
+        <span class="release-arrow">→</span>
+      </div>
+
+      <div class="release">
+        <span class="release-date mono">22 abr 2026</span>
+        <div class="release-content">
+          <h3>RAYO firma parceria com a Dra. Beatriz Lemos para curadoria sobre adolescência</h3>
+          <p>Psicanalista e referência nacional em adolescência se une ao conselho de curadoria do app para liderar a trilha "Limites na adolescência sem virar inimigo".</p>
+          <span class="release-tag mono">Parceria</span>
+        </div>
+        <span class="release-arrow">→</span>
+      </div>
+
+      <div class="release">
+        <span class="release-date mono">14 mar 2026</span>
+        <div class="release-content">
+          <h3>RAYO levanta rodada-semente liderada por anjos brasileiros</h3>
+          <p>Aporte foi feito por investidores anjo do ecossistema brasileiro de tecnologia, com a tese explícita de privacidade dos usuários e modelo de negócio sem venda de dados.</p>
+          <span class="release-tag mono">Captação</span>
+        </div>
+        <span class="release-arrow">→</span>
+      </div>
+
+      <div class="release">
+        <span class="release-date mono">28 jan 2026</span>
+        <div class="release-content">
+          <h3>App ultrapassa 4.9 estrelas na App Store após 8 meses de operação aberta</h3>
+          <p>RAYO se mantém entre os apps mais bem avaliados da categoria Bem-estar na loja brasileira da Apple, com mais de 1.200 avaliações.</p>
+          <span class="release-tag mono">Marca</span>
+        </div>
+        <span class="release-arrow">→</span>
+      </div>
+
+      <div class="release">
+        <span class="release-date mono">05 dez 2025</span>
+        <div class="release-content">
+          <h3>RAYO publica seu manifesto de privacidade: "sem feed, sem venda, sem vitrine"</h3>
+          <p>Documento institucional posiciona a empresa contra o modelo dominante de redes sociais e detalha tecnicamente como os dados dos usuários são tratados.</p>
+          <span class="release-tag mono">Posicionamento</span>
+        </div>
+        <span class="release-arrow">→</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COVERAGE -->
+<section class="coverage">
+  <div class="wrap">
+    <span class="section-eyebrow">Cobertura na imprensa</span>
+    <h2 class="section-title">Quem já <span class="light">falou</span> sobre o RAYO.</h2>
+
+    <div class="coverage-grid">
+      <div class="clip">
+        <span class="clip-source mono">Folha de S.Paulo</span>
+        <p class="clip-quote">"Um aplicativo brasileiro que aposta na ideia oposta do feed infinito para falar de família."</p>
+        <div class="clip-meta mono">Caderno Tec · Mar/2026</div>
+      </div>
+      <div class="clip">
+        <span class="clip-source mono">Revista Vida Simples</span>
+        <p class="clip-quote">"O RAYO traz para o casal o que o Headspace fez pela meditação: tirar a teoria do papel."</p>
+        <div class="clip-meta mono">Edição 252 · Abr/2026</div>
+      </div>
+      <div class="clip">
+        <span class="clip-source mono">Podcast Café Brasil</span>
+        <p class="clip-quote">"Entrevista com o fundador sobre por que o app não tem feed, não tem curtida, não tem comparação."</p>
+        <div class="clip-meta mono">Episódio 1.184 · Fev/2026</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<div class="wrap">
+  <div class="contact">
+    <div>
+      <h2>Vai escrever sobre o <span class="light">RAYO?</span></h2>
+      <p>Falamos com a imprensa de segunda a sexta. Mande sua pauta, prazo e o que precisa — material, entrevista, demo do app — e nos coordenamos com você.</p>
+    </div>
+    <div class="contact-channels">
+      <div class="channel">
+        <span class="channel-label mono">E-mail · imprensa</span>
+        <span class="channel-value">imprensa@rayo.app.br</span>
+      </div>
+      <div class="channel">
+        <span class="channel-label mono">Porta-voz</span>
+        <span class="channel-value">Marina Rossi · Comunicação</span>
+      </div>
+      <div class="channel">
+        <span class="channel-label mono">WhatsApp</span>
+        <span class="channel-value">+55 11 9 0000-0000</span>
+      </div>
+      <div class="channel">
+        <span class="channel-label mono">Tempo de resposta</span>
+        <span class="channel-value">Até 1 dia útil</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand-name">RAYO</div>
+        <div class="foot-brand-sub">Ecossistema · Famílias</div>
+        <p class="foot-tagline">Conteúdo, comunidade e práticas para iluminar todas as fases da sua família.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Produto</h4>
+        <a href="/recursos">Recursos</a>
+        <a href="/como-funciona">Como funciona</a>
+        <a href="/planos">Planos</a>
+        <a href="/baixar">Baixar app</a>
+      </div>
+      <div class="foot-col">
+        <h4>Empresa</h4>
+        <a href="/empresa">Sobre a empresa</a>
+        <a href="/imprensa">Imprensa</a>
+        <a href="/carreiras">Carreiras</a>
+        <a href="/contato">Contato</a>
+      </div>
+      <div class="foot-col">
+        <h4>Suporte</h4>
+        <a href="/faq">FAQ</a>
+        <a href="/blog">Blog</a>
+        <a href="/comunidade">Comunidade</a>
+        <a href="/status">Status</a>
+      </div>
+      <div class="foot-col">
+        <h4>Legal</h4>
+        <a href="/terms">Termos de uso</a>
+        <a href="/privacy">Privacidade</a>
+        <a href="/cookies">Cookies</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 RAYO. Todos os direitos reservados.</span>
+      <span class="mono">rayo.app.br</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

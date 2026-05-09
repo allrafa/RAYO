@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Empresa — RAYO | Quem somos, missão, valores e o time por trás do app</title>
+<meta name="description" content="Conheça o RAYO: a empresa, a missão de fortalecer famílias em todas as fases, os valores que guiam o produto, o time fundador e como construímos com responsabilidade." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand-50:#FAF4E8; --sand-100:#F2E9D5; --sand-200:#E8DBBF; --sand-300:#D9C89E; --sand-400:#BFA87A;
+    --forest-900:#0C3B2E; --forest-700:#144D3C; --forest-500:#1E6A52;
+    --sage-100:#DCE8D2; --sage-300:#A9C396; --sage-500:#6D9773; --sage-700:#4F7253;
+    --terra-100:#F2D6CC; --terra-300:#E08770; --terra-500:#C8553D; --terra-700:#9C3A26; --terra-900:#5E2113;
+    --ochre-300:#E8C77E; --ochre-500:#D4A24C; --ochre-700:#A37A2D;
+    --ink-900:#0E1A14; --ink-700:#1F2A22; --ink-500:#4A5247; --ink-400:#6E7569; --ink-300:#9CA098;
+    --r-sm:10px; --r-md:16px; --r-lg:24px; --r-xl:32px; --r-pill:999px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--sand-100); color:var(--ink-900); font-family:'Outfit', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:inherit; text-decoration:none; }
+  .mono { font-family: ui-monospace, 'SF Mono', monospace; }
+
+  .nav { background:rgba(250,244,232,0.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--sand-300); position:sticky; top:0; z-index:50; }
+  .nav-inner { max-width:1280px; margin:0 auto; padding:18px 32px; display:flex; align-items:center; gap:32px; }
+  .nav-brand { display:flex; align-items:center; gap:10px; }
+  .nav-mark { width:36px; height:36px; border-radius:10px; background:var(--terra-500); display:grid; place-items:center; color:var(--sand-50); font-weight:700; font-size:18px; }
+  .nav-name { font-size:18px; font-weight:700; letter-spacing:-0.03em; color:var(--forest-900); }
+  .nav-links { display:flex; align-items:center; gap:4px; margin-left:32px; }
+  .nav-link { padding:8px 14px; border-radius:var(--r-pill); font-size:14px; color:var(--ink-700); font-weight:500; }
+  .nav-link:hover { background:var(--sand-200); color:var(--forest-900); }
+  .nav-link.active { color:var(--forest-900); font-weight:600; background:var(--sand-200); }
+  .nav-cta { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .btn-ghost { padding:10px 18px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--forest-900); border:1px solid var(--forest-900); background:transparent; cursor:pointer; }
+  .btn-ghost:hover { background:var(--forest-900); color:var(--sand-100); }
+  .btn-primary { padding:10px 20px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--sand-50); background:var(--terra-500); border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary:hover { background:var(--terra-700); }
+
+  .wrap { max-width:1280px; margin:0 auto; padding:0 32px; }
+  section { padding:96px 0; }
+  .section-eyebrow { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .section-title { font-size:56px; font-weight:600; letter-spacing:-0.04em; line-height:1; color:var(--forest-900); margin-top:16px; }
+  .section-title .light { font-weight:200; color:var(--terra-500); }
+  .section-lede { font-size:18px; color:var(--ink-500); line-height:1.6; max-width:62ch; margin-top:24px; }
+
+  /* HERO (manifesto) */
+  .hero { padding:140px 0 80px; }
+  .hero-eyebrow { font-family:ui-monospace,monospace; font-size:13px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .hero-title { font-size:120px; font-weight:600; letter-spacing:-0.06em; line-height:0.9; color:var(--forest-900); margin-top:24px; max-width:14ch; }
+  .hero-title .light { font-weight:200; color:var(--terra-500); }
+  .hero-byline { display:flex; align-items:flex-end; justify-content:space-between; margin-top:48px; padding-top:32px; border-top:1px solid var(--sand-300); gap:48px; flex-wrap:wrap; }
+  .hero-byline p { font-size:19px; color:var(--ink-500); line-height:1.6; max-width:48ch; }
+  .hero-byline .meta { font-family:ui-monospace,monospace; font-size:12px; color:var(--ink-400); letter-spacing:0.14em; text-transform:uppercase; text-align:right; line-height:1.8; }
+  .hero-byline .meta strong { color:var(--forest-900); display:block; font-weight:600; }
+
+  /* MISSION */
+  .mission { background:var(--forest-900); color:var(--sand-100); }
+  .mission .section-title { color:var(--sand-50); font-size:64px; max-width:18ch; }
+  .mission .section-title .light { color:var(--terra-300); }
+  .mission .section-eyebrow { color:var(--ochre-300); }
+  .mission p.lede { font-size:20px; color:var(--sand-200); line-height:1.6; max-width:54ch; margin-top:32px; }
+  .mission-pillars { display:grid; grid-template-columns:repeat(3,1fr); gap:32px; margin-top:64px; padding-top:48px; border-top:1px solid rgba(242,233,213,0.15); }
+  .mp-num { font-family:ui-monospace,monospace; font-size:13px; letter-spacing:0.16em; color:var(--ochre-300); font-weight:600; }
+  .mp h4 { font-size:24px; font-weight:600; letter-spacing:-0.02em; color:var(--sand-50); margin-top:14px; line-height:1.1; }
+  .mp h4 .light { font-weight:200; color:var(--terra-300); }
+  .mp p { font-size:14px; color:var(--sand-300); line-height:1.6; margin-top:14px; }
+
+  /* VALUES */
+  .values { background:var(--sand-50); border-top:1px solid var(--sand-300); border-bottom:1px solid var(--sand-300); }
+  .values-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:64px; }
+  .value-card { background:var(--sand-100); border:1px solid var(--sand-300); border-radius:var(--r-lg); padding:40px; display:flex; flex-direction:column; gap:14px; }
+  .value-card.terra { background:var(--terra-500); color:var(--sand-50); border-color:var(--terra-700); }
+  .value-card.sage { background:var(--sage-100); border-color:var(--sage-300); }
+  .value-card.forest { background:var(--forest-900); color:var(--sand-100); border-color:var(--forest-900); }
+  .value-num { font-family:ui-monospace,monospace; font-size:13px; letter-spacing:0.16em; color:var(--terra-500); font-weight:600; }
+  .value-card.terra .value-num { color:var(--sand-200); }
+  .value-card.forest .value-num { color:var(--ochre-300); }
+  .value-card h3 { font-size:32px; font-weight:600; letter-spacing:-0.03em; line-height:1.05; }
+  .value-card h3 .light { font-weight:200; }
+  .value-card .light { color:var(--terra-500); }
+  .value-card.terra h3 .light { color:var(--sand-200); }
+  .value-card.forest h3 .light { color:var(--terra-300); }
+  .value-card p { font-size:15px; line-height:1.6; opacity:0.9; max-width:54ch; }
+
+  /* HISTORY / TIMELINE */
+  .history-list { margin-top:64px; }
+  .h-item { display:grid; grid-template-columns:140px 1fr; gap:48px; padding:32px 0; border-top:1px solid var(--sand-300); }
+  .h-item:last-child { border-bottom:1px solid var(--sand-300); }
+  .h-year { font-family:ui-monospace,monospace; font-size:32px; font-weight:600; color:var(--terra-500); letter-spacing:-0.02em; }
+  .h-content h4 { font-size:24px; font-weight:600; letter-spacing:-0.02em; color:var(--forest-900); }
+  .h-content p { font-size:15px; color:var(--ink-500); line-height:1.6; margin-top:10px; max-width:62ch; }
+
+  /* TEAM */
+  .team { background:var(--sand-50); border-top:1px solid var(--sand-300); }
+  .team-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; margin-top:64px; }
+  .member { display:flex; flex-direction:column; gap:12px; }
+  .member-avatar { aspect-ratio:1/1; border-radius:var(--r-lg); background:var(--terra-500); display:grid; place-items:center; color:var(--sand-50); font-weight:600; font-size:48px; letter-spacing:-0.03em; position:relative; overflow:hidden; }
+  .member:nth-child(2) .member-avatar { background:var(--forest-900); color:var(--ochre-300); }
+  .member:nth-child(3) .member-avatar { background:var(--sage-500); }
+  .member:nth-child(4) .member-avatar { background:var(--ochre-500); color:var(--forest-900); }
+  .member:nth-child(5) .member-avatar { background:var(--ink-700); color:var(--sand-100); }
+  .member:nth-child(6) .member-avatar { background:var(--terra-300); color:var(--forest-900); }
+  .member:nth-child(7) .member-avatar { background:var(--forest-500); color:var(--sand-50); }
+  .member:nth-child(8) .member-avatar { background:var(--sand-300); color:var(--forest-900); }
+  .member-name { font-size:18px; font-weight:600; color:var(--forest-900); letter-spacing:-0.02em; }
+  .member-role { font-size:13px; color:var(--ink-500); }
+  .member-tag { font-family:ui-monospace,monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--terra-500); margin-top:4px; }
+
+  /* NUMBERS */
+  .numbers { background:var(--terra-500); color:var(--sand-50); }
+  .numbers .section-title { color:var(--sand-50); }
+  .numbers .section-title .light { color:var(--sand-200); }
+  .numbers .section-eyebrow { color:var(--sand-100); }
+  .numbers .section-lede { color:var(--sand-100); }
+  .nm-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; margin-top:64px; }
+  .nm { padding:32px; background:var(--terra-700); border-radius:var(--r-lg); border:1px solid rgba(250,244,232,0.1); }
+  .nm-num { font-size:64px; font-weight:600; letter-spacing:-0.04em; line-height:1; color:var(--sand-50); }
+  .nm-num .light { font-weight:200; color:var(--sand-200); }
+  .nm-label { font-size:14px; color:var(--sand-100); margin-top:14px; }
+
+  /* CAREERS */
+  .careers { background:var(--sand-50); border-top:1px solid var(--sand-300); }
+  .careers-grid { display:grid; grid-template-columns:1fr 1fr; gap:48px; margin-top:48px; }
+  .careers-text h3 { font-size:42px; font-weight:600; letter-spacing:-0.04em; line-height:1.05; color:var(--forest-900); }
+  .careers-text h3 .light { font-weight:200; color:var(--terra-500); }
+  .careers-text p { font-size:16px; color:var(--ink-500); line-height:1.6; margin-top:20px; max-width:48ch; }
+  .openings { background:var(--sand-100); border:1px solid var(--sand-300); border-radius:var(--r-lg); padding:32px; }
+  .opening { display:flex; justify-content:space-between; align-items:center; padding:20px 0; border-top:1px solid var(--sand-300); gap:16px; }
+  .opening:first-of-type { border-top:none; padding-top:8px; }
+  .opening-title { font-size:16px; font-weight:600; color:var(--forest-900); }
+  .opening-meta { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-400); margin-top:4px; }
+  .opening-arrow { color:var(--terra-500); font-size:20px; flex-shrink:0; }
+  .openings-empty { text-align:center; padding:32px 0; color:var(--ink-500); font-size:14px; }
+
+  /* CTA STRIP */
+  .cta-strip { background:var(--forest-900); color:var(--sand-100); border-radius:var(--r-xl); padding:64px; display:flex; align-items:center; justify-content:space-between; gap:48px; margin:64px 0 96px; }
+  .cta-strip-title { font-size:42px; font-weight:600; letter-spacing:-0.03em; line-height:1.05; color:var(--sand-50); max-width:24ch; }
+  .cta-strip-title .light { font-weight:200; color:var(--terra-300); }
+
+  /* FOOTER */
+  footer { background:var(--ink-900); color:var(--sand-200); padding:80px 0 32px; }
+  .foot-grid { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr; gap:48px; }
+  .foot-brand-name { font-size:24px; font-weight:700; color:var(--sand-50); letter-spacing:-0.03em; }
+  .foot-brand-sub { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-300); margin-top:6px; font-family:ui-monospace,monospace; }
+  .foot-tagline { font-size:14px; color:var(--sand-300); margin-top:24px; max-width:32ch; line-height:1.6; }
+  .foot-col h4 { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ochre-300); margin-bottom:18px; font-weight:600; }
+  .foot-col a { display:block; padding:6px 0; font-size:14px; color:var(--sand-200); }
+  .foot-col a:hover { color:var(--sand-50); }
+  .foot-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:64px; padding-top:24px; border-top:1px solid rgba(242,233,213,0.15); font-size:12px; color:var(--sand-400); }
+
+  @media (max-width:900px) {
+    .nav-links { display:none; }
+    .foot-grid { grid-template-columns:1fr 1fr; }
+    .hero-title { font-size:64px; }
+    .section-title, .mission .section-title { font-size:40px; }
+    .values-grid, .mission-pillars, .careers-grid { grid-template-columns:1fr; gap:16px; }
+    .nm-grid, .team-grid { grid-template-columns:1fr 1fr; }
+    .h-item { grid-template-columns:1fr; gap:8px; }
+    section, .hero { padding:64px 0; }
+    .cta-strip { flex-direction:column; align-items:flex-start; padding:40px; }
+    .cta-strip-title { font-size:32px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <span class="nav-mark">R</span>
+      <span class="nav-name">RAYO</span>
+    </a>
+    <nav class="nav-links">
+      <a href="/recursos" class="nav-link">Recursos</a>
+      <a href="/como-funciona" class="nav-link">Como funciona</a>
+      <a href="/empresa" class="nav-link active">Empresa</a>
+      <a href="/blog" class="nav-link">Blog</a>
+      <a href="/faq" class="nav-link">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="/login" class="btn-ghost">Entrar</a>
+      <a href="/cadastro" class="btn-primary">Começar agora →</a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO MANIFESTO -->
+<section class="hero">
+  <div class="wrap">
+    <span class="hero-eyebrow">Sobre o RAYO</span>
+    <h1 class="hero-title">Iluminar todas as <span class="light">fases</span> da família.</h1>
+    <div class="hero-byline">
+      <p>Somos uma empresa brasileira construindo um lugar único para a vida em família — onde conteúdo, comunidade e prática se encontram, sem feed infinito e sem casal de vitrine.</p>
+      <div class="meta mono">
+        <strong>RAYO Tecnologia LTDA</strong>
+        Fundada em 2024
+        São Paulo · Brasil
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MISSION -->
+<section class="mission">
+  <div class="wrap">
+    <span class="section-eyebrow">Nossa missão</span>
+    <h2 class="section-title">Famílias <span class="light">mais</span> fortes — todos os dias, em todas as fases.</h2>
+    <p class="lede">Acreditamos que a vida em família é a coisa mais importante e a menos cuidada do dia a dia. A internet ajudou em quase tudo — menos nisso. O RAYO nasce para mudar essa equação.</p>
+
+    <div class="mission-pillars">
+      <div class="mp">
+        <span class="mp-num mono">01</span>
+        <h4>Acessível para <span class="light">qualquer</span> família.</h4>
+        <p>Plano gratuito robusto, conteúdo em português, linguagem clara, sem jargão de terapia ou guru.</p>
+      </div>
+      <div class="mp">
+        <span class="mp-num mono">02</span>
+        <h4>Construído com <span class="light">especialistas</span> reais.</h4>
+        <p>Curadoria revisada por psicólogos, terapeutas, educadores e famílias com história — não por algoritmo.</p>
+      </div>
+      <div class="mp">
+        <span class="mp-num mono">03</span>
+        <h4>Privado <span class="light">por</span> padrão.</h4>
+        <p>Sua jornada é sua. Sem feed, sem comparação, sem venda de dados. Você escolhe ativamente o que compartilha.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VALUES -->
+<section class="values">
+  <div class="wrap">
+    <span class="section-eyebrow">Nossos valores</span>
+    <h2 class="section-title">Como tomamos <span class="light">decisões.</span></h2>
+    <p class="section-lede">São quatro princípios que guiam tudo — do design da próxima tela à conversa difícil entre cofundadores.</p>
+
+    <div class="values-grid">
+      <div class="value-card forest">
+        <span class="value-num mono">VALOR 01</span>
+        <h3>A família <span class="light">vem</span> antes do produto.</h3>
+        <p>Quando a feature engaja mais mas atrapalha a vida real, a feature sai. Nosso sucesso é a família ganhar tempo de qualidade — não passar mais tempo no app.</p>
+      </div>
+      <div class="value-card terra">
+        <span class="value-num mono">VALOR 02</span>
+        <h3>Conteúdo <span class="light">honesto</span>, sempre.</h3>
+        <p>Nada de "10 segredos para o casamento perfeito". Falamos do que funciona, do que não funciona e do que ainda não sabemos. Curadoria com diferentes vozes.</p>
+      </div>
+      <div class="value-card">
+        <span class="value-num mono">VALOR 03</span>
+        <h3>Privacidade <span class="light">como</span> postura.</h3>
+        <p>Não vendemos dados. Não compartilhamos com anunciantes. Não usamos o que você escreve para treinar modelos sem te perguntar. Privacidade é design, não disclaimer.</p>
+      </div>
+      <div class="value-card sage">
+        <span class="value-num mono">VALOR 04</span>
+        <h3>Acreditamos <span class="light">na</span> chama, não na fórmula.</h3>
+        <p>Não existe fórmula universal para família. Existe atenção, intenção e prática. O RAYO oferece caminhos — você escolhe o seu.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HISTORY -->
+<section>
+  <div class="wrap">
+    <span class="section-eyebrow">Nossa história</span>
+    <h2 class="section-title">De uma planilha <span class="light">para</span> 12 mil famílias.</h2>
+
+    <div class="history-list">
+      <div class="h-item">
+        <div class="h-year mono">2024</div>
+        <div class="h-content">
+          <h4>O começo: uma planilha de missões para o casal fundador.</h4>
+          <p>Tudo começou quando os fundadores criaram uma planilha de missões semanais para o próprio casamento. Em três meses, amigos pediam acesso. Em seis, nascia a primeira versão do RAYO.</p>
+        </div>
+      </div>
+      <div class="h-item">
+        <div class="h-year mono">2024</div>
+        <div class="h-content">
+          <h4>Versão fechada com 50 famílias-piloto.</h4>
+          <p>Convidamos 50 famílias de fases diferentes para testar o app. Em 90 dias de uso, 87% queriam continuar. Foi quando o produto virou empresa.</p>
+        </div>
+      </div>
+      <div class="h-item">
+        <div class="h-year mono">2025</div>
+        <div class="h-content">
+          <h4>Lançamento público e primeira rodada de captação.</h4>
+          <p>Em janeiro de 2025, abrimos o app para o público. Levantamos a primeira rodada com investidores anjo brasileiros que entendem a missão e respeitam a tese de privacidade.</p>
+        </div>
+      </div>
+      <div class="h-item">
+        <div class="h-year mono">2025</div>
+        <div class="h-content">
+          <h4>Academia ganha curadoria com especialistas.</h4>
+          <p>Trazemos os primeiros parceiros da curadoria: psicólogos, terapeutas de casal e educadores. A Academia passa de 30 para 340 horas de conteúdo em 8 meses.</p>
+        </div>
+      </div>
+      <div class="h-item">
+        <div class="h-year mono">2026</div>
+        <div class="h-content">
+          <h4>12 mil famílias ativas. Modo Família. Comunidade ativa.</h4>
+          <p>Em maio de 2026, somos 12 mil famílias ativas, lançamos o Modo Família e a Comunidade vira o terceiro pilar mais usado do app. Ainda no começo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TEAM -->
+<section class="team">
+  <div class="wrap">
+    <span class="section-eyebrow">Nosso time</span>
+    <h2 class="section-title">Gente que <span class="light">vive</span> o que constrói.</h2>
+    <p class="section-lede">Somos um time pequeno e enxuto — produto, conteúdo, engenharia e parcerias. Todo mundo aqui é família, em alguma fase.</p>
+
+    <div class="team-grid">
+      <div class="member">
+        <div class="member-avatar">RV</div>
+        <div class="member-name">Rafael Valera</div>
+        <div class="member-role">Fundador &amp; CEO</div>
+        <div class="member-tag mono">PRODUTO · ESTRATÉGIA</div>
+      </div>
+      <div class="member">
+        <div class="member-avatar">MR</div>
+        <div class="member-name">Marina Rossi</div>
+        <div class="member-role">Editora-chefe &amp; Curadoria</div>
+        <div class="member-tag mono">CONTEÚDO</div>
+      </div>
+      <div class="member">
+        <div class="member-avatar">PA</div>
+        <div class="member-name">Pedro Almeida</div>
+        <div class="member-role">CTO &amp; Engenharia</div>
+        <div class="member-tag mono">ENG · PLATAFORMA</div>
+      </div>
+      <div class="member">
+        <div class="member-avatar">BL</div>
+        <div class="member-name">Dra. Beatriz Lemos</div>
+        <div class="member-role">Conselho de curadoria</div>
+        <div class="member-tag mono">PSICANÁLISE</div>
+      </div>
+      <div class="member">
+        <div class="member-avatar">JC</div>
+        <div class="member-name">Júlia Castro</div>
+        <div class="member-role">Design &amp; brand</div>
+        <div class="member-tag mono">DESIGN</div>
+      </div>
+      <div class="member">
+        <div class="member-avatar">LS</div>
+        <div class="member-name">Lucas Santana</div>
+        <div class="member-role">Comunidade &amp; suporte</div>
+        <div class="member-tag mono">COMUNIDADE</div>
+      </div>
+      <div class="member">
+        <div class="member-avatar">AV</div>
+        <div class="member-name">Ana Vieira</div>
+        <div class="member-role">Operações &amp; finanças</div>
+        <div class="member-tag mono">OPS</div>
+      </div>
+      <div class="member">
+        <div class="member-avatar">+</div>
+        <div class="member-name">Próximo(a)?</div>
+        <div class="member-role">Estamos contratando.</div>
+        <div class="member-tag mono">VEJA AS VAGAS</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NUMBERS -->
+<section class="numbers">
+  <div class="wrap">
+    <span class="section-eyebrow">RAYO em números</span>
+    <h2 class="section-title">O que <span class="light">construímos</span> até aqui.</h2>
+    <p class="section-lede">Cada número aqui representa uma família — não uma métrica de vaidade. Atualizado em maio de 2026.</p>
+
+    <div class="nm-grid">
+      <div class="nm">
+        <div class="nm-num">12<span class="light">k+</span></div>
+        <div class="nm-label">Famílias ativas no app</div>
+      </div>
+      <div class="nm">
+        <div class="nm-num">340<span class="light">+</span></div>
+        <div class="nm-label">Horas de conteúdo curado</div>
+      </div>
+      <div class="nm">
+        <div class="nm-num">87<span class="light">%</span></div>
+        <div class="nm-label">Concluem a primeira trilha</div>
+      </div>
+      <div class="nm">
+        <div class="nm-num">4.9<span class="light">★</span></div>
+        <div class="nm-label">Avaliação média na App Store</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CAREERS -->
+<section class="careers">
+  <div class="wrap">
+    <span class="section-eyebrow">Carreiras no RAYO</span>
+    <h2 class="section-title">Vem <span class="light">com</span> a gente.</h2>
+
+    <div class="careers-grid">
+      <div class="careers-text">
+        <h3>Construímos <span class="light">remoto</span>, com calendário humano.</h3>
+        <p>Time pequeno, 100% remoto Brasil, com encontros presenciais a cada trimestre. Sextas curtas, sem reuniões depois das 16h e licença familiar estendida — porque praticamos o que a gente fala.</p>
+        <p>Hoje somos 7 pessoas. Vamos crescer com calma. Se você quer construir algo com tese, envolve-se com a missão e topa a vida em time pequeno, fala com a gente.</p>
+        <a href="/carreiras" class="btn-ghost" style="margin-top:24px;">Ver mais sobre o time →</a>
+      </div>
+      <div class="openings">
+        <h4 style="font-family:ui-monospace,monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--terra-500);margin-bottom:8px;font-weight:600;">Vagas abertas · Maio/2026</h4>
+        <a href="/carreiras/eng-mobile" class="opening">
+          <div>
+            <div class="opening-title">Engenheiro(a) Mobile · Sênior</div>
+            <div class="opening-meta mono">Remoto Brasil · Tempo integral</div>
+          </div>
+          <span class="opening-arrow">→</span>
+        </a>
+        <a href="/carreiras/conteudo" class="opening">
+          <div>
+            <div class="opening-title">Editor(a) de conteúdo · Pleno</div>
+            <div class="opening-meta mono">Remoto Brasil · Tempo integral</div>
+          </div>
+          <span class="opening-arrow">→</span>
+        </a>
+        <a href="/carreiras/comunidade" class="opening">
+          <div>
+            <div class="opening-title">Community manager · Pleno</div>
+            <div class="opening-meta mono">Remoto Brasil · Tempo integral</div>
+          </div>
+          <span class="opening-arrow">→</span>
+        </a>
+        <a href="/carreiras/parceria" class="opening">
+          <div>
+            <div class="opening-title">Parcerias e curadoria · Sênior</div>
+            <div class="opening-meta mono">SP/Híbrido · Tempo integral</div>
+          </div>
+          <span class="opening-arrow">→</span>
+        </a>
+        <a href="/carreiras/spontaneous" class="opening">
+          <div>
+            <div class="opening-title">Não viu sua vaga? Mande mesmo assim.</div>
+            <div class="opening-meta mono">Aplicação espontânea · curiosidade@rayo.app.br</div>
+          </div>
+          <span class="opening-arrow">→</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="wrap">
+  <div class="cta-strip">
+    <h2 class="cta-strip-title">Quer entender o RAYO <span class="light">por</span> dentro?</h2>
+    <a href="/cadastro" class="btn-primary" style="background:var(--terra-500); padding:16px 28px; font-size:14px;">Experimentar grátis →</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand-name">RAYO</div>
+        <div class="foot-brand-sub">Ecossistema · Famílias</div>
+        <p class="foot-tagline">Conteúdo, comunidade e práticas para iluminar todas as fases da sua família.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Produto</h4>
+        <a href="/recursos">Recursos</a>
+        <a href="/como-funciona">Como funciona</a>
+        <a href="/planos">Planos</a>
+        <a href="/baixar">Baixar app</a>
+      </div>
+      <div class="foot-col">
+        <h4>Empresa</h4>
+        <a href="/empresa">Sobre a empresa</a>
+        <a href="/imprensa">Imprensa</a>
+        <a href="/carreiras">Carreiras</a>
+        <a href="/contato">Contato</a>
+      </div>
+      <div class="foot-col">
+        <h4>Suporte</h4>
+        <a href="/faq">FAQ</a>
+        <a href="/blog">Blog</a>
+        <a href="/comunidade">Comunidade</a>
+        <a href="/status">Status</a>
+      </div>
+      <div class="foot-col">
+        <h4>Legal</h4>
+        <a href="/terms">Termos de uso</a>
+        <a href="/privacy">Privacidade</a>
+        <a href="/cookies">Cookies</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 RAYO. Todos os direitos reservados.</span>
+      <span class="mono">rayo.app.br</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

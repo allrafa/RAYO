@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Como funciona — RAYO | Em 3 passos, do cadastro à sua primeira missão</title>
+<meta name="description" content="Veja como o RAYO funciona: identificamos sua fase de vida, recomendamos uma trilha e missões diárias, e você caminha no seu ritmo — sozinho, em casal ou em família." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand-50:#FAF4E8; --sand-100:#F2E9D5; --sand-200:#E8DBBF; --sand-300:#D9C89E; --sand-400:#BFA87A;
+    --forest-900:#0C3B2E; --forest-700:#144D3C; --forest-500:#1E6A52;
+    --sage-100:#DCE8D2; --sage-300:#A9C396; --sage-500:#6D9773; --sage-700:#4F7253;
+    --terra-100:#F2D6CC; --terra-300:#E08770; --terra-500:#C8553D; --terra-700:#9C3A26; --terra-900:#5E2113;
+    --ochre-300:#E8C77E; --ochre-500:#D4A24C; --ochre-700:#A37A2D;
+    --ink-900:#0E1A14; --ink-700:#1F2A22; --ink-500:#4A5247; --ink-400:#6E7569; --ink-300:#9CA098;
+    --r-sm:10px; --r-md:16px; --r-lg:24px; --r-xl:32px; --r-pill:999px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--sand-100); color:var(--ink-900); font-family:'Outfit', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:inherit; text-decoration:none; }
+  .mono { font-family: ui-monospace, 'SF Mono', monospace; }
+
+  .nav { background:rgba(250,244,232,0.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--sand-300); position:sticky; top:0; z-index:50; }
+  .nav-inner { max-width:1280px; margin:0 auto; padding:18px 32px; display:flex; align-items:center; gap:32px; }
+  .nav-brand { display:flex; align-items:center; gap:10px; }
+  .nav-mark { width:36px; height:36px; border-radius:10px; background:var(--terra-500); display:grid; place-items:center; color:var(--sand-50); font-weight:700; font-size:18px; }
+  .nav-name { font-size:18px; font-weight:700; letter-spacing:-0.03em; color:var(--forest-900); }
+  .nav-links { display:flex; align-items:center; gap:4px; margin-left:32px; }
+  .nav-link { padding:8px 14px; border-radius:var(--r-pill); font-size:14px; color:var(--ink-700); font-weight:500; }
+  .nav-link:hover { background:var(--sand-200); color:var(--forest-900); }
+  .nav-link.active { color:var(--forest-900); font-weight:600; background:var(--sand-200); }
+  .nav-cta { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .btn-ghost { padding:10px 18px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--forest-900); border:1px solid var(--forest-900); background:transparent; cursor:pointer; }
+  .btn-ghost:hover { background:var(--forest-900); color:var(--sand-100); }
+  .btn-primary { padding:10px 20px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--sand-50); background:var(--terra-500); border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary:hover { background:var(--terra-700); }
+
+  .wrap { max-width:1280px; margin:0 auto; padding:0 32px; }
+  section { padding:96px 0; }
+  .section-eyebrow { font-family: ui-monospace, monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .section-title { font-size:56px; font-weight:600; letter-spacing:-0.04em; line-height:1; color:var(--forest-900); margin-top:16px; }
+  .section-title .light { font-weight:200; color:var(--terra-500); }
+  .section-lede { font-size:18px; color:var(--ink-500); line-height:1.6; max-width:62ch; margin-top:24px; }
+
+  /* HERO */
+  .hero { padding:120px 0 64px; text-align:center; }
+  .hero-eyebrow { font-family:ui-monospace,monospace; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .hero-title { font-size:88px; font-weight:600; letter-spacing:-0.05em; line-height:0.95; color:var(--forest-900); margin-top:20px; max-width:18ch; margin-left:auto; margin-right:auto; }
+  .hero-title .light { font-weight:200; color:var(--terra-500); }
+  .hero-lede { font-size:19px; color:var(--ink-500); line-height:1.6; margin:32px auto 0; max-width:54ch; }
+
+  /* STEPS */
+  .steps { background:var(--sand-50); border-top:1px solid var(--sand-300); border-bottom:1px solid var(--sand-300); }
+  .steps-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; margin-top:64px; position:relative; }
+  .step-card { background:var(--sand-100); border:1px solid var(--sand-300); border-radius:var(--r-lg); padding:40px; display:flex; flex-direction:column; gap:18px; position:relative; min-height:380px; }
+  .step-card .num { font-family:ui-monospace,monospace; font-size:13px; font-weight:600; letter-spacing:0.16em; color:var(--terra-500); }
+  .step-card h3 { font-size:30px; font-weight:600; letter-spacing:-0.03em; line-height:1.05; color:var(--forest-900); }
+  .step-card h3 .light { font-weight:200; color:var(--terra-500); }
+  .step-card p { font-size:15px; line-height:1.6; color:var(--ink-500); }
+  .step-card .step-visual { margin-top:auto; padding-top:24px; border-top:1px dashed var(--sand-300); }
+  .step-pill { display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:var(--r-pill); background:var(--sand-50); border:1px solid var(--sand-300); font-size:12px; color:var(--ink-700); margin-right:6px; margin-bottom:6px; }
+  .step-pill .dot { width:6px; height:6px; border-radius:50%; background:var(--terra-500); }
+
+  /* JOURNEY (life phases) */
+  .journey { background:var(--forest-900); color:var(--sand-100); }
+  .journey .section-title { color:var(--sand-50); }
+  .journey .section-title .light { color:var(--terra-300); }
+  .journey .section-eyebrow { color:var(--ochre-300); }
+  .journey .section-lede { color:var(--sand-200); }
+  .journey-track { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-top:64px; position:relative; }
+  .journey-track::before { content:""; position:absolute; top:24px; left:5%; right:5%; height:2px; background:linear-gradient(to right, var(--terra-500), var(--ochre-300), var(--sage-300), var(--sand-300), var(--terra-300)); border-radius:2px; }
+  .phase { background:transparent; padding:0; display:flex; flex-direction:column; gap:14px; }
+  .phase-dot { width:48px; height:48px; border-radius:50%; background:var(--terra-500); border:4px solid var(--forest-900); display:grid; place-items:center; color:var(--sand-50); font-weight:700; font-size:18px; position:relative; z-index:1; }
+  .phase:nth-child(2) .phase-dot { background:var(--ochre-500); color:var(--forest-900); }
+  .phase:nth-child(3) .phase-dot { background:var(--sage-500); }
+  .phase:nth-child(4) .phase-dot { background:var(--sand-300); color:var(--forest-900); }
+  .phase:nth-child(5) .phase-dot { background:var(--terra-300); color:var(--forest-900); }
+  .phase-label { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase; color:var(--ochre-300); }
+  .phase-name { font-size:24px; font-weight:600; letter-spacing:-0.02em; color:var(--sand-50); }
+  .phase-desc { font-size:13px; color:var(--sand-200); line-height:1.6; }
+  .phase-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .phase-tag { font-size:11px; padding:4px 10px; border-radius:var(--r-pill); background:rgba(250,244,232,0.08); border:1px solid rgba(250,244,232,0.15); color:var(--sand-200); }
+
+  /* CASAL DUO */
+  .duo { background:var(--sand-50); }
+  .duo-grid { display:grid; grid-template-columns:1.1fr 1fr; gap:80px; align-items:center; margin-top:48px; }
+  .duo-visual { background:var(--terra-500); border-radius:var(--r-xl); padding:48px; aspect-ratio:1/1; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+  .duo-phones { display:flex; gap:-20px; position:relative; }
+  .duo-phone { width:180px; aspect-ratio:9/16; background:var(--sand-100); border-radius:24px; padding:14px; box-shadow:0 24px 60px rgba(0,0,0,0.25); display:flex; flex-direction:column; gap:10px; }
+  .duo-phone:first-child { transform:rotate(-6deg) translateX(20px); }
+  .duo-phone:last-child { transform:rotate(6deg) translateX(-20px); z-index:2; }
+  .duo-phone .top-bar { height:5px; background:var(--ink-300); border-radius:3px; width:30%; margin:0 auto; }
+  .duo-phone .row { background:var(--sand-50); border-radius:var(--r-sm); padding:10px; font-size:10px; color:var(--ink-500); }
+  .duo-phone .row strong { display:block; color:var(--forest-900); font-size:11px; margin-bottom:2px; }
+  .duo-phone .check { display:inline-block; width:14px; height:14px; border-radius:50%; background:var(--sage-500); color:var(--sand-50); font-size:9px; text-align:center; line-height:14px; margin-right:4px; }
+
+  /* PRINCIPLES */
+  .principles-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; margin-top:64px; }
+  .principle { background:var(--sand-50); border:1px solid var(--sand-300); border-radius:var(--r-lg); padding:32px; }
+  .principle-num { font-family:ui-monospace,monospace; font-size:13px; color:var(--terra-500); font-weight:600; letter-spacing:0.14em; }
+  .principle h4 { font-size:24px; font-weight:600; letter-spacing:-0.02em; color:var(--forest-900); margin-top:14px; line-height:1.1; }
+  .principle h4 .light { font-weight:200; color:var(--terra-500); }
+  .principle p { font-size:14px; color:var(--ink-500); line-height:1.6; margin-top:14px; }
+
+  /* TIMELINE */
+  .timeline { background:var(--sand-50); }
+  .timeline-list { margin-top:48px; display:flex; flex-direction:column; gap:0; }
+  .tl-item { display:grid; grid-template-columns:120px 1fr; gap:32px; padding:28px 0; border-top:1px solid var(--sand-300); align-items:flex-start; }
+  .tl-item:last-child { border-bottom:1px solid var(--sand-300); }
+  .tl-time { font-family:ui-monospace,monospace; font-size:12px; color:var(--terra-500); letter-spacing:0.14em; text-transform:uppercase; font-weight:600; padding-top:4px; }
+  .tl-content h4 { font-size:22px; font-weight:600; letter-spacing:-0.02em; color:var(--forest-900); }
+  .tl-content p { font-size:15px; color:var(--ink-500); line-height:1.6; margin-top:8px; max-width:62ch; }
+
+  /* CTA STRIP */
+  .cta-strip { background:var(--terra-500); color:var(--sand-50); border-radius:var(--r-xl); padding:64px; display:flex; align-items:center; justify-content:space-between; gap:48px; margin-bottom:96px; }
+  .cta-strip-title { font-size:42px; font-weight:600; letter-spacing:-0.03em; line-height:1.05; color:var(--sand-50); max-width:24ch; }
+  .cta-strip-title .light { font-weight:200; color:var(--sand-200); }
+  .cta-strip .btn-primary { background:var(--forest-900); color:var(--sand-100); padding:16px 28px; font-size:14px; }
+  .cta-strip .btn-primary:hover { background:var(--ink-900); }
+
+  /* FOOTER */
+  footer { background:var(--forest-900); color:var(--sand-200); padding:80px 0 32px; }
+  .foot-grid { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr; gap:48px; }
+  .foot-brand-name { font-size:24px; font-weight:700; color:var(--sand-50); letter-spacing:-0.03em; }
+  .foot-brand-sub { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-300); margin-top:6px; font-family:ui-monospace,monospace; }
+  .foot-tagline { font-size:14px; color:var(--sand-300); margin-top:24px; max-width:32ch; line-height:1.6; }
+  .foot-col h4 { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ochre-300); margin-bottom:18px; font-weight:600; }
+  .foot-col a { display:block; padding:6px 0; font-size:14px; color:var(--sand-200); }
+  .foot-col a:hover { color:var(--sand-50); }
+  .foot-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:64px; padding-top:24px; border-top:1px solid rgba(242,233,213,0.15); font-size:12px; color:var(--sand-400); }
+
+  @media (max-width:900px) {
+    .nav-links { display:none; }
+    .foot-grid, .duo-grid { grid-template-columns:1fr; gap:40px; }
+    .section-title, .hero-title { font-size:48px; }
+    section, .hero { padding:64px 0; }
+    .steps-grid, .journey-track, .principles-grid { grid-template-columns:1fr; }
+    .journey-track::before { display:none; }
+    .tl-item { grid-template-columns:1fr; gap:8px; }
+    .cta-strip { flex-direction:column; align-items:flex-start; padding:40px; }
+    .cta-strip-title { font-size:32px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <span class="nav-mark">R</span>
+      <span class="nav-name">RAYO</span>
+    </a>
+    <nav class="nav-links">
+      <a href="/recursos" class="nav-link">Recursos</a>
+      <a href="/como-funciona" class="nav-link active">Como funciona</a>
+      <a href="/empresa" class="nav-link">Empresa</a>
+      <a href="/blog" class="nav-link">Blog</a>
+      <a href="/faq" class="nav-link">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="/login" class="btn-ghost">Entrar</a>
+      <a href="/cadastro" class="btn-primary">Começar agora →</a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <span class="hero-eyebrow">Como funciona o RAYO</span>
+    <h1 class="hero-title">Do cadastro à primeira missão, em <span class="light">3 passos.</span></h1>
+    <p class="hero-lede">Sem onboarding chato e sem precisar mudar nada na sua rotina. Você responde 5 perguntas, recebe sua trilha e a primeira missão chega em 30 segundos.</p>
+  </div>
+</section>
+
+<!-- STEPS -->
+<section class="steps">
+  <div class="wrap">
+    <span class="section-eyebrow">Os 3 passos</span>
+    <h2 class="section-title">Simples por <span class="light">princípio.</span></h2>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <span class="num mono">PASSO 01</span>
+        <h3>Conte sua <span class="light">fase</span> em 5 perguntas.</h3>
+        <p>Solteiro, namorando, noivo, casado ou pai/mãe? Quanto tempo? Como vocês se conheceram? Cinco perguntas rápidas, e o RAYO já entende para onde te levar primeiro.</p>
+        <div class="step-visual">
+          <span class="step-pill"><span class="dot"></span> Onboarding · 90s</span>
+          <span class="step-pill"><span class="dot"></span> Sem cadastro pesado</span>
+        </div>
+      </div>
+      <div class="step-card">
+        <span class="num mono">PASSO 02</span>
+        <h3>Receba sua <span class="light">primeira</span> trilha.</h3>
+        <p>Com base nas suas respostas, recomendamos uma trilha de 7 ou 14 dias com começo, meio e fim. Tudo dentro do app, em formatos curtos: vídeo, áudio, texto e missão prática.</p>
+        <div class="step-visual">
+          <span class="step-pill"><span class="dot"></span> Trilha de 7 ou 14 dias</span>
+          <span class="step-pill"><span class="dot"></span> 10–20 min/dia</span>
+        </div>
+      </div>
+      <div class="step-card">
+        <span class="num mono">PASSO 03</span>
+        <h3>Faça a <span class="light">missão</span> de hoje.</h3>
+        <p>Toda missão é uma ação real para fazer no seu dia: uma pergunta nova ao seu parceiro, um ritual de 5 minutos, uma anotação no fim do dia. Você marca, e a próxima já chega amanhã.</p>
+        <div class="step-visual">
+          <span class="step-pill"><span class="dot"></span> Missão diária ou semanal</span>
+          <span class="step-pill"><span class="dot"></span> Modo casal opcional</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- JOURNEY -->
+<section class="journey">
+  <div class="wrap">
+    <span class="section-eyebrow">A jornada do RAYO</span>
+    <h2 class="section-title">Cinco fases. <span class="light">Um</span> caminho.</h2>
+    <p class="section-lede">A vida em família tem ciclos. O RAYO é construído ao redor de cinco fases — e a curadoria, as trilhas e a comunidade se ajustam a você conforme o tempo passa.</p>
+
+    <div class="journey-track">
+      <div class="phase">
+        <div class="phase-dot">S</div>
+        <span class="phase-label mono">Fase 01</span>
+        <div class="phase-name">Solteiro</div>
+        <div class="phase-desc">Identidade, propósito e o que procurar (ou não) em alguém.</div>
+        <div class="phase-tags">
+          <span class="phase-tag">Autoconhecimento</span>
+          <span class="phase-tag">Vínculos</span>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot">N</div>
+        <span class="phase-label mono">Fase 02</span>
+        <div class="phase-name">Namoro</div>
+        <div class="phase-desc">Conhecer de verdade, conversar sobre o que importa, decidir junto.</div>
+        <div class="phase-tags">
+          <span class="phase-tag">Conversas-chave</span>
+          <span class="phase-tag">Limites</span>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot">N</div>
+        <span class="phase-label mono">Fase 03</span>
+        <div class="phase-name">Noivos</div>
+        <div class="phase-desc">Os 90 dias antes do altar — finanças, expectativas, projeto de vida.</div>
+        <div class="phase-tags">
+          <span class="phase-tag">Acordos</span>
+          <span class="phase-tag">Projeto</span>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot">C</div>
+        <span class="phase-label mono">Fase 04</span>
+        <div class="phase-name">Casados</div>
+        <div class="phase-desc">Manter a chama, cuidar das diferenças, rever combinados ao longo dos anos.</div>
+        <div class="phase-tags">
+          <span class="phase-tag">Rotinas</span>
+          <span class="phase-tag">Reconexão</span>
+        </div>
+      </div>
+      <div class="phase">
+        <div class="phase-dot">P</div>
+        <span class="phase-label mono">Fase 05</span>
+        <div class="phase-name">Pais</div>
+        <div class="phase-desc">Educar com firmeza e afeto sem perder o casal por trás dos pais.</div>
+        <div class="phase-tags">
+          <span class="phase-tag">Educação</span>
+          <span class="phase-tag">Casal-pais</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DUO / MODO CASAL -->
+<section class="duo">
+  <div class="wrap">
+    <span class="section-eyebrow">Modo Casal</span>
+    <h2 class="section-title">Vocês caminham <span class="light">juntos.</span></h2>
+    <p class="section-lede">Quando os dois estão no RAYO, vocês podem ativar o Modo Casal. As missões viram conjuntas, vocês marcam juntos, e a trilha avança no ritmo dos dois.</p>
+
+    <div class="duo-grid">
+      <div class="duo-visual">
+        <div class="duo-phones">
+          <div class="duo-phone">
+            <div class="top-bar"></div>
+            <div class="row"><strong>Missão de hoje</strong>Pergunte algo novo sobre a infância dele.</div>
+            <div class="row"><span class="check">✓</span><strong>Marcado</strong>às 21h12</div>
+            <div class="row"><strong>Próxima</strong>amanhã às 8h</div>
+          </div>
+          <div class="duo-phone">
+            <div class="top-bar"></div>
+            <div class="row"><strong>Missão de hoje</strong>Pergunte algo novo sobre a infância dela.</div>
+            <div class="row"><span class="check">✓</span><strong>Marcado</strong>às 21h08</div>
+            <div class="row"><strong>Próxima</strong>amanhã às 8h</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:36px;font-weight:600;letter-spacing:-0.03em;line-height:1.05;color:var(--forest-900);">A mesma missão. <span style="font-weight:200;color:var(--terra-500);">No</span> ritmo de vocês.</h3>
+        <p style="font-size:16px;color:var(--ink-500);line-height:1.6;margin-top:20px;max-width:48ch;">Cada um marca quando concluir, sem cobrança. Quando os dois marcam, a trilha avança um dia. Quando só um marca, fica esperando — sem culpa, sem alarme.</p>
+        <ul style="list-style:none;margin-top:28px;display:flex;flex-direction:column;gap:14px;">
+          <li style="display:flex;gap:14px;align-items:flex-start;font-size:15px;color:var(--ink-700);"><span style="width:6px;height:6px;border-radius:50%;background:var(--terra-500);margin-top:9px;"></span>Vocês veem a mesma missão, ao mesmo tempo</li>
+          <li style="display:flex;gap:14px;align-items:flex-start;font-size:15px;color:var(--ink-700);"><span style="width:6px;height:6px;border-radius:50%;background:var(--terra-500);margin-top:9px;"></span>Cada um marca individualmente, no seu tempo</li>
+          <li style="display:flex;gap:14px;align-items:flex-start;font-size:15px;color:var(--ink-700);"><span style="width:6px;height:6px;border-radius:50%;background:var(--terra-500);margin-top:9px;"></span>O parceiro nunca vê seu conteúdo privado (anotações, diários)</li>
+          <li style="display:flex;gap:14px;align-items:flex-start;font-size:15px;color:var(--ink-700);"><span style="width:6px;height:6px;border-radius:50%;background:var(--terra-500);margin-top:9px;"></span>Funciona também em família com filhos adolescentes</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRINCIPLES -->
+<section>
+  <div class="wrap">
+    <span class="section-eyebrow">Princípios de produto</span>
+    <h2 class="section-title">O que <span class="light">o</span> RAYO não é.</h2>
+    <p class="section-lede">A internet de famílias está cheia de feed infinito, comparação e gurus do casamento perfeito. O RAYO foi construído contra essas três coisas.</p>
+
+    <div class="principles-grid">
+      <div class="principle">
+        <span class="principle-num mono">PRINCÍPIO 01</span>
+        <h4>Sem feed <span class="light">infinito.</span></h4>
+        <p>Você abre, faz a missão do dia ou avança um pouco na trilha, e fecha. O RAYO foi feito para sair do app, não para te prender nele.</p>
+      </div>
+      <div class="principle">
+        <span class="principle-num mono">PRINCÍPIO 02</span>
+        <h4>Sem casal <span class="light">de</span> vitrine.</h4>
+        <p>Não tem feed de momentos, não tem foto de família, não tem comparação. Sua jornada é privada por padrão — e fica privada se você quiser.</p>
+      </div>
+      <div class="principle">
+        <span class="principle-num mono">PRINCÍPIO 03</span>
+        <h4>Sem fórmula <span class="light">milagrosa.</span></h4>
+        <p>Toda família é diferente. O RAYO oferece caminhos curados, mas a escolha é sua — e você pode pular, voltar, refazer ou ignorar qualquer trilha.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TIMELINE: A primeira semana -->
+<section class="timeline">
+  <div class="wrap">
+    <span class="section-eyebrow">A primeira semana no RAYO</span>
+    <h2 class="section-title">Como <span class="light">é</span> começar.</h2>
+
+    <div class="timeline-list">
+      <div class="tl-item">
+        <span class="tl-time mono">Dia 0 · 90s</span>
+        <div class="tl-content">
+          <h4>Você cria sua conta e responde 5 perguntas</h4>
+          <p>Sem cartão de crédito, sem aprovação, sem onboarding com 18 telas. Você diz sua fase, idade, há quanto tempo está nesse momento e o que mais te incomoda hoje. Pronto.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <span class="tl-time mono">Dia 0 · 30s</span>
+        <div class="tl-content">
+          <h4>O RAYO recomenda sua primeira trilha</h4>
+          <p>Uma trilha curta, de 7 dias, escolhida para a sua fase e o seu momento. Você vê o que vai aprender, quanto tempo vai levar e a primeira missão.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <span class="tl-time mono">Dia 1 · 10min</span>
+        <div class="tl-content">
+          <h4>Sua primeira missão chega no horário que você escolheu</h4>
+          <p>De manhã, na hora do almoço ou no fim do dia — você define. A missão é simples: uma ação real, com tempo definido, com um pequeno texto explicando por que.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <span class="tl-time mono">Dia 3 · 5min</span>
+        <div class="tl-content">
+          <h4>Você é convidado para um grupo da Comunidade</h4>
+          <p>Um grupo da sua fase, com até 30 pessoas. A entrada é opcional — mas se você topar, encontra gente vivendo coisas parecidas com as suas.</p>
+        </div>
+      </div>
+      <div class="tl-item">
+        <span class="tl-time mono">Dia 7 · 8min</span>
+        <div class="tl-content">
+          <h4>Você fecha sua primeira trilha e o RAYO sugere o próximo passo</h4>
+          <p>Pode ser um curso da Academia, uma nova trilha mais profunda ou um grupo específico da Comunidade. Você escolhe — e o ciclo recomeça, com mais informação sobre o que funciona para você.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="wrap">
+  <div class="cta-strip">
+    <h2 class="cta-strip-title">Começa em <span class="light">90 segundos.</span></h2>
+    <a href="/cadastro" class="btn-primary">Criar minha conta →</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand-name">RAYO</div>
+        <div class="foot-brand-sub">Ecossistema · Famílias</div>
+        <p class="foot-tagline">Conteúdo, comunidade e práticas para iluminar todas as fases da sua família.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Produto</h4>
+        <a href="/recursos">Recursos</a>
+        <a href="/como-funciona">Como funciona</a>
+        <a href="/planos">Planos</a>
+        <a href="/baixar">Baixar app</a>
+      </div>
+      <div class="foot-col">
+        <h4>Empresa</h4>
+        <a href="/empresa">Sobre a empresa</a>
+        <a href="/imprensa">Imprensa</a>
+        <a href="/carreiras">Carreiras</a>
+        <a href="/contato">Contato</a>
+      </div>
+      <div class="foot-col">
+        <h4>Suporte</h4>
+        <a href="/faq">FAQ</a>
+        <a href="/blog">Blog</a>
+        <a href="/comunidade">Comunidade</a>
+        <a href="/status">Status</a>
+      </div>
+      <div class="foot-col">
+        <h4>Legal</h4>
+        <a href="/terms">Termos de uso</a>
+        <a href="/privacy">Privacidade</a>
+        <a href="/cookies">Cookies</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 RAYO. Todos os direitos reservados.</span>
+      <span class="mono">rayo.app.br</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

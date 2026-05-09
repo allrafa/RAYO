@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Recursos — RAYO | Academia, Comunidade, Trilhas e Missões para a sua família</title>
+<meta name="description" content="Conheça os pilares do RAYO: Academia com cursos curados, Comunidade de famílias, Trilhas para cada fase (Solteiro, Namoro, Noivos, Casados, Pais) e Missões para fortalecer laços no dia a dia." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sand-50:#FAF4E8; --sand-100:#F2E9D5; --sand-200:#E8DBBF; --sand-300:#D9C89E; --sand-400:#BFA87A;
+    --forest-900:#0C3B2E; --forest-700:#144D3C; --forest-500:#1E6A52;
+    --sage-100:#DCE8D2; --sage-300:#A9C396; --sage-500:#6D9773; --sage-700:#4F7253;
+    --terra-100:#F2D6CC; --terra-300:#E08770; --terra-500:#C8553D; --terra-700:#9C3A26; --terra-900:#5E2113;
+    --ochre-300:#E8C77E; --ochre-500:#D4A24C; --ochre-700:#A37A2D;
+    --ink-900:#0E1A14; --ink-700:#1F2A22; --ink-500:#4A5247; --ink-400:#6E7569; --ink-300:#9CA098;
+    --r-sm:10px; --r-md:16px; --r-lg:24px; --r-xl:32px; --r-pill:999px;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--sand-100); color:var(--ink-900); font-family:'Outfit', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:inherit; text-decoration:none; }
+  .mono { font-family: ui-monospace, 'SF Mono', monospace; }
+
+  /* HEADER */
+  .nav { background:rgba(250,244,232,0.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--sand-300); position:sticky; top:0; z-index:50; }
+  .nav-inner { max-width:1280px; margin:0 auto; padding:18px 32px; display:flex; align-items:center; gap:32px; }
+  .nav-brand { display:flex; align-items:center; gap:10px; }
+  .nav-mark { width:36px; height:36px; border-radius:10px; background:var(--terra-500); display:grid; place-items:center; color:var(--sand-50); font-weight:700; font-size:18px; }
+  .nav-name { font-size:18px; font-weight:700; letter-spacing:-0.03em; color:var(--forest-900); }
+  .nav-links { display:flex; align-items:center; gap:4px; margin-left:32px; }
+  .nav-link { padding:8px 14px; border-radius:var(--r-pill); font-size:14px; color:var(--ink-700); font-weight:500; }
+  .nav-link:hover { background:var(--sand-200); color:var(--forest-900); }
+  .nav-link.active { color:var(--forest-900); font-weight:600; background:var(--sand-200); }
+  .nav-cta { margin-left:auto; display:flex; gap:8px; align-items:center; }
+  .btn-ghost { padding:10px 18px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--forest-900); border:1px solid var(--forest-900); background:transparent; cursor:pointer; }
+  .btn-ghost:hover { background:var(--forest-900); color:var(--sand-100); }
+  .btn-primary { padding:10px 20px; border-radius:var(--r-pill); font-size:13px; font-weight:600; color:var(--sand-50); background:var(--terra-500); border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary:hover { background:var(--terra-700); }
+
+  .wrap { max-width:1280px; margin:0 auto; padding:0 32px; }
+  section { padding:96px 0; }
+  .section-eyebrow { font-family: ui-monospace, monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .section-title { font-size:56px; font-weight:600; letter-spacing:-0.04em; line-height:1; color:var(--forest-900); margin-top:16px; }
+  .section-title .light { font-weight:200; color:var(--terra-500); }
+  .section-lede { font-size:18px; color:var(--ink-500); line-height:1.6; max-width:62ch; margin-top:24px; }
+
+  /* HERO */
+  .hero { padding:120px 0 80px; }
+  .hero-grid { display:grid; grid-template-columns:1.2fr 1fr; gap:64px; align-items:center; }
+  .hero-eyebrow { font-family: ui-monospace, monospace; font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; display:inline-flex; align-items:center; gap:12px; }
+  .hero-eyebrow::before { content:""; width:32px; height:1px; background:var(--terra-500); }
+  .hero-title { font-size:84px; font-weight:600; letter-spacing:-0.05em; line-height:0.95; color:var(--forest-900); margin-top:20px; }
+  .hero-title .light { font-weight:200; color:var(--terra-500); }
+  .hero-lede { font-size:19px; color:var(--ink-500); line-height:1.6; margin-top:28px; max-width:48ch; }
+  .hero-cta-row { display:flex; gap:12px; margin-top:36px; }
+  .hero-mock { background:var(--forest-900); border-radius:var(--r-xl); padding:40px; aspect-ratio:1/1.1; position:relative; overflow:hidden; display:flex; flex-direction:column; justify-content:space-between; color:var(--sand-100); }
+  .hero-mock::before { content:""; position:absolute; inset:0; background:radial-gradient(ellipse 70% 50% at 70% 30%, rgba(200,85,61,0.35) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 20% 80%, rgba(108,151,115,0.3) 0%, transparent 60%); }
+  .hero-mock-card { position:relative; background:rgba(250,244,232,0.08); border:1px solid rgba(242,233,213,0.15); border-radius:var(--r-md); padding:20px; backdrop-filter:blur(12px); }
+  .hero-mock-tag { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ochre-300); }
+  .hero-mock-title { font-size:24px; font-weight:600; letter-spacing:-0.02em; margin-top:8px; }
+  .hero-mock-meta { font-size:12px; color:var(--sand-300); margin-top:8px; }
+
+  /* PILLARS */
+  .pillars { background:var(--sand-50); border-top:1px solid var(--sand-300); border-bottom:1px solid var(--sand-300); }
+  .pillars-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-top:64px; }
+  .pillar-card { background:var(--sand-100); border:1px solid var(--sand-300); border-radius:var(--r-lg); padding:32px 24px; display:flex; flex-direction:column; gap:18px; min-height:280px; transition:transform 0.2s; }
+  .pillar-card:hover { transform:translateY(-4px); }
+  .pillar-card.forest { background:var(--forest-900); color:var(--sand-100); border-color:var(--forest-900); }
+  .pillar-card.terra { background:var(--terra-500); color:var(--sand-50); border-color:var(--terra-700); }
+  .pillar-card.sage { background:var(--sage-100); border-color:var(--sage-300); }
+  .pillar-icon { width:48px; height:48px; border-radius:12px; background:var(--terra-500); color:var(--sand-50); display:grid; place-items:center; font-size:22px; font-weight:700; }
+  .pillar-card.forest .pillar-icon { background:var(--ochre-500); color:var(--forest-900); }
+  .pillar-card.terra .pillar-icon { background:var(--sand-50); color:var(--terra-500); }
+  .pillar-card.sage .pillar-icon { background:var(--forest-900); color:var(--sand-100); }
+  .pillar-num { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.16em; opacity:0.7; }
+  .pillar-name { font-size:24px; font-weight:600; letter-spacing:-0.02em; line-height:1.1; }
+  .pillar-desc { font-size:13px; line-height:1.6; opacity:0.85; margin-top:auto; }
+
+  /* FEATURE BLOCKS — alternating */
+  .feature { padding:96px 0; }
+  .feature-grid { display:grid; grid-template-columns:1fr 1fr; gap:80px; align-items:center; }
+  .feature.reverse .feature-grid > .feature-text { order:2; }
+  .feature-text .feature-eyebrow { font-family:ui-monospace,monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-500); font-weight:600; }
+  .feature-text h3 { font-size:48px; font-weight:600; letter-spacing:-0.04em; line-height:1.02; color:var(--forest-900); margin-top:14px; }
+  .feature-text h3 .light { font-weight:200; color:var(--terra-500); }
+  .feature-text p { font-size:17px; color:var(--ink-500); line-height:1.6; margin-top:24px; max-width:48ch; }
+  .feature-list { list-style:none; margin-top:32px; display:flex; flex-direction:column; gap:14px; }
+  .feature-list li { display:flex; gap:14px; align-items:flex-start; font-size:15px; color:var(--ink-700); line-height:1.5; }
+  .feature-list li::before { content:""; width:6px; height:6px; border-radius:50%; background:var(--terra-500); margin-top:9px; flex-shrink:0; }
+  .feature-link { display:inline-flex; align-items:center; gap:8px; margin-top:32px; font-size:14px; font-weight:600; color:var(--forest-900); border-bottom:1.5px solid var(--forest-900); padding-bottom:2px; }
+  .feature-link:hover { color:var(--terra-500); border-color:var(--terra-500); }
+  .feature-visual { background:var(--sand-50); border:1px solid var(--sand-300); border-radius:var(--r-xl); padding:40px; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+  .feature-visual.dark { background:var(--forest-900); border-color:var(--forest-900); color:var(--sand-100); }
+  .feature-visual.terra { background:var(--terra-500); border-color:var(--terra-700); color:var(--sand-50); }
+  .feature-visual.sage { background:var(--sage-100); border-color:var(--sage-300); }
+  .feature-visual-mock { width:100%; max-width:340px; aspect-ratio:9/16; background:var(--sand-100); border-radius:28px; padding:18px; display:flex; flex-direction:column; gap:12px; box-shadow:0 24px 60px rgba(14,26,20,0.18); }
+  .feature-visual-mock .top-bar { height:6px; background:var(--ink-300); border-radius:3px; width:30%; margin:0 auto 8px; }
+  .feature-visual-mock .mock-row { background:var(--sand-50); border-radius:var(--r-md); padding:12px; font-size:11px; color:var(--ink-500); }
+  .feature-visual-mock .mock-row strong { display:block; color:var(--forest-900); font-size:13px; margin-bottom:2px; font-weight:600; }
+  .feature-visual-mock .mock-tag { display:inline-block; font-size:9px; padding:2px 8px; background:var(--terra-100); color:var(--terra-700); border-radius:var(--r-pill); font-family:ui-monospace,monospace; letter-spacing:0.1em; margin-bottom:6px; }
+
+  /* COMPARISON / METRICS */
+  .metrics { background:var(--forest-900); color:var(--sand-100); }
+  .metrics-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:32px; margin-top:64px; }
+  .metric { display:flex; flex-direction:column; gap:8px; padding-right:24px; border-left:1px solid rgba(242,233,213,0.15); padding-left:24px; }
+  .metric-num { font-size:64px; font-weight:600; letter-spacing:-0.04em; line-height:1; color:var(--sand-50); }
+  .metric-num .light { font-weight:200; color:var(--ochre-300); }
+  .metric-label { font-size:14px; color:var(--sand-300); margin-top:8px; }
+  .metrics .section-title { color:var(--sand-50); }
+  .metrics .section-title .light { color:var(--terra-300); }
+  .metrics .section-eyebrow { color:var(--ochre-300); }
+  .metrics .section-lede { color:var(--sand-200); }
+
+  /* FAQ TEASER */
+  .faq-teaser-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:48px; }
+  .faq-card { background:var(--sand-50); border:1px solid var(--sand-300); border-radius:var(--r-lg); padding:28px; }
+  .faq-card h4 { font-size:18px; font-weight:600; color:var(--forest-900); letter-spacing:-0.02em; }
+  .faq-card p { font-size:14px; color:var(--ink-500); line-height:1.6; margin-top:10px; }
+
+  /* CTA STRIP */
+  .cta-strip { background:var(--terra-500); color:var(--sand-50); border-radius:var(--r-xl); padding:64px; display:flex; align-items:center; justify-content:space-between; gap:48px; margin-bottom:96px; }
+  .cta-strip-title { font-size:42px; font-weight:600; letter-spacing:-0.03em; line-height:1.05; color:var(--sand-50); max-width:24ch; }
+  .cta-strip-title .light { font-weight:200; color:var(--sand-200); }
+  .cta-strip .btn-primary { background:var(--forest-900); color:var(--sand-100); padding:16px 28px; font-size:14px; }
+  .cta-strip .btn-primary:hover { background:var(--ink-900); }
+
+  /* FOOTER */
+  footer { background:var(--forest-900); color:var(--sand-200); padding:80px 0 32px; }
+  .foot-grid { display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr; gap:48px; }
+  .foot-brand-name { font-size:24px; font-weight:700; color:var(--sand-50); letter-spacing:-0.03em; }
+  .foot-brand-sub { font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--terra-300); margin-top:6px; font-family:ui-monospace, monospace; }
+  .foot-tagline { font-size:14px; color:var(--sand-300); margin-top:24px; max-width:32ch; line-height:1.6; }
+  .foot-col h4 { font-family:ui-monospace, monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--ochre-300); margin-bottom:18px; font-weight:600; }
+  .foot-col a { display:block; padding:6px 0; font-size:14px; color:var(--sand-200); }
+  .foot-col a:hover { color:var(--sand-50); }
+  .foot-bottom { display:flex; justify-content:space-between; align-items:center; margin-top:64px; padding-top:24px; border-top:1px solid rgba(242,233,213,0.15); font-size:12px; color:var(--sand-400); }
+
+  @media (max-width:900px) {
+    .nav-links { display:none; }
+    .foot-grid { grid-template-columns:1fr 1fr; }
+    .section-title, .feature-text h3 { font-size:40px; }
+    .hero-title { font-size:54px; }
+    section, .feature, .hero { padding:64px 0; }
+    .hero-grid, .feature-grid, .faq-teaser-grid { grid-template-columns:1fr; gap:40px; }
+    .feature.reverse .feature-grid > .feature-text { order:initial; }
+    .pillars-grid { grid-template-columns:1fr 1fr; }
+    .metrics-grid { grid-template-columns:1fr 1fr; }
+    .cta-strip { flex-direction:column; align-items:flex-start; padding:40px; }
+    .cta-strip-title { font-size:32px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">
+      <span class="nav-mark">R</span>
+      <span class="nav-name">RAYO</span>
+    </a>
+    <nav class="nav-links">
+      <a href="/recursos" class="nav-link active">Recursos</a>
+      <a href="/como-funciona" class="nav-link">Como funciona</a>
+      <a href="/empresa" class="nav-link">Empresa</a>
+      <a href="/blog" class="nav-link">Blog</a>
+      <a href="/faq" class="nav-link">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="/login" class="btn-ghost">Entrar</a>
+      <a href="/cadastro" class="btn-primary">Começar agora →</a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <span class="hero-eyebrow">Recursos do RAYO</span>
+        <h1 class="hero-title">Tudo o que sua família <span class="light">precisa</span> em um só lugar.</h1>
+        <p class="hero-lede">Cinco pilares construídos para acompanhar todas as fases — Solteiro, Namoro, Noivos, Casados e Pais — com conteúdo prático, comunidade real e missões diárias para fortalecer laços.</p>
+        <div class="hero-cta-row">
+          <a href="/cadastro" class="btn-primary">Experimentar grátis →</a>
+          <a href="/como-funciona" class="btn-ghost">Ver como funciona</a>
+        </div>
+      </div>
+      <div class="hero-mock">
+        <div>
+          <span class="hero-mock-tag mono">Em alta agora</span>
+        </div>
+        <div class="hero-mock-card">
+          <div class="hero-mock-tag mono">Trilha · Casados</div>
+          <div class="hero-mock-title">Conversas que fortalecem o casamento</div>
+          <div class="hero-mock-meta">8 episódios · 2h 14min · 4.9 ★</div>
+        </div>
+        <div class="hero-mock-card">
+          <div class="hero-mock-tag mono">Missão de hoje</div>
+          <div class="hero-mock-title">Acender a chama da semana</div>
+          <div class="hero-mock-meta">15 minutos · em casal</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PILLARS -->
+<section class="pillars">
+  <div class="wrap">
+    <span class="section-eyebrow">Os 5 pilares</span>
+    <h2 class="section-title">Um ecossistema completo, <span class="light">não</span> um app a mais.</h2>
+    <p class="section-lede">Cada pilar foi pensado para responder a um momento real da vida em família. Você não escolhe entre conteúdo e prática — tem os dois, conectados.</p>
+
+    <div class="pillars-grid">
+      <div class="pillar-card forest">
+        <div class="pillar-icon">A</div>
+        <span class="pillar-num mono">01 / Conteúdo</span>
+        <h3 class="pillar-name">Academia</h3>
+        <p class="pillar-desc">Cursos, podcasts, shorts e trilhas curadas por especialistas em família, casamento e parentalidade.</p>
+      </div>
+      <div class="pillar-card">
+        <div class="pillar-icon">C</div>
+        <span class="pillar-num mono">02 / Pessoas</span>
+        <h3 class="pillar-name">Comunidade</h3>
+        <p class="pillar-desc">Grupos por fase, tópicos ativos e mentores. Sem julgamento, com conversas que importam.</p>
+      </div>
+      <div class="pillar-card terra">
+        <div class="pillar-icon">T</div>
+        <span class="pillar-num mono">03 / Caminho</span>
+        <h3 class="pillar-name">Trilhas</h3>
+        <p class="pillar-desc">Jornadas guiadas para cada fase: do "como conhecer alguém de verdade" ao "como educar com firmeza e afeto".</p>
+      </div>
+      <div class="pillar-card sage">
+        <div class="pillar-icon">M</div>
+        <span class="pillar-num mono">04 / Prática</span>
+        <h3 class="pillar-name">Missões</h3>
+        <p class="pillar-desc">Pequenas ações diárias e semanais — em casal, em família ou individuais — para sair da teoria.</p>
+      </div>
+      <div class="pillar-card">
+        <div class="pillar-icon">P</div>
+        <span class="pillar-num mono">05 / Você</span>
+        <h3 class="pillar-name">Perfil & Jornada</h3>
+        <p class="pillar-desc">Seu mapa pessoal: fase atual, conquistas, missões ativas e o próximo passo recomendado para você.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURE 1: ACADEMIA -->
+<section class="feature">
+  <div class="wrap">
+    <div class="feature-grid">
+      <div class="feature-text">
+        <span class="feature-eyebrow">01 · Academia</span>
+        <h3>Conteúdo que <span class="light">caminha</span> com a sua fase.</h3>
+        <p>Não é mais um catálogo infinito. É uma curadoria viva, organizada por momento de vida, formato e tempo disponível. Tem cursos profundos para os domingos e shorts de 5 minutos para o trânsito.</p>
+        <ul class="feature-list">
+          <li>Cursos completos com certificado, divididos em módulos curtos</li>
+          <li>Podcasts originais com especialistas e famílias reais</li>
+          <li>Shorts: vídeos de até 90s com uma ideia prática por dia</li>
+          <li>Trilhas curadas para cada fase, com sequência sugerida</li>
+        </ul>
+        <a href="/recursos/academia" class="feature-link">Ver tudo da Academia →</a>
+      </div>
+      <div class="feature-visual dark">
+        <div class="feature-visual-mock">
+          <div class="top-bar"></div>
+          <div class="mock-row">
+            <span class="mock-tag">Curso · 8 aulas</span>
+            <strong>Conversas difíceis no casamento</strong>
+            Como ouvir de verdade quando o assunto incomoda.
+          </div>
+          <div class="mock-row">
+            <span class="mock-tag">Podcast · 42min</span>
+            <strong>Sermos pais sem deixar de ser casal</strong>
+            Episódio #14 com Marina e Pedro Almeida.
+          </div>
+          <div class="mock-row">
+            <span class="mock-tag">Short · 1min</span>
+            <strong>O ritual das 6 da tarde</strong>
+            Um hábito simples que muda o clima da casa.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURE 2: COMUNIDADE -->
+<section class="feature reverse" style="background:var(--sand-50);">
+  <div class="wrap">
+    <div class="feature-grid">
+      <div class="feature-text">
+        <span class="feature-eyebrow">02 · Comunidade</span>
+        <h3>Conversas <span class="light">que</span> importam, sem ruído.</h3>
+        <p>Grupos pequenos, moderados e organizados pela sua fase. Aqui ninguém está performando o casamento perfeito — gente real falando do que dá certo e do que não dá.</p>
+        <ul class="feature-list">
+          <li>Grupos por fase de vida e por interesse (finanças, fé, parentalidade)</li>
+          <li>Discussões diárias propostas pela curadoria</li>
+          <li>Mentores convidados respondem ao vivo uma vez por semana</li>
+          <li>Sem feed infinito, sem curtidas, sem comparação</li>
+        </ul>
+        <a href="/recursos/comunidade" class="feature-link">Conhecer a Comunidade →</a>
+      </div>
+      <div class="feature-visual sage">
+        <div class="feature-visual-mock">
+          <div class="top-bar"></div>
+          <div class="mock-row">
+            <span class="mock-tag">Tópico ativo · 23</span>
+            <strong>Como dividimos as finanças?</strong>
+            Conta conjunta, separada ou mista? Casados conta.
+          </div>
+          <div class="mock-row">
+            <span class="mock-tag">Mentora ao vivo</span>
+            <strong>Dra. Beatriz Lemos · 19h</strong>
+            Limites na adolescência sem virar inimigo.
+          </div>
+          <div class="mock-row">
+            <span class="mock-tag">Grupo · Noivos</span>
+            <strong>Os 90 dias antes do altar</strong>
+            42 casais ativos esta semana.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURE 3: TRILHAS & MISSÕES -->
+<section class="feature">
+  <div class="wrap">
+    <div class="feature-grid">
+      <div class="feature-text">
+        <span class="feature-eyebrow">03 · Trilhas + Missões</span>
+        <h3>Da teoria <span class="light">para</span> o sofá da sua casa.</h3>
+        <p>O RAYO é construído na ideia de que conhecimento sem prática vira ansiedade. Por isso, toda trilha de conteúdo vem acompanhada de missões — ações simples para fazer hoje, sozinho ou em casal.</p>
+        <ul class="feature-list">
+          <li>Trilhas com começo, meio e fim — entre 7 e 30 dias</li>
+          <li>Missões diárias adaptadas ao seu tempo e fase</li>
+          <li>Modo casal: vocês recebem a mesma missão e marcam juntos</li>
+          <li>Streak gentil — sem culpa quando a vida acontecer</li>
+        </ul>
+        <a href="/recursos/trilhas" class="feature-link">Explorar Trilhas →</a>
+      </div>
+      <div class="feature-visual terra">
+        <div class="feature-visual-mock">
+          <div class="top-bar"></div>
+          <div class="mock-row">
+            <span class="mock-tag">Trilha · dia 4 de 14</span>
+            <strong>Rota do casal: voltando a se ver</strong>
+            14 dias para reencontrar a presença no dia a dia.
+          </div>
+          <div class="mock-row">
+            <span class="mock-tag">Missão · 10 min</span>
+            <strong>Pergunte algo que você não sabe</strong>
+            Uma pergunta nova sobre a infância dele(a).
+          </div>
+          <div class="mock-row">
+            <span class="mock-tag">Em casal · marcado</span>
+            <strong>Vocês concluíram juntos →</strong>
+            +1 dia na rota. Próxima missão amanhã às 8h.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURE 4: PERFIL -->
+<section class="feature reverse" style="background:var(--sand-50);">
+  <div class="wrap">
+    <div class="feature-grid">
+      <div class="feature-text">
+        <span class="feature-eyebrow">04 · Perfil & Jornada</span>
+        <h3>Um mapa pessoal <span class="light">do</span> que você está construindo.</h3>
+        <p>O RAYO acompanha sua fase, suas conquistas e seu próximo passo recomendado. Quanto mais você usa, mais a recomendação acerta — sem nunca virar uma vitrine para os outros.</p>
+        <ul class="feature-list">
+          <li>Identificação de fase com 5 perguntas no início</li>
+          <li>Dashboard pessoal com missões ativas, trilhas em curso e progresso</li>
+          <li>Conquistas privadas — você decide o que (e se) compartilhar</li>
+          <li>Próximo passo recomendado, atualizado toda semana</li>
+        </ul>
+        <a href="/recursos/perfil" class="feature-link">Ver mais →</a>
+      </div>
+      <div class="feature-visual">
+        <div class="feature-visual-mock">
+          <div class="top-bar"></div>
+          <div class="mock-row">
+            <span class="mock-tag">Fase atual</span>
+            <strong>Casados · ano 4</strong>
+            Trilha sugerida: rotinas que voltam a aproximar.
+          </div>
+          <div class="mock-row">
+            <span class="mock-tag">Esta semana</span>
+            <strong>3 missões concluídas de 5</strong>
+            Faltam 2 missões para fechar a semana.
+          </div>
+          <div class="mock-row">
+            <span class="mock-tag">Próximo passo</span>
+            <strong>Curso "Conversas difíceis"</strong>
+            Recomendado com base nas suas últimas missões.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- METRICS -->
+<section class="metrics">
+  <div class="wrap">
+    <span class="section-eyebrow">RAYO em números</span>
+    <h2 class="section-title">Construído com famílias <span class="light">de</span> verdade.</h2>
+    <p class="section-lede">Cada número aqui representa uma conversa que aconteceu, um casal que se reaproximou, uma família que encontrou linguagem nova.</p>
+
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="metric-num">12<span class="light">k+</span></div>
+        <div class="metric-label">Famílias ativas no app</div>
+      </div>
+      <div class="metric">
+        <div class="metric-num">340<span class="light">+</span></div>
+        <div class="metric-label">Horas de conteúdo curado</div>
+      </div>
+      <div class="metric">
+        <div class="metric-num">87<span class="light">%</span></div>
+        <div class="metric-label">Concluem a primeira trilha</div>
+      </div>
+      <div class="metric">
+        <div class="metric-num">4.9<span class="light">★</span></div>
+        <div class="metric-label">Avaliação média na App Store</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ TEASER -->
+<section>
+  <div class="wrap">
+    <span class="section-eyebrow">Perguntas frequentes</span>
+    <h2 class="section-title">As principais <span class="light">dúvidas</span>, respondidas.</h2>
+    <div class="faq-teaser-grid">
+      <div class="faq-card">
+        <h4>Preciso pagar para usar?</h4>
+        <p>Você pode começar grátis com acesso a uma trilha completa, missões diárias e a Comunidade. Os planos pagos liberam toda a Academia, modo casal e funcionalidades premium.</p>
+      </div>
+      <div class="faq-card">
+        <h4>O RAYO é religioso?</h4>
+        <p>O RAYO é uma plataforma para todas as famílias. Temos curadoria com diferentes vozes e perspectivas, e você escolhe o conteúdo que faz sentido para você.</p>
+      </div>
+      <div class="faq-card">
+        <h4>Funciona só para casais?</h4>
+        <p>Não. Temos conteúdo e trilhas para todas as fases — Solteiro, Namoro, Noivos, Casados e Pais. Você indica sua fase e a curadoria se ajusta.</p>
+      </div>
+      <div class="faq-card">
+        <h4>Meus dados ficam privados?</h4>
+        <p>Sim. Suas conquistas, missões e progresso são privados por padrão. Você decide ativamente se quer compartilhar algo na Comunidade.</p>
+      </div>
+    </div>
+    <div style="margin-top:32px;">
+      <a href="/faq" class="btn-ghost">Ver todas as perguntas →</a>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="wrap">
+  <div class="cta-strip">
+    <h2 class="cta-strip-title">Comece <span class="light">hoje.</span> A sua família agradece amanhã.</h2>
+    <a href="/cadastro" class="btn-primary">Criar conta grátis →</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-brand-name">RAYO</div>
+        <div class="foot-brand-sub">Ecossistema · Famílias</div>
+        <p class="foot-tagline">Conteúdo, comunidade e práticas para iluminar todas as fases da sua família.</p>
+      </div>
+      <div class="foot-col">
+        <h4>Produto</h4>
+        <a href="/recursos">Recursos</a>
+        <a href="/como-funciona">Como funciona</a>
+        <a href="/planos">Planos</a>
+        <a href="/baixar">Baixar app</a>
+      </div>
+      <div class="foot-col">
+        <h4>Empresa</h4>
+        <a href="/empresa">Sobre a empresa</a>
+        <a href="/imprensa">Imprensa</a>
+        <a href="/carreiras">Carreiras</a>
+        <a href="/contato">Contato</a>
+      </div>
+      <div class="foot-col">
+        <h4>Suporte</h4>
+        <a href="/faq">FAQ</a>
+        <a href="/blog">Blog</a>
+        <a href="/comunidade">Comunidade</a>
+        <a href="/status">Status</a>
+      </div>
+      <div class="foot-col">
+        <h4>Legal</h4>
+        <a href="/terms">Termos de uso</a>
+        <a href="/privacy">Privacidade</a>
+        <a href="/cookies">Cookies</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 RAYO. Todos os direitos reservados.</span>
+      <span class="mono">rayo.app.br</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
