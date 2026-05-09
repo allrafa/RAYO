@@ -106,8 +106,9 @@ export async function getForumPosts(
 ) {
   const offset = (page - 1) * limit;
 
+  // Task #99 — feed por fórum NUNCA expõe posts de turma (class_id NOT NULL).
   const { rows: countRows } = await query(
-    `SELECT COUNT(*) AS total FROM posts WHERE forum_id = $1 AND is_hidden = FALSE`,
+    `SELECT COUNT(*) AS total FROM posts WHERE forum_id = $1 AND is_hidden = FALSE AND class_id IS NULL`,
     [forumId],
   );
   const total = parseInt(countRows[0].total);
@@ -121,7 +122,7 @@ export async function getForumPosts(
      FROM posts p
      JOIN users u ON u.id = p.user_id
      JOIN forums f ON f.id = p.forum_id
-     WHERE p.forum_id = $1 AND p.is_hidden = FALSE
+     WHERE p.forum_id = $1 AND p.is_hidden = FALSE AND p.class_id IS NULL
      ORDER BY p.is_pinned DESC, p.created_at DESC
      LIMIT $2 OFFSET $3`,
     userId ? [forumId, limit, offset, userId] : [forumId, limit, offset],
@@ -135,16 +136,35 @@ export async function getAllPosts(
   page: number = 1,
   limit: number = 20,
   userId?: number,
+  classId?: number,
 ) {
+  // Task #99 — quando o caller pede classId, AUTORIZAÇÃO já foi feita no
+  // router (requireAuth + matrícula OU moderator+). Aqui é apenas o filtro.
   const offset = (page - 1) * limit;
 
+  // Quando undefined, mostra SOMENTE posts globais (class_id IS NULL) pra
+  // não vazar conteúdo de turma no feed público da Comunidade. Com classId
+  // numérico, filtra estritamente pela turma.
+  const classWhere = classId
+    ? `AND p.class_id = $${userId ? 4 : 3}`
+    : `AND p.class_id IS NULL`;
+
+  const countParams: unknown[] = [];
+  if (classId) countParams.push(classId);
   const { rows: countRows } = await query(
-    `SELECT COUNT(*) AS total FROM posts WHERE is_hidden = FALSE`,
+    `SELECT COUNT(*) AS total FROM posts WHERE is_hidden = FALSE AND ${
+      classId ? `class_id = $1` : `class_id IS NULL`
+    }`,
+    countParams,
   );
   const total = parseInt(countRows[0].total);
 
+  const params: unknown[] = [limit, offset];
+  if (userId) params.push(userId);
+  if (classId) params.push(classId);
+
   const { rows } = await query(
-    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned, p.images,
+    `SELECT p.id, p.forum_id, p.class_id, p.title, p.content, p.category, p.is_pinned, p.images,
        p.like_count, p.comment_count, p.share_count, p.created_at,
        u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
        f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon,
@@ -153,9 +173,10 @@ export async function getAllPosts(
      JOIN users u ON u.id = p.user_id
      JOIN forums f ON f.id = p.forum_id
      WHERE p.is_hidden = FALSE
+     ${classWhere}
      ORDER BY p.is_pinned DESC, p.created_at DESC
      LIMIT $1 OFFSET $2`,
-    userId ? [limit, offset, userId] : [limit, offset],
+    params,
   );
 
   const posts = await hydratePostsRows(rows, userId);
@@ -169,6 +190,7 @@ export async function createPost(
   category?: string,
   title?: string,
   images?: unknown,
+  classId?: number | null,
 ) {
   const trimmed = (content || "").trim();
   // Imagens: array de sentinels objstore://posts/<file>. Posts só com fotos
@@ -204,11 +226,29 @@ export async function createPost(
     throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
   }
 
+  // Task #99 — quando classId vem, validar matrícula (defesa em profundidade;
+  // o router já checa, mas service garante invariância).
+  let resolvedClassId: number | null = null;
+  if (classId !== undefined && classId !== null) {
+    const cid = Number(classId);
+    if (!Number.isFinite(cid) || cid < 1) {
+      throw new AppError("ID de turma inválido", "INVALID_CLASS_ID", 400);
+    }
+    const { rows: m } = await query(
+      `SELECT 1 FROM user_course_progress WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
+      [userId, cid],
+    );
+    if (m.length === 0) {
+      throw new AppError("Apenas membros da turma podem publicar nela", "NOT_A_MEMBER", 403);
+    }
+    resolvedClassId = cid;
+  }
+
   const { rows } = await query(
-    `INSERT INTO posts (forum_id, user_id, title, content, category, images)
-     VALUES ($1, $2, $3, $4, $5, $6::jsonb)
-     RETURNING id, forum_id, title, content, category, is_pinned, like_count, comment_count, share_count, created_at, images`,
-    [forumId, userId, title || null, trimmed, category || null, JSON.stringify(imageList)],
+    `INSERT INTO posts (forum_id, user_id, title, content, category, images, class_id)
+     VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
+     RETURNING id, forum_id, class_id, title, content, category, is_pinned, like_count, comment_count, share_count, created_at, images`,
+    [forumId, userId, title || null, trimmed, category || null, JSON.stringify(imageList), resolvedClassId],
   );
 
   const post = rows[0];
@@ -236,7 +276,7 @@ export async function createPost(
 
 export async function getPostDetail(postId: number, userId?: number) {
   const { rows } = await query(
-    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned, p.images,
+    `SELECT p.id, p.forum_id, p.class_id, p.title, p.content, p.category, p.is_pinned, p.images,
        p.like_count, p.comment_count, p.share_count, p.created_at,
        u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
        f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon,
@@ -250,6 +290,26 @@ export async function getPostDetail(postId: number, userId?: number) {
 
   if (rows.length === 0) {
     throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
+  }
+
+  // Task #99 — post de turma só é visível para matriculados (ou moderator+).
+  // Trata como 404 pra não vazar a existência do recurso.
+  const classId = rows[0].class_id;
+  if (classId) {
+    if (!userId) {
+      throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
+    }
+    const { rows: m } = await query(
+      `SELECT 1 FROM user_course_progress WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
+      [userId, classId],
+    );
+    if (m.length === 0) {
+      const { rows: r } = await query(`SELECT role FROM users WHERE id = $1`, [userId]);
+      const role = r[0]?.role;
+      if (role !== "moderator" && role !== "admin") {
+        throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
+      }
+    }
   }
 
   const { rows: comments } = await query(
@@ -645,6 +705,7 @@ export async function getMySubscribedForums(userId: number) {
 // quanto pela vista por comunidade (forumId opcional).
 export async function getTrendingPosts(opts: {
   forumId?: number;
+  classId?: number;
   limit?: number;
   userId?: number;
 }) {
@@ -655,13 +716,24 @@ export async function getTrendingPosts(opts: {
     params.push(opts.forumId);
     forumWhere = `AND p.forum_id = $${params.length}`;
   }
+  // Task #99 — escopo por turma. Sem classId, mantém o comportamento
+  // original (não filtra por class_id pra preservar contagem global).
+  let classWhere = "";
+  if (opts.classId !== undefined) {
+    if (opts.classId === 0) {
+      classWhere = "AND p.class_id IS NULL";
+    } else {
+      params.push(opts.classId);
+      classWhere = `AND p.class_id = $${params.length}`;
+    }
+  }
   let userExpr = "false AS user_liked";
   if (opts.userId) {
     params.push(opts.userId);
     userExpr = `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $${params.length}) AS user_liked`;
   }
   const { rows } = await query(
-    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned, p.images,
+    `SELECT p.id, p.forum_id, p.class_id, p.title, p.content, p.category, p.is_pinned, p.images,
        p.like_count, p.comment_count, p.share_count, p.created_at,
        u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
        f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon,
@@ -673,6 +745,7 @@ export async function getTrendingPosts(opts: {
      WHERE p.is_hidden = FALSE
        AND p.created_at >= NOW() - INTERVAL '48 hours'
        ${forumWhere}
+       ${classWhere}
      ORDER BY trending_score DESC, p.created_at DESC
      LIMIT $1`,
     params,
@@ -711,8 +784,9 @@ export async function setForumSubscription(forumId: number, userId: number, subs
 
 export async function getUserPosts(targetUserId: number, viewerId?: number, page = 1, limit = 20) {
   const offset = (page - 1) * limit;
+  // Task #99 — perfis públicos NÃO exibem posts de turma (class_id NOT NULL).
   const { rows: countRows } = await query(
-    `SELECT COUNT(*) AS total FROM posts WHERE user_id = $1 AND is_hidden = FALSE`,
+    `SELECT COUNT(*) AS total FROM posts WHERE user_id = $1 AND is_hidden = FALSE AND class_id IS NULL`,
     [targetUserId],
   );
   const total = parseInt(countRows[0].total);
@@ -733,7 +807,7 @@ export async function getUserPosts(targetUserId: number, viewerId?: number, page
      FROM posts p
      JOIN users u ON u.id = p.user_id
      JOIN forums f ON f.id = p.forum_id
-     WHERE p.user_id = $1 AND p.is_hidden = FALSE
+     WHERE p.user_id = $1 AND p.is_hidden = FALSE AND p.class_id IS NULL
      ORDER BY p.created_at DESC
      LIMIT $2 OFFSET $3`,
     params,

@@ -961,6 +961,31 @@ export async function initializeSchema() {
   const { migrateBundles } = await import("../features/bundles/migrate.js");
   await migrateBundles();
 
+  // Task #99 — Turmas (mini-Skool). Campos de landing rica nas `courses`,
+  // tabela de interesses (modal "Em breve" sem checkout), e `class_id`
+  // opcional em `posts` para comunidade escopada por turma. Tudo idempotente.
+  await query(`ALTER TABLE courses ADD COLUMN IF NOT EXISTS subtitle VARCHAR(280)`);
+  await query(`ALTER TABLE courses ADD COLUMN IF NOT EXISTS who_for JSONB NOT NULL DEFAULT '[]'::jsonb`);
+  await query(`ALTER TABLE courses ADD COLUMN IF NOT EXISTS what_you_get JSONB NOT NULL DEFAULT '[]'::jsonb`);
+  await query(`ALTER TABLE courses ADD COLUMN IF NOT EXISTS how_it_works TEXT`);
+  await query(`ALTER TABLE courses ADD COLUMN IF NOT EXISTS hero_cover_url VARCHAR(500)`);
+  await query(`
+    CREATE TABLE IF NOT EXISTS class_interests (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+      name VARCHAR(120) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      message TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_class_interests_course ON class_interests(course_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_class_interests_user ON class_interests(user_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_class_interests_created ON class_interests(created_at DESC)`);
+  await query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS class_id INTEGER REFERENCES courses(id) ON DELETE SET NULL`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_posts_class_id ON posts(class_id)`);
+
   console.log("[DB] Schema initialized successfully.");
 }
 

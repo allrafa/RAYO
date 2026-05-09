@@ -115,7 +115,18 @@ function AppContent() {
     }
   }, [user, setTheme]);
 
-  const [currentTab, setCurrentTab] = useState("home");
+  // Task #99 — `/turmas` (e `?tab=turmas`) entram direto na aba Turmas
+  // (id interno continua "academia" pra não quebrar o switch existente).
+  const [currentTab, setCurrentTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const path = window.location.pathname.replace(/\/+$/, "") || "/";
+      const tabParam = new URLSearchParams(window.location.search).get("tab");
+      if (path === "/turmas" || path === "/academia" || tabParam === "turmas" || tabParam === "academia") {
+        return "academia";
+      }
+    }
+    return "home";
+  });
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(() => getResetTokenFromUrl());
   // Returning visitors (anyone who has logged in or registered on this device

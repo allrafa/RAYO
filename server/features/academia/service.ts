@@ -269,6 +269,118 @@ export async function getUserProgress(userId: number) {
   return rows;
 }
 
+// Task #99 — Landing pública da turma. Retorna campos do "marketing" da
+// turma + members count + (quando autenticado) flag is_member. Sem auth.
+export async function getCourseLanding(courseId: number, viewerId?: number) {
+  const { rows } = await query(
+    `SELECT id, title, subtitle, description, thumbnail, hero_cover_url,
+       duration, total_lessons, rating, students, price, category, life_context,
+       level, is_premium, instructor, who_for, what_you_get, how_it_works,
+       (SELECT COUNT(*)::int FROM user_course_progress ucp WHERE ucp.course_id = courses.id) AS members_count
+     FROM courses WHERE id = $1 AND is_active = true`,
+    [courseId],
+  );
+  if (rows.length === 0) return null;
+  const course = rows[0];
+  let isMember = false;
+  if (viewerId) {
+    const { rows: m } = await query(
+      `SELECT 1 FROM user_course_progress WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
+      [viewerId, courseId],
+    );
+    isMember = m.length > 0;
+  }
+  return { ...course, is_member: isMember };
+}
+
+// Task #99 — Cria registro de "interesse" (modal Em breve). Rate-limit
+// custo no service: dedupe por (user_id|email, course_id) nas últimas 24h.
+export async function recordClassInterest(
+  courseId: number,
+  data: { name: string; email: string; message?: string; userId?: number },
+) {
+  const name = (data.name || "").trim();
+  const email = (data.email || "").trim().toLowerCase();
+  const message = (data.message || "").trim() || null;
+  if (name.length < 2 || name.length > 120) {
+    throw new AppError("Nome inválido (2-120 caracteres)", "INVALID_NAME", 400);
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 255) {
+    throw new AppError("Email inválido", "INVALID_EMAIL", 400);
+  }
+  if (message && message.length > 1000) {
+    throw new AppError("Mensagem muito longa (até 1000 caracteres)", "MESSAGE_TOO_LONG", 400);
+  }
+
+  const { rows: courseRows } = await query(
+    `SELECT id, title FROM courses WHERE id = $1 AND is_active = true`,
+    [courseId],
+  );
+  if (courseRows.length === 0) {
+    throw new AppError("Turma não encontrada", "COURSE_NOT_FOUND", 404);
+  }
+
+  // Dedupe 24h por (user OR email) + course
+  const { rows: dup } = await query(
+    `SELECT id FROM class_interests
+     WHERE course_id = $1
+       AND created_at > NOW() - INTERVAL '24 hours'
+       AND (
+         ($2::int IS NOT NULL AND user_id = $2::int)
+         OR LOWER(email) = $3
+       )
+     LIMIT 1`,
+    [courseId, data.userId ?? null, email],
+  );
+  if (dup.length > 0) {
+    return { duplicated: true, courseTitle: courseRows[0].title };
+  }
+
+  await query(
+    `INSERT INTO class_interests (user_id, course_id, name, email, message)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [data.userId ?? null, courseId, name, email, message],
+  );
+
+  if (data.userId) {
+    trackEvent(data.userId, "class_interest", { course_id: courseId });
+  }
+
+  return { duplicated: false, courseTitle: courseRows[0].title };
+}
+
+// Task #99 — Lista membros da turma (matriculados). requireAuth + matricula
+// (ou moderator+) no router. Pageable, leve.
+export async function getCourseMembers(courseId: number, page = 1, limit = 30) {
+  const offset = (Math.max(1, page) - 1) * limit;
+  const { rows: countRows } = await query(
+    `SELECT COUNT(*)::int AS total FROM user_course_progress WHERE course_id = $1`,
+    [courseId],
+  );
+  const total = countRows[0]?.total ?? 0;
+  const { rows } = await query(
+    `SELECT u.id, u.name, u.avatar_url, ucp.enrolled_at, ucp.progress_percentage,
+       ucp.completed_at IS NOT NULL AS completed
+     FROM user_course_progress ucp
+     JOIN users u ON u.id = ucp.user_id
+     WHERE ucp.course_id = $1
+     ORDER BY ucp.enrolled_at DESC
+     LIMIT $2 OFFSET $3`,
+    [courseId, limit, offset],
+  );
+  return { members: rows, total, page, limit, totalPages: Math.ceil(total / Math.max(1, limit)) };
+}
+
+// Helper: usado pela rota /members e pelas rotas de comunidade escopadas
+// por turma (POST /community/posts com class_id) pra checar matrícula.
+export async function isCourseMember(userId: number, courseId: number): Promise<boolean> {
+  const { rows } = await query(
+    `SELECT 1 FROM user_course_progress WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
+    [userId, courseId],
+  );
+  return rows.length > 0;
+}
+
 export async function getCourseProgressWithLessons(userId: number, courseId: number) {
   const { rows: progressRows } = await query(
     `SELECT ucp.progress_percentage, ucp.completed_lessons, ucp.total_lessons,

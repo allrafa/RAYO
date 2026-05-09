@@ -9,7 +9,7 @@ type Tab = { id: string; icon: typeof Home; label: string };
 
 const TABS: Tab[] = [
   { id: "home", icon: Home, label: "Início" },
-  { id: "academia", icon: GraduationCap, label: "Academia" },
+  { id: "academia", icon: GraduationCap, label: "Turmas" },
   { id: "comunidade", icon: Users, label: "Comunidade" },
   { id: "perfil", icon: User, label: "Perfil" },
 ];

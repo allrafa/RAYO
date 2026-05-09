@@ -1,7 +1,8 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
-import { requireAuth } from "../../middleware/auth.js";
+import { requireAuth, hasRole } from "../../middleware/auth.js";
+import { isCourseMember } from "../academia/service.js";
 import { rateLimiter } from "../../middleware/security.js";
 import { success, error as sendError } from "../../utils/response.js";
 import { putPublicObject } from "../../lib/objectStorageBridge.js";
@@ -157,9 +158,21 @@ router.get("/posts/trending", requireAuth, async (req, res, next) => {
       sendError(res, "forum_id inválido", "INVALID_FORUM_ID", 400);
       return;
     }
+    // Task #99 — escopo opcional por turma
+    const classIdRaw = String(req.query.class_id || "").trim();
+    let classId: number | undefined;
+    if (classIdRaw) {
+      const cid = parseInt(classIdRaw, 10);
+      if (isNaN(cid) || cid < 1) {
+        sendError(res, "class_id inválido", "INVALID_CLASS_ID", 400);
+        return;
+      }
+      classId = cid;
+    }
     const limit = parseInt(String(req.query.limit || "20"), 10);
     const result = await getTrendingPosts({
       forumId,
+      classId,
       limit: Number.isFinite(limit) ? limit : 20,
       userId: req.user?.id,
     });
@@ -297,7 +310,30 @@ router.get("/posts", async (req, res, next) => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 20, 50));
     const userId = req.user?.id;
-    const result = await getAllPosts(page, limit, userId);
+    // Task #99 — quando ?class_id=N, lista posts dessa turma. Sem param,
+    // o service filtra por class_id IS NULL (não vaza posts de turma).
+    const classIdRaw = String(req.query.class_id || "").trim();
+    let classId: number | undefined;
+    if (classIdRaw) {
+      const cid = parseInt(classIdRaw, 10);
+      if (isNaN(cid) || cid < 1) {
+        sendError(res, "class_id inválido", "INVALID_CLASS_ID", 400);
+        return;
+      }
+      // AUTORIZAÇÃO: apenas matriculados (ou moderator+) leem o feed da turma.
+      // Tratado como 404 pra não vazar a existência da turma.
+      if (!userId) {
+        sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404);
+        return;
+      }
+      const member = await isCourseMember(userId, cid);
+      if (!member && !hasRole(req.user, "moderator")) {
+        sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404);
+        return;
+      }
+      classId = cid;
+    }
+    const result = await getAllPosts(page, limit, userId, classId);
     success(res, result);
   } catch (err) {
     next(err);
@@ -306,13 +342,23 @@ router.get("/posts", async (req, res, next) => {
 
 router.post("/posts", requireAuth, postCreateLimiter, async (req, res, next) => {
   try {
-    const { forum_id, content, category, title, images } = req.body;
+    const { forum_id, content, category, title, images, class_id } = req.body;
     const parsedForumId = parseInt(forum_id, 10);
     if (!forum_id || isNaN(parsedForumId) || parsedForumId < 1) {
       sendError(res, "Selecione uma comunidade para publicar", "INVALID_FORUM_ID", 400);
       return;
     }
-    const post = await createPost(req.user!.id, parsedForumId, content, category, title, images);
+    // Task #99 — class_id opcional. Quando vem, service valida matrícula.
+    let classId: number | null = null;
+    if (class_id !== undefined && class_id !== null && class_id !== "") {
+      const cid = parseInt(String(class_id), 10);
+      if (isNaN(cid) || cid < 1) {
+        sendError(res, "class_id inválido", "INVALID_CLASS_ID", 400);
+        return;
+      }
+      classId = cid;
+    }
+    const post = await createPost(req.user!.id, parsedForumId, content, category, title, images, classId);
     success(res, { post }, 201);
   } catch (err) {
     if (err instanceof AppError) {

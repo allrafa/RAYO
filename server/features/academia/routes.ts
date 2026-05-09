@@ -1,16 +1,25 @@
 import { Router } from "express";
-import { requireAuth } from "../../middleware/auth.js";
+import { requireAuth, hasRole } from "../../middleware/auth.js";
+import { rateLimiter } from "../../middleware/security.js";
 import { success, error as sendError } from "../../utils/response.js";
 import {
+  AppError,
   listCourses,
   getCourseDetail,
   enrollInCourse,
   updateLessonProgress,
   getUserProgress,
   getCourseProgressWithLessons,
+  getCourseLanding,
+  recordClassInterest,
+  getCourseMembers,
+  isCourseMember,
 } from "./service.js";
 
 const router = Router();
+
+// Task #99 — Captura de interesse: rate-limit duro per usuário/IP.
+const interestLimiter = rateLimiter(5, 60 * 60 * 1000, { keyByUser: true });
 
 router.get("/", async (req, res, next) => {
   try {
@@ -48,6 +57,73 @@ router.get("/:id", async (req, res, next) => {
       return;
     }
     success(res, { course });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Task #99 — Landing pública da turma (mini-Skool). Sem requireAuth.
+router.get("/:id/landing", async (req, res, next) => {
+  try {
+    const courseId = parseInt(req.params.id, 10);
+    if (isNaN(courseId)) {
+      sendError(res, "ID de turma inválido", "INVALID_COURSE_ID");
+      return;
+    }
+    const turma = await getCourseLanding(courseId, req.user?.id);
+    if (!turma) {
+      sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404);
+      return;
+    }
+    success(res, { turma });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Task #99 — Captura de interesse (modal "Em breve"). Sem checkout. Aceita
+// usuário anônimo (pré-cadastro) OU autenticado (auto-preenche userId).
+router.post("/:id/interest", interestLimiter, async (req, res, next) => {
+  try {
+    const courseId = parseInt(req.params.id, 10);
+    if (isNaN(courseId)) {
+      sendError(res, "ID de turma inválido", "INVALID_COURSE_ID");
+      return;
+    }
+    const { name, email, message } = req.body || {};
+    const result = await recordClassInterest(courseId, {
+      name,
+      email,
+      message,
+      userId: req.user?.id,
+    });
+    success(res, result, 201);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+// Task #99 — Lista membros da turma. requireAuth + (membro OU moderator+).
+router.get("/:id/members", requireAuth, async (req, res, next) => {
+  try {
+    const courseId = parseInt(req.params.id, 10);
+    if (isNaN(courseId)) {
+      sendError(res, "ID de turma inválido", "INVALID_COURSE_ID");
+      return;
+    }
+    const member = await isCourseMember(req.user!.id, courseId);
+    if (!member && !hasRole(req.user, "moderator")) {
+      sendError(res, "Apenas membros da turma podem ver a lista", "NOT_A_MEMBER", 403);
+      return;
+    }
+    const page = Math.max(1, parseInt(String(req.query.page || "1"), 10));
+    const limit = Math.max(1, Math.min(parseInt(String(req.query.limit || "30"), 10) || 30, 100));
+    const result = await getCourseMembers(courseId, page, limit);
+    success(res, result);
   } catch (err) {
     next(err);
   }

@@ -125,7 +125,7 @@ export function AcademiaPage() {
                 }
               }}
             >
-              Marketplace
+              Catálogo de turmas
             </Button>
           </div>
         </div>
@@ -201,7 +201,7 @@ function MinhaBlibiotecaView({
           </div>
           <h2 className="ra-empty-title">Sua biblioteca está vazia</h2>
           <p className="ra-empty-sub">
-            Explore nosso marketplace e comece sua jornada de transformação
+            Explore nosso catálogo de turmas e comece sua jornada de transformação
           </p>
         </div>
       </div>

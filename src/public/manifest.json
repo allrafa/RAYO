@@ -83,10 +83,10 @@
   ],
   "shortcuts": [
     {
-      "name": "Academia",
-      "short_name": "Academia",
-      "description": "Acesse cursos e lições",
-      "url": "/?tab=academia",
+      "name": "Turmas",
+      "short_name": "Turmas",
+      "description": "Acesse turmas, aulas e a comunidade da turma",
+      "url": "/?tab=turmas",
       "icons": [
         {
           "src": "/icons/academia-96x96.png",
