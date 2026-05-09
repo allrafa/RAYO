@@ -17,6 +17,7 @@ import { EmojiReactionPicker, useReactions } from "./EmojiReactionPicker";
 import { FavoriteIcon } from "./FavoriteButton";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { ConversasPage } from "./ConversasPage";
+import { CommunityDetailPage } from "./CommunityDetailPage";
 import { useTheme } from "./ThemeProvider";
 import { api } from "../lib/api";
 
@@ -50,6 +51,9 @@ export function ComunidadePage() {
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentView, setCurrentView] = useState<"feed" | "grupos" | "trending" | "conversas">("feed");
+  // Task #92 — Community detail page por slug. Quando setado, sobrepõe
+  // tudo (header de tabs + composer escondidos) e renderiza CommunityDetailPage.
+  const [activeCommunitySlug, setActiveCommunitySlug] = useState<string | null>(null);
   
   const { posts, likePost, sharePost, loadPosts } = useApp();
   const { user: authUser } = useAuth();
@@ -138,26 +142,11 @@ export function ComunidadePage() {
 
   // Task #92 — deep-link `/c/<slug>`. Recebe via sessionStorage
   // (`rayo-pending-community-slug`) ou CustomEvent `rayo:open-community`.
-  // Por enquanto resolvemos só pra Grupos com toast informativo (CommunityDetailPage
-  // dedicado é follow-up). Ainda assim, busca o forum por slug pra validar
-  // existência e dá feedback claro se a comunidade não existe.
-  const openCommunityBySlug = useCallback(async (slug: string) => {
-    const res = await api.get<{ forum: { id: number; name: string; slug: string } }>(
-      `/api/community/forums/by-slug/${encodeURIComponent(slug)}`,
-    );
-    if (res.success && res.data) {
-      setCurrentView("grupos");
-      enhancedToast.info({
-        title: `Comunidade c/${res.data.forum.slug}`,
-        description: `Você está vendo as comunidades. Toque em "${res.data.forum.name}" pra abrir.`,
-      });
-    } else {
-      enhancedToast.error({
-        title: "Comunidade não encontrada",
-        description: res.error?.message || `c/${slug} não existe`,
-        haptic: true,
-      });
-    }
+  // Setamos o slug ativo, e o render-tree mostra <CommunityDetailPage>
+  // (subreddit-style com header, subscribe e tabs Posts/Sobre).
+  const openCommunityBySlug = useCallback((slug: string) => {
+    if (!slug) return;
+    setActiveCommunitySlug(slug);
   }, []);
 
   useEffect(() => {
@@ -284,6 +273,27 @@ export function ComunidadePage() {
     return (
       <div className="space-y-6 p-4 max-w-7xl mx-auto">
         <SkeletonLoader type="post" count={3} />
+      </div>
+    );
+  }
+
+  // Task #92 — quando há slug ativo, renderiza a vista dedicada da
+  // comunidade (CommunityDetailPage) por cima de tudo na própria aba
+  // Comunidade (sem reload). Voltar limpa o slug e volta pro Feed.
+  if (activeCommunitySlug) {
+    return (
+      <div
+        className="ra-page min-h-screen pt-4"
+        style={{ background: "var(--rayo-sand-100)" }}
+      >
+        <CommunityDetailPage
+          slug={activeCommunitySlug}
+          onBack={() => setActiveCommunitySlug(null)}
+          onOpenPost={(id) => {
+            setActiveCommunitySlug(null);
+            void openPostById(id);
+          }}
+        />
       </div>
     );
   }

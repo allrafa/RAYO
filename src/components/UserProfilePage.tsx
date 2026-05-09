@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { api } from "../lib/api";
 import { useAuth } from "./AuthContext";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { Heart, MessageCircle, UserPlus, UserCheck, X } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, UserCheck, X, Award } from "lucide-react";
 import { enhancedToast } from "./EnhancedToast";
 
 // Task #92 — Perfil público estilo Reddit. Carrega karma, posts,
@@ -75,9 +75,22 @@ interface UserCommunity {
   member_count: number;
 }
 
+interface UserBadge {
+  id: number;
+  title: string;
+  description?: string | null;
+  icon?: string | null;
+  tier?: string | null;
+  earnedAt?: string | null;
+}
+
 interface UserProfilePageProps {
   userId: number;
   onClose?: () => void;
+  // Task #92 — quando clicar em c/<slug> dentro do perfil, navegar
+  // automaticamente pra aba Comunidade (sem isso o evento dispara mas
+  // o usuário continua na tela de perfil).
+  onNavigateToCommunity?: () => void;
 }
 
 function formatRelative(dateStr: string): string {
@@ -92,7 +105,7 @@ function formatRelative(dateStr: string): string {
   return d.toLocaleDateString("pt-BR");
 }
 
-export function UserProfilePage({ userId, onClose }: UserProfilePageProps) {
+export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: UserProfilePageProps) {
   const { user: viewer } = useAuth();
   const isSelf = viewer?.id === userId;
 
@@ -102,6 +115,7 @@ export function UserProfilePage({ userId, onClose }: UserProfilePageProps) {
   const [posts, setPosts] = useState<UserPost[]>([]);
   const [comments, setComments] = useState<UserComment[]>([]);
   const [communities, setCommunities] = useState<UserCommunity[]>([]);
+  const [badges, setBadges] = useState<UserBadge[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
@@ -110,13 +124,14 @@ export function UserProfilePage({ userId, onClose }: UserProfilePageProps) {
     setLoading(true);
     setError(null);
     try {
-      const [profRes, karmaRes, followRes, postsRes, commentsRes, commsRes] = await Promise.all([
+      const [profRes, karmaRes, followRes, postsRes, commentsRes, commsRes, badgesRes] = await Promise.all([
         api.get<{ user: PublicProfile }>(`/api/users/${userId}/public`),
         api.get<KarmaInfo>(`/api/community/users/${userId}/karma`),
         api.get<FollowInfo>(`/api/users/${userId}/follows`),
         api.get<{ posts: UserPost[] }>(`/api/community/users/${userId}/posts?limit=20`),
         api.get<{ comments: UserComment[] }>(`/api/community/users/${userId}/comments?limit=20`),
         api.get<{ communities: UserCommunity[] }>(`/api/community/users/${userId}/communities`),
+        api.get<{ badges: UserBadge[] }>(`/api/community/users/${userId}/badges`),
       ]);
       if (profRes.success && profRes.data) setProfile(profRes.data.user);
       else setError(profRes.error?.message || "Não foi possível carregar este perfil.");
@@ -125,6 +140,7 @@ export function UserProfilePage({ userId, onClose }: UserProfilePageProps) {
       if (postsRes.success && postsRes.data) setPosts(postsRes.data.posts);
       if (commentsRes.success && commentsRes.data) setComments(commentsRes.data.comments);
       if (commsRes.success && commsRes.data) setCommunities(commsRes.data.communities);
+      if (badgesRes.success && badgesRes.data) setBadges(badgesRes.data.badges);
     } finally {
       setLoading(false);
     }
@@ -168,6 +184,11 @@ export function UserProfilePage({ userId, onClose }: UserProfilePageProps) {
       sessionStorage.setItem("rayo-pending-community-slug", slug);
     } catch { /* noop */ }
     window.dispatchEvent(new CustomEvent("rayo:open-community", { detail: { slug } }));
+    // Sem navegar pra aba Comunidade, o clique parece inerte porque o
+    // perfil continua renderizado por cima. Fechamos o overlay de perfil
+    // e pedimos pro pai trocar de aba.
+    onClose?.();
+    onNavigateToCommunity?.();
   };
 
   const totalKarma = useMemo(
@@ -279,10 +300,11 @@ export function UserProfilePage({ userId, onClose }: UserProfilePageProps) {
 
       {/* Tabs */}
       <Tabs defaultValue="posts" className="px-3 pt-3 pb-5">
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-5 w-full">
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="comments">Comentários</TabsTrigger>
           <TabsTrigger value="communities">Comunidades</TabsTrigger>
+          <TabsTrigger value="achievements">Conquistas</TabsTrigger>
           <TabsTrigger value="about">Sobre</TabsTrigger>
         </TabsList>
 
@@ -390,6 +412,28 @@ export function UserProfilePage({ userId, onClose }: UserProfilePageProps) {
                 </div>
               </button>
             ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="achievements" className="mt-3 space-y-2">
+          {badges.length === 0 ? (
+            <p className="text-sm text-muted-foreground p-4 text-center">Nenhuma conquista ainda.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {badges.map((b) => (
+                <div
+                  key={b.id}
+                  className="rounded-lg p-3 text-center"
+                  style={{ background: "var(--rayo-sand-100)", border: "1px solid var(--rayo-sand-300)" }}
+                >
+                  <div className="text-2xl mb-1">{b.icon || <Award className="w-5 h-5 mx-auto" />}</div>
+                  <p className="text-xs font-semibold" style={{ color: "var(--rayo-forest-900)" }}>{b.title}</p>
+                  {b.tier && (
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{b.tier}</p>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </TabsContent>
 

@@ -479,7 +479,10 @@ export async function initializeSchema() {
   // sentinels `objstore://posts/<file>` (validado na escrita).
   // ──────────────────────────────────────────────────────────────────
   await query(`ALTER TABLE forums ADD COLUMN IF NOT EXISTS slug VARCHAR(80)`);
-  await query(`ALTER TABLE forums ADD COLUMN IF NOT EXISTS member_count INTEGER NOT NULL DEFAULT 0`);
+  // Task #92 — `member_count` é SEMPRE derivado de COUNT(*) FROM forum_subscriptions
+  // (ver service.ts). Removemos a coluna persistida pra eliminar drift entre o número
+  // exibido e o real. Idempotente (DROP IF EXISTS).
+  await query(`ALTER TABLE forums DROP COLUMN IF EXISTS member_count`);
   await query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb`);
 
   // Backfill de slug para forums já existentes (idempotente: só roda em

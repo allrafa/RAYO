@@ -362,6 +362,34 @@ export async function toggleCommentLike(commentId: number, userId: number) {
 
 // ───── Subscriptions / Comunidades ─────
 
+// Task #92 — resolve forumId a partir de slug pra suportar endpoints
+// `/forums/by-slug/:slug/subscribe` (URL canônica do Reddit-style).
+export async function getForumIdBySlug(slug: string): Promise<number> {
+  const { rows } = await query<{ id: number }>(
+    `SELECT id FROM forums WHERE slug = $1 AND is_active = true`,
+    [slug],
+  );
+  if (rows.length === 0) {
+    throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
+  }
+  return rows[0].id;
+}
+
+// Task #92 — comunidades às quais o usuário autenticado é inscrito.
+// Usado no `GET /api/community/forums/me` (sidebar/menu/perfil).
+export async function getMySubscribedForums(userId: number) {
+  const { rows } = await query(
+    `SELECT f.id, f.name, f.slug, f.description, f.icon, f.category,
+       (SELECT COUNT(*) FROM forum_subscriptions fs2 WHERE fs2.forum_id = f.id)::int AS member_count
+     FROM forum_subscriptions fs
+     JOIN forums f ON f.id = fs.forum_id
+     WHERE fs.user_id = $1 AND f.is_active = true
+     ORDER BY f.name ASC`,
+    [userId],
+  );
+  return { forums: rows };
+}
+
 export async function setForumSubscription(forumId: number, userId: number, subscribed: boolean) {
   const { rows: forumCheck } = await query(
     `SELECT id FROM forums WHERE id = $1 AND is_active = true`,

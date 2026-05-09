@@ -9,6 +9,8 @@ import { optimizeCmsImage } from "../../lib/imageOptimization.js";
 import {
   listForums,
   getForumBySlug,
+  getForumIdBySlug,
+  getMySubscribedForums,
   getForumPosts,
   getAllPosts,
   createPost,
@@ -22,6 +24,7 @@ import {
   getUserCommunities,
   getUserKarma,
 } from "./service.js";
+import { getUserBadges } from "../gamification/service.js";
 import { AppError } from "../academia/service.js";
 
 const router = Router();
@@ -43,6 +46,12 @@ const postImageUpload = multer({
   limits: { fileSize: POST_IMAGE_MAX },
   fileFilter: (_req, file, cb) => {
     if (POST_IMAGE_MIMES.has(file.mimetype)) return cb(null, true);
+    // Vídeo é bloqueado explicitamente — REGRA INVIOLÁVEL Task #92.
+    if (file.mimetype.startsWith("video/")) {
+      const err = new Error("Vídeo não é permitido em posts");
+      (err as Error & { mimetype?: string }).mimetype = file.mimetype;
+      return cb(err as Error);
+    }
     cb(new Error("Apenas imagens JPG, PNG ou WebP são permitidas"));
   },
 }).single("file");
@@ -71,7 +80,15 @@ router.post(
       sendError(res, "Imagem deve ter até 5 MB", "FILE_TOO_LARGE", 413);
       return;
     }
-    sendError(res, err instanceof Error ? err.message : "Upload inválido", "INVALID_UPLOAD", 400);
+    // Task #92 — distingue vídeo (regra inviolável: só fotos) de outros tipos
+    // pra que o cliente possa exibir mensagem específica e o teste de
+    // segurança consiga acionar a allowlist.
+    const message = err instanceof Error ? err.message : "Upload inválido";
+    if (/v[ií]deo|video/i.test(message) || (err as { mimetype?: string })?.mimetype?.startsWith?.("video/")) {
+      sendError(res, "Vídeo não é permitido em posts. Use o CMS para vídeos.", "VIDEO_NOT_ALLOWED", 415);
+      return;
+    }
+    sendError(res, message, "INVALID_UPLOAD", 400);
   }),
   async (req, res, next) => {
     try {
@@ -124,6 +141,17 @@ router.get("/forums", async (req, res, next) => {
   }
 });
 
+// Task #92 — comunidades inscritas pelo viewer (Reddit-style "Suas comunidades").
+// DECLARADO ANTES de `/forums/:id/...` pra evitar conflito com a rota dinâmica.
+router.get("/forums/me", requireAuth, async (req, res, next) => {
+  try {
+    const result = await getMySubscribedForums(req.user!.id);
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/forums/by-slug/:slug", async (req, res, next) => {
   try {
     const slug = String(req.params.slug || "").trim().toLowerCase();
@@ -155,6 +183,47 @@ router.get("/forums/:id/posts", async (req, res, next) => {
     const result = await getForumPosts(forumId, page, limit, userId);
     success(res, result);
   } catch (err) {
+    next(err);
+  }
+});
+
+// Task #92 — slug-based subscribe (URL canônica). Aceita `POST` com body
+// `{subscribed:bool}` (default true) e `DELETE` como atalho de unsubscribe.
+router.post("/forums/by-slug/:slug/subscribe", requireAuth, async (req, res, next) => {
+  try {
+    const slug = String(req.params.slug || "").trim().toLowerCase();
+    if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+      sendError(res, "Slug inválido", "INVALID_SLUG", 400);
+      return;
+    }
+    const forumId = await getForumIdBySlug(slug);
+    const subscribed = req.body?.subscribed !== false;
+    const result = await setForumSubscription(forumId, req.user!.id, subscribed);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+router.delete("/forums/by-slug/:slug/subscribe", requireAuth, async (req, res, next) => {
+  try {
+    const slug = String(req.params.slug || "").trim().toLowerCase();
+    if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+      sendError(res, "Slug inválido", "INVALID_SLUG", 400);
+      return;
+    }
+    const forumId = await getForumIdBySlug(slug);
+    const result = await setForumSubscription(forumId, req.user!.id, false);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
     next(err);
   }
 });
@@ -328,6 +397,24 @@ router.get("/users/:id/communities", requireAuth, async (req, res, next) => {
     }
     const result = await getUserCommunities(targetId);
     success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Task #92 — badges públicos (somente conquistados) pro tab "Conquistas"
+// no perfil. Reutiliza getUserBadges do gamification mas filtra apenas
+// os já ganhos pra não vazar a lista de badges não obtidos.
+router.get("/users/:id/badges", requireAuth, async (req, res, next) => {
+  try {
+    const targetId = parseInt(req.params.id, 10);
+    if (isNaN(targetId) || targetId < 1) {
+      sendError(res, "ID de usuário inválido", "INVALID_USER_ID", 400);
+      return;
+    }
+    const all = await getUserBadges(targetId);
+    const earned = all.filter((b) => b.earned);
+    success(res, { badges: earned, total: earned.length });
   } catch (err) {
     next(err);
   }

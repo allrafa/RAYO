@@ -253,6 +253,27 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
 
   const [gamProfile, setGamProfile] = useState<GamificationProfile | null>(null);
   const [badges, setBadges] = useState<BadgeData[]>([]);
+  // Task #92 — Suas comunidades + Seguindo no perfil próprio.
+  const [myCommunities, setMyCommunities] = useState<Array<{ id: number; name: string; slug: string; icon?: string | null; member_count: number }>>([]);
+  const [myFollows, setMyFollows] = useState<{ followers_count: number; following_count: number } | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    void (async () => {
+      const [c, f] = await Promise.all([
+        api.get<{ forums: typeof myCommunities }>(`/api/community/forums/me`),
+        api.get<{ followers_count: number; following_count: number }>(`/api/users/${user.id}/follows`),
+      ]);
+      if (cancelled) return;
+      if (c.success && c.data) setMyCommunities(c.data.forums);
+      if (f.success && f.data) setMyFollows({
+        followers_count: f.data.followers_count,
+        following_count: f.data.following_count,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
   // Task #44 — deep-link de busca de pessoas: quando o usuário clica
   // num resultado kind="user", buscamos o perfil público mínimo via
   // /api/users/:id/public e renderizamos no topo (overlay simples
@@ -540,6 +561,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                   setOtherProfile(null);
                   setOtherProfileError(null);
                 }}
+                onNavigateToCommunity={() => onNavigate?.("comunidade")}
               />
             </div>
           )}
@@ -782,6 +804,59 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                 </Card>
               </div>
             )}
+
+            {/* Task #92 — Suas comunidades + Seguindo (perfil próprio Reddit-style) */}
+            <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
+              <Card
+                className="p-4 lg:p-6 border-0 shadow-md"
+                style={{ background: 'var(--rayo-sand-50)' }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg" style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
+                    Suas comunidades
+                  </h3>
+                  {myFollows && (
+                    <span className="text-xs" style={{ color: 'var(--rayo-ink-400)' }}>
+                      Seguindo: <strong>{myFollows.following_count}</strong> · Seguidores:{" "}
+                      <strong>{myFollows.followers_count}</strong>
+                    </span>
+                  )}
+                </div>
+                {myCommunities.length === 0 ? (
+                  <p className="text-sm" style={{ color: 'var(--rayo-ink-400)' }}>
+                    Você ainda não entrou em nenhuma comunidade. Explore na aba Comunidade.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                    {myCommunities.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          try {
+                            sessionStorage.setItem("rayo-pending-community-slug", c.slug);
+                          } catch { /* noop */ }
+                          window.dispatchEvent(new CustomEvent("rayo:open-community", { detail: { slug: c.slug } }));
+                          onNavigate?.("comunidade");
+                        }}
+                        className="rounded-lg p-3 text-left flex items-center gap-2 hover:bg-[var(--rayo-sand-200)] transition-colors"
+                        style={{ background: 'var(--rayo-sand-100)', border: '1px solid var(--rayo-sand-300)' }}
+                      >
+                        <div className="text-xl">{c.icon || "💬"}</div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate" style={{ color: 'var(--rayo-forest-900)' }}>
+                            c/{c.slug}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {c.member_count} {c.member_count === 1 ? "membro" : "membros"}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </div>
 
             {/* Task #45 — Missões da semana (consome /api/gamification/missions) */}
             <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
