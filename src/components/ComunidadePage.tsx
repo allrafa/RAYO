@@ -28,6 +28,7 @@ import { FavoriteIcon } from "./FavoriteButton";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { ConversasPage } from "./ConversasPage";
 import { CommunityDetailPage } from "./CommunityDetailPage";
+import { DiscussionPage } from "./DiscussionPage";
 import { useTheme } from "./ThemeProvider";
 import { api } from "../lib/api";
 
@@ -68,7 +69,10 @@ interface CommentData {
   user_reaction: string | null;
 }
 
-export function ComunidadePage() {
+// Task #122 — onNavigate vem de App.tsx pra suportar back-to-home da
+// DiscussionPage quando o usuário chegou via deep-link `/c/<slug>/p/<id>`
+// ou pelo card de Discussões da Home.
+export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => void } = {}) {
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -84,6 +88,14 @@ export function ComunidadePage() {
   // Task #92 — Community detail page por slug. Quando setado, sobrepõe
   // tudo (header de tabs + composer escondidos) e renderiza CommunityDetailPage.
   const [activeCommunitySlug, setActiveCommunitySlug] = useState<string | null>(null);
+  // Task #122 — Discussão dedicada. Quando setada, sobrepõe o feed e
+  // renderiza a DiscussionPage com o post completo + comentários.
+  // `origin` decide pra onde o "Voltar" devolve (Home vs feed).
+  const [activeDiscussion, setActiveDiscussion] = useState<{
+    postId: number;
+    slug: string | null;
+    origin: "home" | "community";
+  } | null>(null);
 
   // Task #117 — restaura scrollY do feed quando o usuário fecha o painel
   // de comentários OU sai da página de uma comunidade. Sem isso ele cai
@@ -206,6 +218,23 @@ export function ComunidadePage() {
       if (detail?.id) void openPostById(detail.id, detail.highlight_comment_id);
     };
     window.addEventListener("raio:open-post", handler as EventListener);
+    // Task #122 — stash de discussão dedicada (vem do App.tsx ou de cards
+    // de Discussões da Home). Renderiza DiscussionPage em vez do modal.
+    try {
+      const pendingDisc = sessionStorage.getItem("rayo-pending-discussion-id");
+      if (pendingDisc) {
+        const slug = sessionStorage.getItem("rayo-pending-discussion-slug");
+        const origin = sessionStorage.getItem("rayo-pending-discussion-origin") === "home"
+          ? "home" : "community";
+        sessionStorage.removeItem("rayo-pending-discussion-id");
+        sessionStorage.removeItem("rayo-pending-discussion-slug");
+        sessionStorage.removeItem("rayo-pending-discussion-origin");
+        const id = Number(pendingDisc);
+        if (Number.isFinite(id) && id > 0) {
+          setActiveDiscussion({ postId: id, slug, origin });
+        }
+      }
+    } catch { /* ignore */ }
     try {
       const pending = sessionStorage.getItem("raio-pending-post");
       if (pending) {
@@ -396,8 +425,34 @@ export function ComunidadePage() {
           slug={activeCommunitySlug}
           onBack={() => setActiveCommunitySlug(null)}
           onOpenPost={(id) => {
+            // Task #122 — clicar num post da CommunityDetailPage também
+            // entra na DiscussionPage (não-modal). Origin "community"
+            // pra que o "Voltar" devolva pro feed do forum.
             setActiveCommunitySlug(null);
-            void openPostById(id);
+            setActiveDiscussion({ postId: id, slug: activeCommunitySlug, origin: "community" });
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Task #122 — Discussão dedicada (`/c/<slug>/p/<id>`). Sobrepõe o feed
+  // sem reload. Back origin-aware: home → onNavigate("home"); community
+  // → fecha a discussão e volta pro feed da Comunidade.
+  if (activeDiscussion) {
+    return (
+      <div
+        className="ra-page min-h-screen pt-2"
+        style={{ background: "var(--rayo-sand-100)" }}
+      >
+        <DiscussionPage
+          postId={activeDiscussion.postId}
+          slug={activeDiscussion.slug}
+          origin={activeDiscussion.origin}
+          onBack={() => {
+            const o = activeDiscussion.origin;
+            setActiveDiscussion(null);
+            if (o === "home") onNavigate?.("home");
           }}
         />
       </div>
@@ -1404,6 +1459,7 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
             variant="ghost"
             size="sm"
             onClick={onComment}
+            data-test="comment-btn"
             className="gap-2"
             style={{ color: 'var(--rayo-ink-400)' }}
             onMouseEnter={(e) => {
@@ -1440,6 +1496,18 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
             <FavoriteIcon id={post.id} type="post" />
           </div>
         </div>
+
+        {/* Task #122 — chips agregados POR EMOJI (atende o requisito de
+            contadores agrupados, não só o total na action row). */}
+        {reactionState.reactions.length > 0 && (
+          <ReactionsSummary
+            targetType="post"
+            targetId={post.id}
+            reactions={reactionState.reactions}
+            userReaction={reactionState.userReaction}
+            onChange={setReactionState}
+          />
+        )}
       </div>
     </div>
   );

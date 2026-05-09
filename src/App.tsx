@@ -248,8 +248,11 @@ function AppContent() {
       const slug = postMatch[1].toLowerCase();
       const id = postMatch[2];
       try {
+        // Deep-link externo: origin "home" pra que o "Voltar" caia
+        // na Home (não tem feed pra voltar — usuário chegou pelo URL).
         sessionStorage.setItem("rayo-pending-discussion-slug", slug);
-        sessionStorage.setItem("raio-pending-post", id);
+        sessionStorage.setItem("rayo-pending-discussion-id", id);
+        sessionStorage.setItem("rayo-pending-discussion-origin", "home");
       } catch {
         // ignore
       }
@@ -479,7 +482,7 @@ function AppContent() {
         case "conselheiro":
           return <ConselheiroPage />;
         case "comunidade":
-          return <ComunidadePage />;
+          return <ComunidadePage onNavigate={setCurrentTab} />;
         case "conversas":
           return <ConversasPage />;
         case "trilha-conversas":

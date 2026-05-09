@@ -416,13 +416,13 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                       type="button"
                       className="rh-disc"
                       onClick={() => {
-                        // Task #122 — abre a discussão dedicada via deep-link.
-                        // Reusa o contrato `raio-pending-post` (mesma chave da
-                        // busca/perfil); ComunidadePage faz o fetch+render do
-                        // CommentsPanel completo. Slug vai junto pra a URL
-                        // canônica `/c/<slug>/p/<id>` (replaceState sem reload).
+                        // Task #122 — abre a discussão dedicada como página
+                        // (não-modal). ComunidadePage lê o stash e renderiza
+                        // a DiscussionPage no lugar do feed; origin='home'
+                        // faz o "Voltar" devolver pra Home.
                         try {
-                          sessionStorage.setItem("raio-pending-post", String(post.id));
+                          sessionStorage.setItem("rayo-pending-discussion-id", String(post.id));
+                          sessionStorage.setItem("rayo-pending-discussion-origin", "home");
                           if (post.forumSlug) {
                             sessionStorage.setItem("rayo-pending-discussion-slug", post.forumSlug);
                             try {
