@@ -10,6 +10,7 @@ import { ArrowLeft, BookOpen, MessageSquare, UsersRound, Info, Loader2 } from "l
 import { api } from "../../lib/api";
 import { Button } from "../ui/button";
 import { useApp } from "../AppContext";
+import { useAuth } from "../AuthContext";
 import { CourseDetailPage } from "../CourseDetailPage";
 import { TurmaLandingPage, type TurmaLanding } from "./TurmaLandingPage";
 import { TurmaCommunityTab } from "./TurmaCommunityTab";
@@ -19,6 +20,7 @@ type TurmaTab = "aulas" | "comunidade" | "membros" | "sobre";
 
 export function TurmaShell() {
   const { currentCourseId, setIsInCourseDetail, setCurrentCourseId } = useApp();
+  const { user } = useAuth();
   const turmaId = currentCourseId ? Number(currentCourseId) : null;
 
   const [tab, setTab] = useState<TurmaTab>("aulas");
@@ -59,12 +61,26 @@ export function TurmaShell() {
     );
   }
   if (!landing) {
-    return <TurmaLandingPage turmaId={turmaId} onBack={back} />;
+    return (
+      <TurmaLandingPage
+        turmaId={turmaId}
+        onBack={back}
+        defaultName={user?.name}
+        defaultEmail={user?.email}
+      />
+    );
   }
 
   // Não-membro → landing pura (com modal "Em breve" embutido).
   if (!landing.is_member) {
-    return <TurmaLandingPage turmaId={turmaId} onBack={back} />;
+    return (
+      <TurmaLandingPage
+        turmaId={turmaId}
+        onBack={back}
+        defaultName={user?.name}
+        defaultEmail={user?.email}
+      />
+    );
   }
 
   // Membro → shell com tabs.
@@ -97,7 +113,16 @@ export function TurmaShell() {
         {tab === "aulas" && <CourseDetailPage courseId={turmaId} onBack={back} />}
         {tab === "comunidade" && <TurmaCommunityTab classId={turmaId} />}
         {tab === "membros" && <TurmaMembersTab classId={turmaId} />}
-        {tab === "sobre" && <TurmaLandingPage turmaId={turmaId} onBack={back} embedded />}
+        {tab === "sobre" && (
+          <TurmaLandingPage
+            turmaId={turmaId}
+            onBack={back}
+            embedded
+            defaultName={user?.name}
+            defaultEmail={user?.email}
+            onEnterTurma={() => setTab("aulas")}
+          />
+        )}
       </div>
     </div>
   );

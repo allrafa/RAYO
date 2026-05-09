@@ -12,28 +12,55 @@ import { useApp } from "../AppContext";
 import { PostCard } from "../ComunidadePage";
 import { CreatePostModal } from "../CreatePostModal";
 
+// Shape mínimo do post como vem do backend e como `PostCard` consome.
+// Não importamos do AppContext porque `mapAPIPost` é interno; o feed da
+// turma renderiza direto a resposta da API (PostCard tolera ambos os
+// shapes — vide src/components/ComunidadePage.tsx).
+interface TurmaPost {
+  id: number;
+  author_id?: number;
+  author_name?: string;
+  forum_id: number;
+  class_id: number | null;
+  content: string;
+  category: string | null;
+  is_pinned: boolean;
+  like_count: number;
+  comment_count: number;
+  share_count: number;
+  created_at: string;
+  images?: string[];
+  is_saved?: boolean;
+  user_liked?: boolean;
+}
+
+type ReactionsMap = Record<string, unknown>;
+
+interface AppCtxLike {
+  reactions?: ReactionsMap;
+  reactToPost?: (postId: number, emoji: string) => void;
+}
+
 export function TurmaCommunityTab({ classId }: { classId: number }) {
-  const { mapAPIPost, reactions, reactToPost } = useApp() as any;
-  const [posts, setPosts] = useState<any[]>([]);
+  const ctx = useApp() as unknown as AppCtxLike;
+  const reactions: ReactionsMap = ctx.reactions ?? {};
+  const reactToPost = ctx.reactToPost;
+
+  const [posts, setPosts] = useState<TurmaPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
-  const [editingPost, setEditingPost] = useState<any>(null);
+  const [editingPost, setEditingPost] = useState<TurmaPost | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await api.get<{ posts: any[] }>(
+    const res = await api.get<{ posts: TurmaPost[] }>(
       `/api/community/posts?class_id=${classId}&limit=50`,
     );
     if (res.success && res.data) {
-      // mapAPIPost garante que o shape bate com o que PostCard espera
-      // (mesma normalização que a Comunidade global usa).
-      const mapped = (res.data.posts || []).map((p: any) =>
-        typeof mapAPIPost === "function" ? mapAPIPost(p) : p,
-      );
-      setPosts(mapped);
+      setPosts(res.data.posts || []);
     }
     setLoading(false);
-  }, [classId, mapAPIPost]);
+  }, [classId]);
 
   useEffect(() => {
     load();
@@ -43,20 +70,10 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
     if (typeof reactToPost === "function") reactToPost(postId, emoji);
   };
 
-  const handleComment = (_post: any) => {
-    // TODO Task #99 follow-up: navegar pro detalhe do post dentro do
-    // contexto da turma. Por ora, recarrega o feed após o sino.
-    load();
-  };
-
-  const handleShare = (_post: any) => {
-    /* compartilhar reaproveita o sistema global; PostCard cuida */
-  };
-
   return (
     <div className="px-4 py-4 space-y-4">
       {/* Header / CTA composer */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           Comunidade exclusiva dessa turma. Posts daqui não aparecem no feed global.
         </p>
@@ -87,12 +104,12 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
             <PostCard
               key={post.id}
               post={post}
-              reactions={reactions || {}}
+              reactions={reactions}
               onReact={handleReact}
-              onComment={() => handleComment(post)}
-              onShare={() => handleShare(post)}
+              onComment={load}
+              onShare={load}
               onMutated={load}
-              onEdit={(p) => {
+              onEdit={(p: TurmaPost) => {
                 setEditingPost(p);
                 setComposerOpen(true);
               }}
@@ -114,7 +131,7 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
         }}
         currentPage="comunidade"
         initialClassId={classId}
-        editingPost={editingPost}
+        editingPost={editingPost ?? undefined}
       />
     </div>
   );

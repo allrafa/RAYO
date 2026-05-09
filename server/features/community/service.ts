@@ -239,7 +239,13 @@ export async function createPost(
       [userId, cid],
     );
     if (m.length === 0) {
-      throw new AppError("Apenas membros da turma podem publicar nela", "NOT_A_MEMBER", 403);
+      // Task #99 — moderator/admin override: equipe pode publicar em qualquer
+      // turma pra ações de moderação/curadoria, sem precisar matricular.
+      const { rows: r } = await query(`SELECT role FROM users WHERE id = $1`, [userId]);
+      const role = r[0]?.role;
+      if (role !== "moderator" && role !== "admin") {
+        throw new AppError("Apenas membros da turma podem publicar nela", "NOT_A_MEMBER", 403);
+      }
     }
     resolvedClassId = cid;
   }

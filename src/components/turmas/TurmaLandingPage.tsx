@@ -38,9 +38,24 @@ interface TurmaLandingPageProps {
   onEnroll?: () => void;
   /** Render embutido (sem header/back) — usado pela tab "Sobre" do TurmaShell. */
   embedded?: boolean;
+  /** Task #99 — pré-preenche o JoinInterestModal pra usuário logado. Vem de
+   *  caller que tem AuthContext (ex.: TurmaShell). Anônimo passa undefined. */
+  defaultName?: string;
+  defaultEmail?: string;
+  /** Task #99 — quando o usuário JÁ é membro da turma, troca a CTA de
+   *  "Garantir minha vaga" pra "Entrar na turma" e dispara este callback
+   *  (TurmaShell muda o tab pra "Aulas"). */
+  onEnterTurma?: () => void;
 }
 
-export function TurmaLandingPage({ turmaId, onBack, embedded = false }: TurmaLandingPageProps) {
+export function TurmaLandingPage({
+  turmaId,
+  onBack,
+  embedded = false,
+  defaultName,
+  defaultEmail,
+  onEnterTurma,
+}: TurmaLandingPageProps) {
   const [turma, setTurma] = useState<TurmaLanding | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -155,17 +170,35 @@ export function TurmaLandingPage({ turmaId, onBack, embedded = false }: TurmaLan
                       : "Em breve"}
                   </span>
                 </div>
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto"
-                  onClick={() => setShowInterest(true)}
-                  style={{ background: "var(--rayo-terra-500)", color: "white" }}
-                >
-                  <Sparkles className="w-4 h-4 mr-2" /> Garantir minha vaga
-                </Button>
-                <p className="text-xs text-muted-foreground">
-                  Sem checkout agora. Avisamos por e-mail quando abrir.
-                </p>
+                {turma.is_member && onEnterTurma ? (
+                  <>
+                    <Button
+                      size="lg"
+                      className="w-full sm:w-auto"
+                      onClick={onEnterTurma}
+                      style={{ background: "var(--rayo-terra-500)", color: "white" }}
+                    >
+                      <BookOpen className="w-4 h-4 mr-2" /> Entrar na turma
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Você já está matriculado nessa turma.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="lg"
+                      className="w-full sm:w-auto"
+                      onClick={() => setShowInterest(true)}
+                      style={{ background: "var(--rayo-terra-500)", color: "white" }}
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" /> Garantir minha vaga
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Sem checkout agora. Avisamos por e-mail quando abrir.
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -222,7 +255,7 @@ export function TurmaLandingPage({ turmaId, onBack, embedded = false }: TurmaLan
         )}
 
         {/* CTA repetido no fim */}
-        {!embedded && (
+        {!embedded && !(turma.is_member && onEnterTurma) && (
           <div className="text-center py-6">
             <Button
               size="lg"
@@ -240,6 +273,8 @@ export function TurmaLandingPage({ turmaId, onBack, embedded = false }: TurmaLan
         onClose={() => setShowInterest(false)}
         turmaId={turma.id}
         turmaTitle={turma.title}
+        defaultName={defaultName}
+        defaultEmail={defaultEmail}
       />
     </div>
   );
