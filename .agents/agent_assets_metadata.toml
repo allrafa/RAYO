@@ -6,3 +6,39 @@ id = "QBW4_ivemC7O8K0f7J4rv"
 uri = "file://src/assets/marketplace-hero-family.png"
 type = "image"
 title = "marketplace hero family bench"
+
+[[generated]]
+id = "5hOutL4V-hWfcPO6WSr_d"
+uri = "file://artifacts/mockup-sandbox/public/images/lp-casados/hero.png"
+type = "image"
+title = "Couple holding hands morning"
+
+[[generated]]
+id = "X3xtIZBx9wtA98VODTBlM"
+uri = "file://artifacts/mockup-sandbox/public/images/lp-casados/routine.png"
+type = "image"
+title = "Couple on couch at night"
+
+[[generated]]
+id = "0zR8R5AQvNAXVB-z93UTU"
+uri = "file://artifacts/mockup-sandbox/public/images/lp-casados/kitchen.png"
+type = "image"
+title = "Couple morning coffee kitchen"
+
+[[generated]]
+id = "QajyI4-KqrNVjjjX-doZr"
+uri = "file://artifacts/mockup-sandbox/public/images/lp-casados/hands.png"
+type = "image"
+title = "Close up hands wedding rings"
+
+[[generated]]
+id = "toGkywulSAo_V7Hb_chvl"
+uri = "file://artifacts/mockup-sandbox/public/images/lp-casados/hero-pragmatic.png"
+type = "image"
+title = "couple talking on couch"
+
+[[generated]]
+id = "JMx1OHNFJ2wMwuc1USWaF"
+uri = "file://artifacts/mockup-sandbox/public/images/lp-casados/working-together.png"
+type = "image"
+title = "couple cooking together"
