@@ -33,7 +33,9 @@ import {
 import { optionalAuth } from "./middleware/auth.js";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import fs from "fs/promises";
 import { fileURLToPath } from "url";
+import { PUBLIC_META, applyPublicMeta, normalizePath } from "./features/seo/publicMeta.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -283,15 +285,66 @@ async function start() {
       res.send(body);
     });
 
+    // SEO/SSR-leve: para rotas públicas registradas em PUBLIC_META, lemos
+    // o index.html, injetamos <title>, meta tags, OpenGraph e (quando
+    // aplicável) um <noscript> com o conteúdo plain-HTML. Em dev o HTML
+    // passa por vite.transformIndexHtml para manter HMR. Em prod o
+    // index.html é lido uma vez e cacheado em memória. Esse middleware
+    // precisa rodar ANTES do vite.middlewares/static para interceptar
+    // a entrega do shell SPA.
+    const projectRoot = path.resolve(__dirname, "..");
+    const indexHtmlPath = isDev
+      ? path.resolve(projectRoot, "index.html")
+      : path.resolve(projectRoot, "build", "index.html");
+    const buildPath = path.resolve(projectRoot, "build");
+
     if (isDev) {
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: "spa",
       });
+      // Middleware SEO em dev: re-lê o template a cada request (HMR-friendly).
+      app.use(async (req, res, next) => {
+        if (req.method !== "GET") return next();
+        const accept = String(req.headers.accept || "");
+        if (!accept.includes("text/html")) return next();
+        const meta = PUBLIC_META[normalizePath(req.path)];
+        if (!meta) return next();
+        try {
+          const raw = await fs.readFile(indexHtmlPath, "utf-8");
+          const transformed = await vite.transformIndexHtml(req.originalUrl, raw);
+          const finalHtml = applyPublicMeta(transformed, meta);
+          res.set("Content-Type", "text/html; charset=utf-8");
+          res.set("Cache-Control", "public, max-age=300");
+          res.send(finalHtml);
+        } catch (err) {
+          logger.warn("PublicSEO", `Failed to render ${req.path}: ${(err as Error).message}`);
+          next();
+        }
+      });
       app.use(vite.middlewares);
       logger.info("Server", "Vite dev middleware attached.");
     } else {
-      const buildPath = path.resolve(__dirname, "..", "build");
+      // Em prod, lê index.html uma vez e cacheia. Se a leitura falhar
+      // (build ausente), seguimos sem SEO injection — o static fallback
+      // ainda devolve a página, só sem as meta tags ricas.
+      let prodIndexHtml: string | null = null;
+      try {
+        prodIndexHtml = await fs.readFile(indexHtmlPath, "utf-8");
+      } catch (err) {
+        logger.warn("PublicSEO", `Could not preload index.html: ${(err as Error).message}`);
+      }
+      app.use((req, res, next) => {
+        if (req.method !== "GET" || !prodIndexHtml) return next();
+        const accept = String(req.headers.accept || "");
+        if (!accept.includes("text/html")) return next();
+        const meta = PUBLIC_META[normalizePath(req.path)];
+        if (!meta) return next();
+        const finalHtml = applyPublicMeta(prodIndexHtml, meta);
+        res.set("Content-Type", "text/html; charset=utf-8");
+        res.set("Cache-Control", "public, max-age=300");
+        res.send(finalHtml);
+      });
       app.use(express.static(buildPath));
       // SPA fallback: in Express 5 the legacy `app.get("*")` throws at
       // startup ("Missing parameter name") because path-to-regexp v8 no
