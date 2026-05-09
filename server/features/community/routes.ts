@@ -350,8 +350,8 @@ router.patch("/posts/:id", requireAuth, async (req, res, next) => {
       sendError(res, "ID de post inválido", "INVALID_POST_ID", 400);
       return;
     }
-    const { content, category, title } = req.body || {};
-    const result = await updatePost(postId, req.user!.id, { content, category, title });
+    const { content, category, title, images } = req.body || {};
+    const result = await updatePost(postId, req.user!.id, { content, category, title, images });
     success(res, result);
   } catch (err) {
     if (err instanceof AppError) {

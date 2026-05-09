@@ -30,6 +30,8 @@ interface CreatePostModalProps {
     content?: string;
     category?: string;
     forum_id?: number;
+    /** Sentinels existentes (objstore://posts/<file>) — preservados no PATCH. */
+    images?: string[];
   } | null;
 }
 
@@ -288,11 +290,20 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
     try {
       let ok = false;
       if (isEditing && editingPost) {
-        // Task #93 — edição via PATCH. Imagens não são editáveis aqui
-        // (o backend não atualiza anexos no PATCH). Comunidade fixa.
+        // Task #93 — edição via PATCH. Conteúdo, categoria e fotos podem
+        // ser alterados; comunidade (forum_id) é IMUTÁVEL no servidor.
+        // Imagens já existentes vivem em `editingPost.images` (sentinels
+        // objstore://posts/...); novas vêm de `uploadedImages` (mesmo
+        // formato após upload).
+        const existingImages = Array.isArray(editingPost.images) ? editingPost.images : [];
+        const newImages = uploadedImages.map((i) => i.storedUrl);
         const res = await api.patch<{ post: { id: number } }>(
           `/api/community/posts/${editingPost.id}`,
-          { content, category: selectedCategory },
+          {
+            content,
+            category: selectedCategory,
+            images: [...existingImages, ...newImages].slice(0, POST_MAX_IMAGES),
+          },
         );
         ok = res.success;
         if (ok) {

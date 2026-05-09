@@ -266,7 +266,7 @@ export async function getPostDetail(postId: number, userId?: number) {
 export async function updatePost(
   postId: number,
   userId: number,
-  patch: { content?: string; category?: string; title?: string },
+  patch: { content?: string; category?: string; title?: string; images?: unknown },
 ) {
   const { rows: existing } = await query(
     `SELECT id, user_id, forum_id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
@@ -279,17 +279,58 @@ export async function updatePost(
     throw new AppError("Apenas o autor pode editar", "FORBIDDEN", 403);
   }
 
-  const sets: string[] = [];
-  const params: any[] = [];
+  // Task #93 — `forum_id` é IMUTÁVEL no PATCH (post não muda de comunidade).
+  // Conteúdo, título, categoria e fotos podem ser editados.
+  let nextContentTrimmed: string | null = null;
   if (patch.content !== undefined) {
     const trimmed = String(patch.content || "").trim();
-    if (trimmed.length === 0) {
-      throw new AppError("Conteúdo não pode ficar vazio", "EMPTY_CONTENT", 400);
-    }
     if (trimmed.length > 5000) {
       throw new AppError("Conteúdo excede 5000 caracteres", "CONTENT_TOO_LONG", 400);
     }
-    params.push(trimmed);
+    nextContentTrimmed = trimmed;
+  }
+
+  // Defesa em profundidade: mesma allowlist de prefixo do create — só
+  // sentinels objstore://posts/<file> são aceitos. Bloqueia URL externa,
+  // vídeo (sentinels Bunny) e sentinels do CMS/DM.
+  let imageList: string[] | null = null;
+  if (patch.images !== undefined) {
+    if (!Array.isArray(patch.images)) {
+      throw new AppError("Imagens devem ser um array", "INVALID_IMAGES", 400);
+    }
+    if (patch.images.length > POST_MAX_IMAGES) {
+      throw new AppError(`Máximo de ${POST_MAX_IMAGES} imagens por post`, "TOO_MANY_IMAGES", 400);
+    }
+    const buf: string[] = [];
+    for (const it of patch.images) {
+      if (typeof it !== "string" || !it.startsWith(POST_IMAGE_PREFIX)) {
+        throw new AppError("Referência de imagem inválida", "INVALID_IMAGE_REF", 400);
+      }
+      buf.push(it);
+    }
+    imageList = buf;
+  }
+
+  // Post precisa continuar válido depois do PATCH: ou tem texto, ou tem
+  // foto. Reusa a regra de criação (Reddit-style: foto sem texto OK).
+  if (nextContentTrimmed !== null || imageList !== null) {
+    const { rows: cur } = await query(
+      `SELECT content, images FROM posts WHERE id = $1`,
+      [postId],
+    );
+    const finalContent = nextContentTrimmed !== null ? nextContentTrimmed : (cur[0]?.content || "");
+    const finalImages = imageList !== null
+      ? imageList
+      : (Array.isArray(cur[0]?.images) ? cur[0].images : []);
+    if (finalContent.trim().length === 0 && finalImages.length === 0) {
+      throw new AppError("Post precisa de texto ou ao menos uma foto", "EMPTY_CONTENT", 400);
+    }
+  }
+
+  const sets: string[] = [];
+  const params: any[] = [];
+  if (nextContentTrimmed !== null) {
+    params.push(nextContentTrimmed);
     sets.push(`content = $${params.length}`);
   }
   if (patch.category !== undefined) {
@@ -299,6 +340,10 @@ export async function updatePost(
   if (patch.title !== undefined) {
     params.push(patch.title || null);
     sets.push(`title = $${params.length}`);
+  }
+  if (imageList !== null) {
+    params.push(JSON.stringify(imageList));
+    sets.push(`images = $${params.length}::jsonb`);
   }
   if (sets.length === 0) {
     return { post_id: postId, updated: false };

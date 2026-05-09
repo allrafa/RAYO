@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   User, Bell, Heart, Trophy, Zap, 
   ChevronRight, LogOut, Moon, Sun, Globe, 
@@ -41,7 +41,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const { userData, books } = useApp();
   const { settings } = useAccessibility();
   const { theme, setTheme } = useTheme();
-  const { logout, user, updatePreferences, uploadAvatar } = useAuth();
+  const { logout, user, updatePreferences } = useAuth();
   const canAccessAdmin = userHasRole(user, "producer");
   // Task #45 — preferências vivem em users.notification_preferences (JSONB)
   // no formato nested `{ notifications: {...}, language }`. Fallbacks
@@ -59,13 +59,9 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showLanguage, setShowLanguage] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  // Task #45 — preview otimista do avatar: criamos um objectURL local
-  // assim que o usuário escolhe um arquivo e mostramos imediatamente
-  // no header. Se o upload falhar, voltamos pro avatar do servidor.
-  // Sucesso: limpamos o preview e o user atualizado já traz a nova URL.
-  const [pendingAvatarPreview, setPendingAvatarPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Task #93 — avatar upload migrado pro UserProfilePage (header próprio).
+  // Os handlers `handleAvatarPick` / `handleAvatarFile` foram removidos
+  // junto com o header gradient terra que vivia aqui.
 
   interface ActivityStats {
     libraryCount: number;
@@ -113,35 +109,6 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       }
     },
     [updatePreferences],
-  );
-
-  const handleAvatarPick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
-  const handleAvatarFile = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      e.target.value = "";
-      if (!file) return;
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error("Imagem muito grande (máx. 2 MB).");
-        return;
-      }
-      const previewUrl = URL.createObjectURL(file);
-      setPendingAvatarPreview(previewUrl);
-      setUploadingAvatar(true);
-      const res = await uploadAvatar(file);
-      setUploadingAvatar(false);
-      // Libera o objectURL e limpa o preview — em sucesso o user
-      // recém-hidratado já traz avatar_url novo; em falha, volta para
-      // o avatar antigo do servidor.
-      URL.revokeObjectURL(previewUrl);
-      setPendingAvatarPreview(null);
-      if (res.success) toast.success("Foto de perfil atualizada!");
-      else toast.error(res.error || "Erro ao enviar foto");
-    },
-    [uploadAvatar],
   );
 
   // Task #45 — alterna o tema localmente (ThemeProvider) e persiste no
@@ -587,292 +554,6 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                 />
               </div>
             )}
-            {/* Task #93 — Header gradiente terra, Stats Cards, Earned Badges
-                e "Suas comunidades" foram REMOVIDOS daqui. Tudo isso já é
-                renderizado pelo UserProfilePage embutido acima (avatar,
-                karma, seguidores, segments, tabs Posts/Comentários/
-                Comunidades/Conquistas/Salvos/Sobre). Configurações,
-                Missões, LGPD e Logout continuam abaixo. */}
-            <div className="hidden">
-            <div>
-              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItaDJoLTJ2LTJ6bTAtNHYyaC0ydi0yaDF2LTFoMXptMC00djJoLTJ2LTJoMnptLTQgMHYyaC0ydi0yaDJ6bS00IDB2MmgtMnYtMmgyem0tNCAwdjJoLTJ2LTJoMnptLTQgMHYyaC0ydi0yaDJ6bTAgNHYyaC0ydi0yaDJ6bTAgNHYyaC0ydi0yaDJ6bTQgMHYyaC0ydi0yaDJ6bTQgMHYyaC0ydi0yaDJ6bTQgMHYyaC0ydi0yaDJ6bTQtOHYyaC0ydi0yaDJ6bTAtNHYyaC0ydi0yaDJ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30"></div>
-              
-              <div className="relative pt-12 pb-20 lg:pb-16 px-6">
-                {/* Mobile/Desktop Layout */}
-                <div className="lg:flex lg:items-start lg:gap-6 max-w-md lg:max-w-none mx-auto">
-                  {/* Avatar com botão de câmera para upload */}
-                  <div className="text-center lg:text-left lg:flex-shrink-0">
-                    <div className="relative inline-block mx-auto lg:mx-0 mb-4 lg:mb-0">
-                      <Avatar
-                        className="w-24 h-24 lg:w-32 lg:h-32 ring-4 shadow-xl"
-                        style={{ ringColor: 'var(--rayo-sand-100)' }}
-                      >
-                        {(pendingAvatarPreview || user?.avatar_url) && (
-                          <AvatarImage
-                            src={pendingAvatarPreview || user!.avatar_url!}
-                            alt={user?.name || "Avatar"}
-                          />
-                        )}
-                        <AvatarFallback
-                          className="text-2xl lg:text-4xl"
-                          style={{
-                            background: 'var(--rayo-sand-100)',
-                            color: 'var(--rayo-terra-500)'
-                          }}
-                        >
-                          {(user?.name || userData.name)?.[0] || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <button
-                        type="button"
-                        onClick={handleAvatarPick}
-                        disabled={uploadingAvatar}
-                        aria-label="Alterar foto de perfil"
-                        className="absolute bottom-0 right-0 w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 disabled:opacity-60"
-                        style={{
-                          background: 'var(--rayo-terra-500)',
-                          color: '#fff',
-                          border: '2px solid var(--rayo-sand-100)',
-                        }}
-                      >
-                        <Camera className="w-4 h-4" />
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        className="hidden"
-                        onChange={handleAvatarFile}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Info */}
-                  <div className="text-center lg:text-left lg:flex-1">
-                    <h1 className="text-white text-2xl lg:text-3xl mb-1" style={{ fontWeight: 700 }}>
-                      {userData.name || 'Usuário'}
-                    </h1>
-                    
-                    <p className="text-white/80 text-sm lg:text-base mb-4">
-                      {userData.segments?.[0] === 'solteiro' ? '💚 Solteiro' :
-                       userData.segments?.[0] === 'namoro' ? '💕 Namoro' :
-                       userData.segments?.[0] === 'noivos' ? '💍 Noivos' :
-                       userData.segments?.[0] === 'casados' ? '👰‍♀️ Casados' :
-                       userData.segments?.[0] === 'pais' ? '👶 Pais' : '💚 Membro RAYO'}
-                    </p>
-
-                    <div className="flex items-center justify-center lg:justify-start gap-2 mb-4 lg:mb-6">
-                      <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
-                        <Crown className="w-3 h-3 mr-1" />
-                        Premium
-                      </Badge>
-                      <Badge className="bg-white/20 text-white border-white/30 backdrop-blur-sm">
-                        Nível {currentLevel}
-                      </Badge>
-                    </div>
-
-                    {/* Task #45 — bio editável (renderiza só se preenchida) */}
-                    {user?.bio && (
-                      <p
-                        className="text-white/85 text-sm lg:text-base mb-4 lg:mb-6 mx-auto lg:mx-0 max-w-md"
-                        style={{ lineHeight: 1.5 }}
-                      >
-                        {user.bio}
-                      </p>
-                    )}
-
-                    {/* Progress Bar - Desktop Only */}
-                    <div className="hidden lg:block bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-white/90 text-sm" style={{ fontWeight: 600 }}>
-                          Progresso para Nível {currentLevel + 1}
-                        </span>
-                        <span className="text-white/90 text-sm" style={{ fontWeight: 600 }}>
-                          {xpInCurrentLevel}/{xpNeededForNext} XP
-                        </span>
-                      </div>
-                      <Progress value={progressPercentage} className="h-2 bg-white/20" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 -mt-12 lg:-mt-8 mb-6 lg:mb-8">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-                {stats.map((stat, index) => {
-                  const Icon = stat.icon;
-                  return (
-                    <Card 
-                      key={index} 
-                      className="ra-card ra-card-hover p-4 lg:p-5 shadow-lg border-0 desktop-card-hover"
-                      style={{ background: 'var(--rayo-sand-50)' }}
-                    >
-                      <div className="flex flex-col lg:gap-3">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div 
-                            className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ background: stat.bgVar }}
-                          >
-                            <Icon 
-                              className="w-5 h-5 lg:w-6 lg:h-6" 
-                              style={{ color: stat.colorVar }}
-                            />
-                          </div>
-                          <div className="lg:hidden">
-                            <p 
-                              className="text-xs" 
-                              style={{ color: 'var(--rayo-ink-700)' }}
-                            >
-                              {stat.label}
-                            </p>
-                            <p 
-                              className="text-lg" 
-                              style={{ 
-                                fontWeight: 700,
-                                color: 'var(--rayo-forest-900)'
-                              }}
-                            >
-                              {stat.value}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="hidden lg:block">
-                          <p 
-                            className="text-sm mb-1" 
-                            style={{ color: 'var(--rayo-ink-700)' }}
-                          >
-                            {stat.label}
-                          </p>
-                          <p 
-                            className="text-2xl mb-1" 
-                            style={{ 
-                              fontWeight: 700,
-                              color: 'var(--rayo-forest-900)'
-                            }}
-                          >
-                            {stat.value}
-                          </p>
-                          <p 
-                            className="text-xs" 
-                            style={{ color: 'var(--rayo-ink-400)' }}
-                          >
-                            {stat.trend}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Earned Badges */}
-            {earnedBadges.length > 0 && (
-              <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
-                <Card
-                  className="p-4 lg:p-6 border-0 shadow-md"
-                  style={{ background: 'var(--rayo-sand-50)' }}
-                >
-                  <h3
-                    className="text-lg mb-4"
-                    style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
-                  >
-                    Conquistas Obtidas
-                  </h3>
-                  <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
-                    {earnedBadges.map((badge) => {
-                      const tierColors: Record<string, string> = {
-                        bronze: 'var(--rayo-terra-500)',
-                        silver: '#94a3b8',
-                        gold: '#eab308',
-                        platinum: '#8b5cf6',
-                        premium: '#06b6d4',
-                      };
-                      return (
-                        <div
-                          key={badge.id}
-                          className="flex flex-col items-center text-center gap-1"
-                          title={badge.description}
-                        >
-                          <div
-                            className="w-12 h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-xl lg:text-2xl"
-                            style={{
-                              background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                              border: `2px solid ${tierColors[badge.tier] || tierColors.bronze}`,
-                            }}
-                          >
-                            {badge.icon}
-                          </div>
-                          <span
-                            className="text-[10px] lg:text-xs leading-tight"
-                            style={{ color: 'var(--rayo-ink-700)', fontWeight: 500 }}
-                          >
-                            {badge.title}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-              </div>
-            )}
-
-            {/* Task #92 — Suas comunidades + Seguindo (perfil próprio Reddit-style) */}
-            <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
-              <Card
-                className="p-4 lg:p-6 border-0 shadow-md"
-                style={{ background: 'var(--rayo-sand-50)' }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg" style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
-                    Suas comunidades
-                  </h3>
-                  {myFollows && (
-                    <span className="text-xs" style={{ color: 'var(--rayo-ink-400)' }}>
-                      Seguindo: <strong>{myFollows.following_count}</strong> · Seguidores:{" "}
-                      <strong>{myFollows.followers_count}</strong>
-                    </span>
-                  )}
-                </div>
-                {myCommunities.length === 0 ? (
-                  <p className="text-sm" style={{ color: 'var(--rayo-ink-400)' }}>
-                    Você ainda não entrou em nenhuma comunidade. Explore na aba Comunidade.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-                    {myCommunities.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          try {
-                            sessionStorage.setItem("rayo-pending-community-slug", c.slug);
-                          } catch { /* noop */ }
-                          window.dispatchEvent(new CustomEvent("rayo:open-community", { detail: { slug: c.slug } }));
-                          onNavigate?.("comunidade");
-                        }}
-                        className="rounded-lg p-3 text-left flex items-center gap-2 hover:bg-[var(--rayo-sand-200)] transition-colors"
-                        style={{ background: 'var(--rayo-sand-100)', border: '1px solid var(--rayo-sand-300)' }}
-                      >
-                        <div className="text-xl">{c.icon || "💬"}</div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate" style={{ color: 'var(--rayo-forest-900)' }}>
-                            c/{c.slug}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground">
-                            {c.member_count} {c.member_count === 1 ? "membro" : "membros"}
-                          </p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            </div>
-
-            </div>
-            {/* fim do bloco oculto Task #93 */}
 
             {/* Task #45 — Missões da semana (consome /api/gamification/missions) */}
             <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">

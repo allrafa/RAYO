@@ -320,21 +320,29 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="posts" className="px-3 pt-3 pb-5" onValueChange={handleTabChange}>
-        <TabsList className={`grid w-full ${isSelf ? "grid-cols-6" : "grid-cols-5"}`}>
-          <TabsTrigger value="posts">Posts</TabsTrigger>
-          <TabsTrigger value="comments">Comentários</TabsTrigger>
-          <TabsTrigger value="communities">Comunidades</TabsTrigger>
-          <TabsTrigger value="achievements">Conquistas</TabsTrigger>
-          {isSelf && (
-            <TabsTrigger value="saved" className="flex items-center gap-1">
-              <Bookmark className="w-3 h-3" />
-              Salvos
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="about">Sobre</TabsTrigger>
-        </TabsList>
-
+      {/* Task #93 — Tabs mobile-first: linha rolável horizontalmente em
+          telas pequenas (sem clipping de label, padding lateral confortável)
+          e auto-justify no desktop. NÃO usar `grid-cols-N` aqui — em mobile
+          isso aperta os títulos e quebra acessibilidade. */}
+      <Tabs defaultValue="posts" className="pt-3 pb-5" onValueChange={handleTabChange}>
+        <div className="px-4 -mx-1 overflow-x-auto no-scrollbar">
+          <TabsList
+            className="inline-flex w-max min-w-full gap-1 lg:w-full lg:justify-between bg-transparent p-0"
+            style={{ background: "transparent" }}
+          >
+            <TabsTrigger value="posts" className="px-3 py-2 whitespace-nowrap text-sm">Posts</TabsTrigger>
+            <TabsTrigger value="comments" className="px-3 py-2 whitespace-nowrap text-sm">Comentários</TabsTrigger>
+            <TabsTrigger value="communities" className="px-3 py-2 whitespace-nowrap text-sm">Comunidades</TabsTrigger>
+            <TabsTrigger value="achievements" className="px-3 py-2 whitespace-nowrap text-sm">Conquistas</TabsTrigger>
+            {isSelf && (
+              <TabsTrigger value="saved" className="px-3 py-2 whitespace-nowrap text-sm flex items-center gap-1">
+                <Bookmark className="w-3.5 h-3.5" />
+                Salvos
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="about" className="px-3 py-2 whitespace-nowrap text-sm">Sobre</TabsTrigger>
+          </TabsList>
+        </div>
         {isSelf && (
           <TabsContent value="saved" className="mt-3 space-y-2">
             {savedLoading ? (

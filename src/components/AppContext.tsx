@@ -123,6 +123,7 @@ interface Post {
   forum_slug?: string;
   forum_icon?: string;
   author_id?: number;
+  is_saved?: boolean;
 }
 
 interface Product {
@@ -556,6 +557,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     forum_icon?: string;
     images?: string[];
     user_liked: boolean;
+    is_saved?: boolean;
   }
 
   function mapAPIPost(p: APIPost): Post {
@@ -578,6 +580,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       forum_slug: p.forum_slug,
       forum_icon: p.forum_icon,
       author_id: p.author_id,
+      is_saved: !!p.is_saved,
     };
   }
 
