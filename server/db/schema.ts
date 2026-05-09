@@ -472,6 +472,58 @@ export async function initializeSchema() {
 
   await query(`CREATE INDEX IF NOT EXISTS idx_comment_likes_comment_id ON comment_likes(comment_id)`);
 
+  // ──────────────────────────────────────────────────────────────────
+  // Task #92 — Comunidade no estilo Reddit (subreddits + karma + follows).
+  // Tudo idempotente. `slug` é gerado no boot abaixo (slugify do name)
+  // para forums já existentes. `posts.images` guarda um array JSON de
+  // sentinels `objstore://posts/<file>` (validado na escrita).
+  // ──────────────────────────────────────────────────────────────────
+  await query(`ALTER TABLE forums ADD COLUMN IF NOT EXISTS slug VARCHAR(80)`);
+  await query(`ALTER TABLE forums ADD COLUMN IF NOT EXISTS member_count INTEGER NOT NULL DEFAULT 0`);
+  await query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb`);
+
+  // Backfill de slug para forums já existentes (idempotente: só roda em
+  // linhas com slug NULL/vazio). Slugify simples sem dependência externa.
+  const { rows: forumNeedSlug } = await query<{ id: number; name: string }>(
+    `SELECT id, name FROM forums WHERE slug IS NULL OR slug = ''`,
+  );
+  for (const f of forumNeedSlug) {
+    const base = f.name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || `c-${f.id}`;
+    // Garante unicidade adicionando id como sufixo se colidir.
+    let slug = base;
+    const probe = await query(`SELECT id FROM forums WHERE slug = $1 AND id <> $2`, [slug, f.id]);
+    if (probe.rows.length > 0) slug = `${base}-${f.id}`;
+    await query(`UPDATE forums SET slug = $1 WHERE id = $2`, [slug, f.id]);
+  }
+  await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_forums_slug ON forums(slug)`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS forum_subscriptions (
+      forum_id INTEGER NOT NULL REFERENCES forums(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (forum_id, user_id)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_forum_subs_user ON forum_subscriptions(user_id)`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS user_follows (
+      follower_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      followee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (follower_id, followee_id),
+      CHECK (follower_id <> followee_id)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_user_follows_followee ON user_follows(followee_id)`);
+
   await query(`
     CREATE TABLE IF NOT EXISTS lgpd_requests (
       id SERIAL PRIMARY KEY,
