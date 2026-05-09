@@ -242,15 +242,21 @@ function AppContent() {
   // a comunidade no header do post.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const path = window.location.pathname;
-    // Task #122 — `/c/<slug>/p/<id>` é uma URL DE VERDADE: NÃO fazemos
-    // replaceState pra "/". A URL fica no address bar (compartilhável,
-    // refresh-safe) e ComunidadePage deriva o estado dela via popstate
-    // + leitura inicial do pathname. Aqui só trocamos pra aba Comunidade.
-    if (/^\/c\/[a-z0-9-]+(?:\/p\/\d+)?\/?$/i.test(path)) {
-      setCurrentTab("comunidade");
-      return;
-    }
+    // Task #122 — Tab derivada do pathname (URL = source of truth).
+    // `/c/<slug>` ou `/c/<slug>/p/<id>` → aba Comunidade; resto → Home.
+    // Listener de popstate garante que back/forward do navegador
+    // restaurem a aba correta sem desync URL ↔ UI.
+    const syncTabFromPath = () => {
+      const path = window.location.pathname;
+      if (/^\/c\/[a-z0-9-]+(?:\/p\/\d+)?\/?$/i.test(path)) {
+        setCurrentTab((prev) => (prev === "comunidade" ? prev : "comunidade"));
+      } else if (path === "/" || path === "") {
+        setCurrentTab((prev) => (prev === "comunidade" ? "home" : prev));
+      }
+    };
+    syncTabFromPath();
+    window.addEventListener("popstate", syncTabFromPath);
+    return () => window.removeEventListener("popstate", syncTabFromPath);
   }, []);
 
   // Task #99 — abre o TurmaShell quando a landing pública estacionou

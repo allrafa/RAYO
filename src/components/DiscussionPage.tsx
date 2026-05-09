@@ -1,8 +1,9 @@
 // Task #122 — Página dedicada de discussão (`/c/<slug>/p/<id>`).
 // Não é modal: ocupa o conteúdo principal da aba Comunidade. Renderiza
 // o post completo no topo + lista cronológica de comentários (ASC) +
-// composer + reações multi-emoji em tudo. Voltar é origin-aware: vem
-// da Home → volta pra Home; vem do feed → volta pro feed.
+// composer + reações multi-emoji em tudo. Voltar é history-aware:
+// `onBack` (controlado pela ComunidadePage) chama `history.back()` ou
+// faz fallback pra Home quando é deep-link puro.
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Loader2, MessageCircle, Send, Share2 } from "lucide-react";
@@ -184,7 +185,7 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 sm:py-8 pb-32">
-      {/* Header — back origin-aware */}
+      {/* Header — back history-aware (delegado pra ComunidadePage). */}
       <div className="flex items-center justify-between mb-4">
         <Button
           variant="ghost"
@@ -192,11 +193,11 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
           onClick={handleBack}
           className="gap-2"
           style={{ color: "var(--rayo-ink-700)" }}
-          aria-label={origin === "home" ? "Voltar para a Home" : "Voltar para a Comunidade"}
+          aria-label="Voltar"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="text-[13px]" style={{ fontWeight: 500 }}>
-            {origin === "home" ? "Voltar" : "Comunidade"}
+            Voltar
           </span>
         </Button>
         <Button variant="ghost" size="sm" onClick={sharePost} aria-label="Compartilhar">

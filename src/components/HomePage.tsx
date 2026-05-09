@@ -419,13 +419,14 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                         // Task #122 — pushState pra URL canônica
                         // `/c/<slug>/p/<id>` ANTES de trocar de aba; a
                         // ComunidadePage lê o pathname no mount e
-                        // renderiza a DiscussionPage. Back button do
-                        // navegador devolve pra Home naturalmente
-                        // (porque foi pushState, não replace).
-                        const slug = post.forumSlug || "geral";
-                        try {
-                          window.history.pushState({}, "", `/c/${slug}/p/${post.id}`);
-                        } catch { /* noop */ }
+                        // renderiza a DiscussionPage. Sem forum_slug
+                        // não fabricamos URL falsa — caímos pro feed
+                        // genérico da Comunidade (fallback contratual).
+                        if (post.forumSlug) {
+                          try {
+                            window.history.pushState({}, "", `/c/${post.forumSlug}/p/${post.id}`);
+                          } catch { /* noop */ }
+                        }
                         onNavigate?.("comunidade");
                       }}
                     >
