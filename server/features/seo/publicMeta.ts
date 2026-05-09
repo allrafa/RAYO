@@ -75,13 +75,29 @@ const escapeHtml = (s: string): string =>
 const escapeJsonLd = (v: unknown): string =>
   JSON.stringify(v).replace(/</g, "\\u003c");
 
+// Task #111 — sameAs lista perfis sociais oficiais. Configurável via env
+// (RAYO_SOCIAL_PROFILES, comma-separated) com defaults pros canais
+// públicos. Schema.org usa essa lista pra "knowledge graph" do Google
+// (foto + handles na busca).
+const RAYO_SOCIAL_PROFILES: string[] = (
+  process.env.RAYO_SOCIAL_PROFILES ||
+  [
+    "https://www.instagram.com/rayo.app",
+    "https://www.facebook.com/rayo.app.br",
+    "https://www.youtube.com/@rayoapp",
+  ].join(",")
+)
+  .split(",")
+  .map((s) => s.trim())
+  .filter((s) => /^https?:\/\//.test(s));
+
 const ORGANIZATION_LD: JsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "RAYO",
   url: SITE,
   logo: `${SITE}/og-default.png`,
-  sameAs: [],
+  sameAs: RAYO_SOCIAL_PROFILES,
 };
 
 const WEBSITE_LD: JsonLd = {

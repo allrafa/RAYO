@@ -401,7 +401,7 @@ async function start() {
              FROM content_items
             WHERE kind = 'artigo' AND status = 'published' AND slug IS NOT NULL
             ORDER BY published_at DESC NULLS LAST
-            LIMIT 50`,
+            LIMIT 30`,
         );
         const escapeXml = (s: string): string =>
           (s || "")
@@ -446,7 +446,9 @@ async function start() {
           items +
           `\n  </channel>\n</rss>\n`;
         res.set("Content-Type", "application/rss+xml; charset=utf-8");
-        res.set("Cache-Control", "public, max-age=3600");
+        // 15min: balanço entre frescor para leitores RSS/agregadores e
+        // custo de hit no banco (cada miss faz 1 query + render).
+        res.set("Cache-Control", "public, max-age=900, s-maxage=900");
         res.send(xml);
       } catch (err) {
         logger.warn("RSS", `Failed to build blog feed: ${(err as Error).message}`);
