@@ -403,6 +403,26 @@ router.post("/posts/:id/save", requireAuth, async (req, res, next) => {
   }
 });
 
+// Task #93 — DELETE explícito como atalho idempotente para desalvar
+// (POST /save {saved:false} continua funcionando como toggle).
+router.delete("/posts/:id/save", requireAuth, async (req, res, next) => {
+  try {
+    const postId = parseInt(req.params.id, 10);
+    if (isNaN(postId) || postId < 1) {
+      sendError(res, "ID de post inválido", "INVALID_POST_ID", 400);
+      return;
+    }
+    const result = await setPostSaved(postId, req.user!.id, false);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
 // Task #93 — posts salvos: privado, só o próprio usuário pode ler a
 // própria lista. Aceita "me" como atalho. Outros IDs respondem 403.
 router.get("/users/:id/saved", requireAuth, async (req, res, next) => {

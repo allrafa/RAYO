@@ -157,7 +157,10 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
     if (!isSelf) return;
     setSavedLoading(true);
     try {
-      const res = await api.get<{ posts: UserPost[] }>(`/api/community/users/${userId}/saved?limit=20`);
+      // Task #93 — backend aceita "me" como atalho ou o id numérico do
+      // próprio usuário (outros IDs respondem 403). Usamos "me" pra
+      // alinhar com o contrato sugerido na revisão.
+      const res = await api.get<{ posts: UserPost[] }>(`/api/community/users/me/saved?limit=20`);
       if (res.success && res.data) setSavedPosts(res.data.posts);
       else setSavedPosts([]);
     } finally {
