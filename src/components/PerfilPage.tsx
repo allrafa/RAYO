@@ -1,26 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
-import { 
-  User, Bell, Heart, Trophy, Zap, 
-  ChevronRight, LogOut, Moon, Sun, Globe, 
+import {
+  User, Bell,
+  ChevronRight, LogOut, Moon, Sun, Globe,
   Shield, MessageSquare,
-  Award, Target, Crown, Camera, Share2, CheckCircle2,
-  BookOpen, Users, Download, Trash2,
+  Target, Share2, CheckCircle2,
+  Download, Trash2,
   ShieldAlert
 } from "lucide-react";
 import { Button } from "./ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
 import { Switch } from "./ui/switch";
 import { Progress } from "./ui/progress";
-import { useApp } from "./AppContext";
 import { useAuth, userHasRole } from "./AuthContext";
-import { useAccessibility } from "./AccessibilityContext";
 import { useTheme } from "./ThemeProvider";
 import { toast } from "sonner@2.0.3";
-import { FavoritosPage } from "./youtube/FavoritosPage";
-import { BibliotecaWithBookReader } from "./BibliotecaWithBookReader";
-import { useVideoProgress } from "./hooks/useVideoProgress";
 import { api } from "../lib/api";
 import { EditProfileModal, ChangePasswordModal, LanguageModal } from "./perfil/PerfilModals";
 import { UserProfilePage } from "./UserProfilePage";
@@ -38,8 +32,6 @@ interface PerfilPageProps {
 }
 
 export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
-  const { userData, books } = useApp();
-  const { settings } = useAccessibility();
   const { theme, setTheme } = useTheme();
   const { logout, user, updatePreferences } = useAuth();
   const canAccessAdmin = userHasRole(user, "producer");
@@ -52,24 +44,14 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     true;
   const language: "pt-BR" | "en" =
     (user?.notification_preferences?.language as "pt-BR" | "en") || "pt-BR";
-  const [showFavoritos, setShowFavoritos] = useState(false);
-  const [showBiblioteca, setShowBiblioteca] = useState(false);
-  const { favoriteVideos } = useVideoProgress();
   // Task #45 — modais e estados auxiliares.
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showLanguage, setShowLanguage] = useState(false);
-  // Task #93 — avatar upload migrado pro UserProfilePage (header próprio).
-  // Os handlers `handleAvatarPick` / `handleAvatarFile` foram removidos
-  // junto com o header gradient terra que vivia aqui.
-
-  interface ActivityStats {
-    libraryCount: number;
-    communitiesCount: number;
-    favoritesCount: number;
-    councilSessionsCount?: number;
-  }
-  const [activity, setActivity] = useState<ActivityStats | null>(null);
+  // Task #93 — avatar upload, stats de atividade, gamificação local e
+  // listagem de "Suas comunidades" foram embutidos em UserProfilePage.
+  // PerfilPage agora cuida só dos controles de conta (missões,
+  // configurações, LGPD, logout).
 
   interface MissionData {
     id: number;
@@ -91,11 +73,6 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   }, []);
 
   useEffect(() => {
-    api
-      .get<{ stats: ActivityStats }>("/api/users/me/activity-stats")
-      .then((res) => {
-        if (res.success && res.data) setActivity(res.data.stats);
-      });
     void reloadMissions();
   }, [reloadMissions]);
 
@@ -194,53 +171,6 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     [reloadMissions],
   );
 
-  interface GamificationProfile {
-    xp: number;
-    level: number;
-    levelTitle: string;
-    streak: number;
-    longestStreak: number;
-    xpForNextLevel: number;
-    xpInCurrentLevel: number;
-    xpNeededForNext: number;
-    progressPercentage: number;
-    totalBadges: number;
-  }
-
-  interface BadgeData {
-    id: number;
-    name: string;
-    title: string;
-    description: string;
-    icon: string;
-    tier: string;
-    earned: boolean;
-    earnedAt: string | null;
-  }
-
-  const [gamProfile, setGamProfile] = useState<GamificationProfile | null>(null);
-  const [badges, setBadges] = useState<BadgeData[]>([]);
-  // Task #92 — Suas comunidades + Seguindo no perfil próprio.
-  const [myCommunities, setMyCommunities] = useState<Array<{ id: number; name: string; slug: string; icon?: string | null; member_count: number }>>([]);
-  const [myFollows, setMyFollows] = useState<{ followers_count: number; following_count: number } | null>(null);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    void (async () => {
-      const [c, f] = await Promise.all([
-        api.get<{ forums: typeof myCommunities }>(`/api/community/forums/me`),
-        api.get<{ followers_count: number; following_count: number }>(`/api/users/${user.id}/follows`),
-      ]);
-      if (cancelled) return;
-      if (c.success && c.data) setMyCommunities(c.data.forums);
-      if (f.success && f.data) setMyFollows({
-        followers_count: f.data.followers_count,
-        following_count: f.data.following_count,
-      });
-    })();
-    return () => { cancelled = true; };
-  }, [user?.id]);
   // Task #44 — deep-link de busca de pessoas: quando o usuário clica
   // num resultado kind="user", buscamos o perfil público mínimo via
   // /api/users/:id/public e renderizamos no topo (overlay simples
@@ -305,106 +235,6 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const [exportingData, setExportingData] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  useEffect(() => {
-    api.get<{ profile: GamificationProfile }>("/api/gamification/profile").then((res) => {
-      if (res.success && res.data) setGamProfile(res.data.profile);
-    });
-    api.get<{ badges: BadgeData[] }>("/api/gamification/badges").then((res) => {
-      if (res.success && res.data) setBadges(res.data.badges);
-    });
-  }, []);
-
-  const currentLevel = gamProfile?.level ?? userData.level ?? 1;
-  const currentXP = gamProfile?.xp ?? userData.points ?? 0;
-  const currentStreak = gamProfile?.streak ?? userData.streak ?? 0;
-  const earnedBadges = badges.filter((b) => b.earned);
-  
-  // Calcular total de itens na biblioteca
-  const enrolledBooks = books.filter(book => book.isEnrolled);
-  const totalLibraryItems = (userData.enrolledCourses?.length || 0) + enrolledBooks.length;
-  
-  // Se está mostrando favoritos, renderiza a página de favoritos
-  if (showFavoritos) {
-    return <FavoritosPage onBack={() => setShowFavoritos(false)} />;
-  }
-  
-  // Se está mostrando biblioteca, renderiza a página de biblioteca
-  if (showBiblioteca) {
-    return <BibliotecaWithBookReader onBack={() => setShowBiblioteca(false)} />;
-  }
-
-  const stats = [
-    { 
-      icon: Trophy, 
-      label: "Nível", 
-      value: `${currentLevel} - ${gamProfile?.levelTitle || "Iniciante"}`,
-      colorVar: "var(--rayo-terra-500)",
-      bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
-      trend: `${currentXP} XP total`
-    },
-    { 
-      icon: Zap, 
-      label: "XP", 
-      value: currentXP,
-      colorVar: "var(--rayo-terra-500)",
-      bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
-      trend: gamProfile ? `${gamProfile.xpForNextLevel - currentXP} para próximo nível` : ""
-    },
-    { 
-      icon: Target, 
-      label: "Sequência", 
-      value: `${currentStreak} dias`,
-      colorVar: "var(--rayo-terra-500)",
-      bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
-      trend: `Recorde: ${gamProfile?.longestStreak || currentStreak} dias`
-    },
-    { 
-      icon: Award, 
-      label: "Conquistas", 
-      value: earnedBadges.length,
-      colorVar: "var(--rayo-terra-500)",
-      bgVar: theme === 'dark' ? "rgba(255, 200, 0, 0.1)" : "rgba(255, 200, 0, 0.15)",
-      trend: `${badges.length} disponíveis`
-    },
-  ];
-
-  // Task #45 — contrato: { libraryCount, communitiesCount,
-  // favoritesCount, councilSessionsCount? }. Favoritos do servidor +
-  // favoritos locais de vídeo. councilSessionsCount só aparece se o
-  // backend devolver (tabela existe).
-  const totalFavorites = (activity?.favoritesCount ?? 0) + favoriteVideos.length;
-  const activityStats: Array<{
-    icon: any;
-    label: string;
-    value: number;
-    onClick?: () => void;
-  }> = [
-    {
-      icon: BookOpen,
-      label: "Biblioteca",
-      value: activity?.libraryCount ?? totalLibraryItems,
-      onClick: () => setShowBiblioteca(true),
-    },
-    {
-      icon: Users,
-      label: "Comunidades",
-      value: activity?.communitiesCount ?? 0,
-    },
-    {
-      icon: Heart,
-      label: "Favoritos",
-      value: totalFavorites,
-      onClick: () => setShowFavoritos(true),
-    },
-    ...(activity?.councilSessionsCount !== undefined
-      ? [{
-          icon: MessageSquare,
-          label: "Sessões Conselheiro",
-          value: activity.councilSessionsCount,
-        }]
-      : []),
-  ];
 
   // Task #45 — toda ação aqui é real (editar, alternar tema, idioma
   // persistido, suporte env-driven, troca de senha). "Em breve!" foi
@@ -484,10 +314,6 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       setShowDeleteConfirm(false);
     }
   };
-
-  const progressPercentage = gamProfile?.progressPercentage ?? 0;
-  const xpInCurrentLevel = gamProfile?.xpInCurrentLevel ?? 0;
-  const xpNeededForNext = gamProfile?.xpNeededForNext ?? 100;
 
   return (
     <div
@@ -694,110 +520,10 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
               </Card>
             </div>
 
-            {/* All Badges (Locked & Unlocked) */}
-            {badges.length > 0 && (
-              <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-6 lg:mb-8">
-                <Card
-                  className="p-4 lg:p-6 border-0 shadow-md"
-                  style={{ background: 'var(--rayo-sand-50)' }}
-                >
-                  <h3
-                    className="text-lg mb-4"
-                    style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
-                  >
-                    Todas as Conquistas
-                  </h3>
-                  <div className="grid grid-cols-4 lg:grid-cols-6 gap-3">
-                    {badges.map((badge) => {
-                      const tierColors: Record<string, string> = {
-                        bronze: 'var(--rayo-terra-500)',
-                        silver: '#94a3b8',
-                        gold: '#eab308',
-                        platinum: '#8b5cf6',
-                        premium: '#06b6d4',
-                      };
-                      return (
-                        <div
-                          key={badge.id}
-                          className="flex flex-col items-center text-center gap-1"
-                          title={badge.description}
-                          style={{ opacity: badge.earned ? 1 : 0.35 }}
-                        >
-                          <div
-                            className="w-10 h-10 lg:w-12 lg:h-12 rounded-full flex items-center justify-center text-lg lg:text-xl"
-                            style={{
-                              background: badge.earned
-                                ? (theme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)')
-                                : (theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
-                              border: `2px solid ${badge.earned ? (tierColors[badge.tier] || tierColors.bronze) : 'var(--rayo-sand-300)'}`,
-                            }}
-                          >
-                            {badge.icon}
-                          </div>
-                          <span
-                            className="text-[10px] leading-tight"
-                            style={{ color: 'var(--rayo-ink-400)', fontWeight: 500 }}
-                          >
-                            {badge.title}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Card>
-              </div>
-            )}
-
-            {/* Activity Stats - Desktop Only */}
-            <div className="hidden lg:block px-0 mb-8">
-              <Card 
-                className="ra-card p-6 border-0 shadow-md"
-                style={{ background: 'var(--rayo-sand-50)' }}
-              >
-                <h3 
-                  className="text-lg mb-4" 
-                  style={{ 
-                    fontWeight: 600,
-                    color: 'var(--rayo-forest-900)'
-                  }}
-                >
-                  Atividade Recente
-                </h3>
-                <div className="grid grid-cols-4 gap-6">
-                  {activityStats.map((item, index) => {
-                    const Icon = item.icon;
-                    const Wrapper = item.onClick ? 'button' : 'div';
-                    return (
-                      <Wrapper 
-                        key={index} 
-                        className={`text-center ${item.onClick ? 'cursor-pointer hover:opacity-70 transition-opacity' : ''}`}
-                        onClick={item.onClick}
-                      >
-                        <Icon 
-                          className="w-8 h-8 mx-auto mb-2" 
-                          style={{ color: 'var(--rayo-terra-500)' }}
-                        />
-                        <p 
-                          className="text-2xl mb-1" 
-                          style={{ 
-                            fontWeight: 700,
-                            color: 'var(--rayo-forest-900)'
-                          }}
-                        >
-                          {item.value}
-                        </p>
-                        <p 
-                          className="text-xs" 
-                          style={{ color: 'var(--rayo-ink-700)' }}
-                        >
-                          {item.label}
-                        </p>
-                      </Wrapper>
-                    );
-                  })}
-                </div>
-              </Card>
-            </div>
+            {/* Task #93 — "Todas as Conquistas" e "Atividade Recente"
+                viviam aqui, mas viraram lixo depois que UserProfilePage
+                embutido passou a renderizar conquistas e stats próprias
+                acima. Foram removidos pra deduplicar. */}
 
             {/* Menu Sections - Mobile Only */}
             <div className="lg:hidden max-w-md mx-auto px-6 space-y-6">
