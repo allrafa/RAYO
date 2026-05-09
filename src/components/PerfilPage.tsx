@@ -17,6 +17,7 @@ import { useTheme } from "./ThemeProvider";
 import { toast } from "sonner@2.0.3";
 import { api } from "../lib/api";
 import { EditProfileModal, ChangePasswordModal, LanguageModal } from "./perfil/PerfilModals";
+import { MinhasAssinaturasCard } from "./perfil/MinhasAssinaturasCard";
 import { UserProfilePage } from "./UserProfilePage";
 import { onScrollTop } from "../lib/scrollTop";
 
@@ -692,6 +693,11 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                     <ChevronRight className="w-4 h-4" style={{ color: 'var(--rayo-ink-400)' }} />
                   </button>
                 </Card>
+              </div>
+
+              {/* Task #130 — Minhas assinaturas Stripe (mobile) */}
+              <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-4">
+                <MinhasAssinaturasCard />
               </div>
 
               {/* Logout Button - Mobile */}

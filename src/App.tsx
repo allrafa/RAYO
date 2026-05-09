@@ -36,6 +36,9 @@ import { ExcluirDadosPage } from "./components/marketing/ExcluirDadosPage";
 import { BlogIndexPage } from "./components/marketing/BlogIndexPage";
 import { BlogPostPage } from "./components/marketing/BlogPostPage";
 import { TurmaLandingPage } from "./components/turmas/TurmaLandingPage";
+import { TrilhasCatalogPage } from "./components/trilhas/TrilhasCatalogPage";
+import { TrilhaDetailPage } from "./components/trilhas/TrilhaDetailPage";
+import { TrilhaSucessoPage } from "./components/trilhas/TrilhaSucessoPage";
 import { analytics } from "./lib/analytics/mixpanel";
 import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
 import { RAYO_SCROLL_TOP } from "./lib/scrollTop";
@@ -63,9 +66,10 @@ type PublicPage =
   | "privacy" | "terms" | "excluir-dados"
   | "recursos" | "como-funciona" | "empresa" | "contato"
   | "faq" | "imprensa" | "blog"
-  | "turma-landing";
+  | "turma-landing"
+  | "trilhas-catalog" | "trilha-detail" | "trilha-sucesso";
 
-interface PublicRoute { page: PublicPage; blogSlug?: string; turmaId?: number }
+interface PublicRoute { page: PublicPage; blogSlug?: string; turmaId?: number; trailSlug?: string }
 
 function getPublicPageFromUrl(): PublicRoute | null {
   if (typeof window === "undefined") return null;
@@ -87,6 +91,12 @@ function getPublicPageFromUrl(): PublicRoute | null {
   // Lista da Academia (`/turmas` puro) continua autenticada.
   const t = /^\/turmas\/(\d+)$/.exec(p);
   if (t) return { page: "turma-landing", turmaId: parseInt(t[1], 10) };
+  // Task #130 — Trilhas pagas (Stripe). Catálogo e detalhe são públicos
+  // pra que visitantes anônimos vejam o pricing antes de criar conta.
+  if (p === "/trilhas") return { page: "trilhas-catalog" };
+  if (p === "/trilhas/sucesso") return { page: "trilha-sucesso" };
+  const tr = /^\/trilhas\/([a-z0-9-]+)$/.exec(p);
+  if (tr) return { page: "trilha-detail", trailSlug: tr[1] };
   return null;
 }
 
@@ -587,6 +597,12 @@ function PublicShell({ route }: { route: PublicRoute }) {
         : <BlogIndexPage />;
     case "turma-landing":
       return <PublicTurmaLanding turmaId={route.turmaId!} />;
+    case "trilhas-catalog":
+      return <TrilhasCatalogPage />;
+    case "trilha-detail":
+      return <TrilhaDetailPage slug={route.trailSlug!} />;
+    case "trilha-sucesso":
+      return <TrilhaSucessoPage />;
   }
 }
 

@@ -471,6 +471,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!res.success) {
       if (res.error?.code === "ALREADY_ENROLLED") {
         enhancedToast.info({ title: "Já matriculado", description: "Você já tem acesso a este curso", haptic: true });
+      } else if (res.error?.code === "TRAIL_PAYMENT_REQUIRED") {
+        // Task #130 — turma gated por trilha paga: redireciona pra landing
+        // da trilha (com fallback pro catálogo geral). Backend devolve
+        // `trail_slug` no payload do erro.
+        const slug = (res.error as { trail_slug?: string | null }).trail_slug || null;
+        enhancedToast.info({
+          title: "Trilha paga",
+          description: "Esta turma faz parte de uma trilha paga. Vamos te levar pros planos.",
+          haptic: true,
+        });
+        if (typeof window !== "undefined") {
+          window.location.href = slug ? `/trilhas/${slug}` : "/trilhas";
+        }
       } else {
         enhancedToast.error({
           title: "Erro ao matricular",

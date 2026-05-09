@@ -63,6 +63,31 @@ app.use(cookieParser());
 import { bunnyWebhookRouter as _bunnyWebhookRouterEarly } from "./features/bunny/routes.js";
 app.use("/api/webhooks/bunny", rateLimiter(300, 15 * 60 * 1000), _bunnyWebhookRouterEarly);
 
+// Task #130 — Webhook do Stripe TAMBÉM precisa do raw body pra validar
+// assinatura. Mesmo padrão: montado ANTES do express.json. Lê os bytes
+// brutos via express.raw e delega pro stripe-replit-sync que valida e
+// sincroniza tudo.
+import { processStripeWebhook } from "./features/billing/webhookHandlers.js";
+app.post(
+  "/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const signature = req.headers["stripe-signature"];
+    if (!signature) {
+      res.status(400).json({ error: "Missing stripe-signature header" });
+      return;
+    }
+    const sig = Array.isArray(signature) ? signature[0] : signature;
+    try {
+      await processStripeWebhook(req.body as Buffer, sig);
+      res.status(200).json({ received: true });
+    } catch (err) {
+      logger.error("StripeWebhook", `Webhook error: ${(err as Error).message}`);
+      res.status(400).json({ error: (err as Error).message });
+    }
+  },
+);
+
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -160,6 +185,14 @@ app.use("/api/admin/home-feed", optionalAuth, rateLimiter(300, 15 * 60 * 1000, {
 app.use("/api/home-feed", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), publicHomeFeedRouter);
 app.use("/api/bundles", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), bundlesRoutes);
 
+// Task #130 — Trilhas pagas (Stripe). Catálogo público + checkout/portal
+// autenticados; admin CRUD em /api/admin/trails.
+import { trailsRouter, billingRouter } from "./features/billing/routes.js";
+import { adminTrailsRouter } from "./features/billing/adminRoutes.js";
+app.use("/api/trails", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), trailsRouter);
+app.use("/api/billing", optionalAuth, rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }), billingRouter);
+app.use("/api/admin/trails", optionalAuth, rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }), adminTrailsRouter);
+
 // Task #70 — Site público (marketing). Endpoints sem auth: leitura do blog
 // e formulário /contato. O rate-limit de /contato (3/h por IP) vive dentro
 // do próprio router para não conflitar com leitura do blog.
@@ -253,6 +286,34 @@ async function start() {
     logger.info("Server", "Initializing database schema...");
     await initializeSchema();
     logger.info("Server", "Database schema ready.");
+
+    // Task #130 — Stripe billing schema (trails, trail_courses, subscriptions)
+    // + setup do stripe-replit-sync (cria schema `stripe.*`, registra
+    // managed webhook e roda backfill). Best-effort: se a connection
+    // Stripe não estiver configurada (dev sem secrets), loga e segue.
+    try {
+      const { migrateBilling } = await import("./features/billing/migrate.js");
+      await migrateBilling();
+      const { runMigrations } = await import("stripe-replit-sync");
+      await runMigrations({ databaseUrl: process.env.DATABASE_URL! });
+      const { getStripeSync } = await import("./stripeClient.js");
+      const sync = await getStripeSync();
+      const isProd = process.env.REPLIT_DEPLOYMENT === "1";
+      const webhookBase = process.env.PUBLIC_SITE_URL
+        || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}` : null);
+      if (webhookBase) {
+        await sync.findOrCreateManagedWebhook(`${webhookBase}/api/stripe/webhook`);
+      }
+      // syncBackfill traz produtos/preços/customers/subscriptions existentes
+      // pra schema stripe.*. Não-bloqueante porque pode demorar em contas
+      // grandes; no boot inicial roda em background.
+      void sync.syncBackfill().catch((err: Error) => {
+        logger.warn("Stripe", `syncBackfill failed: ${err.message}`);
+      });
+      logger.info("Stripe", `Billing initialized (${isProd ? "production" : "development"} mode)`);
+    } catch (err) {
+      logger.warn("Stripe", `Billing init skipped: ${(err as Error).message}`);
+    }
 
     await bootstrapAdminsFromEnv();
 

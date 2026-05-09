@@ -19,8 +19,37 @@ import {
   getAllPosts as getAllCommunityPosts,
   createPost as createCommunityPost,
 } from "../community/service.js";
+import { checkCourseAccess } from "../../middleware/requireTrailAccess.js";
 
 const router = Router();
+
+// Task #130 — helper local: 402 padronizado quando a turma é gated por
+// trilha paga e o usuário não tem assinatura ativa. Inclui `trail_slug`
+// no payload pra que o frontend redirecione direto pra `/trilhas/:slug`.
+async function ensureTrailAccess(req: import("express").Request, res: import("express").Response, courseId: number): Promise<boolean> {
+  const { allowed, trailId } = await checkCourseAccess(req, courseId);
+  if (allowed) return true;
+  let trailSlug: string | null = null;
+  if (trailId) {
+    const { rows } = await (await import("../../db/index.js")).query<{ slug: string }>(
+      `SELECT slug FROM trails WHERE id = $1`,
+      [trailId],
+    );
+    trailSlug = rows[0]?.slug ?? null;
+  }
+  res.status(402).json({
+    success: false,
+    data: null,
+    error: {
+      code: "TRAIL_PAYMENT_REQUIRED",
+      message: "Esta turma faz parte de uma trilha paga. Assine para acessar.",
+      trail_id: trailId,
+      trail_slug: trailSlug,
+      course_id: courseId,
+    },
+  });
+  return false;
+}
 
 // Task #99 — Captura de interesse: rate-limit duro per usuário/IP.
 const interestLimiter = rateLimiter(5, 60 * 60 * 1000, { keyByUser: true });
@@ -55,6 +84,11 @@ router.get("/:id", async (req, res, next) => {
       sendError(res, "ID de curso inválido", "INVALID_COURSE_ID");
       return;
     }
+    // Task #130 (fix code-review #1): este endpoint devolve módulos/aulas
+    // (incluindo `video_url`/sentinels Bunny) — turma de trilha paga PRECISA
+    // ser gateada aqui também. `getCourseLanding` continua público pra
+    // marketing; `getCourseDetail` é conteúdo "dentro da turma".
+    if (!(await ensureTrailAccess(req, res, courseId))) return;
     const course = await getCourseDetail(courseId);
     if (!course) {
       sendError(res, "Curso não encontrado", "COURSE_NOT_FOUND", 404);
@@ -199,6 +233,8 @@ router.get("/:id/progress", requireAuth, async (req, res, next) => {
       sendError(res, "ID de curso inválido", "INVALID_COURSE_ID");
       return;
     }
+    // Task #130 — gating: lições + progresso fechados pra trilha paga sem assinatura.
+    if (!(await ensureTrailAccess(req, res, courseId))) return;
     const progress = await getCourseProgressWithLessons(req.user!.id, courseId);
     success(res, { progress });
   } catch (err) {
@@ -213,6 +249,8 @@ router.post("/:id/enroll", requireAuth, async (req, res, next) => {
       sendError(res, "ID de curso inválido", "INVALID_COURSE_ID");
       return;
     }
+    // Task #130 — turma de trilha paga exige assinatura ativa antes de matricular.
+    if (!(await ensureTrailAccess(req, res, courseId))) return;
     const result = await enrollInCourse(req.user!.id, courseId);
     if (result.alreadyEnrolled) {
       sendError(res, "Você já está matriculado neste curso", "ALREADY_ENROLLED");
@@ -235,6 +273,17 @@ router.patch("/lessons/:id/progress", requireAuth, async (req, res, next) => {
     if (!status || !["in_progress", "completed"].includes(status)) {
       sendError(res, "Status inválido (use: in_progress, completed)", "INVALID_STATUS");
       return;
+    }
+    // Task #130 — Bloqueia progress de aula quando a turma da aula faz parte
+    // de uma trilha paga sem assinatura ativa.
+    const { rows: lessonRows } = await (await import("../../db/index.js")).query<{ course_id: number }>(
+      `SELECT cm.course_id FROM course_lessons cl
+         JOIN course_modules cm ON cm.id = cl.module_id
+        WHERE cl.id = $1`,
+      [lessonId],
+    );
+    if (lessonRows[0]?.course_id) {
+      if (!(await ensureTrailAccess(req, res, lessonRows[0].course_id))) return;
     }
     const result = await updateLessonProgress(req.user!.id, lessonId, status, progressSeconds);
     success(res, result);
