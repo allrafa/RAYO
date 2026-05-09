@@ -16,7 +16,7 @@ import { BookCard } from "./BookCard";
 import heroImage from "../assets/marketplace-hero-family.jpg";
 
 export function AcademiaPage() {
-  const { courses, books, setCurrentCourseId, setIsInCourseDetail, setCurrentBookId, setIsInBookDetail, startCourse, enrollInCourse, enrollInBook, toggleBookFavorite, userData } = useApp();
+  const { courses, books, setCurrentCourseId, setIsInCourseDetail, setCurrentBookId, setIsInBookDetail, setCurrentVideoId, setIsInVideoPage, startCourse, enrollInCourse, enrollInBook, toggleBookFavorite, userData } = useApp();
   const { theme } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentView, setCurrentView] = useState<"minha-biblioteca" | "marketplace">("marketplace");
@@ -154,6 +154,10 @@ export function AcademiaPage() {
           filteredCourses={filteredCourses}
           setCurrentCourseId={setCurrentCourseId}
           setIsInCourseDetail={setIsInCourseDetail}
+          setCurrentBookId={setCurrentBookId}
+          setIsInBookDetail={setIsInBookDetail}
+          setCurrentVideoId={setCurrentVideoId}
+          setIsInVideoPage={setIsInVideoPage}
           enrollInCourse={enrollInCourse}
           showAllPopular={showAllPopular}
           setShowAllPopular={setShowAllPopular}
@@ -649,6 +653,10 @@ interface MarketplaceViewProps {
   filteredCourses: any[];
   setCurrentCourseId: (id: string) => void;
   setIsInCourseDetail: (value: boolean) => void;
+  setCurrentBookId: (bookId: string | null) => void;
+  setIsInBookDetail: (value: boolean) => void;
+  setCurrentVideoId: (videoId: string | null) => void;
+  setIsInVideoPage: (value: boolean) => void;
   enrollInCourse: (id: number) => void;
   showAllPopular: boolean;
   setShowAllPopular: (value: boolean) => void;
@@ -709,6 +717,10 @@ function MarketplaceView({
   filteredCourses,
   setCurrentCourseId,
   setIsInCourseDetail,
+  setCurrentBookId,
+  setIsInBookDetail,
+  setCurrentVideoId,
+  setIsInVideoPage,
   enrollInCourse,
   showAllPopular,
   setShowAllPopular,
@@ -1288,45 +1300,86 @@ function MarketplaceView({
                     />
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {kindItems.map((it) => (
-                        <div
-                          key={it.id}
-                          className="ra-card ra-card-hover overflow-hidden"
-                          style={{ padding: 0 }}
-                        >
-                          <div className="relative w-full" style={{ aspectRatio: '4 / 3' }}>
-                            <ImageWithFallback
-                              src={it.cover_url || ''}
-                              alt={it.title}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="p-4">
-                            <div
-                              className="text-[14px] line-clamp-2"
-                              style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
-                            >
-                              {it.title}
+                      {kindItems.map((it) => {
+                        // Task #128 — cada kind do catálogo precisa abrir
+                        // a página correspondente. Antes da #128 estes
+                        // cards eram <div> mudos: usuário clicava num
+                        // livro/áudio/vídeo/reels/série no Catálogo de
+                        // Turmas e nada acontecia. Agora roteamos por
+                        // kind pro mesmo destino que /api/search já usa
+                        // (ver src/lib/searchNavigate.ts).
+                        const handleOpen = () => {
+                          switch (selectedKind) {
+                            case 'livro':
+                              setCurrentBookId(String(it.id));
+                              setIsInBookDetail(true);
+                              break;
+                            case 'video':
+                            case 'audio':
+                            case 'reels':
+                              setCurrentVideoId(String(it.id));
+                              setIsInVideoPage(true);
+                              break;
+                            case 'serie':
+                              // Séries são "jornadas em episódios" e
+                              // hoje compartilham a página de curso.
+                              setCurrentCourseId(it.id as unknown as string);
+                              setIsInCourseDetail(true);
+                              break;
+                            default:
+                              break;
+                          }
+                        };
+                        return (
+                          <div
+                            key={it.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={handleOpen}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleOpen();
+                              }
+                            }}
+                            className="ra-card ra-card-hover overflow-hidden cursor-pointer focus:outline-none focus-visible:ring-2"
+                            style={{ padding: 0 }}
+                            aria-label={`Abrir ${it.title}`}
+                          >
+                            <div className="relative w-full" style={{ aspectRatio: '4 / 3' }}>
+                              <ImageWithFallback
+                                src={it.cover_url || ''}
+                                alt={it.title}
+                                className="w-full h-full object-cover"
+                              />
                             </div>
-                            {it.short_description && (
+                            <div className="p-4">
                               <div
-                                className="text-[12px] mt-1 line-clamp-2"
-                                style={{ color: 'var(--rayo-ink-700)' }}
+                                className="text-[14px] line-clamp-2"
+                                style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
                               >
-                                {it.short_description}
+                                {it.title}
                               </div>
-                            )}
-                            {it.author && (
-                              <div
-                                className="text-[11px] mt-2"
-                                style={{ color: 'var(--rayo-ink-400)' }}
-                              >
-                                {it.author}
-                              </div>
-                            )}
+                              {it.short_description && (
+                                <div
+                                  className="text-[12px] mt-1 line-clamp-2"
+                                  style={{ color: 'var(--rayo-ink-700)' }}
+                                >
+                                  {it.short_description}
+                                </div>
+                              )}
+                              {it.author && (
+                                <div
+                                  className="text-[11px] mt-2"
+                                  style={{ color: 'var(--rayo-ink-400)' }}
+                                >
+                                  {it.author}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
