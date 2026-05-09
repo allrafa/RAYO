@@ -986,6 +986,31 @@ export async function initializeSchema() {
   await query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS class_id INTEGER REFERENCES courses(id) ON DELETE SET NULL`);
   await query(`CREATE INDEX IF NOT EXISTS idx_posts_class_id ON posts(class_id)`);
 
+  // Task #102 — instrutor (líder) da turma. Necessário para roteamento de
+  // notificações kind=class_interest. Backfill a partir de content_items
+  // (que já guarda created_by para o item espelho do tipo curso).
+  await query(`ALTER TABLE courses ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_courses_created_by ON courses(created_by)`);
+  await query(`
+    UPDATE courses c
+       SET created_by = ci.created_by
+      FROM content_items ci
+     WHERE ci.kind = 'curso'
+       AND ci.course_id = c.id
+       AND ci.created_by IS NOT NULL
+       AND c.created_by IS NULL
+  `);
+
+  // Task #102 — cooldown anti-spam para o e-mail-resumo enviado ao
+  // instrutor com novos interessados em uma turma. Uma linha por turma;
+  // last_sent_at é atualizado apenas quando um e-mail real foi disparado.
+  await query(`
+    CREATE TABLE IF NOT EXISTS class_interest_email_sent (
+      course_id INTEGER PRIMARY KEY REFERENCES courses(id) ON DELETE CASCADE,
+      last_sent_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+
   console.log("[DB] Schema initialized successfully.");
 }
 

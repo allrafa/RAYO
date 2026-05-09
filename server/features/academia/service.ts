@@ -1,6 +1,14 @@
 import { query, getClient } from "../../db/index.js";
 import { addXP, unlockBadge, checkMissionProgress } from "../gamification/service.js";
 import { trackEvent } from "../analytics/service.js";
+import { createNotification } from "../notifications/service.js";
+import { sendClassInterestDigestEmail } from "../../lib/email.js";
+import { logger } from "../../utils/logger.js";
+
+const APP_URL =
+  process.env.APP_URL ||
+  (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000");
+const CLASS_INTEREST_EMAIL_COOLDOWN_HOURS = 24;
 
 export class AppError extends Error {
   statusCode: number;
@@ -346,7 +354,119 @@ export async function recordClassInterest(
     trackEvent(data.userId, "class_interest", { course_id: courseId });
   }
 
+  // Task #102 — fan-out de notificação + e-mail-resumo (throttled) para o
+  // instrutor (líder) da turma. Best-effort: falhas no sino/Resend NÃO
+  // devem reverter a captura de interesse (o lead já foi gravado).
+  void notifyInstructorOfNewInterest(courseId, courseRows[0].title, { name, email, message }).catch(
+    (err) => logger.error("Academia", `notifyInstructorOfNewInterest failed: ${err instanceof Error ? err.message : err}`),
+  );
+
   return { duplicated: false, courseTitle: courseRows[0].title };
+}
+
+async function notifyInstructorOfNewInterest(
+  courseId: number,
+  courseTitle: string,
+  latest: { name: string; email: string; message?: string | null },
+): Promise<void> {
+  // Resolver instrutor: courses.created_by (preferencial) → fallback para
+  // content_items.created_by quando a turma é antiga (pré-Task #102 sem
+  // backfill por algum motivo).
+  const { rows: instrRows } = await query<{ user_id: number; name: string; email: string }>(
+    `SELECT u.id AS user_id, u.name, u.email
+       FROM courses c
+       JOIN users u ON u.id = COALESCE(
+         c.created_by,
+         (SELECT created_by FROM content_items
+           WHERE kind = 'curso' AND course_id = c.id
+             AND created_by IS NOT NULL
+           ORDER BY id ASC LIMIT 1)
+       )
+      WHERE c.id = $1`,
+    [courseId],
+  );
+  const instructor = instrRows[0];
+  if (!instructor) return;
+
+  // Sino: sempre notifica em cada novo interesse, link para a turma.
+  const link = `/turmas/${courseId}`;
+  const bodyMsg = latest.message
+    ? `${latest.name} (${latest.email}): "${latest.message.slice(0, 120)}${latest.message.length > 120 ? "…" : ""}"`
+    : `${latest.name} (${latest.email}) demonstrou interesse em "${courseTitle}".`;
+  await createNotification({
+    userId: instructor.user_id,
+    kind: "class_interest",
+    title: `Novo interessado em "${courseTitle}"`,
+    body: bodyMsg,
+    link,
+    payload: { course_id: courseId, course_title: courseTitle, lead_name: latest.name, lead_email: latest.email },
+  });
+
+  // E-mail-resumo: throttled por (course_id) para no máximo 1 envio por
+  // janela de 24h. INSERT...ON CONFLICT garante atomicidade — o rowCount
+  // > 0 indica que somos o "vencedor" do slot e devemos enviar.
+  const { rowCount } = await query(
+    `INSERT INTO class_interest_email_sent (course_id, last_sent_at)
+     VALUES ($1, NOW())
+     ON CONFLICT (course_id) DO UPDATE
+       SET last_sent_at = NOW()
+       WHERE class_interest_email_sent.last_sent_at < NOW() - INTERVAL '${CLASS_INTEREST_EMAIL_COOLDOWN_HOURS} hours'`,
+    [courseId],
+  );
+  if (!rowCount) {
+    logger.info(
+      "Academia",
+      `class_interest email cooldown active for course ${courseId}; skip digest`,
+    );
+    return;
+  }
+
+  // Agrega leads das últimas 24h (incluindo o atual) para o resumo.
+  const { rows: recentRows } = await query<{
+    name: string;
+    email: string;
+    message: string | null;
+    created_at: string;
+  }>(
+    `SELECT name, email, message, created_at
+       FROM class_interests
+      WHERE course_id = $1
+        AND created_at > NOW() - INTERVAL '${CLASS_INTEREST_EMAIL_COOLDOWN_HOURS} hours'
+      ORDER BY created_at DESC
+      LIMIT 10`,
+    [courseId],
+  );
+  const { rows: countRows } = await query<{ total: string }>(
+    `SELECT COUNT(*)::text AS total FROM class_interests
+      WHERE course_id = $1
+        AND created_at > NOW() - INTERVAL '${CLASS_INTEREST_EMAIL_COOLDOWN_HOURS} hours'`,
+    [courseId],
+  );
+  const total = parseInt(countRows[0]?.total ?? "0", 10);
+  const courseLink = `${APP_URL.replace(/\/+$/, "")}${link}`;
+
+  // Slot foi reservado atomicamente acima. Se o envio falhar (Resend
+  // não configurado, erro 5xx, etc.), libera o slot imediatamente
+  // (set para epoch) para que a próxima chamada dentro da janela
+  // possa tentar de novo, em vez de queimar 24h sem entregar nada.
+  const sendResult = await sendClassInterestDigestEmail(
+    instructor.email,
+    instructor.name,
+    courseTitle,
+    total,
+    courseLink,
+    recentRows,
+  );
+  if (!sendResult.sent) {
+    await query(
+      `UPDATE class_interest_email_sent SET last_sent_at = TIMESTAMP 'epoch' WHERE course_id = $1`,
+      [courseId],
+    );
+    logger.warn(
+      "Academia",
+      `class_interest digest email failed for course ${courseId}: ${sendResult.error ?? "unknown"} — cooldown released`,
+    );
+  }
 }
 
 // Task #99 — Lista membros da turma (matriculados). requireAuth + matricula

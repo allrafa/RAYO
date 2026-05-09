@@ -277,7 +277,97 @@ export async function createPost(
 
   trackEvent(userId, "post_created", { post_id: post.id, forum_id: forumId, image_count: imageList.length });
 
+  // Task #102 — fan-out de notificação para membros matriculados quando o
+  // post é escopado em uma turma (class_id). Best-effort: falhas no sino
+  // NÃO devem reverter a criação do post.
+  if (resolvedClassId) {
+    void notifyClassMembersOfNewPost(resolvedClassId, post.id, userId, post.author_name, trimmed)
+      .catch((err) =>
+        // eslint-disable-next-line no-console
+        console.error(
+          `[Community] notifyClassMembersOfNewPost failed: ${err instanceof Error ? err.message : err}`,
+        ),
+      );
+  }
+
   return post;
+}
+
+// Task #102 — Cria UMA notificação para cada membro matriculado da turma
+// (exceto o autor). Usa um único INSERT batched via SELECT para escalar
+// bem com turmas grandes; depois publica eventos SSE individuais para
+// que o sino atualize em tempo real para quem estiver online.
+async function notifyClassMembersOfNewPost(
+  classId: number,
+  postId: number,
+  authorId: number,
+  authorName: string,
+  contentSnippet: string,
+): Promise<void> {
+  const { rows: courseRows } = await query<{ title: string }>(
+    `SELECT title FROM courses WHERE id = $1`,
+    [classId],
+  );
+  const courseTitle = courseRows[0]?.title || "sua turma";
+  const snippet = (contentSnippet || "").trim().slice(0, 140);
+  const body = snippet
+    ? `${authorName}: "${snippet}${contentSnippet.length > 140 ? "…" : ""}"`
+    : `${authorName} publicou em ${courseTitle}.`;
+  // Deep-link inclui post_id pra que o sino abra exatamente o post alvo
+  // dentro da aba Comunidade da turma. NotificationBell faz o parse do
+  // padrão `/turmas/:classId/post/:postId` e estaciona ambos os ids em
+  // sessionStorage; TurmaCommunityTab consome `raio-pending-post` ao
+  // carregar a lista pra rolar/destacar o post correspondente.
+  const link = `/turmas/${classId}/post/${postId}`;
+  const payload = {
+    course_id: classId,
+    course_title: courseTitle,
+    post_id: postId,
+    author_id: authorId,
+    author_name: authorName,
+  };
+
+  // Recipientes: todos os matriculados menos o autor. Inserir + recolher
+  // ids para publicar eventos SSE com a mesma payload do INSERT.
+  const { rows: notifRows } = await query<{ id: number; user_id: number }>(
+    `INSERT INTO notifications (user_id, kind, title, body, link, payload)
+     SELECT ucp.user_id, 'class_post', $2, $3, $4, $5::jsonb
+       FROM user_course_progress ucp
+      WHERE ucp.course_id = $1
+        AND ucp.user_id <> $6
+     RETURNING id, user_id`,
+    [
+      classId,
+      `Novo post em ${courseTitle}`,
+      body,
+      link,
+      JSON.stringify(payload),
+      authorId,
+    ],
+  );
+
+  if (notifRows.length === 0) return;
+
+  // Publica os eventos SSE em paralelo (notificação nova + badge).
+  const { publishToUser } = await import("../messages/events.js");
+  const { getUnreadCount } = await import("../notifications/service.js");
+  const baseNotif = {
+    kind: "class_post" as const,
+    title: `Novo post em ${courseTitle}`,
+    body,
+    link,
+    payload,
+    read_at: null,
+    created_at: new Date().toISOString(),
+  };
+  for (const r of notifRows) {
+    publishToUser(r.user_id, "notification:new", { ...baseNotif, id: r.id });
+    void getUnreadCount(r.user_id)
+      .then((unread) => publishToUser(r.user_id, "notification:unread", { unread }))
+      .catch(() => {
+        /* best-effort */
+      });
+  }
 }
 
 export async function getPostDetail(postId: number, userId?: number) {

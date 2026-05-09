@@ -31,18 +31,44 @@ export function TurmaShell() {
     if (!turmaId) return;
     let cancel = false;
     setLoading(true);
+    // Task #102 — quando o sino estaciona um post pendente
+    // (`raio-pending-post`), o usuário veio de uma notificação
+    // class_post — abre direto na aba Comunidade pra que o
+    // TurmaCommunityTab consuma o stash e role/destaque o post alvo.
+    let pendingPost = false;
+    try {
+      pendingPost = !!sessionStorage.getItem("raio-pending-post");
+    } catch {
+      pendingPost = false;
+    }
     api.get<{ turma: TurmaLanding }>(`/api/turmas/${turmaId}/landing`).then((res) => {
       if (cancel) return;
       if (res.success && res.data) {
         setLanding(res.data.turma);
-        // Não-membros caem na aba "sobre" (que é a landing).
         if (!res.data.turma.is_member) setTab("sobre");
+        else if (pendingPost) setTab("comunidade");
       }
       setLoading(false);
     });
     return () => {
       cancel = true;
     };
+  }, [turmaId]);
+
+  // Task #102 — quando o usuário JÁ está dentro da mesma TurmaShell e
+  // clica numa notificação class_post, `turmaId` não muda, então o
+  // useEffect acima não dispara. NotificationBell publica esse evento
+  // pra forçar a troca pra aba Comunidade nesse cenário (e também
+  // quando o usuário volta pra mesma turma sem refresh). O highlight
+  // do post alvo é coberto por listener equivalente em TurmaCommunityTab.
+  useEffect(() => {
+    const onOpenPost = (e: Event) => {
+      const detail = (e as CustomEvent<{ turmaId: number; postId: number }>).detail;
+      if (!detail || detail.turmaId !== turmaId) return;
+      setTab("comunidade");
+    };
+    window.addEventListener("rayo:open-turma-post", onOpenPost);
+    return () => window.removeEventListener("rayo:open-turma-post", onOpenPost);
   }, [turmaId]);
 
   const back = () => {

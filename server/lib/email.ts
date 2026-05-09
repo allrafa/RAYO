@@ -260,6 +260,56 @@ export function isEmailConfigured(): boolean {
   return !!RESEND_API_KEY;
 }
 
+// Task #102 — resumo agregado de novos interessados em uma turma para o
+// instrutor. Envio é throttled por (course_id) na camada de service para
+// no máximo um e-mail por janela (24h por padrão).
+export async function sendClassInterestDigestEmail(
+  email: string,
+  recipientName: string,
+  courseTitle: string,
+  newInterestCount: number,
+  courseLink: string,
+  latestSamples: Array<{ name: string; email: string; message?: string | null; created_at: string }>,
+): Promise<SendResult> {
+  const subject =
+    newInterestCount === 1
+      ? `Novo interesse na sua turma "${courseTitle}"`
+      : `${newInterestCount} novos interesses na sua turma "${courseTitle}"`;
+  const preheader = `Resumo de novos interessados em "${courseTitle}".`;
+  const samplesHtml = latestSamples
+    .map((s) => {
+      const dateStr = new Date(s.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+      const msg = s.message
+        ? `<div style="margin-top:6px;color:${RAIO_TEXT};font-size:14px;">"${escapeHtml(s.message)}"</div>`
+        : "";
+      return `
+        <li style="margin-bottom:12px;padding:12px 14px;background:${RAIO_BG};border-radius:8px;list-style:none;">
+          <div style="color:${RAIO_TEXT};font-weight:600;">${escapeHtml(s.name)}</div>
+          <div style="color:${RAIO_MUTED};font-size:13px;"><a href="mailto:${escapeHtml(s.email)}" style="color:${RAIO_ACCENT};">${escapeHtml(s.email)}</a> · ${escapeHtml(dateStr)}</div>
+          ${msg}
+        </li>`;
+    })
+    .join("");
+  const samplesText = latestSamples
+    .map((s) => `- ${s.name} <${s.email}>${s.message ? `\n  "${s.message}"` : ""}`)
+    .join("\n");
+  const html = layout(
+    `
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Novos interessados na sua turma</h1>
+      <p style="margin:0 0 16px 0;">Olá, ${escapeHtml(recipientName)}.</p>
+      <p style="margin:0 0 16px 0;">Você recebeu <strong>${newInterestCount}</strong> ${newInterestCount === 1 ? "novo interesse" : "novos interesses"} na sua turma <strong>${escapeHtml(courseTitle)}</strong> nas últimas 24 horas.</p>
+      <ul style="margin:0 0 24px 0;padding:0;">${samplesHtml}</ul>
+      <div style="text-align:center;margin:32px 0;">
+        <a href="${courseLink}" style="display:inline-block;padding:14px 28px;background:${RAIO_ACCENT};color:${RAIO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Abrir turma</a>
+      </div>
+      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Você está recebendo este resumo porque é o líder desta turma. Para evitar floods, enviamos no máximo um e-mail por dia por turma.</p>
+    `,
+    preheader,
+  );
+  const text = `Olá, ${recipientName}.\n\n${newInterestCount} ${newInterestCount === 1 ? "novo interesse" : "novos interesses"} na sua turma "${courseTitle}" nas últimas 24 horas:\n\n${samplesText}\n\nAbrir turma: ${courseLink}`;
+  return sendEmail({ to: email, subject, html, text });
+}
+
 // Task #70 — destinatário do formulário público /contato. Lê primeiro
 // `CONTACT_EMAIL` (nome canônico), depois `CONTATO_TO_EMAIL` (alias legado),
 // e cai num default explícito. Nunca usa o e-mail do remetente como destino.

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
+import { useApp } from "./AppContext";
 import { useUnreadMessages, type MessageStreamEvent, type NotificationPayload } from "./hooks/useUnreadMessages";
 
 interface NotificationBellProps {
@@ -32,6 +33,11 @@ function formatRelative(dateStr: string): string {
 
 export function NotificationBell({ onTabChange }: NotificationBellProps) {
   const { subscribe, streamConnected } = useUnreadMessages();
+  // Task #102 — abrir TurmaShell direto ao clicar numa notificação
+  // (`class_post`/`class_interest`). O efeito `rayo-pending-turma` em
+  // App.tsx só roda no mount, então quando o sino é clicado durante a
+  // sessão temos que setar o curso atual via AppContext na hora.
+  const app = useApp();
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationPayload[]>([]);
@@ -135,9 +141,65 @@ export function NotificationBell({ onTabChange }: NotificationBellProps) {
         onTabChange("perfil");
         return;
       }
+      // Task #102 — `/turmas/:classId` (interest) ou
+      // `/turmas/:classId/post/:postId` (novo post na turma). Em ambos
+      // os casos, abre o TurmaShell e, quando há postId, sinaliza para
+      // o TurmaCommunityTab destacar o post alvo após carregar a lista.
+      const turmaMatch = link.match(/^\/turmas\/(\d+)(?:\/post\/(\d+))?\/?$/);
+      if (turmaMatch) {
+        const turmaId = Number(turmaMatch[1]);
+        // raio-pending-post é consumido pelo TurmaCommunityTab no
+        // mount/load para rolar até o post alvo e destacar.
+        if (turmaMatch[2]) {
+          try {
+            sessionStorage.setItem("raio-pending-post", turmaMatch[2]);
+          } catch {
+            /* ignore */
+          }
+        }
+        // Set síncrono via AppContext para abrir o TurmaShell na hora,
+        // sem depender do useEffect de mount em App.tsx. Quando o
+        // AppContext não existir por qualquer motivo, deixa o stash
+        // `rayo-pending-turma` como fallback para o useEffect de mount.
+        if (Number.isFinite(turmaId) && turmaId > 0) {
+          app.setCurrentCourseId(turmaId);
+          app.setIsInCourseDetail(true);
+          // Quando o usuário JÁ está dentro da mesma turma, nem
+          // setCurrentCourseId nem o stash disparam novo render do
+          // useEffect[turmaId] em TurmaShell. Esse evento é o canal
+          // independente que força a troca pra aba Comunidade e o
+          // highlight do post alvo no TurmaCommunityTab.
+          if (turmaMatch[2]) {
+            const postId = Number(turmaMatch[2]);
+            if (Number.isFinite(postId) && postId > 0) {
+              window.dispatchEvent(
+                new CustomEvent("rayo:open-turma-post", {
+                  detail: { turmaId, postId },
+                }),
+              );
+            }
+          }
+          // Limpa qualquer stash antigo para não reabrir essa turma
+          // num próximo mount/refresh fora do contexto da notificação.
+          try {
+            sessionStorage.removeItem("rayo-pending-turma");
+          } catch {
+            /* ignore */
+          }
+        } else {
+          try {
+            sessionStorage.setItem("rayo-pending-turma", turmaMatch[1]);
+          } catch {
+            /* ignore */
+          }
+        }
+        onTabChange("academia");
+        return;
+      }
     }
     // Fallback by kind for entries without a link.
     if (kind === "message") onTabChange("conversas");
+    if (kind === "class_post" || kind === "class_interest") onTabChange("academia");
   };
 
   const handleClick = async (n: NotificationPayload) => {

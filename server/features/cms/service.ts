@@ -847,10 +847,10 @@ export async function createCourseFromCms(actor: SafeUser, input: CreateCourseIn
   const { rows: courseRows } = await query(
     `INSERT INTO courses
         (title, description, thumbnail, duration, total_lessons, rating, students,
-         price, category, life_context, level, is_premium, instructor)
-     VALUES ($1,$2,$3,'0h 0m',0,0,0,$4,$5,$6,$7,$8,$9)
+         price, category, life_context, level, is_premium, instructor, created_by)
+     VALUES ($1,$2,$3,'0h 0m',0,0,0,$4,$5,$6,$7,$8,$9,$10)
      RETURNING id, title`,
-    [title, description, thumbnail, price, category, "casados", level, isPremium, instructor]
+    [title, description, thumbnail, price, category, "casados", level, isPremium, instructor, actor.id]
   );
   const courseId = courseRows[0].id as number;
 
