@@ -8,7 +8,7 @@ import oauthRouter from "./oauth.js";
 
 const router = Router();
 
-// Task #69 — Rotas OAuth (Google/Apple). Montadas antes das outras pra
+// Task #69 + #72 — Rotas OAuth (Google/Facebook). Montadas antes das outras pra
 // que /providers e /:provider/callback não conflitem com handlers
 // específicos. Coexistem com email/senha; quando o provider não está
 // configurado por env, o próprio router devolve 503.
