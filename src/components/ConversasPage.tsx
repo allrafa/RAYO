@@ -107,6 +107,7 @@ interface SwipeRowProps {
   isActive: boolean;
   isArchivedView: boolean;
   currentUserId: number;
+  typingHint?: string | null;
   onOpen: () => void;
   onArchiveToggle: () => void;
   onDelete: () => void;
@@ -152,7 +153,7 @@ function ConversationItemMenu({ isArchivedView, onArchiveToggle, onDelete }: {
   );
 }
 
-function SwipeRow({ conv, isActive, isArchivedView, currentUserId, onOpen, onArchiveToggle, onDelete }: SwipeRowProps) {
+function SwipeRow({ conv, isActive, isArchivedView, currentUserId, typingHint, onOpen, onArchiveToggle, onDelete }: SwipeRowProps) {
   // Spec Task #79:
   //  ← swipe à esquerda  → revela "Arquivar" (lado direito do card)
   //  → swipe à direita   → revela "Excluir"  (lado esquerdo do card)
@@ -234,7 +235,11 @@ function SwipeRow({ conv, isActive, isArchivedView, currentUserId, onOpen, onArc
               )}
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className="ra-disc-snippet">{previewFor(conv, currentUserId)}</p>
+              {typingHint ? (
+                <p className="ra-disc-snippet italic text-primary" aria-live="polite">{typingHint}</p>
+              ) : (
+                <p className="ra-disc-snippet">{previewFor(conv, currentUserId)}</p>
+              )}
               {conv.unread_count > 0 && (
                 <Badge className="ml-2 shrink-0">{conv.unread_count}</Badge>
               )}
@@ -902,18 +907,30 @@ export function ConversasPage() {
             <EmptyStateNoConversations onStart={() => setShowNewConvDialog(true)} />
           ) : (
             <div className="ra-disc-list p-3 space-y-1">
-              {filteredConversations.map((conv) => (
-                <SwipeRow
-                  key={conv.id}
-                  conv={conv}
-                  isActive={activeId === conv.id}
-                  isArchivedView={false}
-                  currentUserId={currentUserId}
-                  onOpen={() => setActiveId(conv.id)}
-                  onArchiveToggle={() => handleArchiveToggle(conv)}
-                  onDelete={() => setConfirmDelete(conv)}
-                />
-              ))}
+              {filteredConversations.map((conv) => {
+                const t = typingByConv[conv.id];
+                const l = listeningByConv[conv.id];
+                const showTyping = !!(t && t.user_id === conv.other_user_id);
+                const showListening = !showTyping && !!(l && l.user_id === conv.other_user_id);
+                const typingHint = showTyping
+                  ? "digitando..."
+                  : showListening
+                    ? "ouvindo seu áudio..."
+                    : null;
+                return (
+                  <SwipeRow
+                    key={conv.id}
+                    conv={conv}
+                    isActive={activeId === conv.id}
+                    isArchivedView={false}
+                    currentUserId={currentUserId}
+                    typingHint={typingHint}
+                    onOpen={() => setActiveId(conv.id)}
+                    onArchiveToggle={() => handleArchiveToggle(conv)}
+                    onDelete={() => setConfirmDelete(conv)}
+                  />
+                );
+              })}
 
               {filteredArchived.length > 0 && (
                 <div className="mt-3 border-t pt-2">
