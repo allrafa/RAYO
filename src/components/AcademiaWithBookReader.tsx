@@ -7,9 +7,16 @@ import { useApp } from './AppContext';
 import { AcademiaPage } from './AcademiaPage';
 import { BookReaderWrapper } from './reader/BookReaderWrapper';
 import { TurmaShell } from './turmas/TurmaShell';
+import { useScrollRestore } from '../lib/scrollRestore';
 
 export function AcademiaWithBookReader() {
   const { isInBookDetail, isInBookReader, isInCourseDetail, currentCourseId } = useApp();
+
+  // Task #120 — preserva o scroll da Academia ao abrir/voltar de
+  // BookCard (Minha Biblioteca) ou CourseCard (Catálogo). O hook fica
+  // aqui (não em AcademiaPage) porque a página é desmontada quando
+  // qualquer um dos detalhes abre.
+  useScrollRestore('academia-page', isInBookDetail || isInBookReader || (isInCourseDetail && !!currentCourseId));
 
   // Se está no leitor ou detalhes do livro, mostrar o BookReaderWrapper
   if (isInBookDetail || isInBookReader) {
