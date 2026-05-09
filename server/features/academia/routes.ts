@@ -15,6 +15,10 @@ import {
   getCourseMembers,
   isCourseMember,
 } from "./service.js";
+import {
+  getAllPosts as getAllCommunityPosts,
+  createPost as createCommunityPost,
+} from "../community/service.js";
 
 const router = Router();
 
@@ -125,6 +129,65 @@ router.get("/:id/members", requireAuth, async (req, res, next) => {
     const result = await getCourseMembers(courseId, page, limit);
     success(res, result);
   } catch (err) {
+    next(err);
+  }
+});
+
+// Task #99 — alias canônico /api/turmas/:id/posts (GET/POST). Internamente
+// delega pro mesmo service da Comunidade com class_id setado, garantindo
+// uma única fonte da verdade pra autorização (member ou moderator+) e
+// pra escopo (class_id). Frontend pode usar `?class_id=` direto em
+// /api/community/posts ou esse alias — ambos seguem o mesmo contrato.
+router.get("/:id/posts", requireAuth, async (req, res, next) => {
+  try {
+    const courseId = parseInt(req.params.id, 10);
+    if (isNaN(courseId)) {
+      sendError(res, "ID de turma inválido", "INVALID_COURSE_ID");
+      return;
+    }
+    const member = await isCourseMember(req.user!.id, courseId);
+    if (!member && !hasRole(req.user, "moderator")) {
+      // 404 pra não vazar a existência do recurso.
+      sendError(res, "Turma não encontrada", "TURMA_NOT_FOUND", 404);
+      return;
+    }
+    const page = Math.max(1, parseInt(String(req.query.page || "1"), 10));
+    const limit = Math.max(1, Math.min(parseInt(String(req.query.limit || "20"), 10) || 20, 100));
+    const result = await getAllCommunityPosts(page, limit, req.user!.id, courseId);
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/:id/posts", requireAuth, async (req, res, next) => {
+  try {
+    const courseId = parseInt(req.params.id, 10);
+    if (isNaN(courseId)) {
+      sendError(res, "ID de turma inválido", "INVALID_COURSE_ID");
+      return;
+    }
+    const { forum_id, content, category, title, images } = req.body;
+    const parsedForumId = parseInt(forum_id, 10);
+    if (!forum_id || isNaN(parsedForumId) || parsedForumId < 1) {
+      sendError(res, "Selecione uma comunidade para publicar", "INVALID_FORUM_ID", 400);
+      return;
+    }
+    const post = await createCommunityPost(
+      req.user!.id,
+      parsedForumId,
+      content,
+      category,
+      title,
+      images,
+      courseId,
+    );
+    success(res, { post }, 201);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
     next(err);
   }
 });
