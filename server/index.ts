@@ -35,7 +35,7 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
 import { fileURLToPath } from "url";
-import { PUBLIC_META, applyPublicMeta, normalizePath } from "./features/seo/publicMeta.js";
+import { applyPublicMeta, resolvePublicMeta } from "./features/seo/publicMeta.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -250,21 +250,38 @@ async function start() {
       );
       try {
         const { query: dbQuery } = await import("./db/index.js");
-        const { rows } = await dbQuery(
+        // Blog posts publicados.
+        const { rows: blogRows } = await dbQuery(
           `SELECT slug, COALESCE(updated_at, published_at, created_at) AS lastmod
              FROM content_items
             WHERE kind = 'artigo' AND status = 'published' AND slug IS NOT NULL
             ORDER BY published_at DESC NULLS LAST
             LIMIT 1000`,
         );
-        for (const r of rows as Array<{ slug: string; lastmod: Date | null }>) {
+        for (const r of blogRows as Array<{ slug: string; lastmod: Date | null }>) {
           const lm = r.lastmod ? new Date(r.lastmod).toISOString().slice(0, 10) : today;
           urls.push(
             `  <url>\n    <loc>${PUBLIC_SITE_URL}/blog/${encodeURIComponent(r.slug)}</loc>\n    <lastmod>${lm}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`,
           );
         }
+        // Task #111 — turmas ativas. Landing /turmas/:id é pública (servida
+        // pelo SPA + meta tags via resolvePublicMeta), então entram no
+        // sitemap. lastmod = courses.updated_at (real, não placeholder).
+        const { rows: turmaRows } = await dbQuery(
+          `SELECT id, COALESCE(updated_at, created_at) AS lastmod
+             FROM courses
+            WHERE is_active = TRUE
+            ORDER BY updated_at DESC NULLS LAST
+            LIMIT 1000`,
+        );
+        for (const r of turmaRows as Array<{ id: number; lastmod: Date | null }>) {
+          const lm = r.lastmod ? new Date(r.lastmod).toISOString().slice(0, 10) : today;
+          urls.push(
+            `  <url>\n    <loc>${PUBLIC_SITE_URL}/turmas/${r.id}</loc>\n    <lastmod>${lm}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>`,
+          );
+        }
       } catch (err) {
-        logger.warn("Sitemap", `Failed to fetch blog posts for sitemap: ${(err as Error).message}`);
+        logger.warn("Sitemap", `Failed to fetch dynamic urls for sitemap: ${(err as Error).message}`);
       }
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
       res.set("Content-Type", "application/xml; charset=utf-8");
@@ -272,9 +289,14 @@ async function start() {
       res.send(xml);
     });
     app.get("/robots.txt", (_req, res) => {
+      // Task #111 — `/turmas/` virou indexável (landings públicas com OG +
+      // JSON-LD Course). `/u/` continua disallow pra indexação geral mas
+      // bots de link preview (Facebook/WhatsApp/LinkedIn) ignoram robots
+      // pra unfurls — meta tags do `/u/:id` vão aparecer mesmo assim.
       const allows = [
         "/$", "/recursos", "/como-funciona", "/empresa", "/contato",
-        "/faq", "/imprensa", "/blog", "/privacy", "/terms", "/excluir-dados",
+        "/faq", "/imprensa", "/blog", "/turmas", "/privacy", "/terms",
+        "/excluir-dados",
       ];
       const body =
         `User-agent: *\n${allows.map((a) => `Allow: ${a}`).join("\n")}\n` +
@@ -283,6 +305,104 @@ async function start() {
       res.set("Content-Type", "text/plain; charset=utf-8");
       res.set("Cache-Control", "public, max-age=3600");
       res.send(body);
+    });
+
+    // Task #111 — /.well-known/security.txt (RFC 9116). Sinaliza canal
+    // de segurança para pesquisadores e bug-bounty hunters.
+    app.get("/.well-known/security.txt", (_req, res) => {
+      const expires = new Date();
+      expires.setFullYear(expires.getFullYear() + 1);
+      const body =
+        `Contact: mailto:security@rayo.app.br\n` +
+        `Contact: mailto:dpo@rayo.app.br\n` +
+        `Expires: ${expires.toISOString()}\n` +
+        `Preferred-Languages: pt-BR, en\n` +
+        `Canonical: ${PUBLIC_SITE_URL}/.well-known/security.txt\n` +
+        `Policy: ${PUBLIC_SITE_URL}/privacy\n`;
+      res.set("Content-Type", "text/plain; charset=utf-8");
+      res.set("Cache-Control", "public, max-age=86400");
+      res.send(body);
+    });
+
+    // Task #111 — RSS 2.0 do blog. Útil pra leitores RSS, agregadores
+    // (Feedly etc.) e pra reabastecer índices de buscadores em paralelo
+    // com o sitemap. Cache HTTP de 1h alinhado ao sitemap.
+    app.get("/blog/feed.xml", async (_req, res) => {
+      try {
+        const { query: dbQuery } = await import("./db/index.js");
+        const { rows } = await dbQuery(
+          `SELECT slug, title, short_description, author,
+                  COALESCE(published_at, created_at) AS pub_at
+             FROM content_items
+            WHERE kind = 'artigo' AND status = 'published' AND slug IS NOT NULL
+            ORDER BY published_at DESC NULLS LAST
+            LIMIT 50`,
+        );
+        const escapeXml = (s: string): string =>
+          (s || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&apos;");
+        const items = (rows as Array<{
+          slug: string;
+          title: string;
+          short_description: string | null;
+          author: string | null;
+          pub_at: Date | null;
+        }>)
+          .map((r) => {
+            const link = `${PUBLIC_SITE_URL}/blog/${encodeURIComponent(r.slug)}`;
+            const pub = r.pub_at ? new Date(r.pub_at).toUTCString() : new Date().toUTCString();
+            return (
+              `    <item>\n` +
+              `      <title>${escapeXml(r.title)}</title>\n` +
+              `      <link>${link}</link>\n` +
+              `      <guid isPermaLink="true">${link}</guid>\n` +
+              `      <pubDate>${pub}</pubDate>\n` +
+              (r.author ? `      <author>noreply@rayo.app.br (${escapeXml(r.author)})</author>\n` : "") +
+              `      <description>${escapeXml(r.short_description || "")}</description>\n` +
+              `    </item>`
+            );
+          })
+          .join("\n");
+        const lastBuild = new Date().toUTCString();
+        const xml =
+          `<?xml version="1.0" encoding="UTF-8"?>\n` +
+          `<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n` +
+          `  <channel>\n` +
+          `    <title>Blog · RAYO</title>\n` +
+          `    <link>${PUBLIC_SITE_URL}/blog</link>\n` +
+          `    <description>Reflexões, práticas e estudos sobre família, relacionamentos e formação espiritual.</description>\n` +
+          `    <language>pt-BR</language>\n` +
+          `    <lastBuildDate>${lastBuild}</lastBuildDate>\n` +
+          `    <atom:link href="${PUBLIC_SITE_URL}/blog/feed.xml" rel="self" type="application/rss+xml" />\n` +
+          items +
+          `\n  </channel>\n</rss>\n`;
+        res.set("Content-Type", "application/rss+xml; charset=utf-8");
+        res.set("Cache-Control", "public, max-age=3600");
+        res.send(xml);
+      } catch (err) {
+        logger.warn("RSS", `Failed to build blog feed: ${(err as Error).message}`);
+        res.status(500).send("Failed to build feed");
+      }
+    });
+
+    // Task #111 — Permissions-Policy: nega APIs sensíveis que o app não
+    // usa (camera/mic/geolocation/payment/usb). Reduz superfície de ataque
+    // se algum bundle 3p tentar usar. Aplicado apenas a respostas HTML
+    // (rotas API não precisam). Roda ANTES do middleware SEO.
+    app.use((req, res, next) => {
+      if (req.method !== "GET") return next();
+      const accept = String(req.headers.accept || "");
+      if (!accept.includes("text/html")) return next();
+      res.set(
+        "Permissions-Policy",
+        "camera=(), microphone=(self), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()",
+      );
+      // microphone=(self) porque DM permite gravação de áudio in-app.
+      next();
     });
 
     // SEO/SSR-leve: para rotas públicas registradas em PUBLIC_META, lemos
@@ -304,13 +424,15 @@ async function start() {
         appType: "spa",
       });
       // Middleware SEO em dev: re-lê o template a cada request (HMR-friendly).
+      // Resolver async pra cobrir rotas dinâmicas (/blog/:slug, /u/:id, /turmas/:id)
+      // além das estáticas em PUBLIC_META.
       app.use(async (req, res, next) => {
         if (req.method !== "GET") return next();
         const accept = String(req.headers.accept || "");
         if (!accept.includes("text/html")) return next();
-        const meta = PUBLIC_META[normalizePath(req.path)];
-        if (!meta) return next();
         try {
+          const meta = await resolvePublicMeta(req.path);
+          if (!meta) return next();
           const raw = await fs.readFile(indexHtmlPath, "utf-8");
           const transformed = await vite.transformIndexHtml(req.originalUrl, raw);
           const finalHtml = applyPublicMeta(transformed, meta);
@@ -334,16 +456,21 @@ async function start() {
       } catch (err) {
         logger.warn("PublicSEO", `Could not preload index.html: ${(err as Error).message}`);
       }
-      app.use((req, res, next) => {
+      app.use(async (req, res, next) => {
         if (req.method !== "GET" || !prodIndexHtml) return next();
         const accept = String(req.headers.accept || "");
         if (!accept.includes("text/html")) return next();
-        const meta = PUBLIC_META[normalizePath(req.path)];
-        if (!meta) return next();
-        const finalHtml = applyPublicMeta(prodIndexHtml, meta);
-        res.set("Content-Type", "text/html; charset=utf-8");
-        res.set("Cache-Control", "public, max-age=300");
-        res.send(finalHtml);
+        try {
+          const meta = await resolvePublicMeta(req.path);
+          if (!meta) return next();
+          const finalHtml = applyPublicMeta(prodIndexHtml, meta);
+          res.set("Content-Type", "text/html; charset=utf-8");
+          res.set("Cache-Control", "public, max-age=300");
+          res.send(finalHtml);
+        } catch (err) {
+          logger.warn("PublicSEO", `Failed to render ${req.path}: ${(err as Error).message}`);
+          next();
+        }
       });
       app.use(express.static(buildPath));
       // SPA fallback: in Express 5 the legacy `app.get("*")` throws at

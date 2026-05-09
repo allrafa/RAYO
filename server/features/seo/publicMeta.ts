@@ -1,19 +1,23 @@
-// Task #99 (extensão) — SEO/SSR-leve para rotas públicas (marketing,
-// privacy, terms, excluir-dados). O frontend é SPA (React + Vite), então
-// o HTML cru servido pra crawlers/bots que não rodam JS (Facebook bot,
-// WhatsApp link preview, Slack unfurl, GoogleBot legacy, validadores de
-// painel OAuth, etc.) sai praticamente vazio: só o `<div id="root">`.
+// Task #99 (extensão) + Task #111 — SEO/SSR-leve para rotas públicas.
+// O frontend é SPA (React + Vite), então o HTML cru servido pra crawlers
+// que não rodam JS (Facebook bot, WhatsApp link preview, Slack unfurl,
+// GoogleBot legacy, validadores de painel OAuth) sai praticamente vazio:
+// só o `<div id="root">`.
 //
-// Esse módulo faz duas coisas pra cada request de rota pública:
+// Esse módulo faz três coisas pra cada request de rota pública:
 //   1. Injeta no `<head>` as tags certas: <title>, <meta description>,
-//      <link rel="canonical">, OpenGraph completo (FB/LinkedIn/WhatsApp)
-//      e Twitter Card. Sem JS, todo crawler já enxerga título e preview.
-//   2. (Opcional, por rota) Injeta um bloco `<noscript>` com o conteúdo
-//      essencial em HTML estático. Necessário para validadores que
-//      checam se a página fala do assunto certo (ex: o painel de Login
-//      do Facebook exige uma URL de instruções de exclusão de dados que
-//      seja "uma página válida" — sem JS ele só vê o que estiver no HTML
-//      cru). Também ajuda em acessibilidade e em buscadores antigos.
+//      <link rel="canonical">, OpenGraph (FB/LinkedIn/WhatsApp) e Twitter.
+//   2. (Opcional) Injeta JSON-LD (schema.org) — Organization+WebSite na
+//      home, Article em /blog/:slug, ProfilePage em /u/:id, Course em
+//      /turmas/:id. Ajuda Google/Bing a entender o tipo de página.
+//   3. (Opcional) Injeta <noscript> com HTML estático (usado em
+//      /excluir-dados pro validador do Facebook).
+//
+// Rotas dinâmicas (/blog/:slug, /u/:id, /turmas/:id) são resolvidas via
+// `resolvePublicMeta(path)` que consulta o banco com cache em memória
+// curto (60s) pra não martelar o Postgres.
+
+import { query } from "../../db/index.js";
 
 const SITE = (process.env.PUBLIC_SITE_URL || "https://rayo.app.br").replace(
   /\/+$/,
@@ -21,11 +25,21 @@ const SITE = (process.env.PUBLIC_SITE_URL || "https://rayo.app.br").replace(
 );
 const DEFAULT_OG = `${SITE}/og-default.png`;
 
+export interface JsonLd {
+  "@context": "https://schema.org";
+  "@type": string;
+  [key: string]: unknown;
+}
+
 export interface PublicMeta {
   title: string;
   description: string;
   canonical: string;
   ogImage?: string;
+  /** og:type — default "website". Use "article" / "profile" pra páginas dinâmicas. */
+  ogType?: string;
+  /** Lista de blocos JSON-LD a injetar no <head>. */
+  jsonLd?: JsonLd[];
   /** HTML estático para `<noscript>`. Opcional — se ausente, só meta tags. */
   noscriptHtml?: string;
 }
@@ -38,10 +52,32 @@ const escapeHtml = (s: string): string =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-// Conteúdo plain-HTML mínimo que descreve a página de exclusão de dados.
-// Espelha as seções da SPA. Mantenha curto: o objetivo é o crawler do
-// Facebook conseguir validar a URL como uma página de instruções real,
-// não substituir a página interativa.
+// JSON-LD não pode ter `</script>` no meio (XSS escape) — basta trocar `<` por `\u003c`.
+const escapeJsonLd = (v: unknown): string =>
+  JSON.stringify(v).replace(/</g, "\\u003c");
+
+const ORGANIZATION_LD: JsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "RAYO",
+  url: SITE,
+  logo: `${SITE}/og-default.png`,
+  sameAs: [],
+};
+
+const WEBSITE_LD: JsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "RAYO",
+  url: SITE,
+  inLanguage: "pt-BR",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${SITE}/blog?q={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
+};
+
 const EXCLUIR_DADOS_NOSCRIPT = `
 <main style="max-width:760px;margin:0 auto;padding:32px 24px;font-family:system-ui,sans-serif;line-height:1.6;color:#1a1612;">
   <h1>Exclusão de dados — RAYO</h1>
@@ -85,13 +121,14 @@ const EXCLUIR_DADOS_NOSCRIPT = `
 `;
 
 // Registry: path exato (sem trailing slash) -> meta. Adicionar nova rota
-// pública aqui é o único lugar a tocar — o middleware faz o resto.
+// pública estática aqui é o único lugar a tocar — o middleware faz o resto.
 export const PUBLIC_META: Record<string, PublicMeta> = {
   "/": {
     title: "RAYO — Conteúdo, comunidade e práticas para fortalecer famílias",
     description:
       "Plataforma digital para famílias em cinco contextos de vida: Solteiro, Namoro, Noivos, Casados e Pais. Cursos, comunidade, missões e turmas.",
     canonical: `${SITE}/`,
+    jsonLd: [ORGANIZATION_LD, WEBSITE_LD],
   },
   "/recursos": {
     title: "Recursos · RAYO",
@@ -156,6 +193,235 @@ export const PUBLIC_META: Record<string, PublicMeta> = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// Cache em memória curto (60s) pra resolvers dinâmicos. Bots costumam
+// fazer várias hits em sequência; cachear evita queries duplicadas.
+// ---------------------------------------------------------------------------
+interface CacheEntry {
+  value: PublicMeta | null;
+  expiresAt: number;
+}
+const CACHE = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60 * 1000;
+
+function cacheGet(key: string): PublicMeta | null | undefined {
+  const e = CACHE.get(key);
+  if (!e) return undefined;
+  if (e.expiresAt < Date.now()) {
+    CACHE.delete(key);
+    return undefined;
+  }
+  return e.value;
+}
+function cacheSet(key: string, value: PublicMeta | null): void {
+  // Limita tamanho pra não vazar memória se o servidor receber URLs aleatórias.
+  if (CACHE.size > 500) CACHE.clear();
+  CACHE.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
+const truncate = (s: string, max: number): string =>
+  s.length <= max ? s : `${s.slice(0, max - 1)}…`;
+
+const stripMarkdown = (s: string): string =>
+  s
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[#>*_`~\-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+// ---------------------------------------------------------------------------
+// Resolvers dinâmicos. Cada um devolve um PublicMeta ou null (404 → cai no
+// SPA shell normal sem injeção custom).
+// ---------------------------------------------------------------------------
+
+async function resolveBlogPost(slug: string): Promise<PublicMeta | null> {
+  const { rows } = await query<{
+    title: string;
+    short_description: string | null;
+    long_description: string | null;
+    cover_url: string | null;
+    author: string | null;
+    published_at: Date | null;
+    updated_at: Date | null;
+  }>(
+    `SELECT title, short_description, long_description, cover_url, author,
+            published_at, updated_at
+       FROM content_items
+      WHERE kind = 'artigo' AND status = 'published' AND slug = $1
+      LIMIT 1`,
+    [slug],
+  );
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  const desc = truncate(
+    stripMarkdown(r.short_description || r.long_description || ""),
+    200,
+  ) || "Artigo do blog do RAYO.";
+  const canonical = `${SITE}/blog/${encodeURIComponent(slug)}`;
+  const ogImage =
+    r.cover_url && /^https?:\/\//.test(r.cover_url) ? r.cover_url : DEFAULT_OG;
+  const articleLd: JsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: r.title,
+    description: desc,
+    image: ogImage,
+    author: r.author ? { "@type": "Person", name: r.author } : undefined,
+    publisher: {
+      "@type": "Organization",
+      name: "RAYO",
+      logo: { "@type": "ImageObject", url: `${SITE}/og-default.png` },
+    },
+    datePublished: r.published_at ? new Date(r.published_at).toISOString() : undefined,
+    dateModified: r.updated_at
+      ? new Date(r.updated_at).toISOString()
+      : r.published_at
+        ? new Date(r.published_at).toISOString()
+        : undefined,
+    mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+    inLanguage: "pt-BR",
+  };
+  return {
+    title: `${r.title} · RAYO`,
+    description: desc,
+    canonical,
+    ogImage,
+    ogType: "article",
+    jsonLd: [articleLd],
+  };
+}
+
+async function resolveUserProfile(id: number): Promise<PublicMeta | null> {
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const { rows } = await query<{
+    name: string | null;
+    bio: string | null;
+    avatar_url: string | null;
+  }>(
+    `SELECT name, bio, avatar_url FROM users WHERE id = $1 LIMIT 1`,
+    [id],
+  );
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  const name = (r.name || "").trim() || "Membro do RAYO";
+  const bio = truncate((r.bio || "").trim(), 200) || `Perfil de ${name} no RAYO.`;
+  const canonical = `${SITE}/u/${id}`;
+  // avatar_url pode ser sentinel objstore:// ou /uploads/avatar/... — pra OG
+  // precisamos de URL absoluta. Mantém só http(s)://; resto cai no default.
+  const ogImage =
+    r.avatar_url && /^https?:\/\//.test(r.avatar_url) ? r.avatar_url : DEFAULT_OG;
+  const profileLd: JsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ProfilePage",
+    mainEntity: {
+      "@type": "Person",
+      name,
+      description: bio,
+      image: ogImage,
+      url: canonical,
+    },
+    inLanguage: "pt-BR",
+  };
+  return {
+    title: `${name} · RAYO`,
+    description: bio,
+    canonical,
+    ogImage,
+    ogType: "profile",
+    jsonLd: [profileLd],
+  };
+}
+
+async function resolveTurma(id: number): Promise<PublicMeta | null> {
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const { rows } = await query<{
+    title: string;
+    subtitle: string | null;
+    description: string | null;
+    thumbnail: string | null;
+    hero_cover_url: string | null;
+    instructor: string | null;
+  }>(
+    `SELECT title, subtitle, description, thumbnail, hero_cover_url, instructor
+       FROM courses
+      WHERE id = $1 AND is_active = TRUE
+      LIMIT 1`,
+    [id],
+  );
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  const desc = truncate(
+    stripMarkdown(r.subtitle || r.description || ""),
+    200,
+  ) || `Conheça a turma "${r.title}" no RAYO.`;
+  const canonical = `${SITE}/turmas/${id}`;
+  const heroOrThumb = r.hero_cover_url || r.thumbnail;
+  const ogImage =
+    heroOrThumb && /^https?:\/\//.test(heroOrThumb) ? heroOrThumb : DEFAULT_OG;
+  const courseLd: JsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: r.title,
+    description: desc,
+    url: canonical,
+    image: ogImage,
+    provider: {
+      "@type": "Organization",
+      name: "RAYO",
+      sameAs: SITE,
+    },
+    instructor: r.instructor ? { "@type": "Person", name: r.instructor } : undefined,
+    inLanguage: "pt-BR",
+  };
+  return {
+    title: `${r.title} · RAYO`,
+    description: desc,
+    canonical,
+    ogImage,
+    ogType: "website",
+    jsonLd: [courseLd],
+  };
+}
+
+/**
+ * Resolve um path em PublicMeta — primeiro consulta o registry estático,
+ * depois tenta os padrões dinâmicos (/blog/:slug, /u/:id, /turmas/:id).
+ * Devolve `null` quando não existe meta pra esse path (deixa o middleware
+ * pular pro fallback normal do SPA).
+ *
+ * Usa cache em memória de 60s (vide topo do arquivo). Falhas de DB são
+ * silenciadas — log no chamador, retorna null pra não derrubar a página.
+ */
+export async function resolvePublicMeta(rawPath: string): Promise<PublicMeta | null> {
+  const path = normalizePath(rawPath);
+  // Estático tem precedência (e nem usa cache — é constante em memória).
+  const staticMeta = PUBLIC_META[path];
+  if (staticMeta) return staticMeta;
+
+  // Cache hit?
+  const cached = cacheGet(path);
+  if (cached !== undefined) return cached;
+
+  let resolved: PublicMeta | null = null;
+  try {
+    let m: RegExpMatchArray | null;
+    if ((m = path.match(/^\/blog\/([a-zA-Z0-9-]{1,200})$/))) {
+      resolved = await resolveBlogPost(m[1]);
+    } else if ((m = path.match(/^\/u\/(\d{1,10})$/))) {
+      resolved = await resolveUserProfile(parseInt(m[1], 10));
+    } else if ((m = path.match(/^\/turmas\/(\d{1,10})$/))) {
+      resolved = await resolveTurma(parseInt(m[1], 10));
+    }
+  } catch {
+    resolved = null;
+  }
+
+  cacheSet(path, resolved);
+  return resolved;
+}
+
 /**
  * Aplica `meta` ao HTML do index do Vite/build, retornando uma nova string.
  * Idempotente o suficiente: substitui `<title>` se houver e injeta tags
@@ -166,13 +432,8 @@ export const PUBLIC_META: Record<string, PublicMeta> = {
 export function applyPublicMeta(html: string, meta: PublicMeta): string {
   let out = html;
 
-  // Garante lang correto (template original está com "en" — corrigir só
-  // pra rotas públicas é seguro e não afeta o app autenticado, que
-  // recebe o mesmo HTML mas não é indexado).
   out = out.replace(/<html\s+lang="[^"]*"/i, '<html lang="pt-BR"');
 
-  // Substitui o <title> default. Se não houver <title>, injeta junto com
-  // o resto antes de </head>.
   if (/<title>[\s\S]*?<\/title>/i.test(out)) {
     out = out.replace(
       /<title>[\s\S]*?<\/title>/i,
@@ -181,12 +442,13 @@ export function applyPublicMeta(html: string, meta: PublicMeta): string {
   }
 
   const ogImage = meta.ogImage || DEFAULT_OG;
-  const headTags = `
+  const ogType = meta.ogType || "website";
+  let headTags = `
     <meta name="description" content="${escapeHtml(meta.description)}" />
     <link rel="canonical" href="${meta.canonical}" />
     <meta property="og:title" content="${escapeHtml(meta.title)}" />
     <meta property="og:description" content="${escapeHtml(meta.description)}" />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content="${escapeHtml(ogType)}" />
     <meta property="og:url" content="${meta.canonical}" />
     <meta property="og:image" content="${ogImage}" />
     <meta property="og:site_name" content="RAYO" />
@@ -196,6 +458,11 @@ export function applyPublicMeta(html: string, meta: PublicMeta): string {
     <meta name="twitter:description" content="${escapeHtml(meta.description)}" />
     <meta name="twitter:image" content="${ogImage}" />
   `;
+  if (meta.jsonLd && meta.jsonLd.length > 0) {
+    for (const ld of meta.jsonLd) {
+      headTags += `\n    <script type="application/ld+json">${escapeJsonLd(ld)}</script>`;
+    }
+  }
   if (/<\/head>/i.test(out)) {
     out = out.replace(/<\/head>/i, `${headTags}</head>`);
   }
