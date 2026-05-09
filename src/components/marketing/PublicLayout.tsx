@@ -9,8 +9,9 @@ interface Props {
 // `.marketing-page` para que o CSS de marketing-rayo.css fique scoped e não
 // vaze para o app autenticado. Todos os links são <a> com hrefs reais — o
 // roteamento é feito pelo `getPublicPageFromUrl` em App.tsx no carregamento
-// (full reload). Para CTAs de signup/login usamos `/?auth=signup|login` para
-// que o app principal abra direto na tela correta.
+// (full reload). CTAs de auth apontam para `/login` e `/cadastro`, mapeados
+// em `getInitialAuthIntent` para abrir direto no formulário correto, sem
+// passar pelo welcome/onboarding.
 
 export function PublicLayout({ active, children }: Props) {
   return (
@@ -47,32 +48,32 @@ export function PublicLayout({ active, children }: Props) {
                 Conteúdo, comunidade e práticas para iluminar todas as fases da sua família.
               </p>
             </div>
+            {/* Apenas links para rotas públicas que existem de fato — evita
+                404s de crawler. Quando novas páginas (/planos, /carreiras,
+                /comunidade etc.) entrarem, adicionar aqui também. */}
             <div className="foot-col">
               <h4>Produto</h4>
               <a href="/recursos">Recursos</a>
               <a href="/como-funciona">Como funciona</a>
-              <a href="/planos">Planos</a>
-              <a href="/baixar">Baixar app</a>
+              <a href="/cadastro">Criar conta</a>
+              <a href="/login">Entrar</a>
             </div>
             <div className="foot-col">
               <h4>Empresa</h4>
               <a href="/empresa">Sobre a empresa</a>
               <a href="/imprensa">Imprensa</a>
-              <a href="/carreiras">Carreiras</a>
               <a href="/contato">Contato</a>
             </div>
             <div className="foot-col">
               <h4>Suporte</h4>
               <a href="/faq">FAQ</a>
               <a href="/blog">Blog</a>
-              <a href="/comunidade">Comunidade</a>
-              <a href="/status">Status</a>
+              <a href="/contato">Fale conosco</a>
             </div>
             <div className="foot-col">
               <h4>Legal</h4>
               <a href="/terms">Termos de uso</a>
               <a href="/privacy">Privacidade</a>
-              <a href="/cookies">Cookies</a>
             </div>
           </div>
           <div className="foot-bottom">

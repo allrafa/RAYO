@@ -53,7 +53,11 @@ const BLOG_CACHE_HEADER = "public, max-age=300, s-maxage=300";
 
 blogRouter.get("/posts", async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // Pagina por offset (page é 1-indexed). Ordem determinística pra
+    // garantir que o mesmo item nunca apareça em duas páginas.
     const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? "20"), 10) || 20));
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const offset = (page - 1) * limit;
     const segment = typeof req.query.segment === "string" ? req.query.segment : null;
     const params: unknown[] = [];
     let where = `kind = 'artigo' AND status = 'published'`;
@@ -61,17 +65,27 @@ blogRouter.get("/posts", async (req: Request, res: Response, next: NextFunction)
       where += ` AND (cardinality(segments) = 0 OR $1 = ANY(segments))`;
       params.push(segment);
     }
-    const { rows } = await query(
-      `SELECT id, slug, title, short_description, long_description, cover_url,
-              author, tags, segments, view_count, published_at
-         FROM content_items
-        WHERE ${where}
-        ORDER BY published_at DESC NULLS LAST, id DESC
-        LIMIT ${limit}`,
-      params,
-    );
+    const [{ rows }, countRes] = await Promise.all([
+      query(
+        `SELECT id, slug, title, short_description, long_description, cover_url,
+                author, tags, segments, view_count, published_at
+           FROM content_items
+          WHERE ${where}
+          ORDER BY published_at DESC NULLS LAST, id DESC
+          LIMIT ${limit} OFFSET ${offset}`,
+        params,
+      ),
+      query(`SELECT COUNT(*)::int AS total FROM content_items WHERE ${where}`, params),
+    ]);
+    const total = (countRes.rows[0] as { total: number } | undefined)?.total ?? 0;
     res.set("Cache-Control", BLOG_CACHE_HEADER);
-    success(res, { items: (rows as ArtigoRow[]).map(shapePost) });
+    success(res, {
+      items: (rows as ArtigoRow[]).map(shapePost),
+      page,
+      limit,
+      total,
+      hasMore: offset + rows.length < total,
+    });
   } catch (err) {
     next(err);
   }
