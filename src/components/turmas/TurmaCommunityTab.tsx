@@ -8,23 +8,19 @@ import { useEffect, useState, useCallback } from "react";
 import { Loader2, PenSquare } from "lucide-react";
 import { api } from "../../lib/api";
 import { Button } from "../ui/button";
-import { useApp } from "../AppContext";
 import { PostCard } from "../ComunidadePage";
 import { CreatePostModal } from "../CreatePostModal";
 import { mapAPIPost, type APIPost, type MappedPost } from "../../lib/postMapper";
 
-type ReactionsMap = Record<string, unknown>;
-
-interface AppCtxLike {
-  reactions?: ReactionsMap;
-  reactToPost?: (postId: number, emoji: string) => void;
-}
+// Reactions/onReact não são providos pelo AppContext — em ComunidadePage
+// vivem em estado local da view. Como `PostCard` cuida dos likes
+// internamente (via `useApp().likePost`), aqui passamos um mapa vazio
+// + noop, mantendo a paridade visual com o feed global sem expandir o
+// AppContextType só pra esse uso.
+const EMPTY_REACTIONS: Record<string, unknown> = {};
+const noopReact = () => {};
 
 export function TurmaCommunityTab({ classId }: { classId: number }) {
-  const ctx = useApp() as unknown as AppCtxLike;
-  const reactions: ReactionsMap = ctx.reactions ?? {};
-  const reactToPost = ctx.reactToPost;
-
   const [posts, setPosts] = useState<MappedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -46,10 +42,6 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
   useEffect(() => {
     load();
   }, [load]);
-
-  const handleReact = (postId: number, emoji: string) => {
-    if (typeof reactToPost === "function") reactToPost(postId, emoji);
-  };
 
   return (
     <div className="px-4 py-4 space-y-4">
@@ -85,8 +77,8 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
             <PostCard
               key={post.id}
               post={post}
-              reactions={reactions}
-              onReact={handleReact}
+              reactions={EMPTY_REACTIONS}
+              onReact={noopReact}
               onComment={load}
               onShare={load}
               onMutated={load}

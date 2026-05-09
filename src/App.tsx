@@ -234,6 +234,32 @@ function AppContent() {
     }
   }, []);
 
+  // Task #99 — abre o TurmaShell quando a landing pública estacionou
+  // o id em sessionStorage (membro logado clicou "Entrar na turma" em
+  // /turmas/:id). Roda uma vez no mount; limpa o stash depois pra não
+  // reabrir num refresh involuntário.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let pending: string | null = null;
+    try {
+      pending = sessionStorage.getItem("rayo-pending-turma");
+    } catch {
+      pending = null;
+    }
+    if (!pending) return;
+    const turmaId = Number(pending);
+    if (!Number.isFinite(turmaId) || turmaId < 1) return;
+    try {
+      sessionStorage.removeItem("rayo-pending-turma");
+    } catch {
+      // ignore
+    }
+    setCurrentTab("academia");
+    appContext?.setCurrentCourseId(turmaId);
+    appContext?.setIsInCourseDetail(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Task #71 — deep-link `/conversas/<id>` for notification + email links.
   // Mirrors the `/u/:id` contract: park the target id in sessionStorage,
   // switch to the Conversas tab, and clean the URL so refresh doesn't replay.
@@ -541,11 +567,27 @@ function PublicShell({ route }: { route: PublicRoute }) {
 // fetch direto pra `/api/turmas/:id/landing` (rota pública). CTA "Garantir
 // minha vaga" chama `/api/turmas/:id/interest` (anônimo OK no backend).
 function PublicTurmaLanding({ turmaId }: { turmaId: number }) {
+  // Task #99 — quando o landing endpoint sinaliza is_member=true (cookie
+  // de sessão presente), trocamos a CTA pra "Entrar na turma". Como a
+  // rota /turmas/:id é detectada ANTES do AuthProvider (gate público
+  // pré-render), não conseguimos chamar setCurrentCourseId aqui — então
+  // estacionamos o id em sessionStorage e damos full-reload pra "/".
+  // O AppContent monta com Auth + AppProvider, lê o stash e abre o
+  // TurmaShell direto (vide useEffect "rayo-pending-turma" em AppContent).
   return (
     <TurmaLandingPage
       turmaId={turmaId}
       onBack={() => {
         if (typeof window !== "undefined") window.location.href = "/";
+      }}
+      onEnterTurma={() => {
+        if (typeof window === "undefined") return;
+        try {
+          sessionStorage.setItem("rayo-pending-turma", String(turmaId));
+        } catch {
+          // ignore
+        }
+        window.location.href = "/";
       }}
     />
   );
