@@ -33,6 +33,7 @@ import { FaqPage } from "./components/marketing/FaqPage";
 import { ImprensaPage } from "./components/marketing/ImprensaPage";
 import { BlogIndexPage } from "./components/marketing/BlogIndexPage";
 import { BlogPostPage } from "./components/marketing/BlogPostPage";
+import { TurmaLandingPage } from "./components/turmas/TurmaLandingPage";
 import { analytics } from "./lib/analytics/mixpanel";
 import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
 import "./styles/nav-rayo.css";
@@ -58,9 +59,10 @@ interface OnboardingData {
 type PublicPage =
   | "privacy" | "terms"
   | "recursos" | "como-funciona" | "empresa" | "contato"
-  | "faq" | "imprensa" | "blog";
+  | "faq" | "imprensa" | "blog"
+  | "turma-landing";
 
-interface PublicRoute { page: PublicPage; blogSlug?: string }
+interface PublicRoute { page: PublicPage; blogSlug?: string; turmaId?: number }
 
 function getPublicPageFromUrl(): PublicRoute | null {
   if (typeof window === "undefined") return null;
@@ -76,8 +78,25 @@ function getPublicPageFromUrl(): PublicRoute | null {
   if (p === "/blog") return { page: "blog" };
   const m = /^\/blog\/([a-z0-9-]+)$/.exec(p);
   if (m) return { page: "blog", blogSlug: m[1] };
+  // Task #99 — landing pública por turma (`/turmas/<id>`). Crawlers e
+  // visitantes anônimos veem a landing direto, sem disparar /api/auth/me.
+  // Lista da Academia (`/turmas` puro) continua autenticada.
+  const t = /^\/turmas\/(\d+)$/.exec(p);
+  if (t) return { page: "turma-landing", turmaId: parseInt(t[1], 10) };
   return null;
 }
+
+// Task #99 — `/academia` é alias legado: redireciona pra `/turmas`
+// preservando query params, antes de qualquer renderização.
+function maybeRedirectAcademiaToTurmas(): void {
+  if (typeof window === "undefined") return;
+  const p = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (p === "/academia") {
+    const search = window.location.search || "";
+    window.history.replaceState(null, "", `/turmas${search}`);
+  }
+}
+maybeRedirectAcademiaToTurmas();
 
 // Task #70 — `/login` e `/cadastro` são entradas diretas no fluxo de auth
 // (sem welcome / onboarding). Mantidos como rotas reais para serem
@@ -513,7 +532,23 @@ function PublicShell({ route }: { route: PublicRoute }) {
       return route.blogSlug
         ? <BlogPostPage slug={route.blogSlug} />
         : <BlogIndexPage />;
+    case "turma-landing":
+      return <PublicTurmaLanding turmaId={route.turmaId!} />;
   }
+}
+
+// Task #99 — wrapper público da landing de turma (sem AuthProvider). Usa
+// fetch direto pra `/api/turmas/:id/landing` (rota pública). CTA "Garantir
+// minha vaga" chama `/api/turmas/:id/interest` (anônimo OK no backend).
+function PublicTurmaLanding({ turmaId }: { turmaId: number }) {
+  return (
+    <TurmaLandingPage
+      turmaId={turmaId}
+      onBack={() => {
+        if (typeof window !== "undefined") window.location.href = "/";
+      }}
+    />
+  );
 }
 
 export default function App() {

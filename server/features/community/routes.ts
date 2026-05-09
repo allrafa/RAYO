@@ -158,13 +158,24 @@ router.get("/posts/trending", requireAuth, async (req, res, next) => {
       sendError(res, "forum_id inválido", "INVALID_FORUM_ID", 400);
       return;
     }
-    // Task #99 — escopo opcional por turma
+    // Task #99 — escopo opcional por turma. Quando setado, exige matrícula
+    // (ou moderator+); 404 pra não vazar a existência da turma.
     const classIdRaw = String(req.query.class_id || "").trim();
     let classId: number | undefined;
     if (classIdRaw) {
       const cid = parseInt(classIdRaw, 10);
       if (isNaN(cid) || cid < 1) {
         sendError(res, "class_id inválido", "INVALID_CLASS_ID", 400);
+        return;
+      }
+      const uid = req.user?.id;
+      if (!uid) {
+        sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404);
+        return;
+      }
+      const member = await isCourseMember(uid, cid);
+      if (!member && !hasRole(req.user, "moderator")) {
+        sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404);
         return;
       }
       classId = cid;

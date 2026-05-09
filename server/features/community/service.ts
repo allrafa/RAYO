@@ -556,14 +556,34 @@ export async function getUserSavedPosts(viewerId: number, page = 1, limit = 20) 
   return { posts, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
+// Task #99 — invariante de turma: like/comment em post com class_id setado
+// só é permitido para matriculados ou moderator+. Trata como 404 pra não
+// vazar a existência do recurso (mesma estratégia de getPostDetail).
+async function assertCanInteractWithClassPost(classId: number | null | undefined, userId: number): Promise<void> {
+  if (!classId) return;
+  const { rows: m } = await query(
+    `SELECT 1 FROM user_course_progress WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
+    [userId, classId],
+  );
+  if (m.length > 0) return;
+  const { rows: r } = await query(`SELECT role FROM users WHERE id = $1`, [userId]);
+  const role = r[0]?.role;
+  if (role !== "moderator" && role !== "admin") {
+    throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
+  }
+}
+
 export async function togglePostLike(postId: number, userId: number) {
   const { rows: postCheck } = await query(
-    `SELECT id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
+    `SELECT id, class_id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
     [postId],
   );
   if (postCheck.length === 0) {
     throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
   }
+  // Task #99 — like em post de turma exige matrícula (ou moderator+).
+  // Trata como 404 pra não vazar a existência do recurso.
+  await assertCanInteractWithClassPost(postCheck[0].class_id, userId);
 
   const { rows: existing } = await query(
     `SELECT id FROM post_likes WHERE post_id = $1 AND user_id = $2`,
@@ -597,12 +617,14 @@ export async function addComment(postId: number, userId: number, content: string
   }
 
   const { rows: postCheck } = await query(
-    `SELECT id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
+    `SELECT id, class_id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
     [postId],
   );
   if (postCheck.length === 0) {
     throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
   }
+  // Task #99 — comentar em post de turma exige matrícula (ou moderator+).
+  await assertCanInteractWithClassPost(postCheck[0].class_id, userId);
 
   if (parentId) {
     const { rows: parentCheck } = await query(
@@ -716,16 +738,14 @@ export async function getTrendingPosts(opts: {
     params.push(opts.forumId);
     forumWhere = `AND p.forum_id = $${params.length}`;
   }
-  // Task #99 — escopo por turma. Sem classId, mantém o comportamento
-  // original (não filtra por class_id pra preservar contagem global).
-  let classWhere = "";
-  if (opts.classId !== undefined) {
-    if (opts.classId === 0) {
-      classWhere = "AND p.class_id IS NULL";
-    } else {
-      params.push(opts.classId);
-      classWhere = `AND p.class_id = $${params.length}`;
-    }
+  // Task #99 — escopo por turma. Sem classId, FILTRA `class_id IS NULL`
+  // por padrão pra não vazar posts privados de turma no trending global.
+  // O router de /posts/trending exige matrícula (ou moderator+) ANTES de
+  // passar classId numérico aqui.
+  let classWhere = "AND p.class_id IS NULL";
+  if (opts.classId !== undefined && opts.classId > 0) {
+    params.push(opts.classId);
+    classWhere = `AND p.class_id = $${params.length}`;
   }
   let userExpr = "false AS user_liked";
   if (opts.userId) {

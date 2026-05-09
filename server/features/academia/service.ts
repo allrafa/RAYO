@@ -358,9 +358,15 @@ export async function getCourseMembers(courseId: number, page = 1, limit = 30) {
     [courseId],
   );
   const total = countRows[0]?.total ?? 0;
+  // Task #99 — payload inclui role (cliente/moderador/admin) e karma
+  // (likes recebidos em posts + comments) pra UI da aba Membros.
   const { rows } = await query(
-    `SELECT u.id, u.name, u.avatar_url, ucp.enrolled_at, ucp.progress_percentage,
-       ucp.completed_at IS NOT NULL AS completed
+    `SELECT u.id, u.name, u.avatar_url, u.role, ucp.enrolled_at, ucp.progress_percentage,
+       ucp.completed_at IS NOT NULL AS completed,
+       (
+         COALESCE((SELECT SUM(like_count) FROM posts    WHERE user_id = u.id AND is_hidden = FALSE), 0) +
+         COALESCE((SELECT SUM(like_count) FROM comments WHERE user_id = u.id AND is_hidden = FALSE), 0)
+       )::int AS karma
      FROM user_course_progress ucp
      JOIN users u ON u.id = ucp.user_id
      WHERE ucp.course_id = $1

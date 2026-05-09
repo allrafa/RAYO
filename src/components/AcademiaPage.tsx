@@ -1829,10 +1829,15 @@ interface CourseCardProps {
   enrollInCourse: (id: number) => void;
 }
 
-function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
+function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: CourseCardProps) {
+  // Task #99 — Turmas mini-Skool: o catálogo NÃO faz mais matrícula
+  // direta. Não-membro vai pra landing rica via TurmaShell e clica em
+  // "Garantir minha vaga" (modal de interesse). Mantemos o prop por
+  // compatibilidade com chamadas existentes, mas ele não dispara mais
+  // checkout do card.
   const handleEnroll = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
-    enrollInCourse(course.id);
+    e.stopPropagation();
+    onClick();
   };
 
   return (
@@ -1971,8 +1976,7 @@ function CourseCard({ course, onClick, enrollInCourse }: CourseCardProps) {
               e.currentTarget.style.background = 'var(--rayo-terra-500)';
             }}
           >
-            <ShoppingCart className="w-4 h-4 mr-2" />
-            Adquirir Curso
+            Ver turma
           </Button>
         )}
         
