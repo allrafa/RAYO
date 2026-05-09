@@ -40,10 +40,21 @@ export interface SubscriptionRow {
   cancel_at_period_end: boolean;
 }
 
-// Task #130 — status que dão acesso à trilha. `trialing` reservado para
-// follow-up (trial 7d). `past_due` mantém acesso porque a próxima cobrança
-// pode passar; `canceled` perde acesso ao final do período (UI mostra alerta).
+// Task #130 — status que dão acesso à trilha. `trialing` libera acesso pleno
+// durante o período grátis (Task #140 — 7 dias grátis no primeiro checkout).
+// `past_due` mantém acesso porque a próxima cobrança pode passar; `canceled`
+// perde acesso ao final do período (UI mostra alerta).
 const ACTIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
+
+// Task #140 — período de trial grátis no Checkout Session. Configurável via
+// env `TRAIL_TRIAL_DAYS` (default 7). Set em 0 desabilita o trial.
+export const TRAIL_TRIAL_DAYS: number = (() => {
+  const raw = process.env.TRAIL_TRIAL_DAYS;
+  if (raw == null || raw === "") return 7;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 0) return 7;
+  return Math.min(n, 730);
+})();
 
 // Task #130 — cache curto de course_id → trail_id. Lookups em rota de aula
 // rodam por request; sem cache cada hit faria join. TTL 60s pra refletir
@@ -94,6 +105,8 @@ export async function userHasActiveTrailAccess(
 export async function listTrails(userId?: number): Promise<Array<TrailRow & {
   user_has_access: boolean;
   course_count: number;
+  trial_days: number;
+  trial_eligible: boolean;
 }>> {
   const { rows } = await query<TrailRow & { course_count: string }>(
     `SELECT t.*, COALESCE((SELECT COUNT(*) FROM trail_courses tc WHERE tc.trail_id = t.id), 0)::text AS course_count
@@ -103,6 +116,9 @@ export async function listTrails(userId?: number): Promise<Array<TrailRow & {
   );
   const trailIds = rows.map((r) => r.id);
   let access = new Set<number>();
+  // Task #140 — trilhas em que o usuário JÁ teve assinatura (qualquer status,
+  // inclusive canceled) não devem mostrar a promessa de trial no catálogo.
+  let priorHistory = new Set<number>();
   if (userId && trailIds.length > 0) {
     const { rows: accessRows } = await query<{ trail_id: number }>(
       `SELECT trail_id FROM subscriptions
@@ -111,18 +127,31 @@ export async function listTrails(userId?: number): Promise<Array<TrailRow & {
       [userId, trailIds, Array.from(ACTIVE_STATUSES)],
     );
     access = new Set(accessRows.map((r) => r.trail_id));
+    const { rows: priorRows } = await query<{ trail_id: number }>(
+      `SELECT DISTINCT trail_id FROM subscriptions
+        WHERE user_id = $1 AND trail_id = ANY($2::int[])`,
+      [userId, trailIds],
+    );
+    priorHistory = new Set(priorRows.map((r) => r.trail_id));
   }
   return rows.map((r) => ({
     ...r,
     course_count: parseInt(r.course_count as unknown as string, 10) || 0,
     user_has_access: access.has(r.id),
+    trial_days: TRAIL_TRIAL_DAYS,
+    trial_eligible: TRAIL_TRIAL_DAYS > 0 && !priorHistory.has(r.id),
   }));
 }
 
 export async function getTrailBySlug(
   slug: string,
   userId?: number,
-): Promise<(TrailRow & { courses: Array<{ id: number; title: string; thumbnail: string | null; subtitle: string | null }>; user_has_access: boolean }) | null> {
+): Promise<(TrailRow & {
+  courses: Array<{ id: number; title: string; thumbnail: string | null; subtitle: string | null }>;
+  user_has_access: boolean;
+  trial_days: number;
+  trial_eligible: boolean;
+}) | null> {
   const { rows } = await query<TrailRow>(
     `SELECT * FROM trails WHERE slug = $1 AND active = TRUE LIMIT 1`,
     [slug],
@@ -143,7 +172,26 @@ export async function getTrailBySlug(
     [trail.id],
   );
   const user_has_access = userId ? await userHasActiveTrailAccess(userId, trail.id) : false;
-  return { ...trail, courses, user_has_access };
+  // Task #140 — trial é oferecido apenas para usuários que nunca tiveram
+  // assinatura nesta trilha (alinhado com a checagem em createCheckoutSession).
+  // Anônimos: assumimos elegível pra mostrar o gancho no marketing.
+  let trial_eligible = TRAIL_TRIAL_DAYS > 0;
+  if (trial_eligible && userId) {
+    const { rows: prior } = await query<{ exists: boolean }>(
+      `SELECT EXISTS(
+         SELECT 1 FROM subscriptions WHERE user_id = $1 AND trail_id = $2
+       ) AS exists`,
+      [userId, trail.id],
+    );
+    if (prior[0]?.exists) trial_eligible = false;
+  }
+  return {
+    ...trail,
+    courses,
+    user_has_access,
+    trial_days: TRAIL_TRIAL_DAYS,
+    trial_eligible,
+  };
 }
 
 async function ensureStripeCustomer(userId: number, email: string, name: string | null): Promise<string> {
@@ -193,6 +241,22 @@ export async function createCheckoutSession(params: {
     );
   }
   const customerId = await ensureStripeCustomer(params.userId, params.userEmail, params.userName);
+
+  // Task #140 — só oferece trial se o usuário NUNCA teve assinatura nesta
+  // trilha (qualquer status, inclusive canceled). Isso evita abuso de reabrir
+  // checkout pra ganhar trial repetido. Quem cancelou e quer voltar deve usar
+  // o Customer Portal pra reativar (sem novo trial).
+  let trialPeriodDays: number | undefined;
+  if (TRAIL_TRIAL_DAYS > 0) {
+    const { rows: prior } = await query<{ exists: boolean }>(
+      `SELECT EXISTS(
+         SELECT 1 FROM subscriptions WHERE user_id = $1 AND trail_id = $2
+       ) AS exists`,
+      [params.userId, trail.id],
+    );
+    if (!prior[0]?.exists) trialPeriodDays = TRAIL_TRIAL_DAYS;
+  }
+
   const stripe = await getUncachableStripeClient();
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -203,6 +267,7 @@ export async function createCheckoutSession(params: {
     allow_promotion_codes: true,
     locale: "pt-BR",
     subscription_data: {
+      ...(trialPeriodDays ? { trial_period_days: trialPeriodDays } : {}),
       metadata: {
         rayo_user_id: String(params.userId),
         rayo_trail_id: String(trail.id),

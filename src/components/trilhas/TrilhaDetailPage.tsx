@@ -11,6 +11,8 @@ interface TrailDetail {
   monthly_price_cents: number;
   yearly_price_cents: number;
   user_has_access: boolean;
+  trial_days: number;
+  trial_eligible: boolean;
   courses: Array<{ id: number; title: string; thumbnail: string | null; subtitle: string | null }>;
 }
 
@@ -116,6 +118,18 @@ export function TrilhaDetailPage({ slug }: { slug: string }) {
             className="rounded-2xl border p-5 mb-6"
             style={{ borderColor: "var(--rayo-ink-100)", background: "white" }}
           >
+            {trail.trial_days > 0 && trail.trial_eligible && (
+              <div
+                className="rounded-xl px-3 py-2 mb-4 text-sm text-center"
+                style={{
+                  background: "var(--rayo-terra-50)",
+                  color: "var(--rayo-terra-700)",
+                  fontWeight: 600,
+                }}
+              >
+                Comece com {trail.trial_days} dias grátis. Cancele quando quiser, sem cobrança.
+              </div>
+            )}
             <div className="flex gap-3 mb-4" role="tablist">
               <button
                 type="button"
@@ -170,10 +184,18 @@ export function TrilhaDetailPage({ slug }: { slug: string }) {
               className="w-full rounded-xl py-3 text-sm"
               style={{ background: "var(--rayo-terra-500)", color: "white", opacity: busy ? 0.6 : 1 }}
             >
-              {busy ? "Abrindo checkout…" : hasSession ? "Assinar agora" : "Entrar para assinar"}
+              {busy
+                ? "Abrindo checkout…"
+                : !hasSession
+                  ? "Entrar para assinar"
+                  : trail.trial_days > 0 && trail.trial_eligible
+                    ? `Começar ${trail.trial_days} dias grátis`
+                    : "Assinar agora"}
             </button>
             <p className="text-xs mt-3 text-center" style={{ color: "var(--rayo-ink-400)" }}>
-              Cancele quando quiser pelo painel de assinatura. Pagamento seguro via Stripe.
+              {trail.trial_days > 0 && trail.trial_eligible
+                ? `Sem cobrança nos primeiros ${trail.trial_days} dias. Depois ${formatBRL(interval === "year" ? yearly : monthly)}${interval === "year" ? "/ano" : "/mês"}, cancele quando quiser. Pagamento seguro via Stripe.`
+                : "Cancele quando quiser pelo painel de assinatura. Pagamento seguro via Stripe."}
             </p>
             {err && <p className="text-sm text-destructive mt-3">{err}</p>}
           </div>

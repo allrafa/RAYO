@@ -12,6 +12,8 @@ interface TrailListItem {
   yearly_price_cents: number;
   course_count: number;
   user_has_access: boolean;
+  trial_days: number;
+  trial_eligible: boolean;
 }
 
 const STAGE_LABEL: Record<string, string> = {
@@ -89,8 +91,17 @@ export function TrilhasCatalogPage() {
                   </p>
                 )}
                 <div className="mt-auto">
+                  {!t.user_has_access && t.trial_days > 0 && t.trial_eligible && (
+                    <p
+                      className="text-xs mb-1"
+                      style={{ color: "var(--rayo-terra-700)", fontWeight: 600 }}
+                    >
+                      {t.trial_days} dias grátis
+                    </p>
+                  )}
                   <p className="text-xs mb-2" style={{ color: "var(--rayo-ink-400)" }}>
                     {t.course_count} {t.course_count === 1 ? "turma" : "turmas"} ·{" "}
+                    {!t.user_has_access && t.trial_days > 0 && t.trial_eligible ? "depois " : ""}
                     {formatBRL(t.monthly_price_cents)}/mês
                   </p>
                   <a

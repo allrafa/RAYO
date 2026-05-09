@@ -60,7 +60,7 @@ Coluna nullable adicionada via `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`. Index
 ```ts
 const ACTIVE_STATUSES = new Set(["active", "trialing", "past_due"]);
 ```
-- `active`/`trialing` → acesso normal.
+- `active`/`trialing` → acesso normal. **`trialing` é o status durante os 7 dias grátis** (Task #140) — gating libera igual a `active`.
 - `past_due` mantém acesso (próxima cobrança pode passar).
 - `canceled`/`incomplete*`/`unpaid` → sem acesso.
 
@@ -98,12 +98,15 @@ Registrado **ANTES** do `express.json()` global em `server/index.ts` com `expres
 1. Usuário logado clica "Assinar" em `/trilhas/:slug` → `POST /api/trails/:slug/checkout` com `{ interval }`.
 2. Service valida trilha ativa, valida que usuário ainda **não tem acesso** (409 `ALREADY_SUBSCRIBED`), valida que `stripe_price_*_id` existe (503 `PRICE_NOT_CONFIGURED`).
 3. `ensureStripeCustomer` cria/recupera `users.stripe_customer_id` (Stripe customer com `metadata.rayo_user_id`).
-4. Cria Checkout Session `mode:"subscription"`, `locale:"pt-BR"`, `allow_promotion_codes:true`, com `metadata` E `subscription_data.metadata` setados em **`rayo_user_id`, `rayo_trail_id`, `rayo_interval`**.
-5. URLs: `success_url` = `${PUBLIC_SITE_URL}/trilhas/sucesso?slug=…&session_id={CHECKOUT_SESSION_ID}`, `cancel_url` = `${PUBLIC_SITE_URL}/trilhas/:slug`. **Origin do request é IGNORADO** — base vem de `PUBLIC_SITE_URL → APP_URL → "https://rayo.app.br"` (helper `trustedSiteBaseUrl`) pra fechar open-redirect.
-6. Frontend redireciona pro `url` retornado.
+4. **Trial 7 dias grátis (Task #140)**: se `TRAIL_TRIAL_DAYS > 0` (default `7`, configurável via env) **E** o usuário **nunca teve** uma row em `subscriptions` para essa trilha (qualquer status, inclusive `canceled`), o Checkout Session vai com `subscription_data.trial_period_days`. Reabrir checkout depois de cancelar **não** dá novo trial — Stripe nem cobra cartão durante o trial; cancelamento dentro dele evita qualquer cobrança. Quem cancelou e quer voltar deve usar o Customer Portal pra reativar.
+5. Cria Checkout Session `mode:"subscription"`, `locale:"pt-BR"`, `allow_promotion_codes:true`, com `metadata` E `subscription_data.metadata` setados em **`rayo_user_id`, `rayo_trail_id`, `rayo_interval`**.
+6. URLs: `success_url` = `${PUBLIC_SITE_URL}/trilhas/sucesso?slug=…&session_id={CHECKOUT_SESSION_ID}`, `cancel_url` = `${PUBLIC_SITE_URL}/trilhas/:slug`. **Origin do request é IGNORADO** — base vem de `PUBLIC_SITE_URL → APP_URL → "https://rayo.app.br"` (helper `trustedSiteBaseUrl`) pra fechar open-redirect.
+7. Frontend redireciona pro `url` retornado.
+
+`/api/trails` e `/api/trails/:slug` devolvem `trial_days` (config global) e `trial_eligible` (false se o usuário já tem QUALQUER row em `subscriptions` pra essa trilha — inclusive `canceled`). UI usa os dois pra mostrar o gancho "X dias grátis, depois R$ Y/mês" e o CTA "Começar X dias grátis" só pra quem realmente vai ganhar trial.
 
 ### Sucesso pós-checkout
-- Página `/trilhas/sucesso` confirma para o usuário; o gating real só libera quando `subscriptions` recebe a row via webhook (normalmente segundos depois). Páginas que precisam confirmar acesso devem **rebuscar `/api/auth/me` ou `/api/billing/subscriptions`** ao invés de assumir do `session_id`.
+- Página `/trilhas/sucesso` faz polling de `GET /api/billing/subscriptions` por ~12s aguardando o webhook chegar. Quando a row aparece com `status="trialing"`, mostra "Seu período grátis começou!" + data do `current_period_end` (fim do trial = 1ª cobrança). Caso contrário cai pra mensagem genérica "estamos sincronizando seu acesso". O gating real só libera quando `subscriptions` recebe a row via webhook — não dá pra confiar no `session_id` da URL.
 
 ### Customer Portal
 - "Minhas assinaturas" no Perfil chama `POST /api/billing/portal` → redireciona pro `url`. Cancelamento, troca de plano, atualização de cartão tudo acontece lá; o webhook reflete na nossa `subscriptions`.
@@ -198,6 +201,7 @@ Stripe Checkout é hosted: **não é necessário** chave pública no client (sem
 | `STRIPE_WEBHOOK_SECRET` | gerada/managed | `findOrCreateManagedWebhook` cria e o `stripe-replit-sync` gerencia. Defina à mão só se controla o endpoint manualmente. |
 | `PUBLIC_SITE_URL` | sim | base trusted dos `success_url`/`cancel_url`/`return_url`. Default `https://rayo.app.br`. |
 | `APP_URL` | fallback | usada quando `PUBLIC_SITE_URL` ausente. |
+| `TRAIL_TRIAL_DAYS` | não | Dias de trial grátis no Checkout (default `7`, max `730`). `0` desabilita o trial globalmente. |
 
 ## Gotchas
 
@@ -218,6 +222,9 @@ O webhook `customer.subscription.*` força `UPDATE users SET stripe_customer_id 
 
 ### Open-redirect: `success_url` / `return_url`
 Helper `trustedSiteBaseUrl()` resolve a base. **Nunca** use `req.headers.origin` ou body do cliente pra montar essas URLs — vira phishing vector. O body de `/api/billing/portal` é explicitamente ignorado.
+
+### Trial só na primeira vez por trilha (Task #140)
+`createCheckoutSession` consulta `EXISTS(SELECT 1 FROM subscriptions WHERE user_id=$1 AND trail_id=$2)` antes de incluir `trial_period_days`. Qualquer linha (até `canceled`) bloqueia novo trial — o `subscriptions` é a fonte da verdade. `getTrailBySlug` faz a mesma checagem e devolve `trial_eligible` pra UI esconder o gancho. Se quiser permitir re-trial em casos especiais, apague a row de `subscriptions` (e a sub correspondente no Stripe) — mas o caminho normal é mandar o usuário pro Customer Portal pra reativar (sem trial).
 
 ### `ALREADY_SUBSCRIBED` no checkout
 `createCheckoutSession` chama `getTrailBySlug(slug, userId)` e bloqueia se `user_has_access=true` (409). Isso evita criar sub duplicada quando o usuário clica "Assinar" duas vezes. Se você quiser reativar uma sub `canceled`, mande pro Customer Portal — não pra novo checkout.
