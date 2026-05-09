@@ -103,7 +103,7 @@ export function TurmaMembersTab({ classId }: { classId: number }) {
                 </div>
                 <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
                   <span className="inline-flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> {m.karma} karma
+                    <Sparkles className="w-3 h-3" /> {m.karma} raios
                   </span>
                   <span>·</span>
                   <span>Entrou em {new Date(m.enrolled_at).toLocaleDateString("pt-BR")}</span>

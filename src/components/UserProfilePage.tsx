@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { api } from "../lib/api";
 import { useAuth } from "./AuthContext";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { Heart, MessageCircle, UserPlus, UserCheck, X, Award, Bookmark } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, UserCheck, X, Award, Bookmark, Camera, Loader2 } from "lucide-react";
 import { enhancedToast } from "./EnhancedToast";
 
 // Task #92 — Perfil público estilo Reddit. Carrega karma, posts,
@@ -106,8 +106,32 @@ function formatRelative(dateStr: string): string {
 }
 
 export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: UserProfilePageProps) {
-  const { user: viewer } = useAuth();
+  const { user: viewer, uploadAvatar } = useAuth();
   const isSelf = viewer?.id === userId;
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Task #126 — botão de trocar foto de perfil. Só visível pra isSelf.
+  // Reusa `uploadAvatar` do AuthContext (POST /api/users/avatar com cap
+  // de 2MB e re-encode pra WebP no servidor). Após sucesso, recarrega o
+  // perfil pra refletir o avatar_url novo (signed URL fresca).
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      enhancedToast.error({ title: "Imagem muito grande", description: "Máximo de 2 MB.", haptic: true });
+      return;
+    }
+    setAvatarUploading(true);
+    const res = await uploadAvatar(file);
+    setAvatarUploading(false);
+    if (res.success) {
+      enhancedToast.success({ title: "Foto atualizada", haptic: true });
+      void loadAll();
+    } else {
+      enhancedToast.error({ title: "Falha ao enviar foto", description: res.error || "Tente novamente", haptic: true });
+    }
+  };
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [karma, setKarma] = useState<KarmaInfo | null>(null);
@@ -295,10 +319,33 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
             <X className="w-4 h-4" />
           </button>
         )}
-        <Avatar className="w-20 h-20 ring-2" style={{ borderColor: "var(--rayo-sand-300)" }}>
-          {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.name} />}
-          <AvatarFallback className="text-2xl">{profile.name?.[0] || "U"}</AvatarFallback>
-        </Avatar>
+        <div className="relative">
+          <Avatar className="w-20 h-20 ring-2" style={{ borderColor: "var(--rayo-sand-300)" }}>
+            {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.name} />}
+            <AvatarFallback className="text-2xl">{profile.name?.[0] || "U"}</AvatarFallback>
+          </Avatar>
+          {isSelf && (
+            <label
+              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer shadow-md transition-colors"
+              style={{ background: "var(--rayo-terra-500)", color: "white" }}
+              aria-label="Trocar foto de perfil"
+              title="Trocar foto"
+            >
+              {avatarUploading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Camera className="w-3.5 h-3.5" />
+              )}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                onChange={handleAvatarChange}
+                disabled={avatarUploading}
+              />
+            </label>
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-bold leading-tight" style={{ color: "var(--rayo-forest-900)" }}>
             {profile.name}
@@ -315,7 +362,12 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
             </div>
           )}
           {profile.bio && (
-            <p className="text-sm mt-2" style={{ color: "var(--rayo-ink-600)" }}>{profile.bio}</p>
+            <p
+              className="text-sm mt-2"
+              style={{ color: "var(--rayo-ink-600)", whiteSpace: "pre-wrap" }}
+            >
+              {profile.bio}
+            </p>
           )}
         </div>
       </div>
@@ -327,7 +379,7 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
       >
         <div>
           <p className="text-lg font-bold" style={{ color: "var(--rayo-terra-500)" }}>{totalKarma}</p>
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Karma total</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Raios totais</p>
         </div>
         <div>
           <p className="text-lg font-bold">{karma?.post_count ?? 0}</p>
@@ -575,8 +627,8 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
               <strong>Conquistas:</strong> {profile.totalBadges}
             </p>
             <p>
-              <strong>Karma de posts:</strong> {karma?.post_karma ?? 0} ·{" "}
-              <strong>Karma de comentários:</strong> {karma?.comment_karma ?? 0}
+              <strong>Raios de posts:</strong> {karma?.post_karma ?? 0} ·{" "}
+              <strong>Raios de comentários:</strong> {karma?.comment_karma ?? 0}
             </p>
             <p className="text-xs text-muted-foreground">
               Membro desde{" "}
