@@ -1,4 +1,7 @@
 import { Router } from "express";
+import multer from "multer";
+import path from "path";
+import { parseBuffer as parseAudioBuffer } from "music-metadata";
 import { requireAuth } from "../../middleware/auth.js";
 import { success, error as sendError } from "../../utils/response.js";
 import {
@@ -16,7 +19,9 @@ import {
 import { subscribeUser, publishToUser } from "./events.js";
 import { query } from "../../db/index.js";
 import { AppError } from "../academia/service.js";
-import { uploadMiddleware } from "../cms/upload.js";
+import { putPublicObject } from "../../lib/objectStorageBridge.js";
+import { optimizeCmsImage } from "../../lib/imageOptimization.js";
+import { logger } from "../../utils/logger.js";
 
 const router = Router();
 
@@ -138,7 +143,7 @@ router.post("/conversations/:id/messages", requireAuth, async (req, res, next) =
 });
 
 // Membership check ANTES do upload, para evitar gravar bytes em object
-// storage para conversas inexistentes/sem permissão (Task #79 review).
+// storage para conversas inexistentes/sem permissão (Task #79).
 async function assertConversationMembership(req: import("express").Request, res: import("express").Response): Promise<boolean> {
   const conversationId = parseInt(req.params.id, 10);
   if (isNaN(conversationId) || conversationId < 1) {
@@ -162,13 +167,62 @@ async function assertConversationMembership(req: import("express").Request, res:
   return true;
 }
 
+// ─────────── DM Upload (Task #79) ───────────
+// Limites estritos para anexos de DM (acceptance da Task #79):
+//  • imagem: jpeg/png/webp/gif, ≤5 MB
+//  • áudio:  webm/ogg/mp4/mpeg/wav/x-m4a, ≤10 MB e duração ≤120s
+// Validação inteira ANTES de gravar em Object Storage para evitar
+// uploads órfãos / abuso de armazenamento.
+const DM_IMAGE_MIMES = new Set([
+  "image/jpeg", "image/png", "image/webp", "image/gif",
+]);
+const DM_AUDIO_MIMES = new Set([
+  "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav", "audio/x-m4a",
+]);
+const DM_IMAGE_MAX = 5 * 1024 * 1024;   // 5 MB
+const DM_AUDIO_MAX = 10 * 1024 * 1024;  // 10 MB
+const DM_AUDIO_MAX_SEC = 120;
+
+function dmKindFromMime(mime: string): MessageKind | null {
+  if (DM_IMAGE_MIMES.has(mime)) return "image";
+  if (DM_AUDIO_MIMES.has(mime)) return "audio";
+  return null;
+}
+
+function dmExtensionForMime(mime: string): string {
+  switch (mime) {
+    case "image/jpeg": return ".jpg";
+    case "image/png":  return ".png";
+    case "image/webp": return ".webp";
+    case "image/gif":  return ".gif";
+    case "audio/webm": return ".webm";
+    case "audio/ogg":  return ".ogg";
+    case "audio/mp4":  return ".m4a";
+    case "audio/x-m4a": return ".m4a";
+    case "audio/mpeg": return ".mp3";
+    case "audio/wav":  return ".wav";
+    default: return "";
+  }
+}
+
+// Multer recusa MIMEs fora do allowlist no fileFilter; o limite é o teto
+// absoluto (10 MB de áudio). Imagem maior que 5 MB ainda passa pelo
+// multer e é rejeitada explicitamente abaixo, com mensagem amigável.
+const dmUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: DM_AUDIO_MAX },
+  fileFilter: (_req, file, cb) => {
+    if (dmKindFromMime(file.mimetype)) return cb(null, true);
+    cb(new Error(`Tipo de arquivo não permitido: ${file.mimetype}`));
+  },
+}).single("file");
+
 // Upload de anexo (foto/áudio). Retorna a referência canônica
 // (`objstore://...`) que o cliente envia em seguida via POST /messages.
 router.post(
   "/conversations/:id/attachments",
   requireAuth,
-  // Membership ANTES do uploadMiddleware: rejeita 403/404 sem gravar
-  // bytes em object storage.
+  // 1) Membership ANTES de qualquer parsing/upload.
   async (req, res, next) => {
     try {
       const ok = await assertConversationMembership(req, res);
@@ -178,7 +232,16 @@ router.post(
       next(err);
     }
   },
-  (req, res, next) => uploadMiddleware(req, res, (err) => err ? next(err) : next()),
+  // 2) Multer (memória) com fileFilter restrito.
+  (req, res, next) => dmUpload(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      sendError(res, "Arquivo excede o tamanho máximo permitido", "FILE_TOO_LARGE", 413);
+      return;
+    }
+    sendError(res, err instanceof Error ? err.message : "Upload inválido", "INVALID_UPLOAD", 400);
+  }),
+  // 3) Validação semântica + upload pra Object Storage.
   async (req, res, next) => {
     try {
       const file = req.file;
@@ -186,24 +249,62 @@ router.post(
         sendError(res, "Arquivo é obrigatório", "FILE_REQUIRED", 400);
         return;
       }
-      const mime = file.mimetype;
-      let kind: MessageKind;
-      if (mime.startsWith("image/")) kind = "image";
-      else if (mime.startsWith("audio/")) kind = "audio";
-      else {
-        sendError(res, "Tipo de arquivo não suportado para mensagens", "UNSUPPORTED_ATTACHMENT", 400);
+      const kind = dmKindFromMime(file.mimetype);
+      if (!kind) {
+        sendError(res, "Tipo de arquivo não suportado", "UNSUPPORTED_ATTACHMENT", 400);
         return;
       }
+
+      let buffer = file.buffer;
+      let mime = file.mimetype;
+      const meta: Record<string, unknown> = { name: file.originalname };
+
+      if (kind === "image") {
+        if (file.size > DM_IMAGE_MAX) {
+          sendError(res, "Imagem deve ter até 5 MB", "IMAGE_TOO_LARGE", 413);
+          return;
+        }
+        try {
+          const optimized = await optimizeCmsImage(buffer, mime);
+          buffer = optimized.buffer;
+          mime = optimized.mimetype;
+        } catch {
+          // se o sharp falhar, segue com o buffer original (já validado por mime).
+        }
+      } else {
+        // kind === "audio". Tamanho já capado pelo multer (10 MB). Validar duração.
+        try {
+          const probed = await parseAudioBuffer(buffer, { mimeType: mime, size: buffer.length }, { duration: true });
+          const durationSec = Math.round(probed.format.duration ?? 0);
+          if (!durationSec || durationSec <= 0) {
+            sendError(res, "Não foi possível ler a duração do áudio", "AUDIO_DURATION_INVALID", 400);
+            return;
+          }
+          if (durationSec > DM_AUDIO_MAX_SEC) {
+            sendError(res, "Áudio deve ter até 2 minutos", "AUDIO_TOO_LONG", 413);
+            return;
+          }
+          meta.duration_sec = durationSec;
+        } catch (err) {
+          logger.warn("Messages", `audio probe failed: ${(err as Error)?.message ?? err}`);
+          sendError(res, "Áudio inválido ou corrompido", "AUDIO_INVALID", 400);
+          return;
+        }
+      }
+
+      meta.mime = mime;
+      meta.size = buffer.length;
+
+      const ext = dmExtensionForMime(mime) || path.extname(file.originalname) || "";
+      const safeName = `${Date.now()}-${Math.random().toString(16).slice(2, 10).padEnd(8, "0")}${ext}`;
+      const key = `messages/${kind}/${safeName}`;
+      await putPublicObject(key, buffer, mime);
+
       success(res, {
         attachment: {
           kind,
-          // file.path é a referência canônica `objstore://...`
-          attachment_url: file.path,
-          attachment_meta: {
-            mime,
-            size: file.size,
-            name: file.originalname,
-          },
+          attachment_url: `objstore://${key}`,
+          attachment_meta: meta,
         },
       }, 201);
     } catch (err) {

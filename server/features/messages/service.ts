@@ -400,8 +400,19 @@ export async function sendMessage(
       .then((count) => publishToUser(recipientId, "unread:changed", { count }))
       .catch(() => {});
 
-    const preview =
-      kind === "image" ? "📷 Foto" : kind === "audio" ? "🎤 Áudio" : content;
+    let preview: string;
+    if (kind === "image") {
+      preview = "📷 Foto";
+    } else if (kind === "audio") {
+      const dur = typeof attachmentMeta?.duration_sec === "number" ? attachmentMeta.duration_sec : null;
+      const mm = dur != null ? Math.floor(dur / 60) : null;
+      const ss = dur != null ? Math.floor(dur % 60) : null;
+      preview = dur != null && mm != null && ss != null
+        ? `🎤 Áudio (${mm}:${ss.toString().padStart(2, "0")})`
+        : "🎤 Áudio";
+    } else {
+      preview = content;
+    }
     void notifyRecipient({
       conversationId,
       recipientId,

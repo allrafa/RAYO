@@ -10,8 +10,8 @@ import { Input } from "./ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { ScrollArea } from "./ui/scroll-area";
-import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "./ui/dialog";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -112,36 +112,29 @@ interface SwipeRowProps {
 }
 
 function SwipeRow({ conv, isActive, isArchivedView, currentUserId, onOpen, onArchiveToggle, onDelete }: SwipeRowProps) {
-  const [revealed, setRevealed] = useState<"none" | "left" | "right">("none");
+  // Spec Task #79:
+  //  ← swipe à esquerda  → revela "Arquivar" (lado direito do card)
+  //  → swipe à direita   → revela "Excluir"  (lado esquerdo do card)
+  const [revealed, setRevealed] = useState<"none" | "archive" | "delete">("none");
 
   const handleDragEnd = (_e: unknown, info: PanInfo) => {
     if (info.offset.x < -SWIPE_THRESHOLD) {
-      setRevealed("left"); // exibe ações à direita (delete)
+      setRevealed("archive");
     } else if (info.offset.x > SWIPE_THRESHOLD) {
-      setRevealed("right"); // exibe ação à esquerda (archive)
+      setRevealed("delete");
     } else {
       setRevealed("none");
     }
   };
 
-  const x = revealed === "left" ? -96 : revealed === "right" ? 96 : 0;
+  // x positivo = card desliza pra direita expondo o lado esquerdo (delete).
+  // x negativo = card desliza pra esquerda expondo o lado direito (archive).
+  const x = revealed === "archive" ? -96 : revealed === "delete" ? 96 : 0;
 
   return (
     <div className="relative overflow-hidden rounded-lg">
-      {/* Ação esquerda (revelada ao arrastar pra direita): arquivar */}
-      <div className="absolute inset-y-0 left-0 flex items-center pl-4 pr-2 bg-amber-500/90 text-white">
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onArchiveToggle(); setRevealed("none"); }}
-          className="flex flex-col items-center gap-1 px-3 py-2 text-xs"
-          aria-label={isArchivedView ? "Desarquivar conversa" : "Arquivar conversa"}
-        >
-          {isArchivedView ? <ArchiveRestore className="w-5 h-5" /> : <Archive className="w-5 h-5" />}
-          <span>{isArchivedView ? "Desarquivar" : "Arquivar"}</span>
-        </button>
-      </div>
-      {/* Ação direita (revelada ao arrastar pra esquerda): excluir */}
-      <div className="absolute inset-y-0 right-0 flex items-center pl-2 pr-4 bg-destructive text-destructive-foreground">
+      {/* Lado esquerdo do card → revelado ao arrastar pra direita: EXCLUIR */}
+      <div className="absolute inset-y-0 left-0 flex items-center pl-4 pr-2 bg-destructive text-destructive-foreground">
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onDelete(); setRevealed("none"); }}
@@ -150,6 +143,18 @@ function SwipeRow({ conv, isActive, isArchivedView, currentUserId, onOpen, onArc
         >
           <Trash2 className="w-5 h-5" />
           <span>Excluir</span>
+        </button>
+      </div>
+      {/* Lado direito do card → revelado ao arrastar pra esquerda: ARQUIVAR */}
+      <div className="absolute inset-y-0 right-0 flex items-center pl-2 pr-4 bg-amber-500/90 text-white">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onArchiveToggle(); setRevealed("none"); }}
+          className="flex flex-col items-center gap-1 px-3 py-2 text-xs"
+          aria-label={isArchivedView ? "Desarquivar conversa" : "Arquivar conversa"}
+        >
+          {isArchivedView ? <ArchiveRestore className="w-5 h-5" /> : <Archive className="w-5 h-5" />}
+          <span>{isArchivedView ? "Desarquivar" : "Arquivar"}</span>
         </button>
       </div>
 
@@ -208,8 +213,12 @@ export function ConversasPage() {
   const currentUserId = user?.id ?? 0;
   const { subscribe: subscribeStream, streamConnected } = useUnreadMessages();
 
-  const [view, setView] = useState<"active" | "archived">("active");
+  // Lista única (estilo WhatsApp): conversas ativas + seção colapsada
+  // "Arquivadas (N)". Carregamos os dois escopos em paralelo e exibimos
+  // os arquivados num accordion no fim da lista.
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
+  const [archivedConversations, setArchivedConversations] = useState<ConversationItem[]>([]);
+  const [archivedExpanded, setArchivedExpanded] = useState(false);
   const [conversationsLoading, setConversationsLoading] = useState(true);
   const [conversationsError, setConversationsError] = useState<string | null>(null);
 
@@ -250,22 +259,29 @@ export function ConversasPage() {
   const typingExpiryTimersRef = useRef<Map<number, number>>(new Map());
 
   const activeConversation = useMemo(
-    () => conversations.find((c) => c.id === activeId) || null,
-    [conversations, activeId]
+    () =>
+      conversations.find((c) => c.id === activeId) ||
+      archivedConversations.find((c) => c.id === activeId) ||
+      null,
+    [conversations, archivedConversations, activeId]
   );
 
-  const loadConversations = useCallback(async (scope: "active" | "archived" = view) => {
-    const res = await api.get<{ conversations: ConversationItem[] }>(
-      `/api/messages/conversations?scope=${scope}`,
-    );
-    if (res.success && res.data) {
-      setConversations(res.data.conversations);
+  const loadConversations = useCallback(async () => {
+    const [activeRes, archivedRes] = await Promise.all([
+      api.get<{ conversations: ConversationItem[] }>(`/api/messages/conversations?scope=active`),
+      api.get<{ conversations: ConversationItem[] }>(`/api/messages/conversations?scope=archived`),
+    ]);
+    if (activeRes.success && activeRes.data) {
+      setConversations(activeRes.data.conversations);
       setConversationsError(null);
-    } else if (res.error) {
-      setConversationsError(res.error.message);
+    } else if (activeRes.error) {
+      setConversationsError(activeRes.error.message);
+    }
+    if (archivedRes.success && archivedRes.data) {
+      setArchivedConversations(archivedRes.data.conversations);
     }
     setConversationsLoading(false);
-  }, [view]);
+  }, []);
 
   const loadMessages = useCallback(async (conversationId: number, silent = false): Promise<{ hasNewIncoming: boolean }> => {
     if (!silent) {
@@ -335,16 +351,15 @@ export function ConversasPage() {
     } catch { /* ignore */ }
   }, []);
 
-  // Recarrega ao trocar de aba ativa/arquivada.
   useEffect(() => {
     setConversationsLoading(true);
-    void loadConversations(view);
+    void loadConversations();
     const interval = window.setInterval(() => {
       if (streamConnectedRef.current) return;
-      if (document.visibilityState === "visible") void loadConversations(view);
+      if (document.visibilityState === "visible") void loadConversations();
     }, CONVERSATION_FALLBACK_POLL_MS);
     return () => window.clearInterval(interval);
-  }, [loadConversations, view]);
+  }, [loadConversations]);
 
   useEffect(() => {
     lastTypingSentAtRef.current = 0;
@@ -631,8 +646,7 @@ export function ConversasPage() {
       setShowNewConvDialog(false);
       setUserSearchQuery("");
       setUserSearchResults([]);
-      setView("active");
-      await loadConversations("active");
+      await loadConversations();
       setActiveId(id);
     } else if (res.error) {
       toast.error(res.error.message);
@@ -646,9 +660,32 @@ export function ConversasPage() {
       { archived },
     );
     if (res.success) {
-      setConversations((prev) => prev.filter((c) => c.id !== conv.id));
-      if (activeId === conv.id) setActiveId(null);
+      // Move entre as duas listas em vez de remover.
+      const stamped: ConversationItem = { ...conv, archived_at: archived ? new Date().toISOString() : null };
+      if (archived) {
+        setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+        setArchivedConversations((prev) => [stamped, ...prev.filter((c) => c.id !== conv.id)]);
+      } else {
+        setArchivedConversations((prev) => prev.filter((c) => c.id !== conv.id));
+        setConversations((prev) => [stamped, ...prev.filter((c) => c.id !== conv.id)]);
+      }
       toast.success(archived ? "Conversa arquivada" : "Conversa desarquivada");
+    } else if (res.error) {
+      toast.error(res.error.message);
+    }
+  };
+
+  // Spec Task #79: clicar numa conversa arquivada DEVE desarquivar e abrir.
+  const openConversationFromArchived = async (conv: ConversationItem) => {
+    const res = await api.post<{ archived: boolean }>(
+      `/api/messages/conversations/${conv.id}/archive`,
+      { archived: false },
+    );
+    if (res.success) {
+      const stamped: ConversationItem = { ...conv, archived_at: null };
+      setArchivedConversations((prev) => prev.filter((c) => c.id !== conv.id));
+      setConversations((prev) => [stamped, ...prev.filter((c) => c.id !== conv.id)]);
+      setActiveId(conv.id);
     } else if (res.error) {
       toast.error(res.error.message);
     }
@@ -661,6 +698,7 @@ export function ConversasPage() {
     const res = await api.delete<{ deleted: boolean }>(`/api/messages/conversations/${conv.id}`);
     if (res.success) {
       setConversations((prev) => prev.filter((c) => c.id !== conv.id));
+      setArchivedConversations((prev) => prev.filter((c) => c.id !== conv.id));
       if (activeId === conv.id) setActiveId(null);
       toast.success("Conversa excluída");
     } else if (res.error) {
@@ -669,6 +707,9 @@ export function ConversasPage() {
   };
 
   const filteredConversations = conversations.filter((c) =>
+    c.other_user_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const filteredArchived = archivedConversations.filter((c) =>
     c.other_user_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -746,13 +787,6 @@ export function ConversasPage() {
             </Dialog>
           </div>
 
-          <Tabs value={view} onValueChange={(v) => setView(v as "active" | "archived")} className="mb-3">
-            <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="active">Ativas</TabsTrigger>
-              <TabsTrigger value="archived">Arquivadas</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
           <div className="relative">
             <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
             <Input
@@ -770,17 +804,9 @@ export function ConversasPage() {
               <SkeletonLoader type="list" count={4} />
             </div>
           ) : conversationsError ? (
-            <EmptyStateError onRetry={() => { setConversationsLoading(true); void loadConversations(view); }} />
-          ) : filteredConversations.length === 0 ? (
-            view === "archived" ? (
-              <div className="ra-empty p-8">
-                <div className="ra-empty-icon"><Archive className="w-5 h-5" /></div>
-                <p className="ra-empty-title">Nenhuma conversa arquivada.</p>
-                <p className="ra-empty-sub">Arraste uma conversa para a direita para arquivá-la.</p>
-              </div>
-            ) : (
-              <EmptyStateNoConversations onStart={() => setShowNewConvDialog(true)} />
-            )
+            <EmptyStateError onRetry={() => { setConversationsLoading(true); void loadConversations(); }} />
+          ) : filteredConversations.length === 0 && filteredArchived.length === 0 ? (
+            <EmptyStateNoConversations onStart={() => setShowNewConvDialog(true)} />
           ) : (
             <div className="ra-disc-list p-3 space-y-1">
               {filteredConversations.map((conv) => (
@@ -788,13 +814,50 @@ export function ConversasPage() {
                   key={conv.id}
                   conv={conv}
                   isActive={activeId === conv.id}
-                  isArchivedView={view === "archived"}
+                  isArchivedView={false}
                   currentUserId={currentUserId}
                   onOpen={() => setActiveId(conv.id)}
                   onArchiveToggle={() => handleArchiveToggle(conv)}
                   onDelete={() => setConfirmDelete(conv)}
                 />
               ))}
+
+              {filteredArchived.length > 0 && (
+                <div className="mt-3 border-t pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setArchivedExpanded((v) => !v)}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-accent text-sm"
+                    aria-expanded={archivedExpanded}
+                  >
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Archive className="w-4 h-4" />
+                      <span>Arquivadas</span>
+                      <Badge variant="secondary" className="ml-1">{filteredArchived.length}</Badge>
+                    </span>
+                    {archivedExpanded
+                      ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+                  {archivedExpanded && (
+                    <div className="space-y-1 mt-1">
+                      {filteredArchived.map((conv) => (
+                        <SwipeRow
+                          key={conv.id}
+                          conv={conv}
+                          isActive={activeId === conv.id}
+                          isArchivedView={true}
+                          currentUserId={currentUserId}
+                          // Spec: clicar numa arquivada desarquiva e abre.
+                          onOpen={() => void openConversationFromArchived(conv)}
+                          onArchiveToggle={() => handleArchiveToggle(conv)}
+                          onDelete={() => setConfirmDelete(conv)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </ScrollArea>
