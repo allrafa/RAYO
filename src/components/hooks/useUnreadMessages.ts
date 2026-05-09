@@ -35,6 +35,16 @@ export interface TypingPayload {
   user_id: number;
 }
 
+export type MessageKind = "text" | "image" | "audio";
+
+export interface MessageAttachmentMeta {
+  mime?: string;
+  size?: number;
+  name?: string;
+  duration_sec?: number;
+  [key: string]: unknown;
+}
+
 export interface MessageNewPayload {
   conversation_id: number;
   message: {
@@ -42,7 +52,10 @@ export interface MessageNewPayload {
     conversation_id: number;
     sender_id: number;
     sender_name?: string;
+    kind: MessageKind;
     content: string;
+    attachment_url: string | null;
+    attachment_meta: MessageAttachmentMeta | null;
     read_at: string | null;
     created_at: string;
   };
