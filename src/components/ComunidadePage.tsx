@@ -96,6 +96,22 @@ export function ComunidadePage() {
   // destacá-lo brevemente. Limpado no fechar do painel.
   const [highlightCommentId, setHighlightCommentId] = useState<number | null>(null);
 
+  // Task #115 — declarado ANTES de openPostById porque este último o usa
+  // como dependência do useCallback (TDZ-safe).
+  const loadPostComments = useCallback(async (postId: number) => {
+    setLoadingComments(true);
+    try {
+      const res = await api.get<{ post: { comments: CommentData[] } }>(`/api/community/posts/${postId}`);
+      if (res.success && res.data) {
+        setPostComments(res.data.post.comments);
+      }
+    } catch (err) {
+      console.error("Error loading comments:", err);
+    } finally {
+      setLoadingComments(false);
+    }
+  }, []);
+
   // Task #44 — deep-link de busca: quando um resultado de busca de
   // post é clicado, recebemos o id por CustomEvent. Tentamos abrir o
   // post da memória; se não estiver carregado, buscamos via
@@ -258,20 +274,6 @@ export function ComunidadePage() {
     if (currentView !== "trending") return;
     void loadTrendingPosts();
   }, [currentView, loadTrendingPosts]);
-
-  const loadPostComments = useCallback(async (postId: number) => {
-    setLoadingComments(true);
-    try {
-      const res = await api.get<{ post: { comments: CommentData[] } }>(`/api/community/posts/${postId}`);
-      if (res.success && res.data) {
-        setPostComments(res.data.post.comments);
-      }
-    } catch (err) {
-      console.error("Error loading comments:", err);
-    } finally {
-      setLoadingComments(false);
-    }
-  }, []);
 
   const submitComment = useCallback(async (postId: number, content: string) => {
     const res = await api.post<{ comment: CommentData }>(`/api/community/posts/${postId}/comments`, { content });
