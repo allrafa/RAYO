@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { LayoutDashboard, Users as UsersIcon, ShieldAlert, ArrowLeft, LogOut, FileText, Sparkles, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Users as UsersIcon, ShieldAlert, ArrowLeft, LogOut, FileText, Sparkles, GraduationCap, type LucideIcon } from "lucide-react";
 import { useAuth, userHasRole } from "../AuthContext";
 import type { UserRole } from "../AuthContext";
 import { AdminOverviewPage } from "./AdminOverviewPage";
@@ -7,8 +7,9 @@ import { AdminUsersPage } from "./AdminUsersPage";
 import { AdminModerationPage } from "./AdminModerationPage";
 import { AdminCmsPage } from "./AdminCmsPage";
 import { AdminHomeFeedPage } from "./AdminHomeFeedPage";
+import { AdminTurmasPage } from "./AdminTurmasPage";
 
-type AdminSection = "overview" | "cms" | "home-feed" | "users" | "moderation";
+type AdminSection = "overview" | "cms" | "home-feed" | "turmas" | "users" | "moderation";
 
 interface AdminShellProps {
   onExitAdmin: () => void;
@@ -28,6 +29,7 @@ export function AdminShell({ onExitAdmin }: AdminShellProps) {
   const navItems: NavItem[] = [
     { id: "overview", label: "Visão geral", icon: LayoutDashboard, minRole: "producer" },
     { id: "cms", label: "Conteúdo", icon: FileText, minRole: "producer" },
+    { id: "turmas", label: "Turmas", icon: GraduationCap, minRole: "producer" },
     { id: "home-feed", label: "Home / Destaques", icon: Sparkles, minRole: "producer" },
     { id: "moderation", label: "Moderação", icon: ShieldAlert, minRole: "moderator" },
     { id: "users", label: "Usuários", icon: UsersIcon, minRole: "admin" },
@@ -50,6 +52,7 @@ export function AdminShell({ onExitAdmin }: AdminShellProps) {
         case "users":       return <AdminUsersPage />;
         case "moderation":  return <AdminModerationPage />;
         case "cms":         return <AdminCmsPage />;
+        case "turmas":      return <AdminTurmasPage />;
         case "home-feed":   return <AdminHomeFeedPage />;
         case "overview":
         default:            return <AdminOverviewPage />;

@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { api } from "../../lib/api";
 import { toast } from "sonner@2.0.3";
 import { CourseModulesEditor } from "./CourseModulesEditor";
+import { TurmaLandingEditor } from "./TurmaLandingEditor";
 
 type Kind = "audio" | "video" | "reels" | "serie" | "curso" | "livro" | "artigo";
 type Status = "draft" | "published" | "archived";
@@ -399,10 +400,13 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
                 </div>
               </Field>
               {data.course_id ? (
-                <CourseModulesEditor courseId={data.course_id} />
+                <>
+                  <TurmaLandingEditor courseId={data.course_id} />
+                  <CourseModulesEditor courseId={data.course_id} />
+                </>
               ) : (
                 <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
-                  Selecione (ou crie) um curso para gerenciar seus módulos e lições.
+                  Selecione (ou crie) um curso para gerenciar a página da turma, módulos e lições.
                 </p>
               )}
             </>

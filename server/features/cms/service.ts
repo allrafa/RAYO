@@ -802,12 +802,195 @@ export async function listMediaAssets(userId: number, page = 1, limit = 30) {
 export async function listCoursesForCms() {
   const { rows } = await query(
     `SELECT c.id, c.title, c.life_context, c.is_premium, c.is_active,
+            c.created_by,
             ci.id AS content_item_id, ci.status
        FROM courses c
        LEFT JOIN content_items ci ON ci.course_id = c.id
        ORDER BY c.id DESC`
   );
   return rows;
+}
+
+// ── Task #100 — Painel Turmas (landing + interessados) ───────────────
+//
+// Carrega os campos de "página da turma" (Task #99) — subtítulo, capa,
+// listas "para quem é" / "o que você recebe", "como funciona" — para o
+// admin editar. `created_by` vem junto pra que o router consiga checar
+// ownership (producers só editam o que criaram; moderator+ override).
+async function getCourseAdminRaw(courseId: number) {
+  const { rows } = await query(
+    `SELECT id, title, subtitle, description, thumbnail, hero_cover_url,
+            who_for, what_you_get, how_it_works,
+            category, level, is_premium, price, instructor, is_active,
+            created_by
+       FROM courses WHERE id = $1`,
+    [courseId],
+  );
+  if (rows.length === 0) return null;
+  return rows[0];
+}
+
+export async function getCourseAdmin(courseId: number) {
+  const raw = await getCourseAdminRaw(courseId);
+  if (!raw) return null;
+  // hero_cover_url e thumbnail podem ser sentinels objstore://; resolvemos
+  // pra URL fetchable antes de devolver pro admin (preview no editor).
+  const row = raw as Record<string, unknown>;
+  return resolveMediaFields(row, ["hero_cover_url", "thumbnail"] as ReadonlyArray<keyof typeof row>);
+}
+
+export interface UpdateCourseLandingInput {
+  subtitle?: string | null;
+  hero_cover_url?: string | null;
+  who_for?: string[];
+  what_you_get?: string[];
+  how_it_works?: string | null;
+}
+
+export async function updateCourseLanding(
+  user: SafeUser,
+  courseId: number,
+  input: UpdateCourseLandingInput,
+) {
+  // Use *raw* row pra preservar o sentinel objstore:// quando o caller
+  // não está mexendo no hero_cover_url. getCourseAdmin (resolvido) gravaria
+  // a URL assinada de volta no banco e quebraria o resolver na próxima leitura.
+  const cur = await getCourseAdminRaw(courseId);
+  if (!cur) throw new CmsError("Turma não encontrada", "COURSE_NOT_FOUND", 404);
+  assertCanMutate(user, (cur as { created_by: number | null }).created_by ?? null);
+
+  const subtitle =
+    input.subtitle === undefined
+      ? (cur as { subtitle: string | null }).subtitle
+      : input.subtitle === null
+        ? null
+        : String(input.subtitle).trim().slice(0, 280) || null;
+  const heroCover =
+    input.hero_cover_url === undefined
+      ? (cur as { hero_cover_url: string | null }).hero_cover_url
+      : normalizeStorageRef(input.hero_cover_url ?? null);
+  const whoFor = Array.isArray(input.who_for)
+    ? normaliseStringArray(input.who_for)
+    : ((cur as { who_for: string[] | null }).who_for ?? []);
+  const whatYouGet = Array.isArray(input.what_you_get)
+    ? normaliseStringArray(input.what_you_get)
+    : ((cur as { what_you_get: string[] | null }).what_you_get ?? []);
+  const howItWorks =
+    input.how_it_works === undefined
+      ? (cur as { how_it_works: string | null }).how_it_works
+      : input.how_it_works === null
+        ? null
+        : String(input.how_it_works).slice(0, 8000) || null;
+
+  await query(
+    `UPDATE courses SET
+       subtitle = $1,
+       hero_cover_url = $2,
+       who_for = $3::jsonb,
+       what_you_get = $4::jsonb,
+       how_it_works = $5,
+       updated_at = NOW()
+      WHERE id = $6`,
+    [
+      subtitle,
+      heroCover,
+      JSON.stringify(whoFor),
+      JSON.stringify(whatYouGet),
+      howItWorks,
+      courseId,
+    ],
+  );
+  // Reler via getCourseAdmin pra devolver com hero_cover_url já resolvido
+  // (signed URL); o frontend usa direto na <img>.
+  return await getCourseAdmin(courseId);
+}
+
+// Lista de interessados ("Garantir minha vaga") por turma, paginada.
+// Producer só vê interesses das turmas que criou; moderator+ vê tudo.
+export async function listClassInterests(
+  user: SafeUser,
+  courseId: number,
+  page = 1,
+  limit = 50,
+) {
+  const cur = await getCourseAdmin(courseId);
+  if (!cur) throw new CmsError("Turma não encontrada", "COURSE_NOT_FOUND", 404);
+  assertCanMutate(user, (cur as { created_by: number | null }).created_by ?? null);
+
+  const safePage = Math.max(1, page);
+  const safeLimit = Math.min(200, Math.max(1, limit));
+  const offset = (safePage - 1) * safeLimit;
+
+  const { rows: countRows } = await query(
+    `SELECT COUNT(*)::int AS total FROM class_interests WHERE course_id = $1`,
+    [courseId],
+  );
+  const total = countRows[0]?.total ?? 0;
+
+  const { rows } = await query(
+    `SELECT ci.id, ci.user_id, ci.name, ci.email, ci.message, ci.created_at,
+            u.name AS user_name
+       FROM class_interests ci
+       LEFT JOIN users u ON u.id = ci.user_id
+      WHERE ci.course_id = $1
+      ORDER BY ci.created_at DESC
+      LIMIT $2 OFFSET $3`,
+    [courseId, safeLimit, offset],
+  );
+  return {
+    interests: rows,
+    pagination: {
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages: Math.ceil(total / safeLimit),
+    },
+  };
+}
+
+// CSV export — sem paginação. Mesmas regras de ownership.
+export async function exportClassInterestsCsv(
+  user: SafeUser,
+  courseId: number,
+): Promise<{ filename: string; csv: string }> {
+  const cur = await getCourseAdmin(courseId);
+  if (!cur) throw new CmsError("Turma não encontrada", "COURSE_NOT_FOUND", 404);
+  assertCanMutate(user, (cur as { created_by: number | null }).created_by ?? null);
+
+  const { rows } = await query(
+    `SELECT ci.created_at, ci.name, ci.email, ci.message
+       FROM class_interests ci
+      WHERE ci.course_id = $1
+      ORDER BY ci.created_at DESC`,
+    [courseId],
+  );
+
+  const escape = (v: unknown): string => {
+    if (v === null || v === undefined) return "";
+    const s = String(v).replace(/\r?\n/g, " ");
+    if (/[",;\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+
+  const header = "data,nome,email,mensagem";
+  const lines = rows.map((r) =>
+    [
+      escape(new Date(r.created_at).toISOString()),
+      escape(r.name),
+      escape(r.email),
+      escape(r.message ?? ""),
+    ].join(","),
+  );
+  const csv = [header, ...lines].join("\n") + "\n";
+  const safeTitle = String((cur as { title: string }).title || `turma-${courseId}`)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 50) || `turma-${courseId}`;
+  const filename = `interessados-${safeTitle}-${courseId}.csv`;
+  return { filename, csv };
 }
 
 // ── Course creation from CMS ──────────────────────────────────────────

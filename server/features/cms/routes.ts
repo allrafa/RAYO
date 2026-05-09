@@ -20,6 +20,10 @@ import {
   recordMediaAsset,
   listCoursesForCms,
   createCourseFromCms,
+  getCourseAdmin,
+  updateCourseLanding,
+  listClassInterests,
+  exportClassInterestsCsv,
   listCourseModulesWithLessons,
   createCourseModule,
   updateCourseModule,
@@ -71,6 +75,50 @@ adminCmsRouter.post("/courses", async (req: Request, res, next) => {
   try {
     const result = await createCourseFromCms(req.user!, req.body);
     success(res, result, 201);
+  } catch (err) { handle(err, res, next); }
+});
+
+// Task #100 — Painel Turmas. Carrega/edita os campos de landing rica
+// (subtitle, hero_cover_url, who_for, what_you_get, how_it_works) e
+// expõe os interessados capturados pelo modal "Em breve".
+adminCmsRouter.get("/courses/:id", async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const course = await getCourseAdmin(id);
+    if (!course) { sendError(res, "Turma não encontrada", "COURSE_NOT_FOUND", 404); return; }
+    success(res, { course });
+  } catch (err) { handle(err, res, next); }
+});
+
+adminCmsRouter.patch("/courses/:id", async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const course = await updateCourseLanding(req.user!, id, req.body);
+    success(res, { course });
+  } catch (err) { handle(err, res, next); }
+});
+
+adminCmsRouter.get("/courses/:id/interests", async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const page = parseInt(String(req.query.page ?? "1"), 10) || 1;
+    const limit = parseInt(String(req.query.limit ?? "50"), 10) || 50;
+    const data = await listClassInterests(req.user!, id, page, limit);
+    success(res, data);
+  } catch (err) { handle(err, res, next); }
+});
+
+adminCmsRouter.get("/courses/:id/interests.csv", async (req, res, next) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const { filename, csv } = await exportClassInterestsCsv(req.user!, id);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(csv);
   } catch (err) { handle(err, res, next); }
 });
 
