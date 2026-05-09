@@ -46,6 +46,8 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
   const [selectedCategory, setSelectedCategory] = useState("Relacionamento");
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [uploadingCount, setUploadingCount] = useState(0);
+  // Task #92 — progresso per-file (0–100). Renderizamos a média.
+  const [uploadProgress, setUploadProgress] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [forumOptions, setForumOptions] = useState<ForumOption[]>([]);
@@ -92,40 +94,63 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
     fileInputRef.current?.click();
   };
 
-  const uploadOne = async (file: File): Promise<UploadedImage | null> => {
-    const fd = new FormData();
-    fd.append("file", file);
-    try {
-      const r = await fetch("/api/community/posts/attachments", {
-        method: "POST",
-        credentials: "include",
-        body: fd,
-      });
-      const json = (await r.json()) as {
-        success: boolean;
-        data: { attachment: { attachment_url: string } } | null;
-        error: { message: string } | null;
+  // Task #92 — XHR (e não fetch) pra ter `upload.onprogress` real e
+  // mostrar a porcentagem por imagem. fetch ainda não suporta progress
+  // confiável de upload em browsers (apenas streams experimentais).
+  const uploadOne = (
+    file: File,
+    onProgress: (pct: number) => void,
+  ): Promise<UploadedImage | null> => {
+    return new Promise((resolve) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/community/posts/attachments", true);
+      xhr.withCredentials = true;
+      xhr.upload.onprogress = (e) => {
+        if (!e.lengthComputable) return;
+        onProgress(Math.round((e.loaded / e.total) * 100));
       };
-      if (!json.success || !json.data) {
+      xhr.onload = () => {
+        try {
+          const json = JSON.parse(xhr.responseText) as {
+            success: boolean;
+            data: { attachment: { attachment_url: string } } | null;
+            error: { message: string } | null;
+          };
+          if (!json.success || !json.data) {
+            enhancedToast.error({
+              title: "Falha no upload",
+              description: json.error?.message || "Tente outra imagem",
+              haptic: true,
+            });
+            resolve(null);
+            return;
+          }
+          onProgress(100);
+          resolve({
+            previewUrl: URL.createObjectURL(file),
+            storedUrl: json.data.attachment.attachment_url,
+          });
+        } catch {
+          enhancedToast.error({
+            title: "Falha no upload",
+            description: "Resposta inválida do servidor",
+            haptic: true,
+          });
+          resolve(null);
+        }
+      };
+      xhr.onerror = () => {
         enhancedToast.error({
-          title: "Falha no upload",
-          description: json.error?.message || "Tente outra imagem",
+          title: "Erro de conexão",
+          description: "Não foi possível enviar a imagem",
           haptic: true,
         });
-        return null;
-      }
-      return {
-        previewUrl: URL.createObjectURL(file),
-        storedUrl: json.data.attachment.attachment_url,
+        resolve(null);
       };
-    } catch {
-      enhancedToast.error({
-        title: "Erro de conexão",
-        description: "Não foi possível enviar a imagem",
-        haptic: true,
-      });
-      return null;
-    }
+      xhr.send(fd);
+    });
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,8 +189,23 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
     if (validFiles.length === 0) return;
 
     setUploadingCount((c) => c + validFiles.length);
-    const results = await Promise.all(validFiles.map(uploadOne));
+    // Task #92 — progresso per-file via XHR onprogress. Mantemos um
+    // array com o % de cada upload em curso e exibimos a média.
+    const startIdx = uploadProgress.length;
+    setUploadProgress((prev) => [...prev, ...validFiles.map(() => 0)]);
+    const results = await Promise.all(
+      validFiles.map((f, i) =>
+        uploadOne(f, (pct) =>
+          setUploadProgress((prev) => {
+            const copy = [...prev];
+            copy[startIdx + i] = pct;
+            return copy;
+          }),
+        ),
+      ),
+    );
     setUploadingCount((c) => c - validFiles.length);
+    setUploadProgress((prev) => prev.filter((_, i) => i < startIdx || i >= startIdx + validFiles.length));
     const ok = results.filter((r): r is UploadedImage => r !== null);
     if (ok.length > 0) {
       setUploadedImages((prev) => [...prev, ...ok]);
@@ -378,7 +418,7 @@ export function CreatePostModal({ open, onOpenChange, currentPage = "home", init
           {uploadingCount > 0 && (
             <div className="text-xs text-muted-foreground flex items-center gap-2">
               <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-              Enviando {uploadingCount} imagem(ns)…
+              Enviando {uploadingCount} imagem(ns)… {uploadProgress.length > 0 && `${Math.round(uploadProgress.reduce((a, b) => a + b, 0) / uploadProgress.length)}%`}
             </div>
           )}
 

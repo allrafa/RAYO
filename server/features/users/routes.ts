@@ -332,6 +332,76 @@ router.post(
   },
 );
 
+// Task #92 — listas de seguidores e seguindo (Reddit-style). Devolvem
+// usuários públicos básicos (id, name, avatar) com paginação simples.
+router.get(
+  "/:id/followers",
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const targetId = Number.parseInt(req.params.id, 10);
+      if (!Number.isFinite(targetId) || targetId <= 0) {
+        error(res, "ID de usuário inválido", "INVALID_USER_ID", 400);
+        return;
+      }
+      const limit = Math.min(Math.max(Number.parseInt(String(req.query.limit ?? "30"), 10) || 30, 1), 100);
+      const { rows } = await query<{
+        id: number; name: string; avatar_url: string | null;
+      }>(
+        `SELECT u.id, u.name, u.avatar_url
+           FROM user_follows f
+           JOIN users u ON u.id = f.follower_id
+          WHERE f.followee_id = $1
+          ORDER BY f.created_at DESC
+          LIMIT $2`,
+        [targetId, limit],
+      );
+      const users = await Promise.all(rows.map(async (u) => ({
+        id: u.id,
+        name: u.name,
+        avatar_url: await resolveStoredMediaUrl(u.avatar_url),
+      })));
+      success(res, { users, total: users.length });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+router.get(
+  "/:id/following",
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const targetId = Number.parseInt(req.params.id, 10);
+      if (!Number.isFinite(targetId) || targetId <= 0) {
+        error(res, "ID de usuário inválido", "INVALID_USER_ID", 400);
+        return;
+      }
+      const limit = Math.min(Math.max(Number.parseInt(String(req.query.limit ?? "30"), 10) || 30, 1), 100);
+      const { rows } = await query<{
+        id: number; name: string; avatar_url: string | null;
+      }>(
+        `SELECT u.id, u.name, u.avatar_url
+           FROM user_follows f
+           JOIN users u ON u.id = f.followee_id
+          WHERE f.follower_id = $1
+          ORDER BY f.created_at DESC
+          LIMIT $2`,
+        [targetId, limit],
+      );
+      const users = await Promise.all(rows.map(async (u) => ({
+        id: u.id,
+        name: u.name,
+        avatar_url: await resolveStoredMediaUrl(u.avatar_url),
+      })));
+      success(res, { users, total: users.length });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 router.get(
   "/:id/follows",
   requireAuth,

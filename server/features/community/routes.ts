@@ -11,6 +11,7 @@ import {
   getForumBySlug,
   getForumIdBySlug,
   getMySubscribedForums,
+  getTrendingPosts,
   getForumPosts,
   getAllPosts,
   createPost,
@@ -85,7 +86,8 @@ router.post(
     // segurança consiga acionar a allowlist.
     const message = err instanceof Error ? err.message : "Upload inválido";
     if (/v[ií]deo|video/i.test(message) || (err as { mimetype?: string })?.mimetype?.startsWith?.("video/")) {
-      sendError(res, "Vídeo não é permitido em posts. Use o CMS para vídeos.", "VIDEO_NOT_ALLOWED", 415);
+      // Spec Task #92: vídeo retorna 400 (validation error) com code explícito.
+      sendError(res, "Vídeo não é permitido em posts. Use o CMS para vídeos.", "VIDEO_NOT_ALLOWED", 400);
       return;
     }
     sendError(res, message, "INVALID_UPLOAD", 400);
@@ -136,6 +138,28 @@ router.get("/forums", async (req, res, next) => {
   try {
     const forums = await listForums(req.user?.id);
     success(res, { forums });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Task #92 — "Em alta" (trending) calculado em runtime: likes + comments
+// nas últimas 48h. Suporta filtro por comunidade via `?forum_id=`.
+router.get("/posts/trending", requireAuth, async (req, res, next) => {
+  try {
+    const forumIdRaw = String(req.query.forum_id || "").trim();
+    const forumId = forumIdRaw ? parseInt(forumIdRaw, 10) : undefined;
+    if (forumIdRaw && (isNaN(forumId!) || forumId! < 1)) {
+      sendError(res, "forum_id inválido", "INVALID_FORUM_ID", 400);
+      return;
+    }
+    const limit = parseInt(String(req.query.limit || "20"), 10);
+    const result = await getTrendingPosts({
+      forumId,
+      limit: Number.isFinite(limit) ? limit : 20,
+      userId: req.user?.id,
+    });
+    success(res, result);
   } catch (err) {
     next(err);
   }

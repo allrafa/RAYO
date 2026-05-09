@@ -573,6 +573,20 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
           
           {/* Coluna Principal - Desktop (8 colunas) */}
           <div className="lg:col-span-8 space-y-6">
+            {/* Task #92 — Reddit-style header com tabs (Posts/Comentários/
+                Comunidades/Conquistas/Sobre) também no perfil próprio.
+                Mantém os blocos de Configurações/Missões/Avatar abaixo. */}
+            {user?.id && (
+              <div
+                className="lg:rounded-2xl overflow-hidden"
+                style={{ background: 'var(--rayo-sand-50)' }}
+              >
+                <UserProfilePage
+                  userId={user.id}
+                  onNavigateToCommunity={() => onNavigate?.("comunidade")}
+                />
+              </div>
+            )}
             {/* Header com Avatar e Info */}
             <div 
               className="relative lg:rounded-2xl overflow-hidden"

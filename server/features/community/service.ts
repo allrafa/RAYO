@@ -390,6 +390,47 @@ export async function getMySubscribedForums(userId: number) {
   return { forums: rows };
 }
 
+// Task #92 — "Em alta" da comunidade nas últimas 48h. Score simples
+// `likes + comments` (peso igual). Usado tanto pelo endpoint global
+// quanto pela vista por comunidade (forumId opcional).
+export async function getTrendingPosts(opts: {
+  forumId?: number;
+  limit?: number;
+  userId?: number;
+}) {
+  const limit = Math.min(Math.max(opts.limit ?? 20, 1), 50);
+  const params: unknown[] = [limit];
+  let forumWhere = "";
+  if (opts.forumId) {
+    params.push(opts.forumId);
+    forumWhere = `AND p.forum_id = $${params.length}`;
+  }
+  let userExpr = "false AS user_liked";
+  if (opts.userId) {
+    params.push(opts.userId);
+    userExpr = `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $${params.length}) AS user_liked`;
+  }
+  const { rows } = await query(
+    `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned, p.images,
+       p.like_count, p.comment_count, p.share_count, p.created_at,
+       u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
+       f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon,
+       (p.like_count + p.comment_count) AS trending_score,
+       ${userExpr}
+     FROM posts p
+     JOIN users u ON u.id = p.user_id
+     JOIN forums f ON f.id = p.forum_id
+     WHERE p.is_hidden = FALSE
+       AND p.created_at >= NOW() - INTERVAL '48 hours'
+       ${forumWhere}
+     ORDER BY trending_score DESC, p.created_at DESC
+     LIMIT $1`,
+    params,
+  );
+  const posts = await hydratePostsRows(rows);
+  return { posts };
+}
+
 export async function setForumSubscription(forumId: number, userId: number, subscribed: boolean) {
   const { rows: forumCheck } = await query(
     `SELECT id FROM forums WHERE id = $1 AND is_active = true`,
