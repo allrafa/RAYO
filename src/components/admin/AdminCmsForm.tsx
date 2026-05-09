@@ -77,6 +77,28 @@ const KIND_OPTIONS: Array<{ value: Kind; label: string; help: string }> = [
 
 const SEGMENTS = ["solteiro", "namoro", "noivos", "casados", "pais"];
 
+// Task #127 — `Field` precisa viver no escopo de módulo. Quando estava
+// declarado dentro do corpo de `AdminCmsForm`, o React via um "tipo de
+// componente novo" a cada render e desmontava/remontava cada input —
+// matando foco/seleção do usuário a cada keystroke.
+function Field({
+  label,
+  children,
+  hint,
+}: {
+  label: string;
+  children: React.ReactNode;
+  hint?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-sm" style={{ color: "var(--rayo-ink-700)", fontWeight: 600 }}>{label}</label>
+      {children}
+      {hint && <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>{hint}</p>}
+    </div>
+  );
+}
+
 const empty = (kind: Kind): ContentDetail => ({
   id: 0, kind, title: "", slug: null, short_description: "", long_description: "",
   cover_url: "", segments: [], interests: [], tags: [], status: "draft",
@@ -281,14 +303,6 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
       </div>
     );
   }
-
-  const Field = ({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) => (
-    <div className="space-y-1">
-      <label className="text-sm" style={{ color: "var(--rayo-ink-700)", fontWeight: 600 }}>{label}</label>
-      {children}
-      {hint && <p className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>{hint}</p>}
-    </div>
-  );
 
   const inputStyle: React.CSSProperties = {
     background: "var(--rayo-sand-50)",
