@@ -277,7 +277,7 @@ export default function Aspirational() {
           <div className="space-y-8">
             {[
               { q: "Para quem é a Trilha Casados?", a: "Para casais que sentem que a rotina esfriou o relacionamento, mas que ainda se amam e querem se reconectar. Não é terapia de casal, mas um guia prático para reacender o diálogo e a intimidade." },
-              { q: "Como funciona os 7 dias grátis?", a: "Você se cadastra e ganha acesso total à plataforma. O cartão é exigido, mas nenhuma cobrança é feita nos primeiros 7 dias. Se não gostar, pode cancelar com um clique antes da cobrança." },
+              { q: "Como funcionam os 7 dias grátis?", a: "Você se cadastra e ganha acesso total à plataforma. O cartão é exigido, mas nenhuma cobrança é feita nos primeiros 7 dias. Se não gostar, pode cancelar com um clique antes da cobrança." },
               { q: "Precisamos assistir juntos?", a: "É o ideal, mas sabemos que a rotina é apertada. Vocês podem assistir separados e se comprometerem a fazer os exercícios e conversar sobre o tema depois." },
               { q: "Como é a comunidade?", a: "É um espaço privado e mediado, longe das redes sociais. Vocês farão parte de uma turma com outros casais na mesma fase, podendo trocar experiências e desafios em um ambiente seguro." },
             ].map((faq, i) => (
