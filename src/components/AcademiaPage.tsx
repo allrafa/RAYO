@@ -2078,28 +2078,23 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
             {course.instructor}
           </p>
 
-          {/* Price — Task #151: cursos em trilha não mostram preço avulso
-              (preço é da assinatura da trilha, exibido em /trilhas/:slug).
-              Gratuito só pra cursos avulsos com price=0. */}
+          {/* Task #151 — Matriz de preço/CTA do catálogo:
+              - Em trilha paga (Stripe): nada de preço aqui (vem da trilha em /trilhas/:slug).
+              - Avulso gratuito (price=0): badge "Gratuito" sage-500.
+              - Avulso pago (price>0): NÃO promete vaga — só "Em breve" subtle (waitlist real). */}
           {!isInTrail && (
             <div className="flex items-baseline gap-2 pt-2">
-              {course.price > 0 ? (
+              {Number(course.price) > 0 ? (
                 <span
-                  className="text-[20px]"
-                  style={{
-                    fontWeight: 700,
-                    color: 'var(--rayo-forest-900)'
-                  }}
+                  className="text-[14px]"
+                  style={{ fontWeight: 600, color: 'var(--rayo-ink-700)' }}
                 >
-                  R$ {Number(course.price).toFixed(2).replace('.', ',')}
+                  Em breve
                 </span>
               ) : (
                 <span
                   className="text-[20px]"
-                  style={{
-                    fontWeight: 700,
-                    color: 'var(--rayo-sage-500)'
-                  }}
+                  style={{ fontWeight: 700, color: 'var(--rayo-sage-500)' }}
                 >
                   Gratuito
                 </span>
@@ -2108,7 +2103,11 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
           )}
         </div>
 
-        {/* Enroll Button - Only show if not enrolled */}
+        {/* Enroll Button - Only show if not enrolled.
+            Task #151 CTA matrix:
+            - trilha paga → "Ver trilha" (vai pro checkout)
+            - avulso gratuito → "Acessar" (vai pra TurmaShell normal)
+            - avulso pago → "Avise-me" (waitlist honesta, sem checkout) */}
         {!course.isEnrolled && (
           <Button
             onClick={handleEnroll}
@@ -2125,7 +2124,11 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
               e.currentTarget.style.background = 'var(--rayo-terra-500)';
             }}
           >
-            {isInTrail ? 'Ver trilha' : 'Ver turma'}
+            {isInTrail
+              ? 'Ver trilha'
+              : Number(course.price) > 0
+                ? 'Avise-me'
+                : 'Acessar'}
           </Button>
         )}
         

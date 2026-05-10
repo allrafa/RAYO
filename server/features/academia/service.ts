@@ -60,7 +60,7 @@ export async function listCourses(filters?: {
       LEFT JOIN trail_courses tc ON tc.course_id = c.id
       LEFT JOIN trails t ON t.id = tc.trail_id AND t.active = TRUE
       WHERE ${where.join(" AND ")}
-      ORDER BY c.id, t.id
+      ORDER BY c.id, (t.id IS NULL), t.id
     ) sub
     ORDER BY sub.students DESC, sub.id ASC`;
   const { rows } = await query(sql, params);

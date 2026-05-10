@@ -1180,7 +1180,7 @@ async function seedCourses() {
       description: 'Construa uma base sólida para seu relacionamento com princípios fundamentais de comunicação, respeito e confiança.',
       thumbnail: 'https://images.unsplash.com/photo-1680603007731-d8da76c235ba?w=800&fit=crop',
       duration: '4h 30m',
-      rating: 4.8, students: 2847, price: 0, category: 'Relacionamento',
+      rating: 0, students: 0, price: 0, category: 'Relacionamento',
       life_context: 'casados', level: 'Iniciante', is_premium: false, instructor: 'Dr. Paulo Mendes',
       modules: [
         { title: 'Pilares do Relacionamento', description: 'Os fundamentos essenciais', lessons: [
@@ -1207,7 +1207,7 @@ async function seedCourses() {
       description: 'Aprenda técnicas avançadas de CNV para transformar a comunicação em sua família e resolver conflitos com empatia.',
       thumbnail: 'https://images.unsplash.com/photo-1624448445915-97154f5e688c?w=800&fit=crop',
       duration: '6h 15m',
-      rating: 4.9, students: 1923, price: 297, category: 'Comunicação',
+      rating: 0, students: 0, price: 297, category: 'Comunicação',
       life_context: 'casados', level: 'Avançado', is_premium: true, instructor: 'Dra. Ana Costa',
       modules: [
         { title: 'Fundamentos da CNV', description: 'O que é e como funciona', lessons: [
@@ -1234,7 +1234,7 @@ async function seedCourses() {
       description: 'Organize sua vida financeira a dois. Orçamento, investimentos e planejamento para construir um futuro próspero juntos.',
       thumbnail: 'https://images.unsplash.com/photo-1588912914078-2fe5224fd8b8?w=800&fit=crop',
       duration: '5h 45m',
-      rating: 4.7, students: 3421, price: 0, category: 'Finanças',
+      rating: 0, students: 0, price: 0, category: 'Finanças',
       life_context: 'casados', level: 'Intermediário', is_premium: false, instructor: 'Carlos Oliveira',
       modules: [
         { title: 'Diagnóstico Financeiro', description: 'Entendendo sua situação atual', lessons: [
@@ -1260,7 +1260,7 @@ async function seedCourses() {
       description: 'Técnicas comprovadas de disciplina positiva para criar filhos emocionalmente inteligentes, seguros e resilientes.',
       thumbnail: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=800&fit=crop',
       duration: '7h 20m',
-      rating: 4.9, students: 4102, price: 347, category: 'Parentalidade',
+      rating: 0, students: 0, price: 347, category: 'Parentalidade',
       life_context: 'pais', level: 'Intermediário', is_premium: true, instructor: 'Dra. Maria Santos',
       modules: [
         { title: 'Bases da Educação Positiva', description: 'Fundamentos científicos', lessons: [
@@ -1288,7 +1288,7 @@ async function seedCourses() {
       description: 'Desenvolva habilidades emocionais e relacionais antes de iniciar um relacionamento. Autoconhecimento e expectativas realistas.',
       thumbnail: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=800&fit=crop',
       duration: '3h 50m',
-      rating: 4.6, students: 1567, price: 0, category: 'Autoconhecimento',
+      rating: 0, students: 0, price: 0, category: 'Autoconhecimento',
       life_context: 'solteiro', level: 'Iniciante', is_premium: false, instructor: 'Juliana Rodrigues',
       modules: [
         { title: 'Autoconhecimento', description: 'Conhecendo a si mesmo', lessons: [
@@ -1313,7 +1313,7 @@ async function seedCourses() {
       description: 'O período de noivado é essencial para alinhar expectativas e planejar um casamento com propósito e intenção.',
       thumbnail: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&fit=crop',
       duration: '4h 10m',
-      rating: 4.8, students: 892, price: 197, category: 'Preparação',
+      rating: 0, students: 0, price: 197, category: 'Preparação',
       life_context: 'namoro', level: 'Intermediário', is_premium: false, instructor: 'Pastor Ricardo Almeida',
       modules: [
         { title: 'Alinhamento de Valores', description: 'Conversas essenciais antes do casamento', lessons: [

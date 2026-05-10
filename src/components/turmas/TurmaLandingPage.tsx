@@ -192,15 +192,17 @@ export function TurmaLandingPage({
                       Você já está matriculado nessa turma.
                     </p>
                   </>
-                ) : (
+                ) : turma.price && Number(turma.price) > 0 ? (
+                  // Task #151 — Avulso pago sem checkout aberto: copy honesta,
+                  // sem prometer vaga. Esse fluxo é só pra cursos fora de
+                  // trilha que ainda não têm pagamento ligado (legado).
                   <>
-                    {turma.price && turma.price > 0 ? (
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-bold" style={{ color: "var(--rayo-terra-600)" }}>
-                          {`R$ ${Number(turma.price).toFixed(2).replace(".", ",")}`}
-                        </span>
-                      </div>
-                    ) : null}
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold" style={{ color: "var(--rayo-terra-600)" }}>
+                        {`R$ ${Number(turma.price).toFixed(2).replace(".", ",")}`}
+                      </span>
+                      <span className="text-sm text-muted-foreground">· em breve</span>
+                    </div>
                     <Button
                       size="lg"
                       className="w-full sm:w-auto"
@@ -212,6 +214,22 @@ export function TurmaLandingPage({
                     <p className="text-xs text-muted-foreground">
                       Esta turma ainda não está aberta. Deixe seu e-mail e avisamos
                       assim que as vagas forem liberadas.
+                    </p>
+                  </>
+                ) : (
+                  // Task #151 — Avulso gratuito: sem fricção. Botão direto pra
+                  // dentro da turma (mesmo CTA do membro), sem waitlist.
+                  <>
+                    <Button
+                      size="lg"
+                      className="w-full sm:w-auto"
+                      onClick={onEnterTurma ?? (() => setShowInterest(true))}
+                      style={{ background: "var(--rayo-sage-500)", color: "white" }}
+                    >
+                      <BookOpen className="w-4 h-4 mr-2" /> Acessar conteúdo
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      Conteúdo gratuito — entre quando quiser.
                     </p>
                   </>
                 )}
@@ -270,11 +288,13 @@ export function TurmaLandingPage({
           </section>
         )}
 
-        {/* CTA repetido no fim — só quando não é trilha paga e não é membro
-            (Task #151: trilha paga já tem CTA do paywall lá em cima). */}
+        {/* CTA repetido no fim — só pra avulso PAGO sem matrícula
+            (Task #151: trilha paga tem paywall; avulso gratuito tem botão
+            direto; membro já entrou). */}
         {!embedded &&
           !(turma.is_member && onEnterTurma) &&
-          !(turma.trail_id && !turma.has_trail_access) && (
+          !(turma.trail_id && !turma.has_trail_access) &&
+          turma.price && Number(turma.price) > 0 ? (
             <div className="text-center py-6">
               <Button
                 size="lg"
@@ -284,7 +304,7 @@ export function TurmaLandingPage({
                 <Sparkles className="w-4 h-4 mr-2" /> Avise-me quando abrir
               </Button>
             </div>
-          )}
+          ) : null}
       </div>
 
       <JoinInterestModal
