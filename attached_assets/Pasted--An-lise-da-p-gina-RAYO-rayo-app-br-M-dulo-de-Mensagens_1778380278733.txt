@@ -1,0 +1,65 @@
+# Análise da página RAYO (rayo.app.br) — Módulo de Mensagens
+
+Fiz uma varredura completa na tela de Mensagens do RAYO, comparando com os padrões consagrados de Messenger e WhatsApp. Existem vários problemas — alguns são pequenos, outros sim grotescos. Segue o relatório pronto para você reportar.
+
+## 1. Erro grotesco: balões de mensagem com largura quase zero (texto na vertical)
+
+Esse é o problema visual mais sério da tela. Mensagens curtas como "Oi", "Blza?", "Como vc está?", "olá", "???" estão sendo renderizadas com largura mínima, fazendo cada letra cair em uma linha separada — o texto aparece literalmente na vertical, letra embaixo de letra ("o / l / á", "B / l / z / a / ?").
+
+No Messenger e no WhatsApp, o balão se ajusta ao conteúdo (`width: fit-content`) e respeita um `min-width` razoável, mantendo o texto sempre em uma linha quando cabe. Provavelmente o CSS atual está aplicando `width` fixo pequeno ou um `max-width` em px combinado com `word-break: break-all` / `break-word` agressivo. Deveria ser `width: auto; max-width: ~65%; min-width: 60px; word-break: normal; overflow-wrap: anywhere` apenas para palavras realmente longas.
+
+## 2. Erro grotesco: player de áudio nativo do navegador
+
+As mensagens de áudio aparecem como o player `<audio controls>` cru do navegador (com botão play, barra, ícone de volume, três pontinhos do menu de download). Isso é inaceitável para um app de mensagens.
+
+WhatsApp/Messenger usam um componente customizado: avatar do remetente, botão play circular, waveform (forma de onda), velocidade (1x/1.5x/2x), tempo decorrido, e nada de menu "baixar" exposto. O ideal aqui seria criar um `AudioBubble` próprio e remover o `controls` nativo.
+
+## 3. Erro grave: ausência de cabeçalho "sticky" da conversa ao rolar
+
+Ao rolar o histórico, o cabeçalho com nome/foto da pessoa ("Jéssica Raio") some. No WhatsApp e no Messenger esse header fica fixo no topo da janela de conversa — você sempre sabe com quem está falando e tem o botão de voltar/opções acessível. Deveria ter `position: sticky; top: 0` no header da conversa.
+
+## 4. Erro grave: input de mensagem não fica fixo no rodapé
+
+O campo "Digite sua mensagem…" só aparece quando você rola até o fim. Ele deveria ser **sticky** no rodapé da área da conversa, sempre visível, como em qualquer messenger do mundo. Hoje, se a conversa é longa, o usuário precisa rolar até o fundo só para escrever — fluxo quebrado.
+
+## 5. Erro grave: imagens enviadas sem tratamento (sem thumbnail, sem lightbox)
+
+A imagem do "Marco Levine" aparece em tamanho enorme dentro do balão, sem proporção controlada, sem cantos arredondados consistentes com os outros balões e, aparentemente, sem clique para ampliar. Padrão correto: thumbnail com `max-height` (ex.: 320px), `border-radius` igual ao balão, click → modal/lightbox com zoom e download opcional.
+
+Há também um balão **branco vazio** acima da imagem (provável miniatura que falhou ao carregar e não tem fallback/placeholder/alt). Isso é bug puro: faltou tratamento de erro de carregamento.
+
+## 6. Erro de UX: agrupamento de horários incorreto
+
+Vejo "22:29" repetido, "03:48" duas vezes em linhas diferentes, "13:00" só no último áudio. O agrupamento de timestamps está inconsistente. O padrão é: mostrar a hora apenas na **última** mensagem de um bloco do mesmo remetente em uma janela de tempo (ex.: 5 min). Hoje o componente está duplicando ou colocando em lugares aleatórios.
+
+## 7. Erro de UX: separadores de data fracos
+
+"Ontem" e "Hoje" aparecem como pílulas pequenas no meio do chat, mas sem destaque suficiente e sem o divisor horizontal típico. WhatsApp usa pílula centralizada com fundo destacado e Messenger faz algo parecido. Detalhe pequeno, mas deixa o histórico confuso.
+
+## 8. Erro de UX: status de leitura inconsistente
+
+Só vi "Lido" aparecendo em **uma** mensagem (a última). O esperado é o duplo check (✓✓) em cada mensagem enviada, com cor diferente quando lido — não a palavra "Lido" escrita. Além disso, faltam estados intermediários: enviando (relógio), enviado (✓), entregue (✓✓), lido (✓✓ azul/colorido).
+
+## 9. Erro de UX: botão "Nova" conversa com ícone confuso
+
+O botão "Nova" mostra um ícone que parece "pessoa com +" colado na palavra "Nova". WhatsApp usa um FAB redondo com ícone de balão+lápis, Messenger usa lápis. Aqui o ícone sugere "adicionar contato", não "nova mensagem" — ambíguo.
+
+## 10. Erro de UX: prévia da última mensagem mostra "🎤 Mensagem de áudio" mas não duração
+
+Na lista de conversas ("Você: 🎤 Mensagem de áudio") falta a duração ("0:07") que tanto WhatsApp quanto Messenger mostram. É info útil em uma olhada rápida.
+
+## 11. Erros de acessibilidade e semântica
+
+No `read_page` apareceram **vários botões sem label** (ref_2 a ref_8 no topo, ref_25 no header da conversa). Isso quebra leitor de tela e SEO de acessibilidade. Todo botão precisa de `aria-label` descritivo.
+
+A busca global tem placeholder "Buscar cursos, conteúdos, comunidade…" — mas dentro de Mensagens essa busca do topo deveria ou desaparecer ou mudar de contexto, senão o usuário não sabe se está buscando conversas ou cursos (já existe outra busca de conversas no painel ao lado, criando duplicidade confusa).
+
+## 12. Erros menores, mas que somam
+
+O sidebar esquerdo tem dois blocos visuais quase iguais (avatar Rafael no topo + menu) que poderiam ser unificados. "Configurações (em breve)" e "Criar conteúdo (em breve)" estão no produto em produção — itens "em breve" deveriam estar escondidos para o usuário final, não visíveis e desabilitados. Faltam indicadores de **online/offline / "digitando…"** no header da conversa, padrão básico em qualquer messenger.
+
+## Resumo dos pontos críticos (prioridade alta para reportar)
+
+Os três que eu colocaria como **bug crítico**, não apenas melhoria, são: balões com texto na vertical (item 1), player de áudio nativo do navegador (item 2) e input de mensagem que não fica fixo no rodapé (item 4). Esses três sozinhos já tornam o módulo de Mensagens praticamente inutilizável em comparação a qualquer messenger moderno. O restante é UX/polimento, mas o conjunto todo dá uma sensação de protótipo não finalizado.
+
+Se quiser, posso gerar esse relatório em formato de issue (Markdown com checklist) pronto para colar em ferramenta de tickets como GitHub Issues, Linear ou Jira — é só pedir.
