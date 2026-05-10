@@ -8,6 +8,7 @@ import { useAuth } from "./AuthContext";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Heart, MessageCircle, UserPlus, UserCheck, X, Award, Bookmark, Camera, Loader2 } from "lucide-react";
 import { enhancedToast } from "./EnhancedToast";
+import { PostImageLightbox } from "./PostImageLightbox";
 
 // Task #92 — Perfil público estilo Reddit. Carrega karma, posts,
 // comentários e comunidades do usuário-alvo via os endpoints novos
@@ -146,6 +147,8 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
   // Task #93 — aba "Salvos" só carrega quando isSelf abre a tab.
   const [savedPosts, setSavedPosts] = useState<UserPost[] | null>(null);
   const [savedLoading, setSavedLoading] = useState(false);
+  // Task #164 — Lightbox de imagens dentro dos cards de post.
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
@@ -509,12 +512,23 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
                 {p.images && p.images.length > 0 && (
                   <div className="mt-2 flex gap-1 overflow-hidden rounded">
                     {p.images.slice(0, 3).map((src, i) => (
-                      <ImageWithFallback
+                      <button
+                        type="button"
                         key={i}
-                        src={src}
-                        alt={`Imagem ${i + 1}`}
-                        className="w-20 h-20 object-cover rounded"
-                      />
+                        onClick={(e) => {
+                          stopPropagationClick(e);
+                          setLightbox({ images: p.images!, index: i });
+                        }}
+                        className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
+                        style={{ background: "transparent", border: 0, padding: 0, cursor: "zoom-in" }}
+                        aria-label={`Ver imagem ${i + 1} em tamanho real`}
+                      >
+                        <ImageWithFallback
+                          src={src}
+                          alt={`Imagem ${i + 1}`}
+                          className="w-20 h-20 object-cover rounded"
+                        />
+                      </button>
                     ))}
                   </div>
                 )}
@@ -644,6 +658,16 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
           </div>
         </TabsContent>
       </Tabs>
+      {lightbox && (
+        <PostImageLightbox
+          images={lightbox.images}
+          index={lightbox.index}
+          onIndexChange={(i) =>
+            setLightbox((prev) => (prev ? { ...prev, index: i } : prev))
+          }
+          onClose={() => setLightbox(null)}
+        />
+      )}
     </div>
   );
 }

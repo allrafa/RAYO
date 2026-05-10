@@ -14,17 +14,19 @@
 // (Enter/Espaço). Filhos clicáveis usam `<button>`/`<a>` reais e chamam
 // `stopBubble(handler)` para não disparar o clique do card.
 //
-// Navegação entre abas (perfil mora em `perfil`, post detail em
-// `comunidade`) é feita via CustomEvent `rayo:request-tab` que o App.tsx
-// escuta no nível raiz e chama `setCurrentTab`. Evita prop drilling de
-// `onTabChange` por todos os componentes de card.
+// Reutilizamos os CustomEvents existentes (`rayo:open-profile`,
+// `rayo:open-post`, `rayo:open-community`) — os mesmos da busca
+// (`searchNavigate.ts`) e dos deep-links em `App.tsx`. NÃO criamos
+// evento novo: App.tsx ganhou apenas um listener que mapeia cada um
+// desses eventos pra tab correta via `setCurrentTab`. As páginas alvo
+// (PerfilPage, ComunidadePage) continuam escutando o mesmo evento e o
+// stash de sessionStorage como fallback.
 
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
 } from "react";
 
-export const RAYO_REQUEST_TAB = "rayo:request-tab";
 export const RAYO_OPEN_PROFILE = "rayo:open-profile";
 export const RAYO_OPEN_POST = "rayo:open-post";
 export const RAYO_OPEN_COMMUNITY = "rayo:open-community";
@@ -40,11 +42,15 @@ export function stopBubble<E extends ReactMouseEvent | ReactKeyboardEvent>(
   };
 }
 
-/** Aceita Enter/Espaço como ativação do card (role="button"). */
+/** Aceita Enter/Espaço como ativação do card (role="button"), mas APENAS
+ *  quando o foco está no próprio wrapper. Se o foco está num filho
+ *  interativo (botão, link, etc) o handler não dispara — caso contrário
+ *  Enter num botão filho ativaria simultaneamente o filho e o card. */
 export function cardKeyHandler(
   fn: () => void,
 ): (e: ReactKeyboardEvent) => void {
   return (e) => {
+    if (e.target !== e.currentTarget) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       fn();
@@ -52,20 +58,10 @@ export function cardKeyHandler(
   };
 }
 
-/** Solicita ao App.tsx que troque a aba ativa. App.tsx tem listener global. */
-export function requestTabChange(tab: string): void {
-  try {
-    window.dispatchEvent(
-      new CustomEvent(RAYO_REQUEST_TAB, { detail: { tab } }),
-    );
-  } catch {
-    /* noop */
-  }
-}
-
 /** Abre o perfil público de um usuário pelo id, vindo de qualquer aba.
- *  Garante: aba `perfil` ativa + sessionStorage stash + custom event
- *  (PerfilPage escuta os dois — stash quando monta, evento quando vivo). */
+ *  Reusa o evento `rayo:open-profile` (mesmo da busca). App.tsx escuta
+ *  o evento e troca pra aba `perfil`; PerfilPage escuta o evento e o
+ *  stash de sessionStorage. */
 export function openProfileById(id: number | string | null | undefined): void {
   if (id == null) return;
   const idStr = String(id);
@@ -75,7 +71,6 @@ export function openProfileById(id: number | string | null | undefined): void {
   } catch {
     /* private mode */
   }
-  requestTabChange("perfil");
   try {
     window.dispatchEvent(
       new CustomEvent(RAYO_OPEN_PROFILE, { detail: { id: Number(idStr) } }),
@@ -85,7 +80,10 @@ export function openProfileById(id: number | string | null | undefined): void {
   }
 }
 
-/** Abre uma comunidade `c/<slug>` (subreddit-like) a partir de qualquer aba. */
+/** Abre uma comunidade `c/<slug>` (subreddit-like) a partir de qualquer aba.
+ *  Reusa `rayo:open-community` (mesmo evento que ComunidadePage e
+ *  UserProfilePage já disparavam). App.tsx escuta e troca pra aba
+ *  `comunidade`. */
 export function openCommunityBySlug(slug: string | null | undefined): void {
   if (!slug) return;
   try {
@@ -93,7 +91,6 @@ export function openCommunityBySlug(slug: string | null | undefined): void {
   } catch {
     /* noop */
   }
-  requestTabChange("comunidade");
   try {
     window.dispatchEvent(
       new CustomEvent(RAYO_OPEN_COMMUNITY, { detail: { slug } }),
@@ -103,7 +100,8 @@ export function openCommunityBySlug(slug: string | null | undefined): void {
   }
 }
 
-/** Abre uma discussão de post pelo id (mesmo contrato da busca). */
+/** Abre uma discussão de post pelo id (mesmo contrato da busca).
+ *  Reusa `rayo:open-post`; App.tsx troca pra aba `comunidade`. */
 export function openPostById(
   id: number | string,
   highlightCommentId?: number | string | null,
@@ -121,7 +119,6 @@ export function openPostById(
   } catch {
     /* noop */
   }
-  requestTabChange("comunidade");
   try {
     window.dispatchEvent(
       new CustomEvent(RAYO_OPEN_POST, {

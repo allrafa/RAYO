@@ -43,7 +43,11 @@ import { TrilhaSucessoPage } from "./components/trilhas/TrilhaSucessoPage";
 import { analytics } from "./lib/analytics/mixpanel";
 import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
 import { RAYO_SCROLL_TOP } from "./lib/scrollTop";
-import { RAYO_REQUEST_TAB } from "./lib/cardClickTargets";
+import {
+  RAYO_OPEN_PROFILE,
+  RAYO_OPEN_POST,
+  RAYO_OPEN_COMMUNITY,
+} from "./lib/cardClickTargets";
 import { migrateLegacyStorage } from "./lib/storageMigration";
 
 // Task #163 — migra chaves `raio_*`/`raio-*` legadas (consent, theme,
@@ -229,25 +233,26 @@ function AppContent() {
     return () => window.removeEventListener(RAYO_SCROLL_TOP, handler);
   }, []);
 
-  // Task #164 — Listener global de troca de aba pedida por qualquer card
-  // do produto (helpers em src/lib/cardClickTargets.ts). Cards aninhados
-  // não recebem `setCurrentTab` por prop; quando precisam navegar (avatar
-  // → perfil, c/<slug> → comunidade, etc.) disparam `rayo:request-tab` e
-  // este handler troca a aba ativa. Combina com o sessionStorage stash
-  // que cada página alvo já consome no mount.
+  // Task #164 — Quando qualquer card do produto pede pra abrir um
+  // perfil/post/comunidade (helpers em src/lib/cardClickTargets.ts), os
+  // eventos JÁ EXISTENTES (`rayo:open-profile`/`-post`/`-community`,
+  // mesmos da busca em searchNavigate.ts) são disparados. Aqui, no nível
+  // raiz, mapeamos cada evento pra aba correspondente — assim os cards
+  // aninhados não precisam receber `setCurrentTab` por prop. As páginas
+  // alvo (PerfilPage, ComunidadePage) continuam escutando o mesmo evento
+  // e o stash de sessionStorage pra abrir o item certo.
   useEffect(() => {
-    const onRequestTab = (e: Event) => {
-      const detail = (e as CustomEvent<{ tab?: string }>).detail;
-      const tab = detail?.tab;
-      if (!tab) return;
-      setCurrentTab(tab);
+    const onOpenProfile = () => setCurrentTab("perfil");
+    const onOpenPost = () => setCurrentTab("comunidade");
+    const onOpenCommunity = () => setCurrentTab("comunidade");
+    window.addEventListener(RAYO_OPEN_PROFILE, onOpenProfile as EventListener);
+    window.addEventListener(RAYO_OPEN_POST, onOpenPost as EventListener);
+    window.addEventListener(RAYO_OPEN_COMMUNITY, onOpenCommunity as EventListener);
+    return () => {
+      window.removeEventListener(RAYO_OPEN_PROFILE, onOpenProfile as EventListener);
+      window.removeEventListener(RAYO_OPEN_POST, onOpenPost as EventListener);
+      window.removeEventListener(RAYO_OPEN_COMMUNITY, onOpenCommunity as EventListener);
     };
-    window.addEventListener(RAYO_REQUEST_TAB, onRequestTab as EventListener);
-    return () =>
-      window.removeEventListener(
-        RAYO_REQUEST_TAB,
-        onRequestTab as EventListener,
-      );
   }, []);
 
   // Task #45 — deep-link `/u/<id>` para perfis compartilhados. Captura
