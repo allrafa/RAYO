@@ -37,7 +37,7 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Load settings from localStorage
-    const savedSettings = localStorage.getItem('raio-accessibility');
+    const savedSettings = localStorage.getItem('rayo-accessibility');
     if (savedSettings) {
       try {
         const parsed = JSON.parse(savedSettings);
@@ -72,7 +72,7 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Save settings to localStorage
-    localStorage.setItem('raio-accessibility', JSON.stringify(settings));
+    localStorage.setItem('rayo-accessibility', JSON.stringify(settings));
     
     // Determine theme
     let actualTheme: 'light' | 'dark';

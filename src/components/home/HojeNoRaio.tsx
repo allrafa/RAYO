@@ -44,7 +44,9 @@ interface Props {
 
 function todayStr(): string { return new Date().toISOString().slice(0, 10); }
 function skipKey(userId?: number | string | null): string {
-  return `raio_today_skipped_date:${userId ?? "anon"}`;
+  // Task #163 — chave migrada pro namespace `rayo_*` no rebrand
+  // RAIO→RAYO. storageMigration.ts copia o valor legado no boot.
+  return `rayo_today_skipped_date:${userId ?? "anon"}`;
 }
 function readSkipped(userId?: number | string | null): boolean {
   try { return localStorage.getItem(skipKey(userId)) === todayStr(); }

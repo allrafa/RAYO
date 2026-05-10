@@ -546,7 +546,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 
   const setWeeklyGoal = (goal: number) => {
     // Implementation for setting weekly learning goal
-    localStorage.setItem('raio-weekly-goal', goal.toString());
+    localStorage.setItem('rayo-weekly-goal', goal.toString());
   };
 
   const getAchievements = (): Achievement[] => {

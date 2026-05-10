@@ -1,6 +1,7 @@
-# RAIO Platform — Architecture & Development Protocol
+# RAYO Platform — Architecture & Development Protocol
 
-> This document is the permanent development protocol for the RAIO platform.
+> This document is the permanent development protocol for the RAYO platform
+> (anteriormente RAIO; renomeado em Maio/2026 — Task #163).
 > It MUST be consulted before starting any sprint or task.
 
 ---

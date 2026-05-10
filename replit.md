@@ -23,7 +23,7 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
 - **RBAC**: hierarquia numérica (`client` < `producer` < `moderator` < `admin`).
 - **Soft Deletes**: conteúdo é `hidden`, não deletado.
 - **SSE para DM**: real-time messaging via Server-Sent Events.
-- **Dynamic Home Feed**: `recommendedSectionOrder` por segmentos; "Hoje no RAIO" usa rotação determinística diária.
+- **Dynamic Home Feed**: `recommendedSectionOrder` por segmentos; "Hoje no RAYO" usa rotação determinística diária.
 - **Static Assets em Object Storage**: sentinels `objstore://<key>` resolvidos via signed URL em leitura. Imagens passam por `sharp`.
 - **Vídeo via Bunny Stream**: sentinel `bunny://<libraryId>/<guid>` — ver `docs/contracts/bunny-stream.md`.
 
