@@ -79,6 +79,17 @@ export function PageTransition({ tabKey, children }: PageTransitionProps) {
     return <div key={tabKey}>{children}</div>;
   }
 
+  // Escopo estrito (Task #159): animação só vale pra trocas entre as 4 abas
+  // da bottom nav (home/academia/comunidade/perfil). Quando a aba anterior
+  // OU a próxima é "interna" (conversas, admin, conselheiro, privacy, etc),
+  // render direto — esses fluxos têm transições próprias e direção lateral
+  // não tem semântica clara fora da bottom nav.
+  const prevIsNav = tabIndex(prevTabRef.current) >= 0;
+  const nextIsNav = tabIndex(tabKey) >= 0;
+  if (!prevIsNav || !nextIsNav) {
+    return <div key={tabKey}>{children}</div>;
+  }
+
   const distance = 12;
 
   return (
