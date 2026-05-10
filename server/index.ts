@@ -640,7 +640,7 @@ async function start() {
     app.use(errorHandler);
 
     app.listen(PORT, "0.0.0.0", () => {
-      logger.info("Server", `RAIO server running on port ${PORT}`);
+      logger.info("Server", `RAYO server running on port ${PORT}`);
     });
   } catch (err) {
     logger.error("Server", "Failed to start server:", err);

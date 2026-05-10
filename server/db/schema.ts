@@ -992,7 +992,7 @@ export async function initializeSchema() {
   await query(`CREATE INDEX IF NOT EXISTS idx_home_feed_items_active ON home_feed_items(is_active)`);
 
   // ──────────────────────────────────────────────────────────────────
-  // "Hoje no RAIO" — daily completion log (Task #43).
+  // "Hoje no RAYO" — daily completion log (Task #43).
   // One row per (user, day). UNIQUE constraint makes the
   // POST /api/home/today/complete endpoint idempotent and prevents
   // farming XP by replaying the request.
@@ -1408,7 +1408,7 @@ async function seedForumsAndPosts() {
     { name: 'Parentalidade', description: 'Educação dos filhos e desafios da maternidade e paternidade', icon: '👨‍👩‍👧', life_context: 'pais', category: 'Família', sort_order: 4 },
     { name: 'Finanças Familiares', description: 'Dicas e experiências sobre gestão financeira do lar', icon: '💰', life_context: null, category: 'Finanças', sort_order: 5 },
     { name: 'Fé & Propósito', description: 'Espiritualidade, propósito e crescimento pessoal', icon: '🙏', life_context: null, category: 'Espiritualidade', sort_order: 6 },
-    { name: 'Geral', description: 'Conversas livres e temas variados da comunidade RAIO', icon: '💬', life_context: null, category: 'Geral', sort_order: 7 },
+    { name: 'Geral', description: 'Conversas livres e temas variados da comunidade RAYO', icon: '💬', life_context: null, category: 'Geral', sort_order: 7 },
   ];
 
   const forumIds: Record<string, number> = {};
@@ -1428,8 +1428,8 @@ async function seedForumsAndPosts() {
   } else {
     const { rows: newUser } = await query(
       `INSERT INTO users (email, password_hash, name, segments)
-       VALUES ('comunidade@raio.app', 'seed_no_login', 'Equipe RAIO', '{casados}')
-       ON CONFLICT (email) DO UPDATE SET name = 'Equipe RAIO'
+       VALUES ('comunidade@rayo.app.br', 'seed_no_login', 'Equipe RAYO', '{casados}')
+       ON CONFLICT (email) DO UPDATE SET name = 'Equipe RAYO'
        RETURNING id`
     );
     seedUserId = newUser[0].id;
@@ -1442,12 +1442,12 @@ async function seedForumsAndPosts() {
     { forum: 'Namoro & Noivado', title: null, content: 'Estamos noivos há 3 meses e já começamos o aconselhamento pré-nupcial. Melhor decisão que tomamos! 💍', category: 'Relacionamento', is_pinned: false },
     { forum: 'Solteiros & Preparação', title: null, content: 'Aprendi que estar solteiro é o melhor momento para investir em autoconhecimento. O curso de Preparação para Namoro Saudável abriu meus olhos!', category: 'Autoconhecimento', is_pinned: false },
     { forum: 'Fé & Propósito', title: null, content: 'Vocês também fazem devocional em casal? Começamos essa prática há 2 semanas e tem sido muito especial para nós.', category: 'Espiritualidade', is_pinned: false },
-    { forum: 'Geral', title: null, content: 'Adorei a plataforma RAIO! A comunidade aqui é muito acolhedora e os cursos são muito práticos. Recomendo para todos os casais!', category: 'Geral', is_pinned: true },
+    { forum: 'Geral', title: null, content: 'Adorei a plataforma RAYO! A comunidade aqui é muito acolhedora e os cursos são muito práticos. Recomendo para todos os casais!', category: 'Geral', is_pinned: true },
     { forum: 'Vida de Casados', title: null, content: 'Alguém tem dicas de como manter a conexão emocional quando ambos trabalham em horários diferentes? Sinto que estamos nos distanciando...', category: 'Relacionamento', is_pinned: false },
     { forum: 'Parentalidade', title: null, content: 'Disciplina positiva mudou a nossa família! Antes gritávamos muito e agora conseguimos resolver conflitos com calma. O curso da Dra. Maria Santos é incrível.', category: 'Parentalidade', is_pinned: false },
     { forum: 'Finanças Familiares', title: null, content: 'Conseguimos quitar nossas dívidas em 8 meses usando a planilha do curso de Finanças para Casais. Estamos livres! 🎉', category: 'Finanças', is_pinned: false },
     { forum: 'Namoro & Noivado', title: null, content: 'Como vocês lidam com as diferenças culturais no relacionamento? Eu sou do sul e meu namorado do nordeste, e às vezes os costumes são bem diferentes.', category: 'Relacionamento', is_pinned: false },
-    { forum: 'Geral', title: null, content: 'Sugestão para a equipe RAIO: seria incrível ter um podcast semanal com especialistas em relacionamento! 🎙️', category: 'Geral', is_pinned: false },
+    { forum: 'Geral', title: null, content: 'Sugestão para a equipe RAYO: seria incrível ter um podcast semanal com especialistas em relacionamento! 🎙️', category: 'Geral', is_pinned: false },
   ];
 
   const postIds: number[] = [];

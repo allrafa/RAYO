@@ -42,7 +42,7 @@ const VIDEO_SEEDS: VideoSeed[] = [
   },
   {
     slug: "educar-filhos-com-disciplina-positiva",
-    title: "Como Educar Filhos com Disciplina Positiva — Método RAIO",
+    title: "Como Educar Filhos com Disciplina Positiva — Método RAYO",
     short_description: "Eduque sem gritos, castigos ou chantagens.",
     long_description: "Aprenda a educar seus filhos sem gritos, castigos ou chantagens. Método testado por mais de 50.000 famílias.",
     cover_url: "https://images.unsplash.com/photo-1551498800-17cbc39c85bb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080",

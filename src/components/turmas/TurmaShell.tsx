@@ -39,7 +39,9 @@ export function TurmaShell() {
     // TurmaCommunityTab consuma o stash e role/destaque o post alvo.
     let pendingPost = false;
     try {
-      pendingPost = !!sessionStorage.getItem("raio-pending-post");
+      pendingPost =
+        !!sessionStorage.getItem("rayo-pending-post") ||
+        !!sessionStorage.getItem("raio-pending-post");
     } catch {
       pendingPost = false;
     }

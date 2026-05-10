@@ -241,7 +241,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
       const detail = (e as CustomEvent<{ id: number; highlight_comment_id?: number }>).detail;
       if (detail?.id) void openPostById(detail.id, detail.highlight_comment_id);
     };
-    window.addEventListener("raio:open-post", handler as EventListener);
+    window.addEventListener("rayo:open-post", handler as EventListener);
     // Task #122 — popstate sincroniza activeDiscussion com a URL atual.
     // Garante que back/forward do navegador entrem/saiam da DiscussionPage
     // sem reload, e que /c/<slug> ainda funcione pelo handler abaixo.
@@ -261,11 +261,22 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     };
     window.addEventListener("popstate", onPop);
     try {
-      const pending = sessionStorage.getItem("raio-pending-post");
+      // Task #163 — chave migrada pra `rayo-pending-post`. Lê a nova
+      // primeiro, cai pra legada como fallback de transição (sessions
+      // que pegaram o set antigo via tab antiga ainda navegam ok).
+      const pending =
+        sessionStorage.getItem("rayo-pending-post") ??
+        sessionStorage.getItem("raio-pending-post");
       if (pending) {
+        sessionStorage.removeItem("rayo-pending-post");
         sessionStorage.removeItem("raio-pending-post");
-        const pendingComment = sessionStorage.getItem("raio-pending-post-comment");
-        if (pendingComment) sessionStorage.removeItem("raio-pending-post-comment");
+        const pendingComment =
+          sessionStorage.getItem("rayo-pending-post-comment") ??
+          sessionStorage.getItem("raio-pending-post-comment");
+        if (pendingComment) {
+          sessionStorage.removeItem("rayo-pending-post-comment");
+          sessionStorage.removeItem("raio-pending-post-comment");
+        }
         void openPostById(
           Number(pending),
           pendingComment ? Number(pendingComment) : undefined,
@@ -275,7 +286,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
       // ignore
     }
     return () => {
-      window.removeEventListener("raio:open-post", handler as EventListener);
+      window.removeEventListener("rayo:open-post", handler as EventListener);
       window.removeEventListener("popstate", onPop);
     };
   }, [openPostById]);
@@ -305,9 +316,14 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     };
     window.addEventListener("rayo:open-community", handler as EventListener);
     try {
-      const pending = sessionStorage.getItem("rayo-pending-community-slug");
+      // Task #163 — fallback pra chave legada `raio-pending-community-slug`
+      // cobre tabs com SPA antigo no mesmo device.
+      const pending =
+        sessionStorage.getItem("rayo-pending-community-slug") ??
+        sessionStorage.getItem("raio-pending-community-slug");
       if (pending) {
         sessionStorage.removeItem("rayo-pending-community-slug");
+        sessionStorage.removeItem("raio-pending-community-slug");
         void openCommunityBySlug(pending);
       }
     } catch {

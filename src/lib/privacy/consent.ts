@@ -30,8 +30,11 @@ export interface PrivacySettings {
 // ============================================
 
 export class ConsentManager {
-  private static STORAGE_KEY = 'raio_consent_preferences';
-  private static PRIVACY_KEY = 'raio_privacy_settings';
+  // Task #163 — chaves migradas pra `rayo_*` no rebrand RAIO→RAYO
+  // (Maio/2026). Migração one-shot em src/lib/storageMigration.ts
+  // copia o valor da chave legada antes do primeiro consumer ler.
+  private static STORAGE_KEY = 'rayo_consent_preferences';
+  private static PRIVACY_KEY = 'rayo_privacy_settings';
   
   // ============================================
   // PREFERÊNCIAS DE CONSENTIMENTO
@@ -202,7 +205,7 @@ export class ConsentManager {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `raio_dados_${userId}_${Date.now()}.json`;
+      a.download = `rayo_dados_${userId}_${Date.now()}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -313,7 +316,7 @@ export class ConsentManager {
   
   private static disablePersonalization() {
     // Flag para desabilitar algoritmo de recomendação
-    localStorage.setItem('raio_disable_personalization', 'true');
+    localStorage.setItem('rayo_disable_personalization', 'true');
     console.log('🎯 Personalização desabilitada');
   }
   

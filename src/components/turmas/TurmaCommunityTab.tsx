@@ -59,8 +59,12 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
   // numa notificação `class_post` (link `/turmas/:cid/post/:pid`).
   useEffect(() => {
     try {
-      const pending = sessionStorage.getItem("raio-pending-post");
+      // Task #163 — fallback pra chave legada cobre transição do rebrand.
+      const pending =
+        sessionStorage.getItem("rayo-pending-post") ??
+        sessionStorage.getItem("raio-pending-post");
       if (pending) {
+        sessionStorage.removeItem("rayo-pending-post");
         sessionStorage.removeItem("raio-pending-post");
         const id = Number(pending);
         if (Number.isFinite(id) && id > 0) setHighlightId(id);

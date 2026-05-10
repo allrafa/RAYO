@@ -2,7 +2,7 @@ import { Resend } from "resend";
 import { logger } from "../utils/logger.js";
 
 const RESEND_API_KEY = process.env.resend_api_key || process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "RAIO <onboarding@resend.dev>";
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "RAYO <onboarding@resend.dev>";
 const APP_URL =
   process.env.APP_URL ||
   (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000");
@@ -71,10 +71,10 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendResult> 
   }
 }
 
-const RAIO_ACCENT = "#FFB300";
-const RAIO_BG = "#0F172A";
-const RAIO_TEXT = "#F8FAFC";
-const RAIO_MUTED = "#94A3B8";
+const RAYO_ACCENT = "#FFB300";
+const RAYO_BG = "#0F172A";
+const RAYO_TEXT = "#F8FAFC";
+const RAYO_MUTED = "#94A3B8";
 
 function layout(body: string, preheader: string): string {
   const privacyUrl = `${APP_URL}/?tab=privacy`;
@@ -83,29 +83,29 @@ function layout(body: string, preheader: string): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RAIO</title>
+<title>RAYO</title>
 </head>
-<body style="margin:0;padding:0;background:${RAIO_BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${RAIO_TEXT};">
+<body style="margin:0;padding:0;background:${RAYO_BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${RAYO_TEXT};">
   <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;">${preheader}</span>
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${RAIO_BG};">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${RAYO_BG};">
     <tr>
       <td align="center" style="padding:32px 16px;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#1E293B;border-radius:12px;overflow:hidden;">
           <tr>
             <td style="padding:32px 32px 16px 32px;text-align:center;">
-              <div style="display:inline-block;padding:8px 16px;border-radius:8px;background:${RAIO_ACCENT};color:${RAIO_BG};font-weight:700;font-size:20px;letter-spacing:1px;">RAIO</div>
+              <div style="display:inline-block;padding:8px 16px;border-radius:8px;background:${RAYO_ACCENT};color:${RAYO_BG};font-weight:700;font-size:20px;letter-spacing:1px;">RAYO</div>
             </td>
           </tr>
           <tr>
-            <td style="padding:8px 32px 32px 32px;color:${RAIO_TEXT};font-size:16px;line-height:1.6;">
+            <td style="padding:8px 32px 32px 32px;color:${RAYO_TEXT};font-size:16px;line-height:1.6;">
               ${body}
             </td>
           </tr>
           <tr>
-            <td style="padding:24px 32px;border-top:1px solid #334155;color:${RAIO_MUTED};font-size:12px;line-height:1.5;text-align:center;">
-              Você está recebendo este e-mail porque utiliza a plataforma RAIO.<br>
-              <a href="${privacyUrl}" style="color:${RAIO_MUTED};text-decoration:underline;">Política de Privacidade</a>
-              · &copy; ${new Date().getFullYear()} RAIO
+            <td style="padding:24px 32px;border-top:1px solid #334155;color:${RAYO_MUTED};font-size:12px;line-height:1.5;text-align:center;">
+              Você está recebendo este e-mail porque utiliza a plataforma RAYO.<br>
+              <a href="${privacyUrl}" style="color:${RAYO_MUTED};text-decoration:underline;">Política de Privacidade</a>
+              · &copy; ${new Date().getFullYear()} RAYO
             </td>
           </tr>
         </table>
@@ -117,44 +117,44 @@ function layout(body: string, preheader: string): string {
 }
 
 export async function sendVerificationCodeEmail(email: string, code: string): Promise<SendResult> {
-  const subject = `Seu código de verificação RAIO: ${code}`;
-  const preheader = `Use o código ${code} para continuar seu cadastro na RAIO.`;
+  const subject = `Seu código de verificação RAYO: ${code}`;
+  const preheader = `Use o código ${code} para continuar seu cadastro na RAYO.`;
   const html = layout(
     `
-      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Confirme seu e-mail</h1>
-      <p style="margin:0 0 24px 0;color:${RAIO_TEXT};">Use o código abaixo para continuar seu cadastro na RAIO. Ele expira em <strong>10 minutos</strong>.</p>
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAYO_TEXT};">Confirme seu e-mail</h1>
+      <p style="margin:0 0 24px 0;color:${RAYO_TEXT};">Use o código abaixo para continuar seu cadastro na RAYO. Ele expira em <strong>10 minutos</strong>.</p>
       <div style="text-align:center;margin:32px 0;">
-        <div style="display:inline-block;padding:18px 32px;border-radius:12px;background:${RAIO_BG};color:${RAIO_ACCENT};font-size:32px;font-weight:700;letter-spacing:8px;font-family:'Courier New',monospace;">${code}</div>
+        <div style="display:inline-block;padding:18px 32px;border-radius:12px;background:${RAYO_BG};color:${RAYO_ACCENT};font-size:32px;font-weight:700;letter-spacing:8px;font-family:'Courier New',monospace;">${code}</div>
       </div>
-      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Se você não solicitou este código, pode ignorar este e-mail com segurança.</p>
+      <p style="margin:0 0 8px 0;color:${RAYO_MUTED};font-size:14px;">Se você não solicitou este código, pode ignorar este e-mail com segurança.</p>
     `,
     preheader,
   );
-  const text = `Seu código de verificação RAIO é: ${code}\n\nO código expira em 10 minutos.\n\nSe você não solicitou este código, pode ignorar este e-mail.`;
+  const text = `Seu código de verificação RAYO é: ${code}\n\nO código expira em 10 minutos.\n\nSe você não solicitou este código, pode ignorar este e-mail.`;
   return sendEmail({ to: email, subject, html, text });
 }
 
 export async function sendWelcomeEmail(email: string, name: string): Promise<SendResult> {
-  const subject = "Bem-vindo(a) à RAIO!";
+  const subject = "Bem-vindo(a) à RAYO!";
   const preheader = "Sua jornada de transformação familiar começa agora.";
   const html = layout(
     `
-      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Olá, ${escapeHtml(name)}!</h1>
-      <p style="margin:0 0 16px 0;">Que alegria ter você na <strong>RAIO</strong>. Sua jornada de transformação familiar começa agora.</p>
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAYO_TEXT};">Olá, ${escapeHtml(name)}!</h1>
+      <p style="margin:0 0 16px 0;">Que alegria ter você na <strong>RAYO</strong>. Sua jornada de transformação familiar começa agora.</p>
       <p style="margin:0 0 16px 0;">Aqui você encontra:</p>
-      <ul style="margin:0 0 24px 20px;padding:0;color:${RAIO_TEXT};">
+      <ul style="margin:0 0 24px 20px;padding:0;color:${RAYO_TEXT};">
         <li style="margin-bottom:8px;">Cursos e livros sobre relacionamento, fé e propósito</li>
         <li style="margin-bottom:8px;">Uma comunidade engajada de pessoas como você</li>
         <li style="margin-bottom:8px;">Missões diárias para fortalecer hábitos saudáveis</li>
         <li style="margin-bottom:8px;">Conselheiro IA para te apoiar quando precisar</li>
       </ul>
       <div style="text-align:center;margin:32px 0;">
-        <a href="${APP_URL}" style="display:inline-block;padding:14px 28px;background:${RAIO_ACCENT};color:${RAIO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Acessar a plataforma</a>
+        <a href="${APP_URL}" style="display:inline-block;padding:14px 28px;background:${RAYO_ACCENT};color:${RAYO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Acessar a plataforma</a>
       </div>
     `,
     preheader,
   );
-  const text = `Olá, ${name}!\n\nQue alegria ter você na RAIO. Sua jornada de transformação familiar começa agora.\n\nAcesse: ${APP_URL}`;
+  const text = `Olá, ${name}!\n\nQue alegria ter você na RAYO. Sua jornada de transformação familiar começa agora.\n\nAcesse: ${APP_URL}`;
   return sendEmail({ to: email, subject, html, text });
 }
 
@@ -163,23 +163,23 @@ export async function sendPasswordResetEmail(
   name: string,
   resetUrl: string,
 ): Promise<SendResult> {
-  const subject = "Redefina sua senha RAIO";
-  const preheader = "Recebemos uma solicitação para redefinir a senha da sua conta RAIO.";
+  const subject = "Redefina sua senha RAYO";
+  const preheader = "Recebemos uma solicitação para redefinir a senha da sua conta RAYO.";
   const html = layout(
     `
-      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Redefinir senha</h1>
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAYO_TEXT};">Redefinir senha</h1>
       <p style="margin:0 0 16px 0;">Olá, ${escapeHtml(name)}.</p>
-      <p style="margin:0 0 16px 0;">Recebemos uma solicitação para redefinir a senha da sua conta RAIO. Clique no botão abaixo para escolher uma nova senha. O link é válido por <strong>30 minutos</strong> e pode ser usado uma única vez.</p>
+      <p style="margin:0 0 16px 0;">Recebemos uma solicitação para redefinir a senha da sua conta RAYO. Clique no botão abaixo para escolher uma nova senha. O link é válido por <strong>30 minutos</strong> e pode ser usado uma única vez.</p>
       <div style="text-align:center;margin:32px 0;">
-        <a href="${resetUrl}" style="display:inline-block;padding:14px 28px;background:${RAIO_ACCENT};color:${RAIO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Redefinir minha senha</a>
+        <a href="${resetUrl}" style="display:inline-block;padding:14px 28px;background:${RAYO_ACCENT};color:${RAYO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Redefinir minha senha</a>
       </div>
-      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Se o botão não funcionar, copie e cole este link no seu navegador:</p>
-      <p style="margin:0 0 24px 0;word-break:break-all;color:${RAIO_ACCENT};font-size:13px;">${resetUrl}</p>
-      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Se você não solicitou esta redefinição, pode ignorar este e-mail com segurança — sua senha atual continua válida.</p>
+      <p style="margin:0 0 8px 0;color:${RAYO_MUTED};font-size:14px;">Se o botão não funcionar, copie e cole este link no seu navegador:</p>
+      <p style="margin:0 0 24px 0;word-break:break-all;color:${RAYO_ACCENT};font-size:13px;">${resetUrl}</p>
+      <p style="margin:0 0 8px 0;color:${RAYO_MUTED};font-size:14px;">Se você não solicitou esta redefinição, pode ignorar este e-mail com segurança — sua senha atual continua válida.</p>
     `,
     preheader,
   );
-  const text = `Olá, ${name}.\n\nRecebemos uma solicitação para redefinir a senha da sua conta RAIO.\n\nAcesse o link abaixo para escolher uma nova senha (válido por 30 minutos, uso único):\n${resetUrl}\n\nSe você não solicitou esta redefinição, ignore este e-mail.`;
+  const text = `Olá, ${name}.\n\nRecebemos uma solicitação para redefinir a senha da sua conta RAYO.\n\nAcesse o link abaixo para escolher uma nova senha (válido por 30 minutos, uso único):\n${resetUrl}\n\nSe você não solicitou esta redefinição, ignore este e-mail.`;
   return sendEmail({ to: email, subject, html, text });
 }
 
@@ -195,14 +195,14 @@ export async function sendNewMessageEmail(
   const safePreview = preview.length > 240 ? `${preview.slice(0, 237)}…` : preview;
   const html = layout(
     `
-      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Nova mensagem</h1>
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAYO_TEXT};">Nova mensagem</h1>
       <p style="margin:0 0 16px 0;">Olá, ${escapeHtml(recipientName)}.</p>
       <p style="margin:0 0 16px 0;"><strong>${escapeHtml(senderName)}</strong> te enviou uma mensagem no RAYO:</p>
-      <blockquote style="margin:0 0 24px 0;padding:12px 16px;border-left:3px solid ${RAIO_ACCENT};background:${RAIO_BG};color:${RAIO_TEXT};font-style:italic;border-radius:6px;">${escapeHtml(safePreview)}</blockquote>
+      <blockquote style="margin:0 0 24px 0;padding:12px 16px;border-left:3px solid ${RAYO_ACCENT};background:${RAYO_BG};color:${RAYO_TEXT};font-style:italic;border-radius:6px;">${escapeHtml(safePreview)}</blockquote>
       <div style="text-align:center;margin:32px 0;">
-        <a href="${conversationLink}" style="display:inline-block;padding:14px 28px;background:${RAIO_ACCENT};color:${RAIO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Abrir conversa</a>
+        <a href="${conversationLink}" style="display:inline-block;padding:14px 28px;background:${RAYO_ACCENT};color:${RAYO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Abrir conversa</a>
       </div>
-      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Você está recebendo este aviso porque estava offline quando a mensagem chegou. Para evitar floods, enviamos no máximo um e-mail por hora por conversa.</p>
+      <p style="margin:0 0 8px 0;color:${RAYO_MUTED};font-size:14px;">Você está recebendo este aviso porque estava offline quando a mensagem chegou. Para evitar floods, enviamos no máximo um e-mail por hora por conversa.</p>
     `,
     preheader,
   );
@@ -216,34 +216,34 @@ export async function sendDataExportEmail(email: string, name: string): Promise<
   const date = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
   const html = layout(
     `
-      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Solicitação de exportação concluída</h1>
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAYO_TEXT};">Solicitação de exportação concluída</h1>
       <p style="margin:0 0 16px 0;">Olá, ${escapeHtml(name)}.</p>
       <p style="margin:0 0 16px 0;">Confirmamos que sua solicitação de exportação de dados foi processada em <strong>${date}</strong>, conforme previsto na LGPD (Lei Geral de Proteção de Dados).</p>
       <p style="margin:0 0 16px 0;">O arquivo JSON com todos os seus dados foi disponibilizado para download diretamente no aplicativo no momento da solicitação.</p>
-      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Se você não fez essa solicitação, entre em contato com nosso DPO em <a href="mailto:dpo@raio.app" style="color:${RAIO_ACCENT};">dpo@raio.app</a>.</p>
+      <p style="margin:0 0 8px 0;color:${RAYO_MUTED};font-size:14px;">Se você não fez essa solicitação, entre em contato com nosso DPO em <a href="mailto:dpo@rayo.app.br" style="color:${RAYO_ACCENT};">dpo@rayo.app.br</a>.</p>
     `,
     preheader,
   );
-  const text = `Olá, ${name}.\n\nSua solicitação de exportação de dados foi processada em ${date} conforme a LGPD.\n\nO arquivo JSON foi disponibilizado para download diretamente no aplicativo.\n\nSe você não fez essa solicitação, contate dpo@raio.app.`;
+  const text = `Olá, ${name}.\n\nSua solicitação de exportação de dados foi processada em ${date} conforme a LGPD.\n\nO arquivo JSON foi disponibilizado para download diretamente no aplicativo.\n\nSe você não fez essa solicitação, contate dpo@rayo.app.br.`;
   return sendEmail({ to: email, subject, html, text });
 }
 
 export async function sendAccountDeletionEmail(email: string, name: string): Promise<SendResult> {
-  const subject = "Sua conta RAIO foi removida (LGPD)";
+  const subject = "Sua conta RAYO foi removida (LGPD)";
   const preheader = "Confirmamos a exclusão da sua conta e a anonimização dos seus dados pessoais.";
   const date = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
   const html = layout(
     `
-      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Conta removida</h1>
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAYO_TEXT};">Conta removida</h1>
       <p style="margin:0 0 16px 0;">Olá, ${escapeHtml(name)}.</p>
-      <p style="margin:0 0 16px 0;">Confirmamos que sua conta RAIO foi removida em <strong>${date}</strong> e seus dados pessoais foram anonimizados, conforme previsto na LGPD.</p>
+      <p style="margin:0 0 16px 0;">Confirmamos que sua conta RAYO foi removida em <strong>${date}</strong> e seus dados pessoais foram anonimizados, conforme previsto na LGPD.</p>
       <p style="margin:0 0 16px 0;">Conteúdos públicos que você havia compartilhado na comunidade foram desvinculados da sua identidade.</p>
       <p style="margin:0 0 16px 0;">Sentiremos sua falta. Se mudar de ideia, será sempre bem-vindo(a) de volta — basta criar uma nova conta.</p>
-      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Se você não solicitou esta exclusão, entre em contato com nosso DPO em <a href="mailto:dpo@raio.app" style="color:${RAIO_ACCENT};">dpo@raio.app</a> imediatamente.</p>
+      <p style="margin:0 0 8px 0;color:${RAYO_MUTED};font-size:14px;">Se você não solicitou esta exclusão, entre em contato com nosso DPO em <a href="mailto:dpo@rayo.app.br" style="color:${RAYO_ACCENT};">dpo@rayo.app.br</a> imediatamente.</p>
     `,
     preheader,
   );
-  const text = `Olá, ${name}.\n\nSua conta RAIO foi removida em ${date} e seus dados pessoais foram anonimizados conforme a LGPD.\n\nSentiremos sua falta. Se não foi você, contate dpo@raio.app imediatamente.`;
+  const text = `Olá, ${name}.\n\nSua conta RAYO foi removida em ${date} e seus dados pessoais foram anonimizados conforme a LGPD.\n\nSentiremos sua falta. Se não foi você, contate dpo@rayo.app.br imediatamente.`;
   return sendEmail({ to: email, subject, html, text });
 }
 
@@ -280,12 +280,12 @@ export async function sendClassInterestDigestEmail(
     .map((s) => {
       const dateStr = new Date(s.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
       const msg = s.message
-        ? `<div style="margin-top:6px;color:${RAIO_TEXT};font-size:14px;">"${escapeHtml(s.message)}"</div>`
+        ? `<div style="margin-top:6px;color:${RAYO_TEXT};font-size:14px;">"${escapeHtml(s.message)}"</div>`
         : "";
       return `
-        <li style="margin-bottom:12px;padding:12px 14px;background:${RAIO_BG};border-radius:8px;list-style:none;">
-          <div style="color:${RAIO_TEXT};font-weight:600;">${escapeHtml(s.name)}</div>
-          <div style="color:${RAIO_MUTED};font-size:13px;"><a href="mailto:${escapeHtml(s.email)}" style="color:${RAIO_ACCENT};">${escapeHtml(s.email)}</a> · ${escapeHtml(dateStr)}</div>
+        <li style="margin-bottom:12px;padding:12px 14px;background:${RAYO_BG};border-radius:8px;list-style:none;">
+          <div style="color:${RAYO_TEXT};font-weight:600;">${escapeHtml(s.name)}</div>
+          <div style="color:${RAYO_MUTED};font-size:13px;"><a href="mailto:${escapeHtml(s.email)}" style="color:${RAYO_ACCENT};">${escapeHtml(s.email)}</a> · ${escapeHtml(dateStr)}</div>
           ${msg}
         </li>`;
     })
@@ -295,14 +295,14 @@ export async function sendClassInterestDigestEmail(
     .join("\n");
   const html = layout(
     `
-      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Novos interessados na sua turma</h1>
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAYO_TEXT};">Novos interessados na sua turma</h1>
       <p style="margin:0 0 16px 0;">Olá, ${escapeHtml(recipientName)}.</p>
       <p style="margin:0 0 16px 0;">Você recebeu <strong>${newInterestCount}</strong> ${newInterestCount === 1 ? "novo interesse" : "novos interesses"} na sua turma <strong>${escapeHtml(courseTitle)}</strong> nas últimas 24 horas.</p>
       <ul style="margin:0 0 24px 0;padding:0;">${samplesHtml}</ul>
       <div style="text-align:center;margin:32px 0;">
-        <a href="${courseLink}" style="display:inline-block;padding:14px 28px;background:${RAIO_ACCENT};color:${RAIO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Abrir turma</a>
+        <a href="${courseLink}" style="display:inline-block;padding:14px 28px;background:${RAYO_ACCENT};color:${RAYO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Abrir turma</a>
       </div>
-      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Você está recebendo este resumo porque é o líder desta turma. Para evitar floods, enviamos no máximo um e-mail por dia por turma.</p>
+      <p style="margin:0 0 8px 0;color:${RAYO_MUTED};font-size:14px;">Você está recebendo este resumo porque é o líder desta turma. Para evitar floods, enviamos no máximo um e-mail por dia por turma.</p>
     `,
     preheader,
   );
@@ -326,18 +326,18 @@ export async function sendClassOpenEmail(
   const safeTitle = escapeHtml(courseTitle);
   const customHtml =
     customMessage && customMessage.trim()
-      ? `<div style="margin:16px 0;padding:14px 16px;border-left:3px solid ${RAIO_ACCENT};background:${RAIO_BG};color:${RAIO_TEXT};border-radius:6px;">${escapeHtml(customMessage).replace(/\n/g, "<br>")}</div>`
+      ? `<div style="margin:16px 0;padding:14px 16px;border-left:3px solid ${RAYO_ACCENT};background:${RAYO_BG};color:${RAYO_TEXT};border-radius:6px;">${escapeHtml(customMessage).replace(/\n/g, "<br>")}</div>`
       : "";
   const html = layout(
     `
-      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">As matrículas abriram</h1>
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAYO_TEXT};">As matrículas abriram</h1>
       <p style="margin:0 0 16px 0;">Olá, ${safeName}.</p>
       <p style="margin:0 0 16px 0;">Você pediu pra ser avisado(a) quando a turma <strong>${safeTitle}</strong> abrisse — e o dia chegou! As matrículas estão abertas a partir de agora.</p>
       ${customHtml}
       <div style="text-align:center;margin:32px 0;">
-        <a href="${courseLink}" style="display:inline-block;padding:14px 28px;background:${RAIO_ACCENT};color:${RAIO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Garantir minha vaga</a>
+        <a href="${courseLink}" style="display:inline-block;padding:14px 28px;background:${RAYO_ACCENT};color:${RAYO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Garantir minha vaga</a>
       </div>
-      <p style="margin:0 0 8px 0;color:${RAIO_MUTED};font-size:14px;">Se você não se inscreveu pra esse aviso, pode ignorar este e-mail com segurança.</p>
+      <p style="margin:0 0 8px 0;color:${RAYO_MUTED};font-size:14px;">Se você não se inscreveu pra esse aviso, pode ignorar este e-mail com segurança.</p>
     `,
     preheader,
   );
@@ -367,12 +367,12 @@ export async function sendContatoEmail(p: ContatoPayload): Promise<SendResult> {
   const safeMsg = escapeHtml(p.mensagem).replace(/\n/g, "<br>");
   const html = layout(
     `
-      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAIO_TEXT};">Nova mensagem em /contato</h1>
-      <p style="margin:0 0 8px 0;color:${RAIO_TEXT};"><strong>Nome:</strong> ${safeNome}</p>
-      <p style="margin:0 0 8px 0;color:${RAIO_TEXT};"><strong>E-mail:</strong> <a href="mailto:${safeEmail}" style="color:${RAIO_ACCENT};">${safeEmail}</a></p>
-      <p style="margin:0 0 16px 0;color:${RAIO_TEXT};"><strong>Assunto:</strong> ${safeAssunto}</p>
-      <div style="margin:0 0 16px 0;padding:16px;border-left:3px solid ${RAIO_ACCENT};background:${RAIO_BG};color:${RAIO_TEXT};border-radius:6px;">${safeMsg}</div>
-      <p style="margin:0;color:${RAIO_MUTED};font-size:13px;">Responda diretamente a este e-mail para falar com a pessoa.</p>
+      <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAYO_TEXT};">Nova mensagem em /contato</h1>
+      <p style="margin:0 0 8px 0;color:${RAYO_TEXT};"><strong>Nome:</strong> ${safeNome}</p>
+      <p style="margin:0 0 8px 0;color:${RAYO_TEXT};"><strong>E-mail:</strong> <a href="mailto:${safeEmail}" style="color:${RAYO_ACCENT};">${safeEmail}</a></p>
+      <p style="margin:0 0 16px 0;color:${RAYO_TEXT};"><strong>Assunto:</strong> ${safeAssunto}</p>
+      <div style="margin:0 0 16px 0;padding:16px;border-left:3px solid ${RAYO_ACCENT};background:${RAYO_BG};color:${RAYO_TEXT};border-radius:6px;">${safeMsg}</div>
+      <p style="margin:0;color:${RAYO_MUTED};font-size:13px;">Responda diretamente a este e-mail para falar com a pessoa.</p>
     `,
     preheader,
   );

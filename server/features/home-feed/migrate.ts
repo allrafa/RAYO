@@ -103,7 +103,7 @@ const SEEDS: SeedItem[] = [
   // trending
   {
     section: "trending",
-    title: "Top 50 RAIO Brasil",
+    title: "Top 50 RAYO Brasil",
     subtitle: "Os mais assistidos",
     image_url:
       "https://images.unsplash.com/photo-1744805624952-dab790f6b3bd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080",
@@ -141,7 +141,7 @@ const SEEDS: SeedItem[] = [
   // podcasts
   {
     section: "podcasts",
-    title: "RAIO Talks",
+    title: "RAYO Talks",
     subtitle: "Conversas transformadoras",
     image_url:
       "https://images.unsplash.com/photo-1588912914078-2fe5224fd8b8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1080",

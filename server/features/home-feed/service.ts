@@ -27,7 +27,7 @@ export const VALID_SECTIONS: HomeFeedSection[] = [
 export const SECTION_LABELS: Record<HomeFeedSection, string> = {
   recently_played: "Tocados recentemente",
   made_for_you: "Feito para você",
-  trending: "Em alta no RAIO",
+  trending: "Em alta no RAYO",
   podcasts: "Podcasts",
 };
 

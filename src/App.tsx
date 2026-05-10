@@ -43,6 +43,14 @@ import { TrilhaSucessoPage } from "./components/trilhas/TrilhaSucessoPage";
 import { analytics } from "./lib/analytics/mixpanel";
 import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
 import { RAYO_SCROLL_TOP } from "./lib/scrollTop";
+import { migrateLegacyStorage } from "./lib/storageMigration";
+
+// Task #163 — migra chaves `raio_*`/`raio-*` legadas (consent, theme,
+// user-extended, search-recents, etc.) para `rayo_*`/`rayo-*` no
+// primeiro boot pós-rebrand. Idempotente: roda no module-load (antes
+// de qualquer componente ler localStorage) e marca flag pra não
+// repetir.
+migrateLegacyStorage();
 import "./styles/nav-rayo.css";
 import "./styles/playlists-rayo.css";
 import "./styles/app-rayo.css";
@@ -222,7 +230,7 @@ function AppContent() {
 
   // Task #45 — deep-link `/u/<id>` para perfis compartilhados. Captura
   // o id na primeira renderização, troca pra aba Perfil e deixa o
-  // sessionStorage `raio-pending-profile` pra PerfilPage abrir o
+  // sessionStorage `rayo-pending-profile` pra PerfilPage abrir o
   // perfil correto (mesmo contrato usado pela busca). A URL é limpa
   // para não disparar de novo num refresh.
   useEffect(() => {
@@ -231,7 +239,7 @@ function AppContent() {
     if (!match) return;
     const id = match[1];
     try {
-      sessionStorage.setItem("raio-pending-profile", id);
+      sessionStorage.setItem("rayo-pending-profile", id);
     } catch {
       // ignore
     }
@@ -248,7 +256,7 @@ function AppContent() {
   // em sessionStorage e troca pra aba Comunidade. ComunidadePage lê
   // `rayo-pending-community-slug` e abre a vista da comunidade.
   // Task #122 — também detecta `/c/<slug>/p/<id>` (discussão dedicada,
-  // compartilhável). Nesse caso parqueia também o id em `raio-pending-post`
+  // compartilhável). Nesse caso parqueia também o id em `rayo-pending-post`
   // (mesma chave usada pela busca/perfil), e ComunidadePage abre o
   // CommentsPanel direto — slug fica só pro SEO/canonical e pra UI sugerir
   // a comunidade no header do post.

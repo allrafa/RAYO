@@ -166,7 +166,7 @@ export async function completeTodayItem(
 //   1. Cursos em progresso (user_course_progress) ordenados pelo MAX
 //      do timestamp da última aula tocada/concluída do curso.
 //   2. Conteúdos CMS (audio/video/reels) que o usuário marcou no
-//      "Hoje no RAIO" nos últimos 30 dias — único proxy real de
+//      "Hoje no RAYO" nos últimos 30 dias — único proxy real de
 //      engajamento por usuário com CMS hoje.
 // O frontend mescla isso com o progresso de YouTube guardado em
 // localStorage (não temos sincronização server-side ainda).

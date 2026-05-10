@@ -25,7 +25,7 @@ interface Props {
   onTabChange: (tab: string) => void;
 }
 
-const RECENTS_KEY = "raio-search-recents";
+const RECENTS_KEY = "rayo-search-recents";
 const MAX_RECENTS = 8;
 
 function loadRecents(): string[] {

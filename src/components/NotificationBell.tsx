@@ -134,7 +134,7 @@ export function NotificationBell({ onTabChange }: NotificationBellProps) {
       const profileMatch = link.match(/^\/u\/(\d+)\/?$/);
       if (profileMatch) {
         try {
-          sessionStorage.setItem("raio-pending-profile", profileMatch[1]);
+          sessionStorage.setItem("rayo-pending-profile", profileMatch[1]);
         } catch {
           /* ignore */
         }
@@ -148,11 +148,11 @@ export function NotificationBell({ onTabChange }: NotificationBellProps) {
       const turmaMatch = link.match(/^\/turmas\/(\d+)(?:\/post\/(\d+))?\/?$/);
       if (turmaMatch) {
         const turmaId = Number(turmaMatch[1]);
-        // raio-pending-post é consumido pelo TurmaCommunityTab no
+        // rayo-pending-post é consumido pelo TurmaCommunityTab no
         // mount/load para rolar até o post alvo e destacar.
         if (turmaMatch[2]) {
           try {
-            sessionStorage.setItem("raio-pending-post", turmaMatch[2]);
+            sessionStorage.setItem("rayo-pending-post", turmaMatch[2]);
           } catch {
             /* ignore */
           }

@@ -7,7 +7,7 @@ import {
 } from "../replit_integrations/object_storage/index.js";
 import { logger } from "../utils/logger.js";
 
-// Task #48 — bridge between RAIO upload code and Replit Object Storage.
+// Task #48 — bridge between RAYO upload code and Replit Object Storage.
 //
 // Storage contract:
 //   - Bytes live in the Replit-managed GCS bucket (public-access

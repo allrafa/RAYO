@@ -436,7 +436,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Load user data from localStorage
   useEffect(() => {
-    const savedData = localStorage.getItem('raio-user-extended');
+    const savedData = localStorage.getItem('rayo-user-extended');
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
@@ -451,7 +451,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateUserData = (updates: Partial<UserData>) => {
     const newUserData = { ...userData, ...updates };
     setUserData(newUserData);
-    localStorage.setItem('raio-user-extended', JSON.stringify(newUserData));
+    localStorage.setItem('rayo-user-extended', JSON.stringify(newUserData));
   };
 
   const enrollInCourse = async (courseId: number) => {

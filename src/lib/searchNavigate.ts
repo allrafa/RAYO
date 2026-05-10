@@ -25,8 +25,11 @@ export interface SearchNavigateDeps {
   onClose?: () => void;
 }
 
-export const SEARCH_OPEN_POST = "raio:open-post";
-export const SEARCH_OPEN_PROFILE = "raio:open-profile";
+// Task #163 — eventos renomeados pra `rayo:*` no rebrand RAIO→RAYO.
+// Listeners e dispatchers são internos a este SPA, então a troca é
+// atômica (sem dual-emission).
+export const SEARCH_OPEN_POST = "rayo:open-post";
+export const SEARCH_OPEN_PROFILE = "rayo:open-profile";
 
 export function navigateToSearchHit(r: SearchHit, deps: SearchNavigateDeps) {
   const close = () => deps.onClose?.();
@@ -45,7 +48,7 @@ export function navigateToSearchHit(r: SearchHit, deps: SearchNavigateDeps) {
     // montar via sessionStorage como fallback.
     deps.onTabChange("comunidade");
     try {
-      sessionStorage.setItem("raio-pending-post", String(r.id));
+      sessionStorage.setItem("rayo-pending-post", String(r.id));
     } catch {
       // ignore
     }
@@ -59,7 +62,7 @@ export function navigateToSearchHit(r: SearchHit, deps: SearchNavigateDeps) {
   if (r.kind === "user") {
     deps.onTabChange("perfil");
     try {
-      sessionStorage.setItem("raio-pending-profile", String(r.id));
+      sessionStorage.setItem("rayo-pending-profile", String(r.id));
     } catch {
       // ignore
     }

@@ -16,9 +16,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Carregar tema do localStorage na montagem
   useEffect(() => {
-    // Mantém a chave 'raio-theme' por compatibilidade com sessões existentes
-    // após o rebrand RAIO→RAYO (Maio/2026); migrar via release futura.
-    const savedTheme = localStorage.getItem('raio-theme') as Theme | null;
+    // Task #163 — chave migrada pra 'rayo-theme' no rebrand RAIO→RAYO
+    // (Maio/2026). storageMigration.ts copiou o valor legado no boot.
+    const savedTheme = localStorage.getItem('rayo-theme') as Theme | null;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
     // Prioridade: 1. localStorage, 2. preferência do sistema, 3. light (padrão)
@@ -40,7 +40,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.classList.add(newTheme);
     
     // Salvar no localStorage
-    localStorage.setItem('raio-theme', newTheme);
+    localStorage.setItem('rayo-theme', newTheme);
     
     // Atualizar meta theme-color para mobile
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');

@@ -120,7 +120,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     if (!user) return;
     // Task #45 — formato `${APP_URL}/u/<id>`. Quando aberto, App.tsx
     // detecta `/u/:id`, troca pra aba Perfil e dispara o deep-link via
-    // sessionStorage `raio-pending-profile` (mesmo contrato da busca).
+    // sessionStorage `rayo-pending-profile` (mesmo contrato da busca).
     const baseUrl =
       (import.meta.env.VITE_APP_URL as string | undefined)?.replace(/\/$/, "") ||
       window.location.origin;
@@ -143,7 +143,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
           icon: MessageSquare,
           label: "Falar com Suporte",
           onClick: () => {
-            window.location.href = `mailto:${supportEmail}?subject=Suporte%20RAIO`;
+            window.location.href = `mailto:${supportEmail}?subject=Suporte%20RAYO`;
           },
         }
       : supportWhatsappUrl
@@ -228,10 +228,15 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       const detail = (e as CustomEvent<{ id: number }>).detail;
       if (detail?.id) void loadOtherProfile(detail.id);
     };
-    window.addEventListener("raio:open-profile", handler as EventListener);
+    window.addEventListener("rayo:open-profile", handler as EventListener);
     try {
-      const pending = sessionStorage.getItem("raio-pending-profile");
+      // Task #163 — chave migrada pra `rayo-pending-profile`; fallback
+      // pra legada cobre tabs com SPA antigo no mesmo device.
+      const pending =
+        sessionStorage.getItem("rayo-pending-profile") ??
+        sessionStorage.getItem("raio-pending-profile");
       if (pending) {
+        sessionStorage.removeItem("rayo-pending-profile");
         sessionStorage.removeItem("raio-pending-profile");
         void loadOtherProfile(Number(pending));
       }
@@ -240,7 +245,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     }
     return () => {
       window.removeEventListener(
-        "raio:open-profile",
+        "rayo:open-profile",
         handler as EventListener,
       );
     };
@@ -294,7 +299,7 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `raio-meus-dados-${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `rayo-meus-dados-${new Date().toISOString().slice(0, 10)}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);

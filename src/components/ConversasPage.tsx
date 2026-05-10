@@ -569,9 +569,14 @@ export function ConversasPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const pending = sessionStorage.getItem("rayo-pending-conversation");
+      // Task #163 — fallback pra chave legada `raio-pending-conversation`
+      // cobre tabs com SPA antigo no mesmo device.
+      const pending =
+        sessionStorage.getItem("rayo-pending-conversation") ??
+        sessionStorage.getItem("raio-pending-conversation");
       if (pending) {
         sessionStorage.removeItem("rayo-pending-conversation");
+        sessionStorage.removeItem("raio-pending-conversation");
         const id = Number.parseInt(pending, 10);
         if (Number.isFinite(id) && id > 0) setActiveId(id);
       }

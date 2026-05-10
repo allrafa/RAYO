@@ -248,15 +248,15 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
   // contrato do `rayo-pending-post`/CustomEvent já existente em ComunidadePage.
   const openPost = (postId: number, highlightCommentId?: number) => {
     try {
-      sessionStorage.setItem("raio-pending-post", String(postId));
+      sessionStorage.setItem("rayo-pending-post", String(postId));
       if (highlightCommentId) {
-        sessionStorage.setItem("raio-pending-post-comment", String(highlightCommentId));
+        sessionStorage.setItem("rayo-pending-post-comment", String(highlightCommentId));
       } else {
-        sessionStorage.removeItem("raio-pending-post-comment");
+        sessionStorage.removeItem("rayo-pending-post-comment");
       }
     } catch { /* noop */ }
     window.dispatchEvent(
-      new CustomEvent("raio:open-post", {
+      new CustomEvent("rayo:open-post", {
         detail: { id: postId, highlight_comment_id: highlightCommentId },
       }),
     );
