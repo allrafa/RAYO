@@ -12,17 +12,31 @@ import path from "node:path";
  */
 export default async function globalSetup() {
   const exe = process.env.REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+  const artifactsDir = path.resolve("tests/e2e/.artifacts");
+  mkdirSync(artifactsDir, { recursive: true });
+
   if (!exe) {
-    throw new Error("REPLIT_PLAYWRIGHT_CHROMIUM_EXECUTABLE não definido — Playwright precisa do binário do Chromium fornecido pelo Replit.");
+    // Ambiente local (fora do container Replit): deixa o fixture usar
+    // `chromium.launch()` normal (Playwright bundled). Limpa qualquer
+    // ws-endpoint stale que tenha sobrado de uma run anterior no Replit.
+    try {
+      writeFileSync(path.join(artifactsDir, "ws-endpoint.txt"), "");
+    } catch {
+      // ignore
+    }
+    delete process.env.E2E_WS_ENDPOINT;
+    // eslint-disable-next-line no-console
+    console.log("[e2e] Modo local — usando chromium bundled do Playwright (sem CDP).");
+    return;
   }
 
-  const artifactsDir = path.resolve("tests/e2e/.artifacts");
   mkdirSync(artifactsDir, { recursive: true });
   const userDataDir = path.join(artifactsDir, `chrome-profile-${Date.now()}`);
   mkdirSync(userDataDir, { recursive: true });
 
+  const headed = process.env.PWDEBUG === "1" || process.env.HEADED === "1";
   const args = [
-    "--headless=new",
+    headed ? "--headless=false" : "--headless=new",
     "--no-sandbox",
     "--disable-setuid-sandbox",
     "--disable-dev-shm-usage",

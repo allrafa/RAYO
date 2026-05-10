@@ -90,7 +90,6 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/node": "^20.10.0",
     "@vitejs/plugin-react": "^4.7.0",
-    "pg-types": "^4.1.0",
     "tailwindcss": "4.1.12",
     "vite": "6.3.5"
   },

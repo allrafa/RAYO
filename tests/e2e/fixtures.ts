@@ -7,22 +7,39 @@ import path from "node:path";
  * `global-setup.ts` via CDP. Necessário porque `chromium.launch()` morre
  * no container do Replit (ver global-setup.ts pro motivo).
  */
+function readWsEndpoint(): string | null {
+  const fromEnv = process.env.E2E_WS_ENDPOINT?.trim();
+  if (fromEnv) return fromEnv;
+  try {
+    const fromFile = readFileSync(
+      path.resolve("tests/e2e/.artifacts/ws-endpoint.txt"),
+      "utf8",
+    ).trim();
+    return fromFile || null;
+  } catch {
+    return null;
+  }
+}
+
 export const test = base.extend<{}, { browser: Browser }>({
   browser: [
     async ({}, use) => {
-      let wsEndpoint = process.env.E2E_WS_ENDPOINT;
-      if (!wsEndpoint) {
-        // global-setup roda em outro processo; lê do disco.
-        wsEndpoint = readFileSync(
-          path.resolve("tests/e2e/.artifacts/ws-endpoint.txt"),
-          "utf8",
-        ).trim();
+      const wsEndpoint = readWsEndpoint();
+      if (wsEndpoint) {
+        // Modo Replit: conecta no chromium spawneado pelo global-setup via CDP.
+        const browser = await chromium.connectOverCDP(wsEndpoint);
+        await use(browser);
+        // `connectOverCDP` retorna um wrapper que ao fechar apenas desconecta —
+        // o processo master é morto pelo `global-teardown.ts`.
+        await browser.close().catch(() => {});
+      } else {
+        // Modo local: chromium bundled do Playwright (`npx playwright install chromium`).
+        const browser = await chromium.launch({
+          headless: !(process.env.PWDEBUG === "1" || process.env.HEADED === "1"),
+        });
+        await use(browser);
+        await browser.close().catch(() => {});
       }
-      const browser = await chromium.connectOverCDP(wsEndpoint);
-      await use(browser);
-      // Não chama browser.close() — isso desligaria o Chromium master.
-      // Apenas desconecta. O teardown global mata o processo.
-      await browser.close().catch(() => {});
     },
     { scope: "worker" },
   ],
