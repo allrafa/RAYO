@@ -8,6 +8,8 @@ import {
   updateUserRole,
   listModerationPosts,
   listModerationComments,
+  listModerationReviews,
+  listCoursesWithReviews,
   setPostHidden,
   setCommentHidden,
   AdminError,
@@ -181,6 +183,42 @@ router.post("/moderation/comments/:id/hide", requireRole("moderator"), async (re
       sendError(res, err.message, err.code, err.statusCode);
       return;
     }
+    next(err);
+  }
+});
+
+// Task #156 — listagem de avaliações de cursos para moderação. A action de
+// ocultar/reexibir continua em POST /api/courses/reviews/:reviewId/hide
+// (Task #155, expõe `setCourseReviewHidden` que recalcula AVG/students).
+router.get("/reviews", requireRole("moderator"), async (req, res, next) => {
+  try {
+    const status = parseStatus(req.query.status);
+    if (status === null) {
+      sendError(res, "Status inválido", "INVALID_STATUS", 400);
+      return;
+    }
+    let courseId: number | null = null;
+    if (req.query.course_id !== undefined && req.query.course_id !== "" && req.query.course_id !== "all") {
+      const parsed = parseInt(req.query.course_id as string, 10);
+      if (isNaN(parsed) || parsed < 1) {
+        sendError(res, "ID de curso inválido", "INVALID_COURSE_ID", 400);
+        return;
+      }
+      courseId = parsed;
+    }
+    const { page, limit } = parsePagination(req);
+    const result = await listModerationReviews(status, courseId, page, limit);
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/reviews/courses", requireRole("moderator"), async (_req, res, next) => {
+  try {
+    const courses = await listCoursesWithReviews();
+    success(res, { courses });
+  } catch (err) {
     next(err);
   }
 });

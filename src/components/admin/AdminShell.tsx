@@ -1,16 +1,17 @@
 import { useState, useMemo } from "react";
-import { LayoutDashboard, Users as UsersIcon, ShieldAlert, ArrowLeft, LogOut, FileText, Sparkles, GraduationCap, CreditCard, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Users as UsersIcon, ShieldAlert, ArrowLeft, LogOut, FileText, Sparkles, GraduationCap, CreditCard, Star, type LucideIcon } from "lucide-react";
 import { useAuth, userHasRole } from "../AuthContext";
 import type { UserRole } from "../AuthContext";
 import { AdminOverviewPage } from "./AdminOverviewPage";
 import { AdminUsersPage } from "./AdminUsersPage";
 import { AdminModerationPage } from "./AdminModerationPage";
+import { AdminReviewsPage } from "./AdminReviewsPage";
 import { AdminCmsPage } from "./AdminCmsPage";
 import { AdminHomeFeedPage } from "./AdminHomeFeedPage";
 import { AdminTurmasPage } from "./AdminTurmasPage";
 import { AdminTrailsPage } from "./AdminTrailsPage";
 
-type AdminSection = "overview" | "cms" | "home-feed" | "turmas" | "trails" | "users" | "moderation";
+type AdminSection = "overview" | "cms" | "home-feed" | "turmas" | "trails" | "users" | "moderation" | "reviews";
 
 interface AdminShellProps {
   onExitAdmin: () => void;
@@ -34,6 +35,7 @@ export function AdminShell({ onExitAdmin }: AdminShellProps) {
     { id: "trails", label: "Trilhas (Stripe)", icon: CreditCard, minRole: "admin" },
     { id: "home-feed", label: "Home / Destaques", icon: Sparkles, minRole: "producer" },
     { id: "moderation", label: "Moderação", icon: ShieldAlert, minRole: "moderator" },
+    { id: "reviews", label: "Avaliações", icon: Star, minRole: "moderator" },
     { id: "users", label: "Usuários", icon: UsersIcon, minRole: "admin" },
   ];
 
@@ -53,6 +55,7 @@ export function AdminShell({ onExitAdmin }: AdminShellProps) {
       switch (id) {
         case "users":       return <AdminUsersPage />;
         case "moderation":  return <AdminModerationPage />;
+        case "reviews":     return <AdminReviewsPage />;
         case "cms":         return <AdminCmsPage />;
         case "turmas":      return <AdminTurmasPage />;
         case "trails":      return <AdminTrailsPage />;

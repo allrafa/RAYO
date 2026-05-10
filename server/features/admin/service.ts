@@ -328,6 +328,83 @@ export async function setPostHidden(
   }
 }
 
+export interface ModerationReviewRow {
+  id: number;
+  course_id: number;
+  course_title: string;
+  rating: number;
+  comment: string | null;
+  author_id: number;
+  author_name: string;
+  is_hidden: boolean;
+  hidden_at: string | null;
+  hidden_by: number | null;
+  hidden_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Task #156 — lista reviews recentes pra moderação. Suporta filtro por
+// curso e por status (visible/hidden/all). Junta course + author + moderador.
+export async function listModerationReviews(
+  status: "all" | "visible" | "hidden" = "all",
+  courseId: number | null = null,
+  page = 1,
+  limit = 20,
+) {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (status === "visible") where.push(`r.is_hidden = FALSE`);
+  if (status === "hidden") where.push(`r.is_hidden = TRUE`);
+  if (courseId !== null) {
+    params.push(courseId);
+    where.push(`r.course_id = $${params.length}`);
+  }
+  const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+
+  const offset = (page - 1) * limit;
+  const countResult = await query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count FROM course_reviews r ${whereSql}`,
+    params,
+  );
+  const total = parseInt(countResult.rows[0].count, 10);
+
+  const dataParams = [...params, limit, offset];
+  const { rows } = await query<ModerationReviewRow>(
+    `SELECT r.id, r.course_id,
+            c.title AS course_title,
+            r.rating, r.comment,
+            r.user_id AS author_id, u.name AS author_name,
+            r.is_hidden, r.hidden_at, r.hidden_by,
+            mu.name AS hidden_by_name,
+            r.created_at, r.updated_at
+     FROM course_reviews r
+     JOIN users u ON u.id = r.user_id
+     JOIN courses c ON c.id = r.course_id
+     LEFT JOIN users mu ON mu.id = r.hidden_by
+     ${whereSql}
+     ORDER BY r.updated_at DESC
+     LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    dataParams,
+  );
+
+  return { reviews: rows, total, page, limit, totalPages: Math.ceil(total / limit) || 1 };
+}
+
+// Task #156 — catálogo enxuto de cursos pra alimentar o filtro do painel.
+// Apenas cursos que têm pelo menos uma review (visível ou oculta).
+export async function listCoursesWithReviews() {
+  const { rows } = await query<{ id: number; title: string; reviews_count: number }>(
+    `SELECT c.id, c.title,
+            COUNT(r.id)::int AS reviews_count
+     FROM courses c
+     JOIN course_reviews r ON r.course_id = c.id
+     GROUP BY c.id, c.title
+     ORDER BY c.title ASC`,
+  );
+  return rows;
+}
+
 export async function setCommentHidden(
   commentId: number,
   hidden: boolean,
