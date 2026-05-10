@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
 import {
   MessageCircle, MessageSquarePlus, Search, MoreVertical, Send, ArrowLeft, Loader2,
   Check, CheckCheck, Archive, Trash2, ArchiveRestore, Image as ImageIcon,
-  Mic, Square, X, Paperclip,
+  Mic, Square, X, Paperclip, SmilePlus,
 } from "lucide-react";
+import { EmojiReactionPicker, type ReactionAggregate } from "./EmojiReactionPicker";
 import { AudioBubble } from "./AudioBubble";
 import { motion, type PanInfo } from "motion/react";
 import { Button } from "./ui/button";
@@ -59,6 +60,109 @@ interface MessageItem {
   attachment_meta: Record<string, unknown> | null;
   read_at: string | null;
   created_at: string;
+  reactions: ReactionAggregate[];
+  user_reaction: string | null;
+}
+
+// Task #148 — wrapper para long-press (mobile) / hover (desktop) que abre
+// o picker de reações ancorado na bolha. Os chips agregados aparecem
+// logo abaixo. Reusa a paleta `REACTION_EMOJIS` da Comunidade.
+const LONG_PRESS_MS = 450;
+
+interface MessageReactionsControlProps {
+  messageId: number;
+  mine: boolean;
+  reactions: ReactionAggregate[];
+  userReaction: string | null;
+  onChange: (next: { reactions: ReactionAggregate[]; userReaction: string | null }) => void;
+  children: ReactNode;
+}
+
+function MessageReactionsControl({
+  messageId, mine, reactions, userReaction, onChange, children,
+}: MessageReactionsControlProps) {
+  const [open, setOpen] = useState(false);
+  const [pressing, setPressing] = useState(false);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressFiredRef = useRef(false);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    setPressing(false);
+  }, []);
+
+  useEffect(() => () => clearLongPress(), [clearLongPress]);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Só ativa long-press em toque/caneta — desktop usa hover.
+    if (e.pointerType === "mouse") return;
+    longPressFiredRef.current = false;
+    setPressing(true);
+    if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressFiredRef.current = true;
+      if ("vibrate" in navigator) navigator.vibrate(20);
+      setOpen(true);
+      setPressing(false);
+    }, LONG_PRESS_MS);
+  };
+  const handlePointerEnd = () => clearLongPress();
+  const handleClickCapture = (e: React.MouseEvent) => {
+    // Se long-press disparou, suprime o click "tap" subsequente
+    // (que abriria lightbox / play do áudio sem querer).
+    if (longPressFiredRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      longPressFiredRef.current = false;
+    }
+  };
+
+  return (
+    <div className={`ra-chat-bubble-wrap ${mine ? "mine" : ""} ${pressing ? "pressing" : ""}`}>
+      <button
+        type="button"
+        className="ra-chat-react-trigger"
+        aria-label="Reagir à mensagem"
+        onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+      >
+        <SmilePlus className="w-3.5 h-3.5" />
+      </button>
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        onPointerLeave={handlePointerEnd}
+        onClickCapture={handleClickCapture}
+        onContextMenu={(e) => {
+          // Long-press no Android dispara contextmenu — bloqueia o menu nativo
+          // pra deixar o picker tomar conta.
+          if (open || pressing) e.preventDefault();
+        }}
+      >
+        {children}
+      </div>
+      {/* Picker + chips agregados — reusa o EmojiReactionPicker da Comunidade
+          (Task #122) com targetType="message". Controle externo de `open`
+          permite abrir via long-press na bolha; trigger interno fica
+          escondido (`hideTrigger`) porque a UI de abrir é a própria bolha. */}
+      <div className={`ra-chat-reactions-wrap ${mine ? "justify-end" : "justify-start"}`}>
+        <EmojiReactionPicker
+          targetType="message"
+          targetId={messageId}
+          reactions={reactions}
+          userReaction={userReaction}
+          onChange={onChange}
+          variant="compact"
+          hideTrigger
+          open={open}
+          onOpenChange={setOpen}
+        />
+      </div>
+    </div>
+  );
 }
 
 interface UserSearchResult {
@@ -567,6 +671,28 @@ export function ConversasPage() {
           timers.delete(conversation_id);
         }, 6600);
         timers.set(conversation_id, handle);
+        return;
+      }
+      if (event.type === "message:reaction") {
+        const { conversation_id, message_id, reactions } = event.payload;
+        if (activeIdRef.current !== conversation_id) return;
+        setMessages((prev) => prev.map((m) => {
+          if (m.id !== message_id) return m;
+          // O payload SSE é compartilhado entre os dois lados — só carrega o
+          // agregado, não o `user_reaction` per-tab. Reconciliamos local:
+          // se o emoji que eu reagi não está mais no agregado (outra aba minha
+          // removeu / autor moderou), limpa minha reação. Caso contrário,
+          // mantém — o servidor é a fonte da verdade pro próximo fetch /
+          // toggle.
+          const stillThere = m.user_reaction
+            ? reactions.some((r) => r.emoji === m.user_reaction)
+            : false;
+          return {
+            ...m,
+            reactions,
+            user_reaction: stillThere ? m.user_reaction : null,
+          };
+        }));
         return;
       }
       if (event.type === "message:new") {
@@ -1171,6 +1297,17 @@ export function ConversasPage() {
                           } ${idx === 0 && !info.dateSeparator ? "first" : ""}`}
                         >
                           <div className={`flex flex-col w-fit max-w-[min(80%,560px)] ${mine ? "items-end" : "items-start"}`}>
+                            <MessageReactionsControl
+                              messageId={m.id}
+                              mine={mine}
+                              reactions={m.reactions || []}
+                              userReaction={m.user_reaction || null}
+                              onChange={({ reactions, userReaction }) => {
+                                setMessages((prev) => prev.map((mm) =>
+                                  mm.id === m.id ? { ...mm, reactions, user_reaction: userReaction } : mm
+                                ));
+                              }}
+                            >
                             {isImageOnly ? (
                               imgErrorIds.has(m.id) ? (
                                 <div className="ra-chat-attachment-fallback">Imagem indisponível</div>
@@ -1231,6 +1368,7 @@ export function ConversasPage() {
                                 )}
                               </div>
                             )}
+                            </MessageReactionsControl>
                             {footer}
                           </div>
                         </div>

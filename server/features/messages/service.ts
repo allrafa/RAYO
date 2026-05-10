@@ -20,6 +20,61 @@ const SEARCH_MAX_RESULTS = 10;
 export type MessageKind = "text" | "image" | "audio";
 const ALLOWED_KINDS: ReadonlySet<MessageKind> = new Set(["text", "image", "audio"]);
 
+// Task #148 — set fechado de reações em mensagens de DM. Espelha o set
+// de Comunidade (Task #122) e o `REACTION_EMOJIS` do frontend
+// (src/components/EmojiReactionPicker.tsx). Qualquer emoji fora vira 400.
+export const ALLOWED_DM_REACTION_EMOJIS = ["❤️", "😂", "🙏", "💡", "🔥", "👏"] as const;
+export type DmReactionEmoji = (typeof ALLOWED_DM_REACTION_EMOJIS)[number];
+const DM_REACTION_SET = new Set<string>(ALLOWED_DM_REACTION_EMOJIS);
+
+function assertValidDmReactionEmoji(emoji: unknown): asserts emoji is DmReactionEmoji {
+  if (typeof emoji !== "string" || !DM_REACTION_SET.has(emoji)) {
+    throw new AppError("Emoji de reação inválido", "INVALID_REACTION_EMOJI", 400);
+  }
+}
+
+export interface MessageReactionAggregate {
+  emoji: string;
+  count: number;
+}
+
+// Agrega reações em batch para uma lista de message_ids.
+async function aggregateMessageReactions(
+  messageIds: number[],
+): Promise<Map<number, MessageReactionAggregate[]>> {
+  const out = new Map<number, MessageReactionAggregate[]>();
+  if (messageIds.length === 0) return out;
+  const { rows } = await query<{ mid: number; emoji: string; cnt: number }>(
+    `SELECT message_id AS mid, emoji, COUNT(*)::int AS cnt
+       FROM message_reactions
+      WHERE message_id = ANY($1::int[])
+      GROUP BY message_id, emoji
+      ORDER BY cnt DESC, emoji ASC`,
+    [messageIds],
+  );
+  for (const r of rows) {
+    const arr = out.get(r.mid) || [];
+    arr.push({ emoji: r.emoji, count: r.cnt });
+    out.set(r.mid, arr);
+  }
+  return out;
+}
+
+async function userMessageReactionsFor(
+  messageIds: number[],
+  userId: number | undefined,
+): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
+  if (!userId || messageIds.length === 0) return out;
+  const { rows } = await query<{ mid: number; emoji: string }>(
+    `SELECT message_id AS mid, emoji FROM message_reactions
+      WHERE user_id = $1 AND message_id = ANY($2::int[])`,
+    [userId, messageIds],
+  );
+  for (const r of rows) out.set(r.mid, r.emoji);
+  return out;
+}
+
 export interface ConversationItem {
   id: number;
   user_a_id: number;
@@ -49,6 +104,8 @@ export interface MessageItem {
   attachment_meta: Record<string, unknown> | null;
   read_at: string | null;
   created_at: string;
+  reactions: MessageReactionAggregate[];
+  user_reaction: string | null;
 }
 
 interface ConversationRowDb {
@@ -100,7 +157,11 @@ async function assertConversationMember(conversationId: number, userId: number):
   return rows[0];
 }
 
-async function resolveMessageRow(row: MessageRowDb): Promise<MessageItem> {
+async function resolveMessageRow(
+  row: MessageRowDb,
+  reactions: MessageReactionAggregate[] = [],
+  userReaction: string | null = null,
+): Promise<MessageItem> {
   return {
     id: row.id,
     conversation_id: row.conversation_id,
@@ -112,6 +173,8 @@ async function resolveMessageRow(row: MessageRowDb): Promise<MessageItem> {
     attachment_meta: row.attachment_meta,
     read_at: row.read_at,
     created_at: row.created_at,
+    reactions,
+    user_reaction: userReaction,
   };
 }
 
@@ -286,7 +349,15 @@ export async function getMessages(
     [conversationId, limit, offset, clearedAt]
   );
 
-  const resolved = await Promise.all(rows.reverse().map(resolveMessageRow));
+  const ordered = rows.reverse();
+  const ids = ordered.map((r) => r.id);
+  const reactionsMap = await aggregateMessageReactions(ids);
+  const userReactionMap = await userMessageReactionsFor(ids, userId);
+  const resolved = await Promise.all(
+    ordered.map((r) =>
+      resolveMessageRow(r, reactionsMap.get(r.id) || [], userReactionMap.get(r.id) || null),
+    ),
+  );
 
   return {
     messages: resolved,
@@ -632,6 +703,121 @@ export async function searchUsers(userId: number, queryStr: string): Promise<Arr
       avatar_url: await resolveStoredMediaUrl(r.avatar_url),
     }))
   );
+}
+
+// ─────────────────────────── Reactions (Task #148) ───────────────────────────
+
+interface MessageReactionResult {
+  reactions: MessageReactionAggregate[];
+  user_reaction: string | null;
+}
+
+// Carrega a mensagem + valida que o userId é membro da conversa.
+// Retorna o conversation_id e o other participant para o fan-out SSE.
+async function loadMessageForReaction(
+  messageId: number,
+  userId: number,
+): Promise<{ conversationId: number; otherUserId: number }> {
+  const { rows } = await query<{ conversation_id: number; user_a_id: number; user_b_id: number }>(
+    `SELECT m.conversation_id, c.user_a_id, c.user_b_id
+       FROM messages m
+       JOIN conversations c ON c.id = m.conversation_id
+      WHERE m.id = $1`,
+    [messageId],
+  );
+  if (rows.length === 0) {
+    throw new AppError("Mensagem não encontrada", "MESSAGE_NOT_FOUND", 404);
+  }
+  const row = rows[0];
+  if (row.user_a_id !== userId && row.user_b_id !== userId) {
+    throw new AppError("Acesso negado", "FORBIDDEN", 403);
+  }
+  return {
+    conversationId: row.conversation_id,
+    otherUserId: row.user_a_id === userId ? row.user_b_id : row.user_a_id,
+  };
+}
+
+function publishReactionUpdate(
+  conversationId: number,
+  messageId: number,
+  reactions: MessageReactionAggregate[],
+  selfId: number,
+  otherId: number,
+): void {
+  const payload = {
+    conversation_id: conversationId,
+    message_id: messageId,
+    reactions,
+  };
+  publishToUser(selfId, "message:reaction", payload);
+  if (otherId !== selfId) publishToUser(otherId, "message:reaction", payload);
+}
+
+// POST: aplica/troca/remove (toggle) a reação do usuário na mensagem.
+// Mesma semântica do toggle de Comunidade (Task #122): se já existe e é o
+// mesmo emoji → remove; se já existe e é diferente → troca; se não existe → cria.
+export async function toggleMessageReaction(
+  messageId: number,
+  userId: number,
+  emoji: string,
+): Promise<MessageReactionResult> {
+  assertValidDmReactionEmoji(emoji);
+  const { conversationId, otherUserId } = await loadMessageForReaction(messageId, userId);
+
+  const { rows: existing } = await query<{ emoji: string }>(
+    `SELECT emoji FROM message_reactions WHERE message_id = $1 AND user_id = $2`,
+    [messageId, userId],
+  );
+
+  let userReaction: string | null = null;
+  if (existing.length === 0) {
+    await query(
+      `INSERT INTO message_reactions (message_id, user_id, emoji) VALUES ($1, $2, $3)
+       ON CONFLICT (message_id, user_id) DO UPDATE SET emoji = EXCLUDED.emoji`,
+      [messageId, userId, emoji],
+    );
+    userReaction = emoji;
+  } else if (existing[0].emoji === emoji) {
+    await query(
+      `DELETE FROM message_reactions WHERE message_id = $1 AND user_id = $2`,
+      [messageId, userId],
+    );
+    userReaction = null;
+  } else {
+    await query(
+      `UPDATE message_reactions SET emoji = $3 WHERE message_id = $1 AND user_id = $2`,
+      [messageId, userId, emoji],
+    );
+    userReaction = emoji;
+  }
+
+  const reactionsMap = await aggregateMessageReactions([messageId]);
+  const reactions = reactionsMap.get(messageId) || [];
+
+  publishReactionUpdate(conversationId, messageId, reactions, userId, otherUserId);
+
+  return { reactions, user_reaction: userReaction };
+}
+
+// DELETE: remove a reação do usuário na mensagem (idempotente).
+export async function removeMessageReaction(
+  messageId: number,
+  userId: number,
+): Promise<MessageReactionResult> {
+  const { conversationId, otherUserId } = await loadMessageForReaction(messageId, userId);
+
+  await query(
+    `DELETE FROM message_reactions WHERE message_id = $1 AND user_id = $2`,
+    [messageId, userId],
+  );
+
+  const reactionsMap = await aggregateMessageReactions([messageId]);
+  const reactions = reactionsMap.get(messageId) || [];
+
+  publishReactionUpdate(conversationId, messageId, reactions, userId, otherUserId);
+
+  return { reactions, user_reaction: null };
 }
 
 export async function anonymizeUserMessages(userId: number, client?: { query: typeof query }): Promise<void> {

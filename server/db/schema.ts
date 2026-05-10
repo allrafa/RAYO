@@ -652,6 +652,23 @@ export async function initializeSchema() {
   await query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url VARCHAR(500)`);
   await query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_meta JSONB`);
 
+  // Task #148 — reações multi-emoji em mensagens de DM. Mesma estratégia
+  // de posts/comments na Comunidade (Task #122): set fechado de 6 emojis,
+  // UNIQUE(message_id, user_id) — um usuário só pode ter 1 reação por
+  // mensagem (toggle/swap/remove). Validação do emoji acontece no service.
+  await query(`
+    CREATE TABLE IF NOT EXISTS message_reactions (
+      id SERIAL PRIMARY KEY,
+      message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      emoji VARCHAR(8) NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(message_id, user_id)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_message_reactions_message_id ON message_reactions(message_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_message_reactions_user_id ON message_reactions(user_id)`);
+
   // Estado per-participante da conversa: arquivar e excluir só afetam
   // o lado de quem clicou. Excluir também marca um corte (`cleared_at`)
   // para a listagem de mensagens, sem mexer no histórico do outro lado.

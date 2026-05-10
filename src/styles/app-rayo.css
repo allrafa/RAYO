@@ -412,6 +412,84 @@
   white-space: nowrap;
 }
 
+/* ── DM reactions (Task #148) — chips colados no canto da bolha ── */
+.ra-chat-bubble-wrap {
+  position: relative;
+}
+.ra-chat-react-trigger {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--rayo-sand-50);
+  border: 1px solid var(--rayo-sand-300);
+  color: var(--rayo-ink-400);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease;
+  cursor: pointer;
+  z-index: 1;
+}
+.ra-chat-bubble-wrap.mine .ra-chat-react-trigger { right: calc(100% + 6px); }
+.ra-chat-bubble-wrap:not(.mine) .ra-chat-react-trigger { left: calc(100% + 6px); }
+@media (hover: hover) and (pointer: fine) {
+  .ra-chat-bubble-wrap:hover .ra-chat-react-trigger,
+  .ra-chat-bubble-wrap:focus-within .ra-chat-react-trigger {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+.ra-chat-react-trigger:hover { color: var(--rayo-terra-500); }
+.ra-chat-react-trigger:focus-visible {
+  outline: 2px solid var(--rayo-terra-500);
+  outline-offset: 2px;
+}
+
+.ra-chat-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: -6px;
+  padding: 0 4px;
+  position: relative;
+  z-index: 1;
+}
+.ra-chat-reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+  background: var(--rayo-sand-50);
+  border: 1px solid var(--rayo-sand-300);
+  color: var(--rayo-ink-700);
+  cursor: pointer;
+  transition: transform .12s ease, background .12s ease;
+}
+.ra-chat-reaction-chip:hover { transform: scale(1.05); }
+.ra-chat-reaction-chip.mine {
+  background: var(--rayo-terra-100);
+  border-color: var(--rayo-terra-500);
+  color: var(--rayo-terra-500);
+  font-weight: 600;
+}
+.ra-chat-reaction-chip > span:first-child { font-size: 13px; }
+
+/* Long-press feedback no mobile: leve pulse antes do picker abrir. */
+.ra-chat-bubble-wrap.pressing > * { transition: transform .12s ease; }
+.ra-chat-bubble-wrap.pressing > .ra-chat-bubble,
+.ra-chat-bubble-wrap.pressing > .ra-chat-attachment,
+.ra-chat-bubble-wrap.pressing > .ra-chat-emoji-jumbo {
+  transform: scale(0.97);
+}
+
 /* Pílula central de separador de data (Hoje / Ontem / Quinta). */
 .ra-chat-date-pill-wrap {
   display: flex;

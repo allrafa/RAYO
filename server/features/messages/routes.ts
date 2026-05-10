@@ -14,6 +14,8 @@ import {
   searchUsers,
   setConversationArchived,
   deleteConversationForUser,
+  toggleMessageReaction,
+  removeMessageReaction,
   type MessageKind,
 } from "./service.js";
 import { subscribeUser, publishToUser } from "./events.js";
@@ -449,6 +451,50 @@ router.post("/conversations/:id/listening", requireAuth, async (req, res, next) 
       message_id: messageId,
     });
     success(res, { ok: true });
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+// ─────────── Reactions (Task #148) ───────────
+// POST /api/messages/:id/reactions  — toggle/swap emoji
+// DELETE /api/messages/:id/reactions — remover reação do usuário
+router.post("/:id/reactions", requireAuth, async (req, res, next) => {
+  try {
+    const messageId = parseInt(req.params.id, 10);
+    if (isNaN(messageId) || messageId < 1) {
+      sendError(res, "ID de mensagem inválido", "INVALID_MESSAGE_ID", 400);
+      return;
+    }
+    const emoji = req.body?.emoji;
+    if (typeof emoji !== "string" || !emoji) {
+      sendError(res, "emoji é obrigatório", "EMOJI_REQUIRED", 400);
+      return;
+    }
+    const result = await toggleMessageReaction(messageId, req.user!.id, emoji);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+router.delete("/:id/reactions", requireAuth, async (req, res, next) => {
+  try {
+    const messageId = parseInt(req.params.id, 10);
+    if (isNaN(messageId) || messageId < 1) {
+      sendError(res, "ID de mensagem inválido", "INVALID_MESSAGE_ID", 400);
+      return;
+    }
+    const result = await removeMessageReaction(messageId, req.user!.id);
+    success(res, result);
   } catch (err) {
     if (err instanceof AppError) {
       sendError(res, err.message, err.code, err.statusCode);
