@@ -29,6 +29,11 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Playwright E2E artifacts
+tests/e2e/.artifacts/
+playwright-report/
+test-results/
+
 # Replit
 .cache/
 .config/
