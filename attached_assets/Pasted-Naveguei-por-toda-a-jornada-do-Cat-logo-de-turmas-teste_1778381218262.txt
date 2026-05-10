@@ -1,0 +1,50 @@
+Naveguei por toda a jornada do "Catálogo de turmas", testei os filtros das cinco trilhas (Solteiro, Namoro, Noivos, Casados, Pais) e tentei comprar tanto um curso individual quanto explorar a compra de uma trilha. Existe um problema estrutural muito sério: o produto se vende como uma plataforma com 5 trilhas e cursos pagos, mas não existe checkout em lugar nenhum. Abaixo o relatório completo, organizado por gravidade.
+1. ERRO CRÍTICO: não existe jornada de compra. Nenhuma.
+Cliquei em "Ver turma" no curso "Educação Positiva: Criando Filhos Resilientes" (R$ 347,00). A página de detalhe do curso mostra preço, botão grande "Garantir minha vaga", e logo abaixo o texto literal: "Sem checkout agora. Avisamos por e-mail quando abrir." Ao clicar no CTA, abre um modal "Em breve! … Deixe seus dados e a gente te avisa em primeira mão quando as vagas abrirem" com um botão "Avise-me".
+Isso é gravíssimo: a interface inteira simula uma loja (cards com preço destacado, botão CTA vermelho, avaliações, número de matriculados), mas no fim é só formulário de waitlist. O usuário se sente enganado — clicou em algo que parecia "comprar" e foi parar numa lista de espera. Não há carrinho, não há checkout, não há gateway, não há comparativo trilha vs. curso avulso, não há cupom, não há método de pagamento.
+2. ERRO CRÍTICO: trilhas inexistentes ou com conteúdo errado
+Testei as 5 trilhas e achei várias incoerências graves:
+Solteiro — única trilha "Identidade & propósito" mostra 1 item, e esse item é "Preparação para o Namoro Saudável". Ou seja, a trilha de solteiro é, na prática, sobre namoro. Falta de coerência editorial.
+Noivos — trilha "Preparando o sim" tem 0 itens. E a seção "Cursos para Noivos" também diz "0 cursos / Sem cursos para Noivos ainda" — só que no carrossel "Cursos com boas avaliações" (logo acima na mesma página!) aparece "Construindo um Noivado com Propósito" (R$ 197, 4.8/892 avaliações). Existe o curso, mas a taxonomia que liga curso → trilha → segmento está quebrada.
+Casados — tem 2 trilhas com 3 itens cada, parece a única razoavelmente populada.
+Pais e Namoro — não cheguei a inspecionar em profundidade, mas o padrão sugere o mesmo problema.
+3. ERRO CRÍTICO: o filtro "Para o seu momento" é decorativo
+Ao trocar entre Solteiro, Namoro, Noivos, Casados, Pais, os contadores em "Explore por formato" continuam idênticos em todos os filtros: Cursos: 6, Livros: 11, Áudios: 0, Vídeos: 5, Séries: 0, Reels: 0. Os carrosséis "Mais populares" e "Cursos com boas avaliações" também trazem os mesmos itens (ex.: "Educação Positiva" — claramente Pais — aparece quando filtro Solteiro). O único bloco que muda visualmente é "Trilhas curadas / Selecionadas para …".
+Conclusão: o filtro de segmento não está conectado à query de catálogo. Ele só troca o título e a lista de trilhas. Isso quebra a promessa central do produto ("conteúdo certo para o momento certo").
+4. ERRO GRAVE: o botão "Ver trilha" não leva à trilha
+Cliquei em "Ver trilha" e o card simplesmente expande in-line mostrando os itens em lista, sem navegar para uma página dedicada da trilha. Não existe URL própria da trilha, não há descrição estendida, não há preço da trilha, não há comparativo "trilha vs. cursos avulsos", não há benefícios, não há CTA "Comprar trilha completa". Para um produto cujo modelo de negócio é justamente vender a trilha completa (e dar todos os cursos como bônus), não ter uma landing de trilha é incompreensível.
+5. ERRO GRAVE: ausência total de proposta de valor "trilha = todos os cursos"
+A regra que você me passou ("quem compra a trilha ganha todos os cursos") não aparece em lugar nenhum na interface. Nenhum card, banner, badge ou tooltip menciona isso. O usuário olha o curso "Educação Positiva" por R$ 347 e a trilha "Comunicação no casamento" sem preço — não tem como entender que comprar a trilha sai mais em conta.
+6. ERRO GRAVE: trilhas sem preço
+Os cursos têm preço (R$ 347, R$ 297, R$ 197, Gratuito). As trilhas não têm preço, não têm CTA de compra, nem aviso de "incluído no Premium". Como o usuário decide?
+7. Erro de UX: CTA enganoso "Garantir minha vaga"
+O texto sugere que a compra está acontecendo. O correto seria dizer claramente "Entrar na lista de espera" enquanto o checkout não está pronto, ou exibir um badge "Em breve" no card do curso desde a listagem, para o usuário não clicar achando que vai comprar.
+8. Erro de UX: cursos "Gratuito" também não têm jornada
+Mesmo "Finanças para Casais" e "Fundamentos do Relacionamento", marcados como Gratuito, mostram só "Ver turma" — não testei até o fim, mas se o padrão for o mesmo, nem o curso grátis tem fluxo de matrícula real, o que afasta o usuário de gerar engajamento.
+9. Erro de UX: contagem zero exposta sem cuidado
+Mostrar "Áudios: 0 itens", "Séries: 0 itens", "Reels: 0 itens" como cards clicáveis no "Explore por formato" passa sensação de loja vazia. Esses formatos deveriam estar escondidos enquanto não houver conteúdo, ou marcados com "em breve" e visualmente desabilitados.
+10. Erro de UX: número de membros zerado nos cursos
+Na página do curso "Educação Positiva" aparece "0 membros" — em um curso com nota 4.9 e 4.102 avaliações. Inconsistência óbvia que destrói a credibilidade do social proof.
+11. Erro de UX: rating com 4.102 avaliações em curso novo
+Os números (4.102, 3.421, 2.848, 1.923, 892 avaliações) parecem dados fake de seed/demo que ficaram no produto. Em um produto sem checkout aberto, é impossível ter milhares de avaliações reais. Isso é problema de confiança, e se o usuário perceber, queima a marca.
+
+Sugestões de melhoria (priorizadas)
+A. Reformular completamente a jornada de compra (essencial)
+A página de cada trilha precisa virar uma landing de venda real, contendo: nome da trilha, segmento (Solteiro/Namoro/etc.), descrição longa, lista expandida dos cursos inclusos com duração total ("12h de conteúdo, 5 cursos, 47 aulas"), depoimentos, preço da trilha em destaque, comparativo com a soma dos cursos avulsos ("R$ 947 avulsos → R$ 497 na trilha, economia de 47%"), CTA "Comprar trilha completa", badge "Inclui todos os cursos abaixo + bônus", garantia (7 dias?), formas de pagamento (Pix, cartão, parcelamento). Cada curso dentro da trilha deve ter um selo "Incluído na trilha".
+Na página do curso individual: mostrar o preço avulso, mas com um banner persistente em cima dizendo "Este curso faz parte da trilha X. Compre a trilha por R$ 497 e leve mais 4 cursos por menos." com CTA secundário "Ver trilha completa". Isso é o clássico upsell de bundle — Hotmart, Udemy, Domestika fazem assim.
+B. Conectar o filtro de segmento ao catálogo de verdade
+Cada curso e cada trilha precisa de uma tag de segmento (solteiro | namoro | noivos | casados | pais — pode ser multi-tag) e o filtro "Para o seu momento" deve filtrar todos os blocos da página: cursos, livros, áudios, vídeos, trilhas, populares. Hoje ele só muda o bloco de Trilhas curadas.
+C. Corrigir a taxonomia das trilhas
+Trilha de Solteiro com curso de "Preparação para Namoro" não faz sentido — ou renomear a trilha, ou trocar o conteúdo. Trilha de Noivos com 0 itens mas com curso "Construindo um Noivado com Propósito" disponível é bug de associação no banco de dados — precisa popular.
+D. Remover ou rotular formatos vazios
+Esconder os cards de Áudios/Séries/Reels enquanto tiverem 0 itens, ou marcar com badge "Em breve" e desabilitar o clique. Loja com prateleira vazia comunica abandono.
+E. Honestidade no CTA enquanto não há checkout
+Se o checkout não está pronto, trocar globalmente "Garantir minha vaga" por "Avise-me quando abrir", colocar selo "Pré-lançamento" no card e remover o preço da capa (ou exibir como "A partir de R$ 347 — em breve"). Hoje a mistura "preço grande + botão CTA + sem checkout" parece bait-and-switch.
+F. Implementar checkout real assim que possível
+Stripe, Pagar.me, Hotmart, Eduzz ou Stripe + Pix — qualquer integração permite cobrar. Sem isso, o produto não fatura. Recomendo começar com um único produto: a trilha de Casados (a única hoje populada), validar o fluxo, e expandir.
+G. Página "Comparar trilhas" / hub de planos
+Considerando que existem 5 trilhas e o usuário pode estar em mais de um momento (ex.: casados + pais), valeria uma página única /planos mostrando as 5 lado a lado: o que tem cada uma, preço, e um bundle "Família completa" com todas as 5 (oferta âncora premium). Isso amarra o "Premium" do header — hoje o botão Premium existe mas não há uma página de planos clara.
+H. Resolver os números falsos
+Se 4.102 alunos é dado de seed/staging, remover antes do go-live. Se for real (improvável sem checkout), mostrar "0 membros" no detalhe é incoerente. Os dados precisam bater entre lista e detalhe.
+I. Página da trilha com URL própria e SEO
+Cada trilha deve ter URL tipo /trilhas/casados/comunicacao-no-casamento com meta-tags, descrição rica e imagem de capa. Hoje a trilha não tem página → não tem SEO → não tem como rodar ads para ela → não tem como compartilhar link. Dinheiro deixado na mesa.
