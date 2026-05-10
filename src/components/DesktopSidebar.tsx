@@ -169,19 +169,23 @@ export function DesktopSidebar({
           )}
         </button>
 
-        <button
-          type="button"
-          className="rn-item"
-          disabled
-          aria-disabled="true"
-          aria-label="Configurações (em breve)"
-          title={isMinimized ? "Configurações — em breve" : "Em breve"}
-        >
-          <span className="rn-item-icon-wrap">
-            <Settings className="w-5 h-5" />
-          </span>
-          {!isMinimized && <span className="rn-item-label">Configurações</span>}
-        </button>
+        {/* "Configurações (em breve)" só pra produtores+ — usuário final
+            não precisa ver botão desabilitado sem contexto. */}
+        {userHasRole(user, "producer") && (
+          <button
+            type="button"
+            className="rn-item"
+            disabled
+            aria-disabled="true"
+            aria-label="Configurações (em breve)"
+            title={isMinimized ? "Configurações — em breve" : "Em breve"}
+          >
+            <span className="rn-item-icon-wrap">
+              <Settings className="w-5 h-5" />
+            </span>
+            {!isMinimized && <span className="rn-item-label">Configurações</span>}
+          </button>
+        )}
 
         <button
           type="button"

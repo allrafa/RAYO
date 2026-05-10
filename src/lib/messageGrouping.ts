@@ -28,7 +28,7 @@ export interface MessageRenderInfo<M extends GroupableMessage> {
 }
 
 /** Janela em ms pra considerar duas mensagens como "do mesmo grupo". */
-const GROUP_WINDOW_MS = 2 * 60_000;
+const GROUP_WINDOW_MS = 5 * 60_000;
 
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());

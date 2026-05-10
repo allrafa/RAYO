@@ -33,6 +33,7 @@ export interface ConversationItem {
   last_message_content: string | null;
   last_message_sender_id: number | null;
   last_message_created_at: string | null;
+  last_message_meta: Record<string, unknown> | null;
   unread_count: number;
   archived_at: string | null;
 }
@@ -63,6 +64,7 @@ interface ConversationRowDb {
   last_message_content: string | null;
   last_message_sender_id: number | null;
   last_message_created_at: string | null;
+  last_message_meta: Record<string, unknown> | null;
   unread_count: number;
   archived_at: string | null;
 }
@@ -146,6 +148,7 @@ export async function listConversations(
        lm.content AS last_message_content,
        lm.sender_id AS last_message_sender_id,
        lm.created_at AS last_message_created_at,
+       lm.attachment_meta AS last_message_meta,
        COALESCE(uc.unread_count, 0)::int AS unread_count,
        s.archived_at
      FROM conversations c
@@ -153,7 +156,7 @@ export async function listConversations(
      LEFT JOIN conversation_user_state s
        ON s.conversation_id = c.id AND s.user_id = $1
      LEFT JOIN LATERAL (
-       SELECT m.kind, m.content, m.sender_id, m.created_at
+       SELECT m.kind, m.content, m.sender_id, m.created_at, m.attachment_meta
        FROM messages m
        WHERE m.conversation_id = c.id
          AND (s.cleared_at IS NULL OR m.created_at > s.cleared_at)

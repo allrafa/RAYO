@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
-  MessageCircle, UserPlus, Search, MoreVertical, Send, ArrowLeft, Loader2,
+  MessageCircle, MessageSquarePlus, Search, MoreVertical, Send, ArrowLeft, Loader2,
   Check, CheckCheck, Archive, Trash2, ArchiveRestore, Image as ImageIcon,
   Mic, Square, X, Paperclip,
 } from "lucide-react";
+import { AudioBubble } from "./AudioBubble";
 import { motion, type PanInfo } from "motion/react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -42,6 +43,7 @@ interface ConversationItem {
   last_message_content: string | null;
   last_message_sender_id: number | null;
   last_message_created_at: string | null;
+  last_message_meta: Record<string, unknown> | null;
   unread_count: number;
   archived_at: string | null;
 }
@@ -101,7 +103,12 @@ function previewFor(conv: ConversationItem, currentUserId: number): string {
   const prefix = isMine ? "Você: " : "";
   if (!conv.last_message_kind && !conv.last_message_content) return "Comece a conversa...";
   if (conv.last_message_kind === "image") return `${prefix}📷 Foto`;
-  if (conv.last_message_kind === "audio") return `${prefix}🎤 Mensagem de áudio`;
+  if (conv.last_message_kind === "audio") {
+    const dur = (conv.last_message_meta as { duration_sec?: number } | null)?.duration_sec;
+    return typeof dur === "number"
+      ? `${prefix}🎤 Áudio (${formatDuration(dur)})`
+      : `${prefix}🎤 Mensagem de áudio`;
+  }
   return prefix + (conv.last_message_content || "");
 }
 
@@ -872,7 +879,7 @@ export function ConversasPage() {
             <Dialog open={showNewConvDialog} onOpenChange={setShowNewConvDialog}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline">
-                  <UserPlus className="w-4 h-4 mr-2" />
+                  <MessageSquarePlus className="w-4 h-4 mr-2" />
                   Nova
                 </Button>
               </DialogTrigger>
@@ -1123,15 +1130,18 @@ export function ConversasPage() {
                         {info.showTimestamp && <span>{formatTime(m.created_at)}</span>}
                         {mine && info.showReadIndicator && (
                           m.read_at ? (
-                            <span className="inline-flex items-center gap-0.5" title={`Lido às ${formatTime(m.read_at)}`} aria-label={`Lido às ${formatTime(m.read_at)}`}>
-                              <CheckCheck className="w-3.5 h-3.5" />
-                              <span>Lido</span>
-                            </span>
+                            <CheckCheck
+                              className="w-3.5 h-3.5"
+                              style={{ color: "var(--rayo-terra-500)" }}
+                              role="img"
+                              aria-label={`Lido às ${formatTime(m.read_at)}`}
+                            />
                           ) : (
-                            <span className="inline-flex items-center gap-0.5" title="Enviado" aria-label="Enviado">
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Enviado</span>
-                            </span>
+                            <Check
+                              className="w-3.5 h-3.5"
+                              role="img"
+                              aria-label="Enviado"
+                            />
                           )
                         )}
                       </div>
@@ -1149,7 +1159,7 @@ export function ConversasPage() {
                             !info.isFirstOfGroup ? "grouped" : ""
                           } ${idx === 0 && !info.dateSeparator ? "first" : ""}`}
                         >
-                          <div className={`flex flex-col max-w-[80%] ${mine ? "items-end" : "items-start"}`}>
+                          <div className={`flex flex-col w-fit max-w-[min(80%,560px)] ${mine ? "items-end" : "items-start"}`}>
                             {isImageOnly ? (
                               <button
                                 type="button"
@@ -1157,10 +1167,29 @@ export function ConversasPage() {
                                 className="ra-chat-attachment"
                                 aria-label="Abrir foto em tela cheia"
                               >
-                                <img src={m.attachment_url!} alt="Foto enviada" loading="lazy" />
+                                <img
+                                  src={m.attachment_url!}
+                                  alt="Foto enviada"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    const img = e.currentTarget;
+                                    const parent = img.parentElement;
+                                    if (parent) {
+                                      parent.innerHTML = '<div class="ra-chat-attachment-fallback">Imagem indisponível</div>';
+                                    }
+                                  }}
+                                />
                               </button>
                             ) : isEmojiOnly ? (
                               <p className="ra-chat-emoji-jumbo">{m.content}</p>
+                            ) : m.kind === "audio" && m.attachment_url ? (
+                              <AudioBubble
+                                src={m.attachment_url}
+                                durationSec={typeof meta.duration_sec === "number" ? meta.duration_sec : null}
+                                variant={mine ? "user" : "assistant"}
+                                onPlay={() => sendListeningPing(m.conversation_id, m.id)}
+                                onTimeUpdate={() => sendListeningPing(m.conversation_id, m.id)}
+                              />
                             ) : (
                               <div className={`ra-chat-bubble ${mine ? "user" : "assistant"}`}>
                                 {m.kind === "image" && m.attachment_url && (
@@ -1175,23 +1204,15 @@ export function ConversasPage() {
                                       alt="Foto enviada"
                                       className="rounded-lg max-w-full max-h-72 object-cover mb-2 cursor-zoom-in"
                                       loading="lazy"
+                                      onError={(e) => {
+                                        const img = e.currentTarget;
+                                        const parent = img.parentElement;
+                                        if (parent) {
+                                          parent.innerHTML = '<div class="ra-chat-attachment-fallback" style="width:100%;height:120px;margin-bottom:.5rem;">Imagem indisponível</div>';
+                                        }
+                                      }}
                                     />
                                   </button>
-                                )}
-                                {m.kind === "audio" && m.attachment_url && (
-                                  <div className="flex items-center gap-2">
-                                    <audio
-                                      controls
-                                      src={m.attachment_url}
-                                      className="max-w-full"
-                                      preload="metadata"
-                                      onPlay={() => sendListeningPing(m.conversation_id, m.id)}
-                                      onTimeUpdate={() => sendListeningPing(m.conversation_id, m.id)}
-                                    />
-                                    {typeof meta.duration_sec === "number" && (
-                                      <span className="text-xs opacity-70">{formatDuration(meta.duration_sec)}</span>
-                                    )}
-                                  </div>
                                 )}
                                 {hasText && (
                                   <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
@@ -1221,11 +1242,12 @@ export function ConversasPage() {
                     <img src={pendingAttachment.previewUrl} alt="Pré-visualização" className="w-14 h-14 rounded object-cover" />
                   ) : (
                     <div className="flex items-center gap-2 flex-1">
-                      <Mic className="w-4 h-4 text-primary" />
-                      <audio controls src={pendingAttachment.previewUrl} className="flex-1" preload="metadata" />
-                      {pendingAttachment.durationSec != null && (
-                        <span className="text-xs text-muted-foreground">{formatDuration(pendingAttachment.durationSec)}</span>
-                      )}
+                      <Mic className="w-4 h-4 text-primary flex-shrink-0" />
+                      <AudioBubble
+                        src={pendingAttachment.previewUrl}
+                        durationSec={pendingAttachment.durationSec ?? null}
+                        variant="compact"
+                      />
                     </div>
                   )}
                   <div className="flex-1 text-sm text-muted-foreground">

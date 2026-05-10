@@ -342,11 +342,15 @@
 
 /* ── CHAT BUBBLES (Conselheiro / DMs) ────────────────────────── */
 .ra-chat-bubble {
-  max-width: 75%;
-  padding: 12px 16px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  padding: 10px 14px;
   border-radius: 18px;
-  font-size: 14px; line-height: 1.5;
-  word-wrap: break-word;
+  font-size: 14px; line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  white-space: pre-wrap;
 }
 .ra-chat-bubble.assistant {
   background: var(--rayo-sand-50);
@@ -411,19 +415,114 @@
 /* Pílula central de separador de data (Hoje / Ontem / Quinta). */
 .ra-chat-date-pill-wrap {
   display: flex;
-  justify-content: center;
-  margin: 18px 0 6px;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 4px 10px;
+}
+.ra-chat-date-pill-wrap::before,
+.ra-chat-date-pill-wrap::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--rayo-sand-300);
+  opacity: 0.7;
 }
 .ra-chat-date-pill {
   display: inline-block;
-  padding: 4px 12px;
+  padding: 5px 14px;
   font-size: 11px;
-  font-weight: 500;
-  color: var(--rayo-ink-500);
-  background: var(--rayo-sand-100);
+  font-weight: 600;
+  color: var(--rayo-ink-600);
+  background: var(--rayo-sand-50);
   border-radius: 999px;
   border: 1px solid var(--rayo-sand-300);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex: 0 0 auto;
+}
+
+/* ── Áudio bubble custom (Task #145) — substitui <audio controls> nativo ── */
+.ra-audio-bubble {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+  max-width: 280px;
+}
+.ra-audio-bubble.ra-audio-compact {
+  min-width: 0;
+  flex: 1;
+  max-width: none;
+}
+.ra-audio-btn {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--rayo-terra-500);
+  color: var(--rayo-sand-50);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.ra-audio-btn:hover { opacity: 0.88; }
+.ra-audio-btn:active { transform: scale(0.96); }
+.ra-audio-bubble.ra-audio-user .ra-audio-btn {
+  background: var(--rayo-sand-50);
+  color: var(--rayo-terra-600);
+}
+.ra-audio-play-icon { margin-left: 2px; }
+.ra-audio-track {
+  flex: 1;
+  min-width: 60px;
+  height: 4px;
+  background: rgba(0,0,0,0.12);
+  border-radius: 999px;
+  cursor: pointer;
+  position: relative;
+  outline: none;
+}
+.ra-audio-track:focus-visible {
+  outline: 2px solid var(--rayo-terra-500);
+  outline-offset: 3px;
+}
+.ra-audio-bubble.ra-audio-user .ra-audio-track {
+  background: rgba(255,255,255,0.28);
+}
+.ra-audio-track-fill {
+  height: 100%;
+  background: var(--rayo-forest-700);
+  border-radius: 999px;
+  transition: width 0.1s linear;
+}
+.ra-audio-bubble.ra-audio-user .ra-audio-track-fill {
+  background: var(--rayo-sand-50);
+}
+.ra-audio-time {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.78;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* Placeholder para imagens DM que falharam ao carregar */
+.ra-chat-attachment-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 140px;
+  border-radius: 18px;
+  background: var(--rayo-sand-100);
+  border: 1px dashed var(--rayo-sand-300);
+  color: var(--rayo-ink-500);
+  font-size: 12px;
+  text-align: center;
+  padding: 8px;
 }
 
 /* ── ADMIN SHELL (densidade tabular, paleta DS) ──────────────── */

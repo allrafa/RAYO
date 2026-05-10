@@ -3,6 +3,7 @@ import { NotificationBell } from "./NotificationBell";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner@2.0.3";
 import { useApp } from "./AppContext";
+import { useAuth, userHasRole } from "./AuthContext";
 import { useScrollDirection } from "./hooks/useScrollDirection";
 import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { api } from "../lib/api";
@@ -36,6 +37,11 @@ export function TopNavbar({ onTabChange, isSidebarMinimized = false }: TopNavbar
   } = useApp();
   const { scrollDirection, isAtTop } = useScrollDirection({ threshold: 100 });
   const { count: unreadMessages } = useUnreadMessages();
+  const { user } = useAuth();
+  // Botões "em breve" (Criar conteúdo / Favoritos) só fazem sentido pra
+  // produtores+ que têm contexto pra entender o que vem aí. Pra usuário
+  // final (client) os botões desabilitados só geram dúvida — escondemos.
+  const showStaffPreviews = userHasRole(user, "producer");
 
   // Task #44: busca real com debounce + dropdown.
   useEffect(() => {
@@ -156,27 +162,31 @@ export function TopNavbar({ onTabChange, isSidebarMinimized = false }: TopNavbar
         </div>
 
         <div className="rn-topbar-actions">
-          <button
-            type="button"
-            className="rn-icon-btn"
-            disabled
-            aria-disabled="true"
-            aria-label="Criar conteúdo (em breve)"
-            title="Criar conteúdo — em breve"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
+          {showStaffPreviews && (
+            <>
+              <button
+                type="button"
+                className="rn-icon-btn"
+                disabled
+                aria-disabled="true"
+                aria-label="Criar conteúdo (em breve)"
+                title="Criar conteúdo — em breve"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
 
-          <button
-            type="button"
-            className="rn-icon-btn"
-            disabled
-            aria-disabled="true"
-            aria-label="Favoritos (em breve)"
-            title="Favoritos — em breve"
-          >
-            <Heart className="w-5 h-5" />
-          </button>
+              <button
+                type="button"
+                className="rn-icon-btn"
+                disabled
+                aria-disabled="true"
+                aria-label="Favoritos (em breve)"
+                title="Favoritos — em breve"
+              >
+                <Heart className="w-5 h-5" />
+              </button>
+            </>
+          )}
 
           <button
             type="button"
