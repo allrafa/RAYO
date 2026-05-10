@@ -1,6 +1,26 @@
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
+
+async function preflightDevServer(baseUrl: string): Promise<void> {
+  // Falha cedo com mensagem clara se o dev server não tá de pé.
+  // Sem isso, o primeiro teste falha lá no fim com timeout de navegação.
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5_000);
+    const res = await fetch(baseUrl, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok && res.status >= 500) {
+      throw new Error(`Dev server respondeu ${res.status} em ${baseUrl}`);
+    }
+  } catch (err) {
+    throw new Error(
+      `[e2e] Dev server não respondeu em ${baseUrl}. ` +
+        `Suba o workflow "Start application" (Replit) ou rode "npm run dev" localmente. ` +
+        `Causa: ${(err as Error).message}`,
+    );
+  }
+}
 
 /**
  * No container do Replit, `chromium.launch()` morre em segundos porque o
@@ -15,14 +35,18 @@ export default async function globalSetup() {
   const artifactsDir = path.resolve("tests/e2e/.artifacts");
   mkdirSync(artifactsDir, { recursive: true });
 
+  const baseUrl =
+    process.env.PLAYWRIGHT_BASE_URL ??
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000");
+  await preflightDevServer(baseUrl);
+
   if (!exe) {
     // Ambiente local (fora do container Replit): deixa o fixture usar
     // `chromium.launch()` normal (Playwright bundled). Limpa qualquer
-    // ws-endpoint stale que tenha sobrado de uma run anterior no Replit.
-    try {
-      writeFileSync(path.join(artifactsDir, "ws-endpoint.txt"), "");
-    } catch {
-      // ignore
+    // ws-endpoint/pid stale que tenha sobrado de uma run anterior no Replit
+    // (sem isso o teardown poderia matar um PID reaproveitado).
+    for (const f of ["ws-endpoint.txt", "chrome-pid.txt"]) {
+      try { rmSync(path.join(artifactsDir, f), { force: true }); } catch { /* ignore */ }
     }
     delete process.env.E2E_WS_ENDPOINT;
     // eslint-disable-next-line no-console
