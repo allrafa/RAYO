@@ -1125,6 +1125,11 @@ export async function initializeSchema() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_course_reviews_course ON course_reviews(course_id)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_course_reviews_user ON course_reviews(user_id)`);
+  // Task #155 — moderação: avaliações ocultadas não entram na média nem na listagem.
+  await query(`ALTER TABLE course_reviews ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE`);
+  await query(`ALTER TABLE course_reviews ADD COLUMN IF NOT EXISTS hidden_at TIMESTAMP`);
+  await query(`ALTER TABLE course_reviews ADD COLUMN IF NOT EXISTS hidden_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_course_reviews_visible ON course_reviews(course_id) WHERE is_hidden = FALSE`);
 
   console.log("[DB] Schema initialized successfully.");
 }

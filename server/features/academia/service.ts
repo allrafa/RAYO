@@ -322,13 +322,15 @@ export async function getCourseLanding(courseId: number, viewerId?: number) {
     }
     // Task #152 — viewer's existing review (se houver) pra UI mostrar
     // "Atualizar avaliação" em vez de "Avaliar este curso".
-    const { rows: rv } = await query<{ rating: number; comment: string | null; updated_at: string }>(
-      `SELECT rating, comment, updated_at FROM course_reviews
+    // Task #155 — viewer sempre enxerga a própria avaliação (mesmo oculta)
+    // pra poder editar ou remover. `is_hidden` é exposto pra UI sinalizar.
+    const { rows: rv } = await query<{ rating: number; comment: string | null; updated_at: string; is_hidden: boolean }>(
+      `SELECT rating, comment, updated_at, is_hidden FROM course_reviews
         WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
       [viewerId, courseId],
     );
     if (rv.length > 0) {
-      viewerReview = { rating: rv[0].rating, comment: rv[0].comment, updated_at: rv[0].updated_at };
+      viewerReview = { rating: rv[0].rating, comment: rv[0].comment, updated_at: rv[0].updated_at, is_hidden: rv[0].is_hidden };
     }
   }
   // Task #130 — expõe trilha vinculada (se houver) e flag de assinatura ativa
@@ -414,27 +416,30 @@ export async function submitCourseReview(
   const client = await getClient();
   try {
     await client.query("BEGIN");
-    const { rows: upserted } = await client.query<{ id: number; created_at: string; updated_at: string }>(
+    // Task #155 — devolve `is_hidden` no payload pra UI preservar o aviso
+    // "ocultada pela moderação" mesmo após o aluno editar a própria review.
+    const { rows: upserted } = await client.query<{ id: number; created_at: string; updated_at: string; is_hidden: boolean }>(
       `INSERT INTO course_reviews (user_id, course_id, rating, comment)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (user_id, course_id) DO UPDATE SET
          rating = EXCLUDED.rating,
          comment = EXCLUDED.comment,
          updated_at = NOW()
-       RETURNING id, created_at, updated_at`,
+       RETURNING id, created_at, updated_at, is_hidden`,
       [userId, courseId, rating, trimmedComment],
     );
     // Task #152 — recalcula `courses.rating` (AVG) e `courses.students`
     // (COUNT distinct de avaliadores) na mesma transação. Avaliações são a
     // fonte de verdade do social proof do catálogo: cursos só mostram
     // estrelas+contagem quando há reviews reais (Task #151 zerou seeds).
+    // Task #155 — AVG/contagem ignoram avaliações ocultas pela moderação.
     await client.query(
       `UPDATE courses SET
          rating = COALESCE(
-           (SELECT ROUND(AVG(rating)::numeric, 2) FROM course_reviews WHERE course_id = $1),
+           (SELECT ROUND(AVG(rating)::numeric, 2) FROM course_reviews WHERE course_id = $1 AND is_hidden = FALSE),
            0
          ),
-         students = (SELECT COUNT(DISTINCT user_id)::int FROM course_reviews WHERE course_id = $1)
+         students = (SELECT COUNT(DISTINCT user_id)::int FROM course_reviews WHERE course_id = $1 AND is_hidden = FALSE)
        WHERE id = $1`,
       [courseId],
     );
@@ -444,7 +449,7 @@ export async function submitCourseReview(
 
     const { rows: aggRows } = await query<{ avg: string | null; total: number }>(
       `SELECT ROUND(AVG(rating)::numeric, 2) AS avg, COUNT(*)::int AS total
-         FROM course_reviews WHERE course_id = $1`,
+         FROM course_reviews WHERE course_id = $1 AND is_hidden = FALSE`,
       [courseId],
     );
     return {
@@ -454,6 +459,7 @@ export async function submitCourseReview(
         comment: trimmedComment,
         created_at: upserted[0].created_at,
         updated_at: upserted[0].updated_at,
+        is_hidden: upserted[0].is_hidden,
       },
       summary: {
         average: aggRows[0]?.avg ? Number(aggRows[0].avg) : 0,
@@ -469,10 +475,11 @@ export async function submitCourseReview(
 }
 
 // Task #152 — Resumo público das avaliações (média + total + amostra recente).
+// Task #155 — exclui avaliações ocultadas pela moderação.
 export async function getCourseReviews(courseId: number, limit = 10) {
   const { rows: agg } = await query<{ avg: string | null; total: number }>(
     `SELECT ROUND(AVG(rating)::numeric, 2) AS avg, COUNT(*)::int AS total
-       FROM course_reviews WHERE course_id = $1`,
+       FROM course_reviews WHERE course_id = $1 AND is_hidden = FALSE`,
     [courseId],
   );
   const { rows: recent } = await query(
@@ -480,7 +487,7 @@ export async function getCourseReviews(courseId: number, limit = 10) {
        u.id AS user_id, u.name AS user_name, u.avatar_url AS user_avatar
        FROM course_reviews cr
        JOIN users u ON u.id = cr.user_id
-      WHERE cr.course_id = $1
+      WHERE cr.course_id = $1 AND cr.is_hidden = FALSE
       ORDER BY cr.updated_at DESC
       LIMIT $2`,
     [courseId, Math.max(1, Math.min(limit, 50))],
@@ -490,6 +497,101 @@ export async function getCourseReviews(courseId: number, limit = 10) {
     total: agg[0]?.total ?? 0,
     reviews: recent,
   };
+}
+
+// Task #155 — Aluno remove sua própria avaliação. Recalcula AVG/students.
+// Idempotente: deletar duas vezes não falha (404 só se nunca existiu).
+export async function deleteCourseReview(userId: number, courseId: number) {
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
+    const { rowCount } = await client.query(
+      `DELETE FROM course_reviews WHERE user_id = $1 AND course_id = $2`,
+      [userId, courseId],
+    );
+    if (!rowCount) {
+      await client.query("ROLLBACK");
+      throw new AppError("Avaliação não encontrada", "REVIEW_NOT_FOUND", 404);
+    }
+    await client.query(
+      `UPDATE courses SET
+         rating = COALESCE(
+           (SELECT ROUND(AVG(rating)::numeric, 2) FROM course_reviews WHERE course_id = $1 AND is_hidden = FALSE),
+           0
+         ),
+         students = (SELECT COUNT(DISTINCT user_id)::int FROM course_reviews WHERE course_id = $1 AND is_hidden = FALSE)
+       WHERE id = $1`,
+      [courseId],
+    );
+    await client.query("COMMIT");
+    trackEvent(userId, "course_review_deleted", { course_id: courseId });
+    const { rows: aggRows } = await query<{ avg: string | null; total: number }>(
+      `SELECT ROUND(AVG(rating)::numeric, 2) AS avg, COUNT(*)::int AS total
+         FROM course_reviews WHERE course_id = $1 AND is_hidden = FALSE`,
+      [courseId],
+    );
+    return {
+      summary: {
+        average: aggRows[0]?.avg ? Number(aggRows[0].avg) : 0,
+        total: aggRows[0]?.total ?? 0,
+      },
+    };
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// Task #155 — moderator+ oculta/reexibe uma avaliação abusiva sem apagar.
+// Recalcula AVG/students do curso afetado.
+export async function setCourseReviewHidden(
+  reviewId: number,
+  hidden: boolean,
+  moderatorId: number,
+) {
+  const { rows: existing } = await query<{ id: number; course_id: number; is_hidden: boolean }>(
+    `SELECT id, course_id, is_hidden FROM course_reviews WHERE id = $1`,
+    [reviewId],
+  );
+  if (existing.length === 0) {
+    throw new AppError("Avaliação não encontrada", "REVIEW_NOT_FOUND", 404);
+  }
+  const courseId = existing[0].course_id;
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `UPDATE course_reviews SET
+         is_hidden = $2,
+         hidden_at = CASE WHEN $2 = TRUE THEN NOW() ELSE NULL END,
+         hidden_by = CASE WHEN $2 = TRUE THEN $3::int ELSE NULL END
+       WHERE id = $1`,
+      [reviewId, hidden, moderatorId],
+    );
+    await client.query(
+      `UPDATE courses SET
+         rating = COALESCE(
+           (SELECT ROUND(AVG(rating)::numeric, 2) FROM course_reviews WHERE course_id = $1 AND is_hidden = FALSE),
+           0
+         ),
+         students = (SELECT COUNT(DISTINCT user_id)::int FROM course_reviews WHERE course_id = $1 AND is_hidden = FALSE)
+       WHERE id = $1`,
+      [courseId],
+    );
+    await client.query("COMMIT");
+    trackEvent(moderatorId, hidden ? "course_review_hidden" : "course_review_unhidden", {
+      review_id: reviewId,
+      course_id: courseId,
+    });
+    return { id: reviewId, course_id: courseId, is_hidden: hidden };
+  } catch (err) {
+    try { await client.query("ROLLBACK"); } catch {}
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 // Task #99 — Cria registro de "interesse" (modal Em breve). Rate-limit

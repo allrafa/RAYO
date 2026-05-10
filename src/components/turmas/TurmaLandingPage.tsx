@@ -39,7 +39,7 @@ export interface TurmaLanding {
   // viewer já avaliou; `can_review` = matriculado + ≥1 lição concluída.
   reviews_count?: number;
   viewer_completed_lessons?: number;
-  viewer_review?: { rating: number; comment: string | null; updated_at: string } | null;
+  viewer_review?: { rating: number; comment: string | null; updated_at: string; is_hidden?: boolean } | null;
   can_review?: boolean;
 }
 

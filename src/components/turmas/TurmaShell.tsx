@@ -180,6 +180,11 @@ export function TurmaShell() {
                       prev ? { ...prev, viewer_review: next } : prev,
                     )
                   }
+                  onDeleted={() =>
+                    setLanding((prev) =>
+                      prev ? { ...prev, viewer_review: null } : prev,
+                    )
+                  }
                 />
               </div>
             ) : null}

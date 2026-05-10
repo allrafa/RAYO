@@ -16,6 +16,8 @@ import {
   isCourseMember,
   submitCourseReview,
   getCourseReviews,
+  deleteCourseReview,
+  setCourseReviewHidden,
 } from "./service.js";
 import {
   getAllPosts as getAllCommunityPosts,
@@ -311,6 +313,49 @@ router.post("/:id/review", requireAuth, reviewLimiter, async (req, res, next) =>
     }
     const result = await submitCourseReview(req.user!.id, courseId, ratingNum, comment ?? null);
     success(res, result, 201);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+// Task #155 — aluno remove sua própria avaliação. Mesmo rate-limiter do POST.
+router.delete("/:id/review", requireAuth, reviewLimiter, async (req, res, next) => {
+  try {
+    const courseId = parseInt(req.params.id, 10);
+    if (isNaN(courseId)) {
+      sendError(res, "ID de curso inválido", "INVALID_COURSE_ID");
+      return;
+    }
+    const result = await deleteCourseReview(req.user!.id, courseId);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+// Task #155 — moderator+ oculta/reexibe uma avaliação sem apagá-la.
+router.post("/reviews/:reviewId/hide", requireAuth, async (req, res, next) => {
+  try {
+    if (!hasRole(req.user, "moderator")) {
+      sendError(res, "Acesso negado", "FORBIDDEN", 403);
+      return;
+    }
+    const reviewId = parseInt(req.params.reviewId, 10);
+    if (isNaN(reviewId)) {
+      sendError(res, "ID de avaliação inválido", "INVALID_REVIEW_ID");
+      return;
+    }
+    const hidden = req.body?.hidden !== false; // default true
+    const result = await setCourseReviewHidden(reviewId, hidden, req.user!.id);
+    success(res, result);
   } catch (err) {
     if (err instanceof AppError) {
       sendError(res, err.message, err.code, err.statusCode);

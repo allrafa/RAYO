@@ -3,23 +3,48 @@
 // edição quando o aluno já avaliou.
 
 import { useState } from "react";
-import { Star, Loader2, CheckCircle2, Pencil } from "lucide-react";
+import { Star, Loader2, CheckCircle2, Pencil, Trash2, EyeOff } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import { api } from "../../lib/api";
 import { Button } from "../ui/button";
 
 interface CourseReviewCardProps {
   courseId: number;
-  existingReview: { rating: number; comment: string | null; updated_at: string } | null;
-  onUpdated?: (next: { rating: number; comment: string | null; updated_at: string }) => void;
+  existingReview:
+    | { rating: number; comment: string | null; updated_at: string; is_hidden?: boolean }
+    | null;
+  onUpdated?: (next: { rating: number; comment: string | null; updated_at: string; is_hidden?: boolean }) => void;
+  onDeleted?: () => void;
 }
 
-export function CourseReviewCard({ courseId, existingReview, onUpdated }: CourseReviewCardProps) {
+export function CourseReviewCard({ courseId, existingReview, onUpdated, onDeleted }: CourseReviewCardProps) {
   const [editing, setEditing] = useState(!existingReview);
   const [rating, setRating] = useState<number>(existingReview?.rating ?? 0);
   const [hover, setHover] = useState<number>(0);
   const [comment, setComment] = useState<string>(existingReview?.comment ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const remove = async () => {
+    if (!existingReview) return;
+    if (typeof window !== "undefined" && !window.confirm("Remover sua avaliação? Essa ação não pode ser desfeita.")) {
+      return;
+    }
+    setDeleting(true);
+    const res = await api.delete<{ summary: { average: number; total: number } }>(
+      `/api/courses/${courseId}/review`,
+    );
+    setDeleting(false);
+    if (!res.success) {
+      toast.error(res.error?.message || "Não consegui remover sua avaliação.");
+      return;
+    }
+    toast.success("Avaliação removida.");
+    setRating(0);
+    setComment("");
+    setEditing(true);
+    onDeleted?.();
+  };
 
   const submit = async () => {
     if (rating < 1 || rating > 5) {
@@ -80,10 +105,36 @@ export function CourseReviewCard({ courseId, existingReview, onUpdated }: Course
               {existingReview.comment}
             </p>
           ) : null}
+          {existingReview.is_hidden ? (
+            <p
+              className="text-xs mt-2 inline-flex items-center gap-1 rounded px-2 py-0.5"
+              style={{ background: "var(--rayo-sand-200, #F1E2C0)", color: "var(--rayo-ink-700)" }}
+            >
+              <EyeOff className="w-3 h-3" aria-hidden />
+              Sua avaliação foi ocultada pela moderação e não aparece para outros alunos.
+            </p>
+          ) : null}
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
-          <Pencil className="w-4 h-4 mr-1" /> Editar
-        </Button>
+        <div className="flex flex-col gap-1 shrink-0">
+          <Button variant="ghost" size="sm" onClick={() => setEditing(true)} disabled={deleting}>
+            <Pencil className="w-4 h-4 mr-1" /> Editar
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={remove}
+            disabled={deleting}
+            style={{ color: "var(--rayo-terra-600, #B85A2E)" }}
+            aria-label="Remover avaliação"
+          >
+            {deleting ? (
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4 mr-1" />
+            )}
+            Remover
+          </Button>
+        </div>
       </div>
     );
   }
