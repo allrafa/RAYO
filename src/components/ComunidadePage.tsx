@@ -1412,7 +1412,24 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
                   </>
                 )}
                 <Clock className="w-3 h-3" />
-                <span>{post.time}</span>
+                {/* Task #164 — timestamp como target dedicado (permalink
+                    da discussão). Mesmo destino do corpo, mas com aria
+                    e foco próprios pra leitores de tela. */}
+                <button
+                  type="button"
+                  onClick={stopBubble(openDiscussion)}
+                  className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)] rounded"
+                  style={{
+                    background: 'transparent',
+                    border: 0,
+                    padding: 0,
+                    color: 'inherit',
+                    cursor: 'pointer',
+                  }}
+                  aria-label={`Permalink da publicação · ${post.time}`}
+                >
+                  {post.time}
+                </button>
                 {post.category && (
                   <>
                     <span>•</span>
