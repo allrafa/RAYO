@@ -219,9 +219,18 @@ export function TopNavbar({ onTabChange, isSidebarMinimized = false }: TopNavbar
             <button
               type="button"
               className="rn-premium-pill"
-              onClick={() => { window.location.href = "/trilhas"; }}
-              aria-label="Conhecer planos premium"
-              title="Conhecer trilhas premium"
+              onClick={() => {
+                // Se o perfil já tem um momento de vida que casa com uma
+                // trilha (solteiro|namoro|noivos|casados|pais), manda direto
+                // pra landing dela (todos os cursos daquele momento + checkout).
+                // Senão, abre o catálogo geral pra escolher.
+                const TRAIL_SLUGS = ["solteiro", "namoro", "noivos", "casados", "pais"];
+                const segs = (user?.segments || []).map((s) => String(s).toLowerCase());
+                const match = segs.find((s) => TRAIL_SLUGS.includes(s));
+                window.location.href = match ? `/trilhas/${match}` : "/trilhas";
+              }}
+              aria-label="Assinar trilha premium"
+              title="Assine sua trilha e desbloqueie todos os cursos do seu momento"
             >
               Seja Premium
             </button>
