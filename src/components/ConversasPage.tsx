@@ -310,6 +310,17 @@ export function ConversasPage() {
 
   const [confirmDelete, setConfirmDelete] = useState<ConversationItem | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  // IDs de mensagens cuja imagem falhou ao carregar — evita innerHTML
+  // direto e mantém a renderização 100% controlada pelo React.
+  const [imgErrorIds, setImgErrorIds] = useState<Set<number>>(new Set());
+  const markImgError = useCallback((id: number) => {
+    setImgErrorIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
 
   const [typingByConv, setTypingByConv] = useState<Record<number, { user_id: number; expiresAt: number }>>({});
   const [listeningByConv, setListeningByConv] = useState<Record<number, { user_id: number; expiresAt: number }>>({});
@@ -1161,25 +1172,23 @@ export function ConversasPage() {
                         >
                           <div className={`flex flex-col w-fit max-w-[min(80%,560px)] ${mine ? "items-end" : "items-start"}`}>
                             {isImageOnly ? (
-                              <button
-                                type="button"
-                                onClick={() => setLightboxUrl(m.attachment_url)}
-                                className="ra-chat-attachment"
-                                aria-label="Abrir foto em tela cheia"
-                              >
-                                <img
-                                  src={m.attachment_url!}
-                                  alt="Foto enviada"
-                                  loading="lazy"
-                                  onError={(e) => {
-                                    const img = e.currentTarget;
-                                    const parent = img.parentElement;
-                                    if (parent) {
-                                      parent.innerHTML = '<div class="ra-chat-attachment-fallback">Imagem indisponível</div>';
-                                    }
-                                  }}
-                                />
-                              </button>
+                              imgErrorIds.has(m.id) ? (
+                                <div className="ra-chat-attachment-fallback">Imagem indisponível</div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setLightboxUrl(m.attachment_url)}
+                                  className="ra-chat-attachment"
+                                  aria-label="Abrir foto em tela cheia"
+                                >
+                                  <img
+                                    src={m.attachment_url!}
+                                    alt="Foto enviada"
+                                    loading="lazy"
+                                    onError={() => markImgError(m.id)}
+                                  />
+                                </button>
+                              )
                             ) : isEmojiOnly ? (
                               <p className="ra-chat-emoji-jumbo">{m.content}</p>
                             ) : m.kind === "audio" && m.attachment_url ? (
@@ -1193,26 +1202,29 @@ export function ConversasPage() {
                             ) : (
                               <div className={`ra-chat-bubble ${mine ? "user" : "assistant"}`}>
                                 {m.kind === "image" && m.attachment_url && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setLightboxUrl(m.attachment_url)}
-                                    className="block focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
-                                    aria-label="Abrir foto em tela cheia"
-                                  >
-                                    <img
-                                      src={m.attachment_url}
-                                      alt="Foto enviada"
-                                      className="rounded-lg max-w-full max-h-72 object-cover mb-2 cursor-zoom-in"
-                                      loading="lazy"
-                                      onError={(e) => {
-                                        const img = e.currentTarget;
-                                        const parent = img.parentElement;
-                                        if (parent) {
-                                          parent.innerHTML = '<div class="ra-chat-attachment-fallback" style="width:100%;height:120px;margin-bottom:.5rem;">Imagem indisponível</div>';
-                                        }
-                                      }}
-                                    />
-                                  </button>
+                                  imgErrorIds.has(m.id) ? (
+                                    <div
+                                      className="ra-chat-attachment-fallback"
+                                      style={{ width: "100%", height: 120, marginBottom: ".5rem" }}
+                                    >
+                                      Imagem indisponível
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setLightboxUrl(m.attachment_url)}
+                                      className="block focus:outline-none focus:ring-2 focus:ring-primary rounded-lg"
+                                      aria-label="Abrir foto em tela cheia"
+                                    >
+                                      <img
+                                        src={m.attachment_url}
+                                        alt="Foto enviada"
+                                        className="rounded-lg max-w-full max-h-72 object-cover mb-2 cursor-zoom-in"
+                                        loading="lazy"
+                                        onError={() => markImgError(m.id)}
+                                      />
+                                    </button>
+                                  )
                                 )}
                                 {hasText && (
                                   <p className="text-sm whitespace-pre-wrap break-words">{m.content}</p>
