@@ -332,7 +332,7 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
 
   if (showResult && result) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-raio-forest-50 to-raio-lime-50 py-4">
+      <div className="min-h-screen bg-gradient-to-br from-rayo-forest-50 to-rayo-lime-50 py-4">
         <div className="max-w-2xl mx-auto px-4">
           {/* Header */}
           <div className="flex items-center mb-6">
@@ -350,7 +350,7 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
 
           {/* Result Card */}
           <Card className="mb-6 overflow-hidden">
-            <div className="bg-gradient-to-r from-raio-forest-600 to-raio-lime-600 p-6 text-white">
+            <div className="bg-gradient-to-r from-rayo-forest-600 to-rayo-lime-600 p-6 text-white">
               <div className="flex items-center mb-4">
                 <Award className="w-8 h-8 mr-3" />
                 <div>
@@ -363,11 +363,11 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
             <CardContent className="p-6">
               <div className="grid md:grid-cols-2 gap-6 mb-6">
                 <div>
-                  <h3 className="font-semibold text-lg mb-3 text-raio-forest-700">✅ Seus Pontos Fortes</h3>
+                  <h3 className="font-semibold text-lg mb-3 text-rayo-forest-700">✅ Seus Pontos Fortes</h3>
                   <ul className="space-y-2">
                     {result.strengths.map((strength, index) => (
                       <li key={index} className="flex items-start">
-                        <CheckCircle className="w-5 h-5 text-raio-forest-600 mr-2 mt-0.5 flex-shrink-0" />
+                        <CheckCircle className="w-5 h-5 text-rayo-forest-600 mr-2 mt-0.5 flex-shrink-0" />
                         <span className="text-sm">{strength}</span>
                       </li>
                     ))}
@@ -375,11 +375,11 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
                 </div>
                 
                 <div>
-                  <h3 className="font-semibold text-lg mb-3 text-raio-coral-600">🎯 Áreas de Melhoria</h3>
+                  <h3 className="font-semibold text-lg mb-3 text-rayo-coral-600">🎯 Áreas de Melhoria</h3>
                   <ul className="space-y-2">
                     {result.improvements.map((improvement, index) => (
                       <li key={index} className="flex items-start">
-                        <Star className="w-5 h-5 text-raio-coral-500 mr-2 mt-0.5 flex-shrink-0" />
+                        <Star className="w-5 h-5 text-rayo-coral-500 mr-2 mt-0.5 flex-shrink-0" />
                         <span className="text-sm">{improvement}</span>
                       </li>
                     ))}
@@ -389,9 +389,9 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
 
               {/* Recommended Course */}
               <div className="border-t pt-6">
-                <h3 className="font-semibold text-lg mb-4 text-raio-gold-700">📚 Curso Recomendado Para Você</h3>
+                <h3 className="font-semibold text-lg mb-4 text-rayo-gold-700">📚 Curso Recomendado Para Você</h3>
                 
-                <div className="bg-gradient-to-r from-raio-gold-50 to-raio-coral-50 rounded-xl p-6">
+                <div className="bg-gradient-to-r from-rayo-gold-50 to-rayo-coral-50 rounded-xl p-6">
                   <div className="flex flex-col md:flex-row gap-6">
                     <div className="md:w-1/3">
                       <div className="aspect-video rounded-lg overflow-hidden">
@@ -405,16 +405,16 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
                     
                     <div className="md:w-2/3">
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-bold text-xl text-raio-forest-800">{result.recommendedCourse.title}</h4>
-                        <Badge variant="secondary" className="bg-raio-gold-500 text-white border-0">
+                        <h4 className="font-bold text-xl text-rayo-forest-800">{result.recommendedCourse.title}</h4>
+                        <Badge variant="secondary" className="bg-rayo-gold-500 text-white border-0">
                           <Star className="w-3 h-3 mr-1" />
                           Premium
                         </Badge>
                       </div>
                       
-                      <p className="text-raio-forest-700 mb-4">{result.recommendedCourse.description}</p>
+                      <p className="text-rayo-forest-700 mb-4">{result.recommendedCourse.description}</p>
                       
-                      <div className="flex items-center gap-4 mb-4 text-sm text-raio-forest-600">
+                      <div className="flex items-center gap-4 mb-4 text-sm text-rayo-forest-600">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
                           {result.recommendedCourse.duration}
@@ -427,8 +427,8 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
                       
                       <ul className="space-y-1 mb-6">
                         {result.recommendedCourse.benefits.map((benefit, index) => (
-                          <li key={index} className="flex items-center text-sm text-raio-forest-700">
-                            <CheckCircle className="w-4 h-4 text-raio-forest-600 mr-2 flex-shrink-0" />
+                          <li key={index} className="flex items-center text-sm text-rayo-forest-700">
+                            <CheckCircle className="w-4 h-4 text-rayo-forest-600 mr-2 flex-shrink-0" />
                             {benefit}
                           </li>
                         ))}
@@ -436,13 +436,13 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
                       
                       <div className="flex items-center justify-between">
                         <div>
-                          <span className="text-2xl font-bold text-raio-coral-600">{result.recommendedCourse.price}</span>
-                          <span className="text-sm text-raio-forest-600 ml-2">ou 12x sem juros</span>
+                          <span className="text-2xl font-bold text-rayo-coral-600">{result.recommendedCourse.price}</span>
+                          <span className="text-sm text-rayo-forest-600 ml-2">ou 12x sem juros</span>
                         </div>
                         
                         <Button
                           onClick={handleCourseClick}
-                          className="bg-gradient-to-r from-raio-coral-500 to-raio-coral-600 hover:from-raio-coral-600 hover:to-raio-coral-700 text-white px-6"
+                          className="bg-gradient-to-r from-rayo-coral-500 to-rayo-coral-600 hover:from-rayo-coral-600 hover:to-rayo-coral-700 text-white px-6"
                         >
                           Garantir Minha Vaga
                           <ArrowRight className="w-4 h-4 ml-2" />
@@ -460,7 +460,7 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-raio-forest-50 to-raio-lime-50 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-rayo-forest-50 to-rayo-lime-50 py-4">
       <div className="max-w-2xl mx-auto px-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -502,13 +502,13 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
                   onClick={() => handleAnswer(index)}
                   className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
                     answers[currentQuestion] === index
-                      ? 'border-raio-forest-500 bg-raio-forest-50 text-raio-forest-800'
-                      : 'border-gray-200 hover:border-raio-forest-300 hover:bg-raio-forest-25'
+                      ? 'border-rayo-forest-500 bg-rayo-forest-50 text-rayo-forest-800'
+                      : 'border-gray-200 hover:border-rayo-forest-300 hover:bg-rayo-forest-25'
                   }`}
                 >
                   <div className="flex items-center">
                     {answers[currentQuestion] === index ? (
-                      <CheckCircle className="w-5 h-5 text-raio-forest-600 mr-3 flex-shrink-0" />
+                      <CheckCircle className="w-5 h-5 text-rayo-forest-600 mr-3 flex-shrink-0" />
                     ) : (
                       <Circle className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" />
                     )}
@@ -534,7 +534,7 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
           <Button
             onClick={handleNext}
             disabled={answers[currentQuestion] === undefined}
-            className="bg-raio-forest-600 hover:bg-raio-forest-700"
+            className="bg-rayo-forest-600 hover:bg-rayo-forest-700"
           >
             {currentQuestion === quiz.questions.length - 1 ? 'Ver Resultado' : 'Próxima'}
             <ArrowRight className="w-4 h-4 ml-2" />

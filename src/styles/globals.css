@@ -412,6 +412,107 @@
   --raio-neutral-700: #1F2A22;
   --raio-neutral-800: #0E1A14;
   --raio-neutral-900: #0E1A14;
+
+  /* ========================================================================
+     Task #163 — Aliases rayo-* → raio-* (rebrand RAIO→RAYO, Maio/2026)
+     Os nomes legados (--raio-*) seguem como source of truth pra preservar
+     valores; os aliases (--rayo-*) expõem o namespace novo sem alterar
+     visualmente nada. Consumers novos devem usar --rayo-*.
+     ======================================================================== */
+  --rayo-accent-bright: var(--raio-accent-bright);
+  --rayo-accent-bright-rgb: var(--raio-accent-bright-rgb);
+  --rayo-accent-glow-amber-bright: var(--raio-accent-glow-amber-bright);
+  --rayo-accent-glow-medium: var(--raio-accent-glow-medium);
+  --rayo-accent-glow-soft: var(--raio-accent-glow-soft);
+  --rayo-accent-glow-strong: var(--raio-accent-glow-strong);
+  --rayo-accent-hover: var(--raio-accent-hover);
+  --rayo-accent-hover-rgb: var(--raio-accent-hover-rgb);
+  --rayo-accent-light: var(--raio-accent-light);
+  --rayo-accent-primary: var(--raio-accent-primary);
+  --rayo-accent-primary-rgb: var(--raio-accent-primary-rgb);
+  --rayo-accent-subtle: var(--raio-accent-subtle);
+  --rayo-bg-inverse-soft: var(--raio-bg-inverse-soft);
+  --rayo-bg-inverse-transparent: var(--raio-bg-inverse-transparent);
+  --rayo-bg-overlay: var(--raio-bg-overlay);
+  --rayo-bg-overlay-medium: var(--raio-bg-overlay-medium);
+  --rayo-bg-overlay-soft: var(--raio-bg-overlay-soft);
+  --rayo-bg-overlay-strong: var(--raio-bg-overlay-strong);
+  --rayo-bg-primary: var(--raio-bg-primary);
+  --rayo-bg-secondary: var(--raio-bg-secondary);
+  --rayo-bg-tertiary: var(--raio-bg-tertiary);
+  --rayo-bg-warm-cream: var(--raio-bg-warm-cream);
+  --rayo-bg-warm-soft: var(--raio-bg-warm-soft);
+  --rayo-border-active: var(--raio-border-active);
+  --rayo-border-default: var(--raio-border-default);
+  --rayo-border-divider: var(--raio-border-divider);
+  --rayo-border-hover: var(--raio-border-hover);
+  --rayo-coral-100: var(--raio-coral-100);
+  --rayo-coral-200: var(--raio-coral-200);
+  --rayo-coral-300: var(--raio-coral-300);
+  --rayo-coral-400: var(--raio-coral-400);
+  --rayo-coral-50: var(--raio-coral-50);
+  --rayo-coral-500: var(--raio-coral-500);
+  --rayo-coral-600: var(--raio-coral-600);
+  --rayo-coral-700: var(--raio-coral-700);
+  --rayo-coral-800: var(--raio-coral-800);
+  --rayo-coral-900: var(--raio-coral-900);
+  --rayo-error: var(--raio-error);
+  --rayo-error-light: var(--raio-error-light);
+  --rayo-gold-100: var(--raio-gold-100);
+  --rayo-gold-200: var(--raio-gold-200);
+  --rayo-gold-300: var(--raio-gold-300);
+  --rayo-gold-400: var(--raio-gold-400);
+  --rayo-gold-50: var(--raio-gold-50);
+  --rayo-gold-500: var(--raio-gold-500);
+  --rayo-gold-600: var(--raio-gold-600);
+  --rayo-gold-700: var(--raio-gold-700);
+  --rayo-gold-800: var(--raio-gold-800);
+  --rayo-gold-900: var(--raio-gold-900);
+  --rayo-info: var(--raio-info);
+  --rayo-info-light: var(--raio-info-light);
+  --rayo-mint-100: var(--raio-mint-100);
+  --rayo-mint-200: var(--raio-mint-200);
+  --rayo-mint-300: var(--raio-mint-300);
+  --rayo-mint-400: var(--raio-mint-400);
+  --rayo-mint-50: var(--raio-mint-50);
+  --rayo-mint-500: var(--raio-mint-500);
+  --rayo-mint-600: var(--raio-mint-600);
+  --rayo-mint-700: var(--raio-mint-700);
+  --rayo-mint-800: var(--raio-mint-800);
+  --rayo-mint-900: var(--raio-mint-900);
+  --rayo-neutral-100: var(--raio-neutral-100);
+  --rayo-neutral-200: var(--raio-neutral-200);
+  --rayo-neutral-300: var(--raio-neutral-300);
+  --rayo-neutral-400: var(--raio-neutral-400);
+  --rayo-neutral-50: var(--raio-neutral-50);
+  --rayo-neutral-500: var(--raio-neutral-500);
+  --rayo-neutral-600: var(--raio-neutral-600);
+  --rayo-neutral-700: var(--raio-neutral-700);
+  --rayo-neutral-800: var(--raio-neutral-800);
+  --rayo-neutral-900: var(--raio-neutral-900);
+  --rayo-overlay-dark-medium: var(--raio-overlay-dark-medium);
+  --rayo-overlay-dark-soft: var(--raio-overlay-dark-soft);
+  --rayo-overlay-dark-strong: var(--raio-overlay-dark-strong);
+  --rayo-overlay-text-primary-faint: var(--raio-overlay-text-primary-faint);
+  --rayo-overlay-text-primary-soft: var(--raio-overlay-text-primary-soft);
+  --rayo-sage-200: var(--raio-sage-200);
+  --rayo-sage-400: var(--raio-sage-400);
+  --rayo-sage-50: var(--raio-sage-50);
+  --rayo-sage-600: var(--raio-sage-600);
+  --rayo-sage-800: var(--raio-sage-800);
+  --rayo-sage-900: var(--raio-sage-900);
+  --rayo-shadow-glow: var(--raio-shadow-glow);
+  --rayo-shadow-xl: var(--raio-shadow-xl);
+  --rayo-success: var(--raio-success);
+  --rayo-success-light: var(--raio-success-light);
+  --rayo-text-deep: var(--raio-text-deep);
+  --rayo-text-inverse: var(--raio-text-inverse);
+  --rayo-text-primary: var(--raio-text-primary);
+  --rayo-text-secondary: var(--raio-text-secondary);
+  --rayo-text-strong: var(--raio-text-strong);
+  --rayo-text-tertiary: var(--raio-text-tertiary);
+  --rayo-warning: var(--raio-warning);
+  --rayo-warning-light: var(--raio-warning-light);
 }
 
 .dark {
@@ -590,10 +691,17 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  /* Task #163 — aliases do rebrand RAIO→RAYO. Mantém os --color-raio-*
+     pra preservar compat com classes antigas que ainda existam, e expõe
+     --color-rayo-* (apontando pros mesmos tokens) pro código novo. */
   --color-raio-gold-500: var(--rayo-ochre-500);
   --color-raio-gold-600: var(--rayo-ochre-700);
   --color-raio-coral-500: var(--rayo-terra-500);
   --color-raio-coral-600: var(--rayo-terra-700);
+  --color-rayo-gold-500: var(--rayo-ochre-500);
+  --color-rayo-gold-600: var(--rayo-ochre-700);
+  --color-rayo-coral-500: var(--rayo-terra-500);
+  --color-rayo-coral-600: var(--rayo-terra-700);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

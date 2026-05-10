@@ -1,5 +1,5 @@
 # RAYO Platform
-RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para fortalecer famílias através de conteúdo transformador, comunidade engajada e recursos práticos em cinco contextos de vida: Solteiro, Namoro, Noivos, Casados, Pais.
+RAYO é uma plataforma digital para fortalecer famílias através de conteúdo transformador, comunidade engajada e recursos práticos em cinco contextos de vida: Solteiro, Namoro, Noivos, Casados, Pais.
 
 ## Run & Operate
 - `npm run dev` (Express + Vite middleware) · `npm run build` (frontend prod).
@@ -50,6 +50,7 @@ RAYO (anteriormente RAIO; renomeado em Maio/2026) é uma plataforma digital para
 - Do not make changes to the `replit.nix` file.
 
 ## Gotchas universais
+- **Rebrand RAIO→RAYO (Maio/2026, Task #163)**: nome anterior do produto era RAIO. Storage/eventos/copy migrados pra namespace `rayo`; tokens CSS `--raio-*` mantidos como source of truth com aliases `--rayo-*: var(--raio-*)` em `globals.css` pra preservar valores. Detalhe operacional da migração de storage no gotcha "Cards de perfil clicáveis" abaixo.
 - **Route Order**: rotas com prefixo fixo antes das dinâmicas no Express.
 - **Email Enumeration Prevention**: forgot password sempre retorna sucesso.
 - **Object-Level Authorization**: producers só editam conteúdo próprio; `moderator+` override.

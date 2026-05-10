@@ -8,7 +8,7 @@ interface SimpleQuizTestProps {
 
 export function SimpleQuizTest({ quizType, onBack }: SimpleQuizTestProps) {
   return (
-    <div className="h-full w-full bg-gradient-to-br from-raio-forest-50 to-raio-lime-50">
+    <div className="h-full w-full bg-gradient-to-br from-rayo-forest-50 to-rayo-lime-50">
       <div className="h-full p-4 pt-8">
         <div className="max-w-2xl mx-auto h-full flex flex-col">
           {/* Header */}

@@ -183,7 +183,7 @@ function PrimaryButton({
           ? {
               scale: 1.015,
               boxShadow:
-                "0 4px 12px rgba(12,59,46,0.65), 0 12px 32px -10px var(--raio-accent-glow-strong)",
+                "0 4px 12px rgba(12,59,46,0.65), 0 12px 32px -10px var(--rayo-accent-glow-strong)",
             }
           : {}
       }
@@ -193,7 +193,7 @@ function PrimaryButton({
         className="absolute top-0 left-0 right-0 h-[1px]"
         style={{
           background:
-            "linear-gradient(90deg, transparent, var(--raio-accent-bright) 50%, transparent)",
+            "linear-gradient(90deg, transparent, var(--rayo-accent-bright) 50%, transparent)",
         }}
       />
       <span className="relative z-10 flex items-center justify-center gap-2">
@@ -315,7 +315,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                     style={{
                       border: "1px solid var(--rayo-forest-900)",
                       boxShadow:
-                        "inset 0 1px 0 var(--raio-bg-overlay-medium), 0 1px 2px var(--raio-overlay-dark-soft)",
+                        "inset 0 1px 0 var(--rayo-bg-overlay-medium), 0 1px 2px var(--rayo-overlay-dark-soft)",
                     }}
                     autoFocus
                   />
@@ -377,8 +377,8 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                             ? "1.5px solid var(--rayo-terra-700)"
                             : "1px solid var(--rayo-sand-300)",
                           boxShadow: isSelected
-                            ? "0 6px 20px -8px rgba(200,85,61,0.30), 0 0 0 4px var(--raio-accent-glow-amber-bright)"
-                            : "0 1px 2px var(--raio-overlay-dark-soft)",
+                            ? "0 6px 20px -8px rgba(200,85,61,0.30), 0 0 0 4px var(--rayo-accent-glow-amber-bright)"
+                            : "0 1px 2px var(--rayo-overlay-dark-soft)",
                         }}
                         onClick={() => toggleSegment(segment.id)}
                         aria-pressed={isSelected}
@@ -387,10 +387,10 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                           <div
                             className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0 transition-all"
                             style={{
-                              background: isSelected ? "var(--raio-accent-bright)" : "var(--raio-bg-warm-soft)",
+                              background: isSelected ? "var(--rayo-accent-bright)" : "var(--rayo-bg-warm-soft)",
                               boxShadow: isSelected
-                                ? "inset 0 1px 0 var(--raio-bg-overlay-soft)"
-                                : "inset 0 1px 0 var(--raio-bg-overlay-medium)",
+                                ? "inset 0 1px 0 var(--rayo-bg-overlay-soft)"
+                                : "inset 0 1px 0 var(--rayo-bg-overlay-medium)",
                             }}
                           >
                             {segment.emoji}
@@ -419,7 +419,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                           <div
                             className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all"
                             style={{
-                              background: isSelected ? "var(--rayo-forest-900)" : "var(--raio-bg-warm-soft)",
+                              background: isSelected ? "var(--rayo-forest-900)" : "var(--rayo-bg-warm-soft)",
                               border: isSelected
                                 ? "none"
                                 : "1px solid var(--rayo-sand-300)",
@@ -428,7 +428,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                             {isSelected && (
                               <Check
                                 className="w-4 h-4"
-                                style={{ color: "var(--raio-accent-bright)" }}
+                                style={{ color: "var(--rayo-accent-bright)" }}
                                 strokeWidth={2.5}
                               />
                             )}
@@ -488,7 +488,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                         className="px-4 py-2.5 rounded-full transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-700)]/40"
                         style={{
                           background: isSelected ? "var(--rayo-forest-900)" : "var(--rayo-sand-50)",
-                          color: isSelected ? "var(--raio-accent-bright)" : "var(--raio-text-deep)",
+                          color: isSelected ? "var(--rayo-accent-bright)" : "var(--rayo-text-deep)",
                           border: isSelected
                             ? "1px solid var(--rayo-forest-900)"
                             : "1px solid var(--rayo-forest-900)",
@@ -496,8 +496,8 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                           fontWeight: 500,
                           letterSpacing: "0.005em",
                           boxShadow: isSelected
-                            ? "0 6px 16px -8px var(--raio-overlay-text-primary-soft)"
-                            : "0 1px 2px var(--raio-overlay-dark-soft)",
+                            ? "0 6px 16px -8px var(--rayo-overlay-text-primary-soft)"
+                            : "0 1px 2px var(--rayo-overlay-dark-soft)",
                         }}
                         onClick={() => toggleInterest(interest.id)}
                         aria-pressed={isSelected}
@@ -548,7 +548,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       className="min-h-screen relative overflow-hidden"
       style={{
         background:
-          "radial-gradient(ellipse 90% 60% at 50% 20%, var(--rayo-sand-50) 0%, var(--rayo-sand-100) 55%, var(--raio-bg-warm-cream) 100%)",
+          "radial-gradient(ellipse 90% 60% at 50% 20%, var(--rayo-sand-50) 0%, var(--rayo-sand-100) 55%, var(--rayo-bg-warm-cream) 100%)",
       }}
     >
       {/* Grain texture */}
@@ -566,7 +566,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
         className="fixed top-0 left-0 right-0 z-50 px-6 pt-6 pb-5"
         style={{
           background:
-            "linear-gradient(180deg, var(--raio-bg-overlay-strong) 0%, var(--raio-bg-inverse-soft) 70%, var(--raio-bg-inverse-transparent) 100%)",
+            "linear-gradient(180deg, var(--rayo-bg-overlay-strong) 0%, var(--rayo-bg-inverse-soft) 70%, var(--rayo-bg-inverse-transparent) 100%)",
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
         }}
@@ -577,7 +577,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               {step > 1 && (
                 <button
                   onClick={handleBack}
-                  className="p-2 -ml-2 hover:bg-[var(--raio-overlay-dark-soft)] rounded-lg transition-colors"
+                  className="p-2 -ml-2 hover:bg-[var(--rayo-overlay-dark-soft)] rounded-lg transition-colors"
                   aria-label="Voltar"
                 >
                   <ArrowLeft className="w-5 h-5" style={{ color: "var(--rayo-forest-900)" }} />
@@ -606,7 +606,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   style={{
                     background:
                       s <= step
-                        ? "linear-gradient(90deg, var(--rayo-terra-700), var(--raio-accent-bright))"
+                        ? "linear-gradient(90deg, var(--rayo-terra-700), var(--rayo-accent-bright))"
                         : "transparent",
                   }}
                   initial={{ width: s < step ? "100%" : "0%" }}

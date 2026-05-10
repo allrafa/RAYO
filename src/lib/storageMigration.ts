@@ -15,6 +15,7 @@ const KEY_MAP: Array<readonly [legacy: string, next: string]> = [
   ["raio_consent_preferences", "rayo_consent_preferences"],
   ["raio_privacy_settings", "rayo_privacy_settings"],
   ["raio_disable_personalization", "rayo_disable_personalization"],
+  ["raio-user", "rayo-user"],
   ["raio-user-extended", "rayo-user-extended"],
   ["raio-search-recents", "rayo-search-recents"],
   ["raio-theme", "rayo-theme"],

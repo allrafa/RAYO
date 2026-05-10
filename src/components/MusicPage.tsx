@@ -102,7 +102,7 @@ export function MusicPage({ onBack }: MusicPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-raio-forest-50 to-raio-lime-50">
+    <div className="min-h-screen bg-gradient-to-br from-rayo-forest-50 to-rayo-lime-50">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-border">
         <div className="px-4 py-4">
@@ -133,13 +133,13 @@ export function MusicPage({ onBack }: MusicPageProps) {
       {/* Content */}
       <div className="px-4 py-6 space-y-8">
         {/* Hero Banner */}
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-raio-forest-600 to-raio-lime-600 p-8 text-white">
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-rayo-forest-600 to-rayo-lime-600 p-8 text-white">
           <div className="relative z-10">
             <h2 className="text-2xl font-bold mb-2">Música que Transforma</h2>
             <p className="text-white/90 mb-4 max-w-md">
               Descubra playlists criadas especialmente para cada momento da sua jornada de transformação
             </p>
-            <Button className="bg-white text-raio-forest-600 hover:bg-white/90">
+            <Button className="bg-white text-rayo-forest-600 hover:bg-white/90">
               <Play className="w-4 h-4 mr-2" />
               Explorar Agora
             </Button>
