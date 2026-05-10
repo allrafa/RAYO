@@ -107,10 +107,11 @@ export async function deleteUsersById(ids: number[]): Promise<void> {
     for (const t of tables) {
       try {
         await client.query(t.sql, t.params);
-      } catch (err: any) {
+      } catch (err: unknown) {
         // 42P01 = undefined_table (tabela opcional num schema mais antigo) — segue.
         // Qualquer outro erro (FK, etc.) é falha real: aborta pra não vazar usuário.
-        if (err?.code === "42P01") continue;
+        const code = (err as { code?: string } | null)?.code;
+        if (code === "42P01") continue;
         throw err;
       }
     }

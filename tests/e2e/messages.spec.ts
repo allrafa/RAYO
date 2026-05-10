@@ -1,4 +1,4 @@
-import { request } from "@playwright/test";
+import { request, devices } from "@playwright/test";
 import { test, expect } from "./fixtures";
 import {
   registerUser,
@@ -9,6 +9,13 @@ import {
   makeTestEmail,
   type TestUser,
 } from "./helpers/api";
+
+// Garante que `browser.newContext()` continue rodando em viewport mobile
+// mesmo lançando contextos manuais (cookies isolados por usuário). Sem
+// isso, o `devices["iPhone 14"]` configurado em `playwright.config.ts`
+// só se aplica a `page`/`context` fixtures — bypassado quando criamos
+// contextos do `browser` direto.
+const MOBILE_CTX = devices["iPhone 14"];
 
 test.describe("DM — fluxo crítico de Mensagens", () => {
   let userA: TestUser;
@@ -37,8 +44,8 @@ test.describe("DM — fluxo crítico de Mensagens", () => {
     userB = await registerUser(api, { email: makeTestEmail("test-b"), name: "Bruno Teste" });
     await api.dispose();
 
-    // 2) Browser context A — loga e manda mensagem
-    const ctxA = await browser.newContext();
+    // 2) Browser context A — loga e manda mensagem (viewport mobile)
+    const ctxA = await browser.newContext({ ...MOBILE_CTX });
     await loginViaApi(ctxA, baseURL!, userA);
     const pageA = await ctxA.newPage();
 
@@ -75,8 +82,8 @@ test.describe("DM — fluxo crítico de Mensagens", () => {
       pageA.locator(".ra-chat-bubble", { hasText: messageText }).first(),
     ).toBeVisible({ timeout: 5_000 });
 
-    // 5) Browser context B (cookies isolados) — loga e checa lista de conversas
-    const ctxB = await browser.newContext();
+    // 5) Browser context B (cookies isolados, viewport mobile) — loga e checa lista
+    const ctxB = await browser.newContext({ ...MOBILE_CTX });
     await loginViaApi(ctxB, baseURL!, userB);
     const pageB = await ctxB.newPage();
     await pageB.goto("/", { waitUntil: "domcontentloaded" });
@@ -84,9 +91,14 @@ test.describe("DM — fluxo crítico de Mensagens", () => {
     await dismissCookieBanner(pageB);
     await openMessagesTab(pageB);
 
-    // Conversa nova com nome do A na lista
-    const convItem = pageB.getByText("Ana Teste").first();
+    // Conversa nova aparece na lista com nome do A E preview da última mensagem
+    // (validação dupla: nome + snippet "Você:..." NÃO — esse seria do A;
+    // do lado do B o preview vem cru, sem prefixo).
+    const convItem = pageB.locator(".ra-disc-item, [role='listitem']", {
+      hasText: "Ana Teste",
+    }).first();
     await expect(convItem).toBeVisible({ timeout: 8_000 });
+    await expect(convItem).toContainText(messageText, { timeout: 8_000 });
     await convItem.click();
 
     // Mensagem do A aparece pro B (bubble, não preview da lista)
