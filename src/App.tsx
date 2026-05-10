@@ -3,6 +3,7 @@ import { Navigation } from "./components/Navigation";
 import { DesktopSidebar } from "./components/DesktopSidebar";
 import { TopNavbar } from "./components/TopNavbar";
 import { MobileTopBar } from "./components/MobileTopBar";
+import { PageTransition } from "./components/PageTransition";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { Onboarding } from "./components/Onboarding";
 import { AccessibilityProvider } from "./components/AccessibilityContext";
@@ -556,7 +557,9 @@ function AppContent() {
         role="main"
         aria-label="Conteúdo principal"
       >
-        {renderCurrentPage()}
+        <PageTransition tabKey={currentTab}>
+          {renderCurrentPage()}
+        </PageTransition>
       </main>
 
       {!isInBookReader && (
