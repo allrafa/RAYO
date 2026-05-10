@@ -23,6 +23,13 @@ import { enhancedToast } from "./EnhancedToast";
 import { useApp } from "./AppContext";
 import { useAuth } from "./AuthContext";
 import { useUnreadMessages } from "./hooks/useUnreadMessages";
+import {
+  cardKeyHandler,
+  stopBubble,
+  openProfileById,
+  openCommunityBySlug,
+} from "../lib/cardClickTargets";
+import { PostImageLightbox } from "./PostImageLightbox";
 import { useUnreadBySection } from "./hooks/useUnreadBySection";
 import { CreatePostModal } from "./CreatePostModal";
 import { EmojiReactionPicker, ReactionsSummary, type ReactionAggregate } from "./EmojiReactionPicker";
@@ -1316,27 +1323,62 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
     onMutated?.();
   };
 
+  // Task #164 — Click targets padrão Facebook. Wrapper do card abre a
+  // discussão (mesmo destino do botão "Comentar"); avatar/nome → perfil
+  // do autor; imagens → lightbox; c/<slug> → comunidade. Botões internos
+  // (reagir/comentar/compartilhar/menu/save) usam stopBubble pra não
+  // disparar o clique do card.
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const openDiscussion = () => onComment();
+  const openAuthorProfile = () => openProfileById(post.author_id);
+  const openForum = () => openCommunityBySlug(post.forum_slug ?? null);
+
   return (
-    <div className="ra-card ra-card-hover">
+    <div
+      className="ra-card ra-card-hover"
+      role="button"
+      tabIndex={0}
+      onClick={openDiscussion}
+      onKeyDown={cardKeyHandler(openDiscussion)}
+      aria-label={`Abrir discussão da publicação de ${post.author}`}
+      style={{ cursor: 'pointer' }}
+    >
       <div>
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Avatar className="w-12 h-12">
-              <AvatarImage src={post.avatar} />
-              <AvatarFallback>{post.author.charAt(0)}</AvatarFallback>
-            </Avatar>
+            <button
+              type="button"
+              onClick={stopBubble(openAuthorProfile)}
+              className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
+              aria-label={`Abrir perfil de ${post.author}`}
+              disabled={!post.author_id}
+              style={{ cursor: post.author_id ? 'pointer' : 'default' }}
+            >
+              <Avatar className="w-12 h-12">
+                <AvatarImage src={post.avatar} />
+                <AvatarFallback>{post.author.charAt(0)}</AvatarFallback>
+              </Avatar>
+            </button>
             <div>
               <div className="flex items-center gap-2">
-                <span 
-                  className="text-[14px]" 
-                  style={{ 
-                    fontWeight: 600, 
-                    color: 'var(--rayo-forest-900)' 
+                <button
+                  type="button"
+                  onClick={stopBubble(openAuthorProfile)}
+                  disabled={!post.author_id}
+                  className="text-[14px] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)] rounded"
+                  style={{
+                    fontWeight: 600,
+                    color: 'var(--rayo-forest-900)',
+                    cursor: post.author_id ? 'pointer' : 'default',
+                    background: 'transparent',
+                    border: 0,
+                    padding: 0,
                   }}
+                  aria-label={`Abrir perfil de ${post.author}`}
                 >
                   {post.author}
-                </span>
+                </button>
                 {post.isPinned && (
                   <Pin 
                     className="w-3 h-3" 
@@ -1352,15 +1394,16 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
                   <>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        try {
-                          sessionStorage.setItem("rayo-pending-community-slug", post.forum_slug);
-                        } catch { /* noop */ }
-                        window.dispatchEvent(new CustomEvent("rayo:open-community", { detail: { slug: post.forum_slug } }));
+                      onClick={stopBubble(openForum)}
+                      className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)] rounded"
+                      style={{
+                        fontWeight: 600,
+                        color: 'var(--rayo-terra-500)',
+                        background: 'transparent',
+                        border: 0,
+                        padding: 0,
+                        cursor: 'pointer',
                       }}
-                      className="hover:underline"
-                      style={{ fontWeight: 600, color: 'var(--rayo-terra-500)' }}
                       title={`Abrir c/${post.forum_slug}`}
                     >
                       {post.forum_icon ? `${post.forum_icon} ` : ""}c/{post.forum_slug}
@@ -1396,6 +1439,7 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
                 className="h-8 w-8"
                 style={{ color: 'var(--rayo-ink-400)' }}
                 aria-label="Mais ações"
+                onClick={(e) => e.stopPropagation()}
               >
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
@@ -1485,7 +1529,8 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
           {post.content}
         </p>
 
-        {/* Images — Task #92: até 4 imagens em grid responsivo */}
+        {/* Images — Task #92: até 4 imagens em grid responsivo
+            Task #164: cada imagem é um botão que abre o lightbox. */}
         {post.images && post.images.length > 0 && (
           <div
             className={`mb-4 grid gap-1 rounded-xl overflow-hidden ${
@@ -1497,13 +1542,15 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
             }`}
           >
             {post.images.slice(0, 4).map((src: string, i: number) => (
-              <div
+              <button
+                type="button"
                 key={i}
-                className={
-                  post.images.length === 3 && i === 0
-                    ? "row-span-2"
-                    : ""
-                }
+                onClick={stopBubble(() => setLightboxIndex(i))}
+                className={`block focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)] focus-visible:ring-inset ${
+                  post.images.length === 3 && i === 0 ? "row-span-2" : ""
+                }`}
+                style={{ background: 'transparent', border: 0, padding: 0, cursor: 'zoom-in' }}
+                aria-label={`Ver imagem ${i + 1} em tamanho real`}
               >
                 <ImageWithFallback
                   src={src}
@@ -1511,18 +1558,27 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
                   className="w-full h-full object-cover"
                   style={{ minHeight: post.images.length === 1 ? "auto" : 160 }}
                 />
-              </div>
+              </button>
             ))}
           </div>
+        )}
+        {lightboxIndex != null && post.images && post.images.length > 0 && (
+          <PostImageLightbox
+            images={post.images}
+            index={lightboxIndex}
+            onIndexChange={setLightboxIndex}
+            onClose={() => setLightboxIndex(null)}
+          />
         )}
 
         {/* Actions — Task #122: Heart estático virou EmojiReactionPicker
             multi-emoji (❤️😂🙏💡🔥👏). Mantemos `likePost` como fallback
             só pra registrar o engagement se o picker falhar — mas a
             verdade do estado vive em reactionState. */}
-        <div 
+        <div
           className="flex items-center gap-6 pt-3"
           style={{ borderTop: '1px solid var(--rayo-sand-300)' }}
+          onClick={(e) => e.stopPropagation()}
         >
           <EmojiReactionPicker
             targetType="post"
@@ -1536,7 +1592,7 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
           <Button
             variant="ghost"
             size="sm"
-            onClick={onComment}
+            onClick={stopBubble(onComment)}
             data-test="comment-btn"
             className="gap-2"
             style={{ color: 'var(--rayo-ink-400)' }}
@@ -1555,7 +1611,7 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
           <Button
             variant="ghost"
             size="sm"
-            onClick={onShare}
+            onClick={stopBubble(onShare)}
             className="gap-2"
             style={{ color: 'var(--rayo-ink-400)' }}
             onMouseEnter={(e) => {
@@ -1570,7 +1626,7 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
               {post.shares}
             </span>
           </Button>
-          <div className="ml-auto">
+          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
             <FavoriteIcon id={post.id} type="post" />
           </div>
         </div>
@@ -1578,13 +1634,15 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
         {/* Task #122 — chips agregados POR EMOJI (atende o requisito de
             contadores agrupados, não só o total na action row). */}
         {reactionState.reactions.length > 0 && (
-          <ReactionsSummary
-            targetType="post"
-            targetId={post.id}
-            reactions={reactionState.reactions}
-            userReaction={reactionState.userReaction}
-            onChange={setReactionState}
-          />
+          <div onClick={(e) => e.stopPropagation()}>
+            <ReactionsSummary
+              targetType="post"
+              targetId={post.id}
+              reactions={reactionState.reactions}
+              userReaction={reactionState.userReaction}
+              onChange={setReactionState}
+            />
+          </div>
         )}
       </div>
     </div>

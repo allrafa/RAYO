@@ -10,6 +10,7 @@ import Confetti from "react-confetti";
 import { CheckCircle2, ExternalLink, SkipForward } from "lucide-react";
 import { api } from "../../lib/api";
 import { enhancedToast } from "../EnhancedToast";
+import { cardKeyHandler, stopBubble } from "../../lib/cardClickTargets";
 
 interface TodayItem {
   id: number;
@@ -153,8 +154,19 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted, userId, onVisibilityCh
     </div>
   );
 
+  // Task #164 — Card todo clicável quando há ctaTarget (área neutra/título
+  // abre o item). Botões internos usam stopBubble.
+  const cardClickable = !!item.ctaTarget && !isDone;
   return (
-    <div className={`rh-hoje-main${item.coverUrl ? " has-cover" : ""}`}>
+    <div
+      className={`rh-hoje-main${item.coverUrl ? " has-cover" : ""}`}
+      role={cardClickable ? "button" : undefined}
+      tabIndex={cardClickable ? 0 : undefined}
+      onClick={cardClickable ? handleOpen : undefined}
+      onKeyDown={cardClickable ? cardKeyHandler(handleOpen) : undefined}
+      aria-label={cardClickable ? `${item.ctaLabel}: ${item.title}` : undefined}
+      style={cardClickable ? { cursor: "pointer" } : undefined}
+    >
       {showConfetti && (
         <Confetti
           width={typeof window !== "undefined" ? window.innerWidth : 360}
@@ -186,21 +198,21 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted, userId, onVisibilityCh
             <button
               type="button"
               className="rh-hoje-btn"
-              onClick={handleComplete}
+              onClick={stopBubble(handleComplete)}
               disabled={completing}
             >
               <CheckCircle2 className="w-4 h-4" />
               {completing ? "Marcando…" : "Marcar como feito"}
             </button>
             {item.ctaTarget && (
-              <button type="button" className="rh-hoje-btn ghost" onClick={handleOpen}>
+              <button type="button" className="rh-hoje-btn ghost" onClick={stopBubble(handleOpen)}>
                 <ExternalLink className="w-4 h-4" /> {item.ctaLabel}
               </button>
             )}
             <button
               type="button"
               className="rh-hoje-btn skip"
-              onClick={handleSkip}
+              onClick={stopBubble(handleSkip)}
               aria-label="Pular hoje"
             >
               <SkipForward className="w-4 h-4" /> Pular hoje

@@ -43,6 +43,7 @@ import { TrilhaSucessoPage } from "./components/trilhas/TrilhaSucessoPage";
 import { analytics } from "./lib/analytics/mixpanel";
 import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
 import { RAYO_SCROLL_TOP } from "./lib/scrollTop";
+import { RAYO_REQUEST_TAB } from "./lib/cardClickTargets";
 import { migrateLegacyStorage } from "./lib/storageMigration";
 
 // Task #163 — migra chaves `raio_*`/`raio-*` legadas (consent, theme,
@@ -226,6 +227,27 @@ function AppContent() {
     };
     window.addEventListener(RAYO_SCROLL_TOP, handler);
     return () => window.removeEventListener(RAYO_SCROLL_TOP, handler);
+  }, []);
+
+  // Task #164 — Listener global de troca de aba pedida por qualquer card
+  // do produto (helpers em src/lib/cardClickTargets.ts). Cards aninhados
+  // não recebem `setCurrentTab` por prop; quando precisam navegar (avatar
+  // → perfil, c/<slug> → comunidade, etc.) disparam `rayo:request-tab` e
+  // este handler troca a aba ativa. Combina com o sessionStorage stash
+  // que cada página alvo já consome no mount.
+  useEffect(() => {
+    const onRequestTab = (e: Event) => {
+      const detail = (e as CustomEvent<{ tab?: string }>).detail;
+      const tab = detail?.tab;
+      if (!tab) return;
+      setCurrentTab(tab);
+    };
+    window.addEventListener(RAYO_REQUEST_TAB, onRequestTab as EventListener);
+    return () =>
+      window.removeEventListener(
+        RAYO_REQUEST_TAB,
+        onRequestTab as EventListener,
+      );
   }, []);
 
   // Task #45 — deep-link `/u/<id>` para perfis compartilhados. Captura

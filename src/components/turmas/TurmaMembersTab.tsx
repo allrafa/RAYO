@@ -3,6 +3,7 @@ import { Loader2, CheckCircle2, Shield, Sparkles } from "lucide-react";
 import { api } from "../../lib/api";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Badge } from "../ui/badge";
+import { cardKeyHandler, openProfileById } from "../../lib/cardClickTargets";
 
 interface Member {
   id: number;
@@ -76,7 +77,12 @@ export function TurmaMembersTab({ classId }: { classId: number }) {
           return (
             <li
               key={m.id}
-              className="flex items-center gap-3 p-3 rounded-xl"
+              role="button"
+              tabIndex={0}
+              onClick={() => openProfileById(m.id)}
+              onKeyDown={cardKeyHandler(() => openProfileById(m.id))}
+              aria-label={`Abrir perfil de ${m.name}`}
+              className="flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-[var(--rayo-sand-100)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
               style={{ background: "white", border: "1px solid var(--rayo-sand-300)" }}
             >
               <Avatar className="w-10 h-10">

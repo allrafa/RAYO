@@ -8,6 +8,7 @@ import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useApp } from "./AppContext";
+import { cardKeyHandler, stopBubble } from "../lib/cardClickTargets";
 import { FavoriteIcon } from "./FavoriteButton";
 import { toast } from "sonner@2.0.3";
 import { smartSearch, getSearchResultMessage } from "./SmartSearchEngine";
@@ -1975,9 +1976,16 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
     handleCardClick();
   };
 
+  // Task #164 — Wrapper inteiro vira clicável (role="button"). FavoriteIcon
+  // e CTA usam stopBubble pra não disparar o destino do card.
   return (
     <div
-      className="ra-card ra-card-hover group overflow-hidden"
+      className="ra-card ra-card-hover group overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
+      role="button"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={cardKeyHandler(handleCardClick)}
+      aria-label={isInTrail ? `Ver trilha ${trailTitle ?? ''}` : `Abrir ${course.title}`}
       style={{
         padding: 0,
         background:
@@ -1985,12 +1993,12 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
         borderTop: '3px solid transparent',
         borderImage:
           'linear-gradient(90deg, var(--rayo-forest-900), var(--rayo-terra-500), var(--rayo-sage-500)) 1',
+        cursor: 'pointer',
       }}
     >
       {/* Thumbnail */}
-      <div 
-        onClick={handleCardClick}
-        className="relative aspect-[16/9] overflow-hidden cursor-pointer"
+      <div
+        className="relative aspect-[16/9] overflow-hidden"
         style={{ background: 'var(--rayo-sand-300)' }}
       >
         <ImageWithFallback
@@ -1998,7 +2006,7 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
           alt={course.title}
           className="w-full h-full object-cover"
         />
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-3 right-3" onClick={(e) => e.stopPropagation()}>
           <div className="bg-white/95 rounded-full p-1.5 shadow-sm">
             <FavoriteIcon id={course.id} type="course" />
           </div>
@@ -2038,7 +2046,7 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
 
       {/* Content */}
       <div className="p-4 space-y-3">
-        <div onClick={handleCardClick} className="cursor-pointer">
+        <div>
           {/* Rating — só renderiza se tiver dado real (Task #151: ratings fake do seed
               foram zerados em migração; cursos novos começam em 0). */}
           {Number(course.rating) > 0 && (
@@ -2121,7 +2129,7 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
             - avulso pago → "Avise-me" (waitlist honesta, sem checkout) */}
         {!course.isEnrolled && (
           <Button
-            onClick={handleEnroll}
+            onClick={stopBubble(handleEnroll)}
             className="w-full mt-3"
             style={{
               fontWeight: 600,
@@ -2146,7 +2154,7 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
         {/* Show "Go to Course" if enrolled */}
         {course.isEnrolled && (
           <Button
-            onClick={onClick}
+            onClick={stopBubble(() => onClick())}
             className="w-full mt-3"
             style={{ 
               fontWeight: 600,
