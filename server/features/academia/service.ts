@@ -25,27 +25,44 @@ export async function listCourses(filters?: {
   category?: string;
   search?: string;
 }) {
-  let sql = `SELECT id, title, description, thumbnail, duration, total_lessons,
-    rating, students, price, category, life_context, level, is_premium, instructor
-    FROM courses WHERE is_active = true`;
+  // Task #151 — LEFT JOIN trail_courses+trails pra expor trail_id/trail_slug
+  // por curso. O frontend (Catálogo) usa esses campos pra mostrar o badge
+  // "Parte da trilha X" e redirecionar pro /trilhas/:slug em vez do fluxo
+  // antigo de "Garantir minha vaga"/waitlist em cursos que viraram bundle.
+  // DISTINCT ON (c.id) na inner garante 1 linha por curso mesmo quando o
+  // curso pertence a várias trilhas (trail_courses é M:N) — pegamos a
+  // trilha ativa de menor id como "primária" pro catálogo (determinístico).
+  // Outer query reaplica o ORDER BY students DESC pra ranking original.
+  const where: string[] = ["c.is_active = true"];
   const params: unknown[] = [];
   let idx = 1;
-
   if (filters?.life_context) {
-    sql += ` AND life_context = $${idx++}`;
+    where.push(`c.life_context = $${idx++}`);
     params.push(filters.life_context);
   }
   if (filters?.category) {
-    sql += ` AND category = $${idx++}`;
+    where.push(`c.category = $${idx++}`);
     params.push(filters.category);
   }
   if (filters?.search) {
-    sql += ` AND (title ILIKE $${idx} OR description ILIKE $${idx})`;
+    where.push(`(c.title ILIKE $${idx} OR c.description ILIKE $${idx})`);
     params.push(`%${filters.search}%`);
     idx++;
   }
-
-  sql += ` ORDER BY students DESC`;
+  const sql = `
+    SELECT * FROM (
+      SELECT DISTINCT ON (c.id)
+        c.id, c.title, c.description, c.thumbnail, c.duration, c.total_lessons,
+        c.rating, c.students, c.price, c.category, c.life_context, c.level,
+        c.is_premium, c.instructor,
+        t.id AS trail_id, t.slug AS trail_slug, t.title AS trail_title
+      FROM courses c
+      LEFT JOIN trail_courses tc ON tc.course_id = c.id
+      LEFT JOIN trails t ON t.id = tc.trail_id AND t.active = TRUE
+      WHERE ${where.join(" AND ")}
+      ORDER BY c.id, t.id
+    ) sub
+    ORDER BY sub.students DESC, sub.id ASC`;
   const { rows } = await query(sql, params);
   return rows;
 }

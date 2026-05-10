@@ -1009,6 +1009,29 @@ export async function initializeSchema() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_home_today_completions_user_date ON home_today_completions(user_id, completed_date DESC)`);
 
+  // Task #151 — Auditoria do Catálogo: zerar ratings/students fake do seed
+  // legado (Task #17 retirou seedCourses, mas DBs antigos guardam números
+  // como rating=4.9 students=4102 sem dados reais por trás). UPDATE
+  // idempotente: só toca cursos que ainda batem EXATAMENTE com o seed
+  // original (título + valor de seed) — preserva qualquer rating/students
+  // que tenha sido editado manualmente no admin ou crescido organicamente.
+  // Match por (title, rating) — students cresce naturalmente com matrículas
+  // reais, então não dá pra usar como discriminador (id=1 já tinha
+  // students=2848 vs seed 2847 quando esta migração rodou). Rating, em
+  // contraste, só muda via admin/avaliações reais (ainda não temos UI),
+  // então é seguro usar como sentinel "ainda é o valor fake do seed".
+  await query(`
+    UPDATE courses SET rating = 0, students = 0
+     WHERE (title, rating) IN (
+       ('Fundamentos do Relacionamento', 4.8),
+       ('Comunicação Não-Violenta para Famílias', 4.9),
+       ('Finanças para Casais', 4.7),
+       ('Educação Positiva: Criando Filhos Resilientes', 4.9),
+       ('Preparação para o Namoro Saudável', 4.6),
+       ('Construindo um Noivado com Propósito', 4.8)
+     )
+  `);
+
   await seedBadgesAndMissions();
   // NOTE: seedCourses() was retired as part of Task #17 — the CMS
   // (`server/features/cms/*`) is now the authoritative source for course

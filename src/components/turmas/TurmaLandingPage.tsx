@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { JoinInterestModal } from "./JoinInterestModal";
+import { TrailPaywall } from "../trilhas/TrailPaywall";
 
 export interface TurmaLanding {
   id: number;
@@ -169,14 +170,15 @@ export function TurmaLandingPage({
 
             {!embedded && (
               <div className="pt-4 space-y-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold" style={{ color: "var(--rayo-terra-600)" }}>
-                    {turma.price && turma.price > 0
-                      ? `R$ ${Number(turma.price).toFixed(2).replace(".", ",")}`
-                      : "Em breve"}
-                  </span>
-                </div>
-                {turma.is_member && onEnterTurma ? (
+                {/* Task #151 — Quando a turma é parte de trilha paga e o usuário
+                    NÃO assina, troca o CTA "Garantir minha vaga"/waitlist por
+                    <TrailPaywall> que linka pro /trilhas/:slug (checkout real).
+                    O TurmaShell já intercepta esse caso antes de renderizar a
+                    landing, mas mantemos aqui pra render standalone (busca,
+                    deep link, etc.) ficar consistente. */}
+                {turma.trail_id && !turma.has_trail_access && !turma.is_member ? (
+                  <TrailPaywall trailId={turma.trail_id} variant="card" />
+                ) : turma.is_member && onEnterTurma ? (
                   <>
                     <Button
                       size="lg"
@@ -192,16 +194,24 @@ export function TurmaLandingPage({
                   </>
                 ) : (
                   <>
+                    {turma.price && turma.price > 0 ? (
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-bold" style={{ color: "var(--rayo-terra-600)" }}>
+                          {`R$ ${Number(turma.price).toFixed(2).replace(".", ",")}`}
+                        </span>
+                      </div>
+                    ) : null}
                     <Button
                       size="lg"
                       className="w-full sm:w-auto"
                       onClick={() => setShowInterest(true)}
                       style={{ background: "var(--rayo-terra-500)", color: "white" }}
                     >
-                      <Sparkles className="w-4 h-4 mr-2" /> Garantir minha vaga
+                      <Sparkles className="w-4 h-4 mr-2" /> Avise-me quando abrir
                     </Button>
                     <p className="text-xs text-muted-foreground">
-                      Sem checkout agora. Avisamos por e-mail quando abrir.
+                      Esta turma ainda não está aberta. Deixe seu e-mail e avisamos
+                      assim que as vagas forem liberadas.
                     </p>
                   </>
                 )}
@@ -260,18 +270,21 @@ export function TurmaLandingPage({
           </section>
         )}
 
-        {/* CTA repetido no fim */}
-        {!embedded && !(turma.is_member && onEnterTurma) && (
-          <div className="text-center py-6">
-            <Button
-              size="lg"
-              onClick={() => setShowInterest(true)}
-              style={{ background: "var(--rayo-terra-500)", color: "white" }}
-            >
-              <Sparkles className="w-4 h-4 mr-2" /> Garantir minha vaga
-            </Button>
-          </div>
-        )}
+        {/* CTA repetido no fim — só quando não é trilha paga e não é membro
+            (Task #151: trilha paga já tem CTA do paywall lá em cima). */}
+        {!embedded &&
+          !(turma.is_member && onEnterTurma) &&
+          !(turma.trail_id && !turma.has_trail_access) && (
+            <div className="text-center py-6">
+              <Button
+                size="lg"
+                onClick={() => setShowInterest(true)}
+                style={{ background: "var(--rayo-terra-500)", color: "white" }}
+              >
+                <Sparkles className="w-4 h-4 mr-2" /> Avise-me quando abrir
+              </Button>
+            </div>
+          )}
       </div>
 
       <JoinInterestModal

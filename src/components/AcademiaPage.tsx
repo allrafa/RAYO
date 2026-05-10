@@ -956,6 +956,38 @@ function MarketplaceView({
 
   const segmentLabel = SEGMENTS.find((s) => s.value === selectedSegment)?.label;
 
+  // Task #151 — Auditoria: "Mais populares" e "Melhores avaliações" agora
+  // respeitam o filtro de segmento (antes ignoravam, vinham crus do parent).
+  // Quando segment=all mantemos o ranking original do parent (que pode ter
+  // ordens curadas); fora disso, derivamos do segmentFilteredCourses.
+  const displayedPopular = useMemo(() => {
+    if (selectedSegment === 'all') return mostPopularCourses;
+    return [...segmentFilteredCourses].sort(
+      (a, b) => (Number(b?.students) || 0) - (Number(a?.students) || 0),
+    );
+  }, [segmentFilteredCourses, mostPopularCourses, selectedSegment]);
+
+  const displayedTopRated = useMemo(() => {
+    if (selectedSegment === 'all') return bestRatedCourses;
+    return [...segmentFilteredCourses]
+      .filter((c) => Number(c?.rating) >= 4.5)
+      .sort((a, b) => (Number(b?.rating) || 0) - (Number(a?.rating) || 0));
+  }, [segmentFilteredCourses, bestRatedCourses, selectedSegment]);
+
+  const displayedTotalPopular =
+    selectedSegment === 'all' ? totalPopularCourses : displayedPopular.length;
+
+  // Task #151 — Esconde formatos com count=0 (Áudios/Reels seedados como
+  // ícones-fantasma ficavam clicáveis e iam pra empty state). Mantém Cursos
+  // sempre visível porque ele opera como link de scroll, não como filtro.
+  const visibleFormatKinds = useMemo(
+    () =>
+      FORMAT_KINDS.filter(
+        (f) => f.kind === 'curso' || (formatCounts[f.kind] ?? 0) > 0,
+      ),
+    [formatCounts],
+  );
+
   return (
     <div>
       {/* HERO — Editorial RAYO */}
@@ -1218,7 +1250,7 @@ function MarketplaceView({
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-                {FORMAT_KINDS.map((f) => {
+                {visibleFormatKinds.map((f) => {
                   const count = formatCounts[f.kind] ?? 0;
                   const Icon = f.Icon;
                   const isActiveKind = selectedKind === f.kind;
@@ -1492,13 +1524,14 @@ function MarketplaceView({
                       populares
                     </span>
                   </h2>
-                  {!showAllPopular && totalPopularCourses > 4 && (
+                  {!showAllPopular && displayedTotalPopular > 4 && (
                     <p className="text-[14px] mt-1" style={{ color: 'var(--rayo-ink-700)' }}>
-                      {totalPopularCourses} cursos disponíveis
+                      {displayedTotalPopular} cursos disponíveis
+                      {selectedSegment !== 'all' && segmentLabel ? ` em ${segmentLabel}` : ''}
                     </p>
                   )}
                 </div>
-                {totalPopularCourses > 4 && (
+                {displayedTotalPopular > 4 && (
                   <Button
                     variant="ghost"
                     className="gap-2 hover:bg-transparent transition-all shrink-0"
@@ -1509,7 +1542,7 @@ function MarketplaceView({
                       const newValue = !showAllPopular;
                       setShowAllPopular(newValue);
                       if (newValue) {
-                        toast.success(`Mostrando todos os ${totalPopularCourses} cursos populares`);
+                        toast.success(`Mostrando todos os ${displayedTotalPopular} cursos populares`);
                       }
                     }}
                   >
@@ -1524,14 +1557,14 @@ function MarketplaceView({
                   </Button>
                 )}
               </div>
-              {mostPopularCourses.length === 0 ? (
+              {displayedPopular.length === 0 ? (
                 <EmptyMarketplaceState
-                  title="Sem cursos populares ainda"
-                  description="Em breve novos lançamentos no marketplace."
+                  title={selectedSegment === 'all' ? 'Sem cursos populares ainda' : `Sem cursos populares em ${segmentLabel}`}
+                  description={selectedSegment === 'all' ? 'Em breve novos lançamentos no catálogo.' : 'Tente outro segmento ou volte em breve.'}
                 />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-500">
-                  {mostPopularCourses.map((course, index) => (
+                  {displayedPopular.map((course, index) => (
                     <div
                       key={course.id}
                       className="animate-in fade-in slide-in-from-bottom-4"
@@ -1553,8 +1586,8 @@ function MarketplaceView({
               )}
             </section>
 
-            {/* BEST RATED */}
-            {bestRatedCourses.length > 0 && (
+            {/* BEST RATED — Task #151: usa displayedTopRated (segment-aware) */}
+            {displayedTopRated.length > 0 && (
               <section>
                 <div className="mb-6 md:mb-8">
                   <h2
@@ -1570,10 +1603,15 @@ function MarketplaceView({
                     <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
                       boas avaliações
                     </span>
+                    {selectedSegment !== 'all' && segmentLabel ? (
+                      <span style={{ color: 'var(--rayo-ink-700)', fontSize: '0.7em', fontStyle: 'normal' }}>
+                        {' '}· {segmentLabel}
+                      </span>
+                    ) : null}
                   </h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                  {bestRatedCourses.slice(0, 8).map((course) => (
+                  {displayedTopRated.slice(0, 8).map((course) => (
                     <CourseCard
                       key={course.id}
                       course={course}
@@ -1903,14 +1941,27 @@ interface CourseCardProps {
 }
 
 function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: CourseCardProps) {
-  // Task #99 — Turmas mini-Skool: o catálogo NÃO faz mais matrícula
-  // direta. Não-membro vai pra landing rica via TurmaShell e clica em
-  // "Garantir minha vaga" (modal de interesse). Mantemos o prop por
-  // compatibilidade com chamadas existentes, mas ele não dispara mais
-  // checkout do card.
+  // Task #151 — Quando o curso faz parte de uma trilha paga (Task #130),
+  // o catálogo NÃO leva mais pra landing/waitlist da turma. Em vez disso,
+  // o clique vai direto pro detalhe da trilha (/trilhas/:slug), onde o
+  // checkout Stripe acontece. Cursos avulsos (sem trail_slug) seguem
+  // pro fluxo legado de "Em breve" (TurmaShell + JoinInterestModal).
+  const trailSlug: string | undefined = course?.trail_slug || undefined;
+  const trailTitle: string | undefined = course?.trail_title || undefined;
+  const isInTrail = !!trailSlug;
+
+  const goToTrail = () => {
+    if (trailSlug) window.location.href = `/trilhas/${trailSlug}`;
+  };
+
+  const handleCardClick = () => {
+    if (isInTrail) goToTrail();
+    else onClick();
+  };
+
   const handleEnroll = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onClick();
+    handleCardClick();
   };
 
   return (
@@ -1927,7 +1978,7 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
     >
       {/* Thumbnail */}
       <div 
-        onClick={onClick}
+        onClick={handleCardClick}
         className="relative aspect-[16/9] overflow-hidden cursor-pointer"
         style={{ background: 'var(--rayo-sand-300)' }}
       >
@@ -1941,7 +1992,7 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
             <FavoriteIcon id={course.id} type="course" />
           </div>
         </div>
-        {course.isEnrolled && (
+        {course.isEnrolled ? (
           <div className="absolute top-3 left-3">
             <Badge 
               style={{ 
@@ -1955,31 +2006,52 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
               Adquirido
             </Badge>
           </div>
-        )}
+        ) : isInTrail ? (
+          <div className="absolute top-3 left-3">
+            <Badge
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                background: 'var(--rayo-terra-500)',
+                color: '#FFFFFF',
+                maxWidth: '180px',
+              }}
+              className="line-clamp-1"
+            >
+              <Sparkles className="w-3 h-3 mr-1 shrink-0" />
+              {trailTitle ? `Trilha: ${trailTitle}` : 'Parte de uma trilha'}
+            </Badge>
+          </div>
+        ) : null}
       </div>
 
       {/* Content */}
       <div className="p-4 space-y-3">
-        <div onClick={onClick} className="cursor-pointer">
-          {/* Rating */}
-          <div className="flex items-center gap-1.5">
-            <Star className="w-4 h-4 fill-[#FFA500] text-[#FFA500]" />
-            <span 
-              className="text-[14px]" 
-              style={{ 
-                fontWeight: 700, 
-                color: 'var(--rayo-forest-900)' 
-              }}
-            >
-              {course.rating}
-            </span>
-            <span 
-              className="text-[14px]" 
-              style={{ color: 'var(--rayo-ink-700)' }}
-            >
-              ({course.students})
-            </span>
-          </div>
+        <div onClick={handleCardClick} className="cursor-pointer">
+          {/* Rating — só renderiza se tiver dado real (Task #151: ratings fake do seed
+              foram zerados em migração; cursos novos começam em 0). */}
+          {Number(course.rating) > 0 && (
+            <div className="flex items-center gap-1.5">
+              <Star className="w-4 h-4 fill-[#FFA500] text-[#FFA500]" />
+              <span
+                className="text-[14px]"
+                style={{
+                  fontWeight: 700,
+                  color: 'var(--rayo-forest-900)'
+                }}
+              >
+                {Number(course.rating).toFixed(1)}
+              </span>
+              {Number(course.students) > 0 && (
+                <span
+                  className="text-[14px]"
+                  style={{ color: 'var(--rayo-ink-700)' }}
+                >
+                  ({course.students})
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Title */}
           <h3 
@@ -2006,30 +2078,34 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
             {course.instructor}
           </p>
 
-          {/* Price */}
-          <div className="flex items-baseline gap-2 pt-2">
-            {course.price > 0 ? (
-              <span
-                className="text-[20px]"
-                style={{
-                  fontWeight: 700,
-                  color: 'var(--rayo-forest-900)'
-                }}
-              >
-                R$ {Number(course.price).toFixed(2).replace('.', ',')}
-              </span>
-            ) : (
-              <span 
-                className="text-[20px]" 
-                style={{ 
-                  fontWeight: 700, 
-                  color: 'var(--rayo-sage-500)' 
-                }}
-              >
-                Gratuito
-              </span>
-            )}
-          </div>
+          {/* Price — Task #151: cursos em trilha não mostram preço avulso
+              (preço é da assinatura da trilha, exibido em /trilhas/:slug).
+              Gratuito só pra cursos avulsos com price=0. */}
+          {!isInTrail && (
+            <div className="flex items-baseline gap-2 pt-2">
+              {course.price > 0 ? (
+                <span
+                  className="text-[20px]"
+                  style={{
+                    fontWeight: 700,
+                    color: 'var(--rayo-forest-900)'
+                  }}
+                >
+                  R$ {Number(course.price).toFixed(2).replace('.', ',')}
+                </span>
+              ) : (
+                <span
+                  className="text-[20px]"
+                  style={{
+                    fontWeight: 700,
+                    color: 'var(--rayo-sage-500)'
+                  }}
+                >
+                  Gratuito
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Enroll Button - Only show if not enrolled */}
@@ -2037,7 +2113,7 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
           <Button
             onClick={handleEnroll}
             className="w-full mt-3"
-            style={{ 
+            style={{
               fontWeight: 600,
               background: 'var(--rayo-terra-500)',
               color: '#FFFFFF',
@@ -2049,7 +2125,7 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
               e.currentTarget.style.background = 'var(--rayo-terra-500)';
             }}
           >
-            Ver turma
+            {isInTrail ? 'Ver trilha' : 'Ver turma'}
           </Button>
         )}
         
