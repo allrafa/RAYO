@@ -572,10 +572,10 @@ function ScenarioStep({
                     {option.consequence}
                   </p>
                   
-                  {option.creates_connection && option.raio_teaches && (
+                  {option.creates_connection && option.rayo_teaches && (
                     <div className="bg-green-100 p-3 rounded-lg mt-2">
                       <p className="text-green-900 font-medium">
-                        ✨ {option.raio_teaches}
+                        ✨ {option.rayo_teaches}
                       </p>
                     </div>
                   )}

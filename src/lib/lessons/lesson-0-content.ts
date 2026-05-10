@@ -170,7 +170,7 @@ O que você diz?
         tone: 'construtiva',
         consequence: 'Você expressa o que sente SEM atacar. Abre espaço para uma conversa real e uma solução juntos.',
         creates_connection: true,
-        raio_teaches: 'Comunicação clara + Sem culpa = Conexão verdadeira'
+        rayo_teaches: 'Comunicação clara + Sem culpa = Conexão verdadeira'
       }
     ],
     correct_option: 'c'
