@@ -202,14 +202,30 @@ export function TopNavbar({ onTabChange, isSidebarMinimized = false }: TopNavbar
 
           <NotificationBell onTabChange={onTabChange} />
 
-          <button
-            type="button"
-            className="rn-premium-pill"
-            onClick={() => toast.success("Você já é Premium! 🎉")}
-            aria-label="Status Premium"
-          >
-            Premium
-          </button>
+          {/* Pill Premium — só mostra "Premium" pra quem realmente tem acesso
+              (assinante ativo ou admin). Pra quem não tem, vira CTA pro
+              catálogo de trilhas. Antes mostrava "Você já é Premium! 🎉" pra
+              todo mundo, o que era enganoso. */}
+          {user?.is_premium ? (
+            <button
+              type="button"
+              className="rn-premium-pill"
+              onClick={() => toast.success("Você já é Premium! 🎉")}
+              aria-label="Status Premium"
+            >
+              Premium
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="rn-premium-pill"
+              onClick={() => { window.location.href = "/trilhas"; }}
+              aria-label="Conhecer planos premium"
+              title="Conhecer trilhas premium"
+            >
+              Seja Premium
+            </button>
+          )}
         </div>
       </div>
     </header>
