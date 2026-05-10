@@ -960,22 +960,33 @@ function MarketplaceView({
   // respeitam o filtro de segmento (antes ignoravam, vinham crus do parent).
   // Quando segment=all mantemos o ranking original do parent (que pode ter
   // ordens curadas); fora disso, derivamos do segmentFilteredCourses.
+  // Mantém paridade com a lógica do parent: popular = students > 300,
+  // top-rated = rating >= 4.7 (cutoffs originais). showAllPopular controla
+  // o slice(0,4) vs lista cheia, igual ao caso `all`.
+  const segmentedPopularAll = useMemo(
+    () =>
+      [...segmentFilteredCourses]
+        .filter((c) => Number(c?.students) > 300)
+        .sort(
+          (a, b) => (Number(b?.students) || 0) - (Number(a?.students) || 0),
+        ),
+    [segmentFilteredCourses],
+  );
+
   const displayedPopular = useMemo(() => {
     if (selectedSegment === 'all') return mostPopularCourses;
-    return [...segmentFilteredCourses].sort(
-      (a, b) => (Number(b?.students) || 0) - (Number(a?.students) || 0),
-    );
-  }, [segmentFilteredCourses, mostPopularCourses, selectedSegment]);
+    return showAllPopular ? segmentedPopularAll : segmentedPopularAll.slice(0, 4);
+  }, [segmentedPopularAll, mostPopularCourses, selectedSegment, showAllPopular]);
 
   const displayedTopRated = useMemo(() => {
     if (selectedSegment === 'all') return bestRatedCourses;
     return [...segmentFilteredCourses]
-      .filter((c) => Number(c?.rating) >= 4.5)
+      .filter((c) => Number(c?.rating) >= 4.7)
       .sort((a, b) => (Number(b?.rating) || 0) - (Number(a?.rating) || 0));
   }, [segmentFilteredCourses, bestRatedCourses, selectedSegment]);
 
   const displayedTotalPopular =
-    selectedSegment === 'all' ? totalPopularCourses : displayedPopular.length;
+    selectedSegment === 'all' ? totalPopularCourses : segmentedPopularAll.length;
 
   // Task #151 — Esconde formatos com count=0 (Áudios/Reels seedados como
   // ícones-fantasma ficavam clicáveis e iam pra empty state). Mantém Cursos
