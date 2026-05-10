@@ -34,7 +34,7 @@ export function TurmaShell() {
     let cancel = false;
     setLoading(true);
     // Task #102 — quando o sino estaciona um post pendente
-    // (`raio-pending-post`), o usuário veio de uma notificação
+    // (`rayo-pending-post`), o usuário veio de uma notificação
     // class_post — abre direto na aba Comunidade pra que o
     // TurmaCommunityTab consuma o stash e role/destaque o post alvo.
     let pendingPost = false;

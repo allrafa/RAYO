@@ -380,7 +380,7 @@ async function notifyClassMembersOfNewPost(
   // Deep-link inclui post_id pra que o sino abra exatamente o post alvo
   // dentro da aba Comunidade da turma. NotificationBell faz o parse do
   // padrão `/turmas/:classId/post/:postId` e estaciona ambos os ids em
-  // sessionStorage; TurmaCommunityTab consome `raio-pending-post` ao
+  // sessionStorage; TurmaCommunityTab consome `rayo-pending-post` ao
   // carregar a lista pra rolar/destacar o post correspondente.
   const link = `/turmas/${classId}/post/${postId}`;
   const payload = {

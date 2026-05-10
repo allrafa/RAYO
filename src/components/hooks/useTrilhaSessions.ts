@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { TrillhaSession, ConversationMessage, ConsultantType } from '../TrilhaTransformacao/types';
 
-const STORAGE_KEY = 'raio-trilha-sessions';
+const STORAGE_KEY = 'rayo-trilha-sessions';
 
 export function useTrilhaSessions() {
   const [sessions, setSessions] = useState<TrillhaSession[]>([]);

@@ -1,6 +1,6 @@
 // Task #163 — chave migrada pro namespace `rayo:` no rebrand RAIO→RAYO.
 // A migração one-shot em src/lib/storageMigration.ts copia a chave
-// legada `raio:returningUser` antes do primeiro consumer ler.
+// legada (namespace `raio:`) antes do primeiro consumer ler.
 const RETURNING_USER_KEY = "rayo:returningUser";
 
 function safeLocalStorage(): Storage | null {

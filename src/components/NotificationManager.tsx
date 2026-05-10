@@ -76,7 +76,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       
       // For mobile (Expo), you would use expo-notifications here
       // This is a web-compatible fallback
-      const stored = localStorage.getItem('raio-notifications-permission');
+      const stored = localStorage.getItem('rayo-notifications-permission');
       if (stored === 'granted') {
         setHasPermission(true);
       }
@@ -92,7 +92,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         const permission = await Notification.requestPermission();
         const granted = permission === 'granted';
         setHasPermission(granted);
-        localStorage.setItem('raio-notifications-permission', permission);
+        localStorage.setItem('rayo-notifications-permission', permission);
         
         if (granted) {
           // Haptic feedback on success
@@ -117,7 +117,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   const loadNotifications = () => {
     try {
-      const stored = localStorage.getItem('raio-notifications');
+      const stored = localStorage.getItem('rayo-notifications');
       if (stored) {
         const parsed = JSON.parse(stored);
         setNotifications(parsed.map((n: any) => ({
@@ -132,7 +132,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
   const saveNotifications = (notifs: Notification[]) => {
     try {
-      localStorage.setItem('raio-notifications', JSON.stringify(notifs));
+      localStorage.setItem('rayo-notifications', JSON.stringify(notifs));
     } catch (error) {
       console.error('Error saving notifications:', error);
     }
@@ -164,8 +164,8 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       try {
         new Notification(notification.title, {
           body: notification.message,
-          icon: notification.icon || '/raio-logo.png',
-          badge: '/raio-badge.png',
+          icon: notification.icon || '/rayo-logo.png',
+          badge: '/rayo-badge.png',
           tag: newNotif.id,
         });
       } catch (error) {

@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { VideoProgress, VideoAnalytics, UserVideoData } from '../youtube/YouTubeTypes';
 
-const STORAGE_KEY = 'raio-video-data';
+const STORAGE_KEY = 'rayo-video-data';
 
 /**
  * Carrega dados do usuário do localStorage

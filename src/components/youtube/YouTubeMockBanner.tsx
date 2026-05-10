@@ -18,7 +18,7 @@ export function YouTubeMockBanner() {
     if (import.meta.env.PROD) return;
 
     // Verifica se já foi dispensado anteriormente
-    const wasDismissed = localStorage.getItem('raio-youtube-mock-banner-dismissed');
+    const wasDismissed = localStorage.getItem('rayo-youtube-mock-banner-dismissed');
     if (!wasDismissed) {
       // Mostra banner após 2 segundos
       const timer = setTimeout(() => setShow(true), 2000);
@@ -29,7 +29,7 @@ export function YouTubeMockBanner() {
   const handleDismiss = () => {
     setShow(false);
     setDismissed(true);
-    localStorage.setItem('raio-youtube-mock-banner-dismissed', 'true');
+    localStorage.setItem('rayo-youtube-mock-banner-dismissed', 'true');
   };
 
   if (!show || dismissed) return null;

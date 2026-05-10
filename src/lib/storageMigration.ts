@@ -33,6 +33,7 @@ const KEY_MAP: Array<readonly [legacy: string, next: string]> = [
   ["raio_today_skipped_date", "rayo_today_skipped_date"],
   ["raio-accessibility", "rayo-accessibility"],
   ["raio-weekly-goal", "rayo-weekly-goal"],
+  ["raio-youtube-cache", "rayo-youtube-cache"],
 ];
 
 // Prefixos com chave dinâmica (sufixo por usuário ou similar). Pra

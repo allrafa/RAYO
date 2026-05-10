@@ -139,8 +139,8 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   
   // Load analytics data from localStorage
   useEffect(() => {
-    const savedSessions = localStorage.getItem('raio-analytics-sessions');
-    const savedInteractions = localStorage.getItem('raio-analytics-interactions');
+    const savedSessions = localStorage.getItem('rayo-analytics-sessions');
+    const savedInteractions = localStorage.getItem('rayo-analytics-interactions');
     
     if (savedSessions) {
       try {
@@ -161,11 +161,11 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 
   // Save analytics data to localStorage
   useEffect(() => {
-    localStorage.setItem('raio-analytics-sessions', JSON.stringify(sessionHistory));
+    localStorage.setItem('rayo-analytics-sessions', JSON.stringify(sessionHistory));
   }, [sessionHistory]);
 
   useEffect(() => {
-    localStorage.setItem('raio-analytics-interactions', JSON.stringify(interactions));
+    localStorage.setItem('rayo-analytics-interactions', JSON.stringify(interactions));
   }, [interactions]);
 
   // Auto start session on app load

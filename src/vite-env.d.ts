@@ -136,7 +136,7 @@ interface Window {
   growthbook?: any;
   
   // Debug helpers
-  __RAIO_DEBUG__?: boolean;
+  __RAYO_DEBUG__?: boolean;
 }
 
 // ============================================================================

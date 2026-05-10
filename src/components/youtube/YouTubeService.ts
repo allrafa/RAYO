@@ -15,7 +15,9 @@ import {
 
 // Configuração do canal
 const CHANNEL_USERNAME = '@eusourafaraio';
-const CACHE_KEY = 'raio-youtube-cache';
+// Task #163 — chave migrada pro namespace `rayo-` no rebrand RAIO→RAYO.
+// storageMigration.ts copia o valor legado no boot.
+const CACHE_KEY = 'rayo-youtube-cache';
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hora em ms
 
 // YouTube API Configuration
