@@ -14,6 +14,8 @@ import {
   recordClassInterest,
   getCourseMembers,
   isCourseMember,
+  submitCourseReview,
+  getCourseReviews,
 } from "./service.js";
 import {
   getAllPosts as getAllCommunityPosts,
@@ -53,6 +55,11 @@ async function ensureTrailAccess(req: import("express").Request, res: import("ex
 
 // Task #99 — Captura de interesse: rate-limit duro per usuário/IP.
 const interestLimiter = rateLimiter(5, 60 * 60 * 1000, { keyByUser: true });
+
+// Task #152 — Avaliações: 10 submits por hora por usuário (idempotente; cobre
+// re-tentativas + edição). UNIQUE(user, course) garante no service que a
+// segunda chamada vira UPDATE, então o limite é generoso.
+const reviewLimiter = rateLimiter(10, 60 * 60 * 1000, { keyByUser: true });
 
 router.get("/", async (req, res, next) => {
   try {
@@ -264,6 +271,51 @@ router.post("/:id/enroll", requireAuth, async (req, res, next) => {
     }
     success(res, result, 201);
   } catch (err) {
+    next(err);
+  }
+});
+
+// Task #152 — Avaliações reais de cursos pelos alunos. POST submete (cria/
+// atualiza, idempotente por user+course); GET devolve resumo público + amostra.
+router.get("/:id/reviews", async (req, res, next) => {
+  try {
+    const courseId = parseInt(req.params.id, 10);
+    if (isNaN(courseId)) {
+      sendError(res, "ID de curso inválido", "INVALID_COURSE_ID");
+      return;
+    }
+    const limit = Math.max(1, Math.min(parseInt(String(req.query.limit || "10"), 10) || 10, 50));
+    const result = await getCourseReviews(courseId, limit);
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/:id/review", requireAuth, reviewLimiter, async (req, res, next) => {
+  try {
+    const courseId = parseInt(req.params.id, 10);
+    if (isNaN(courseId)) {
+      sendError(res, "ID de curso inválido", "INVALID_COURSE_ID");
+      return;
+    }
+    // Trail gate: se a turma é parte de trilha paga, viewer precisa ter acesso
+    // — reaproveita a mesma checagem do enroll (se não tem assinatura, nem
+    // matrícula tem; mas mantemos consistência caso o grant seja revogado).
+    if (!(await ensureTrailAccess(req, res, courseId))) return;
+    const { rating, comment } = req.body || {};
+    const ratingNum = Number(rating);
+    if (!Number.isFinite(ratingNum)) {
+      sendError(res, "Nota inválida", "INVALID_RATING");
+      return;
+    }
+    const result = await submitCourseReview(req.user!.id, courseId, ratingNum, comment ?? null);
+    success(res, result, 201);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
     next(err);
   }
 });

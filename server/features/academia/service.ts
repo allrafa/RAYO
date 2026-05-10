@@ -301,19 +301,35 @@ export async function getCourseLanding(courseId: number, viewerId?: number) {
     `SELECT id, title, subtitle, description, thumbnail, hero_cover_url,
        duration, total_lessons, rating, students, price, category, life_context,
        level, is_premium, instructor, who_for, what_you_get, how_it_works,
-       (SELECT COUNT(*)::int FROM user_course_progress ucp WHERE ucp.course_id = courses.id) AS members_count
+       (SELECT COUNT(*)::int FROM user_course_progress ucp WHERE ucp.course_id = courses.id) AS members_count,
+       (SELECT COUNT(*)::int FROM course_reviews cr WHERE cr.course_id = courses.id) AS reviews_count
      FROM courses WHERE id = $1 AND is_active = true`,
     [courseId],
   );
   if (rows.length === 0) return null;
   const course = rows[0];
   let isMember = false;
+  let viewerCompletedLessons = 0;
+  let viewerReview: { rating: number; comment: string | null; updated_at: string } | null = null;
   if (viewerId) {
-    const { rows: m } = await query(
-      `SELECT 1 FROM user_course_progress WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
+    const { rows: m } = await query<{ completed_lessons: number }>(
+      `SELECT completed_lessons FROM user_course_progress WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
       [viewerId, courseId],
     );
-    isMember = m.length > 0;
+    if (m.length > 0) {
+      isMember = true;
+      viewerCompletedLessons = Number(m[0].completed_lessons) || 0;
+    }
+    // Task #152 — viewer's existing review (se houver) pra UI mostrar
+    // "Atualizar avaliação" em vez de "Avaliar este curso".
+    const { rows: rv } = await query<{ rating: number; comment: string | null; updated_at: string }>(
+      `SELECT rating, comment, updated_at FROM course_reviews
+        WHERE user_id = $1 AND course_id = $2 LIMIT 1`,
+      [viewerId, courseId],
+    );
+    if (rv.length > 0) {
+      viewerReview = { rating: rv[0].rating, comment: rv[0].comment, updated_at: rv[0].updated_at };
+    }
   }
   // Task #130 — expõe trilha vinculada (se houver) e flag de assinatura ativa
   // do viewer pra que o frontend (TurmaShell) renderize <TrailPaywall> em vez
@@ -346,6 +362,133 @@ export async function getCourseLanding(courseId: number, viewerId?: number) {
     trail_id: trailId,
     trail_slug: trailSlug,
     has_trail_access: hasTrailAccess,
+    // Task #152 — habilita CTA "Avaliar este curso" no frontend.
+    // Critério: matrícula + ≥1 lição concluída. Frontend usa `viewer_review`
+    // pra alternar entre "Avaliar" / "Atualizar avaliação".
+    viewer_completed_lessons: viewerCompletedLessons,
+    viewer_review: viewerReview,
+    can_review: isMember && viewerCompletedLessons >= 1,
+  };
+}
+
+// Task #152 — Submete (cria ou atualiza) a avaliação do aluno e recalcula
+// `courses.rating` como AVG. Idempotente por (user_id, course_id) via UNIQUE.
+// Critério de elegibilidade: matriculado + ≥1 lição concluída.
+export async function submitCourseReview(
+  userId: number,
+  courseId: number,
+  rating: number,
+  comment?: string | null,
+) {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new AppError("Nota inválida (use 1 a 5)", "INVALID_RATING", 400);
+  }
+  const trimmedComment = comment ? String(comment).trim() : null;
+  if (trimmedComment && trimmedComment.length > 1000) {
+    throw new AppError("Comentário muito longo (até 1000 caracteres)", "COMMENT_TOO_LONG", 400);
+  }
+
+  const { rows: courseRows } = await query(
+    `SELECT id FROM courses WHERE id = $1 AND is_active = true`,
+    [courseId],
+  );
+  if (courseRows.length === 0) {
+    throw new AppError("Curso não encontrado", "COURSE_NOT_FOUND", 404);
+  }
+
+  const { rows: progressRows } = await query<{ completed_lessons: number }>(
+    `SELECT completed_lessons FROM user_course_progress WHERE user_id = $1 AND course_id = $2`,
+    [userId, courseId],
+  );
+  if (progressRows.length === 0) {
+    throw new AppError("Você precisa estar matriculado para avaliar este curso", "NOT_ENROLLED", 403);
+  }
+  if ((progressRows[0].completed_lessons ?? 0) < 1) {
+    throw new AppError(
+      "Conclua ao menos uma aula antes de avaliar o curso",
+      "REVIEW_NOT_ELIGIBLE",
+      403,
+    );
+  }
+
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
+    const { rows: upserted } = await client.query<{ id: number; created_at: string; updated_at: string }>(
+      `INSERT INTO course_reviews (user_id, course_id, rating, comment)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id, course_id) DO UPDATE SET
+         rating = EXCLUDED.rating,
+         comment = EXCLUDED.comment,
+         updated_at = NOW()
+       RETURNING id, created_at, updated_at`,
+      [userId, courseId, rating, trimmedComment],
+    );
+    // Task #152 — recalcula `courses.rating` (AVG) e `courses.students`
+    // (COUNT distinct de avaliadores) na mesma transação. Avaliações são a
+    // fonte de verdade do social proof do catálogo: cursos só mostram
+    // estrelas+contagem quando há reviews reais (Task #151 zerou seeds).
+    await client.query(
+      `UPDATE courses SET
+         rating = COALESCE(
+           (SELECT ROUND(AVG(rating)::numeric, 2) FROM course_reviews WHERE course_id = $1),
+           0
+         ),
+         students = (SELECT COUNT(DISTINCT user_id)::int FROM course_reviews WHERE course_id = $1)
+       WHERE id = $1`,
+      [courseId],
+    );
+    await client.query("COMMIT");
+
+    trackEvent(userId, "course_reviewed", { course_id: courseId, rating });
+
+    const { rows: aggRows } = await query<{ avg: string | null; total: number }>(
+      `SELECT ROUND(AVG(rating)::numeric, 2) AS avg, COUNT(*)::int AS total
+         FROM course_reviews WHERE course_id = $1`,
+      [courseId],
+    );
+    return {
+      review: {
+        id: upserted[0].id,
+        rating,
+        comment: trimmedComment,
+        created_at: upserted[0].created_at,
+        updated_at: upserted[0].updated_at,
+      },
+      summary: {
+        average: aggRows[0]?.avg ? Number(aggRows[0].avg) : 0,
+        total: aggRows[0]?.total ?? 0,
+      },
+    };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// Task #152 — Resumo público das avaliações (média + total + amostra recente).
+export async function getCourseReviews(courseId: number, limit = 10) {
+  const { rows: agg } = await query<{ avg: string | null; total: number }>(
+    `SELECT ROUND(AVG(rating)::numeric, 2) AS avg, COUNT(*)::int AS total
+       FROM course_reviews WHERE course_id = $1`,
+    [courseId],
+  );
+  const { rows: recent } = await query(
+    `SELECT cr.id, cr.rating, cr.comment, cr.created_at, cr.updated_at,
+       u.id AS user_id, u.name AS user_name, u.avatar_url AS user_avatar
+       FROM course_reviews cr
+       JOIN users u ON u.id = cr.user_id
+      WHERE cr.course_id = $1
+      ORDER BY cr.updated_at DESC
+      LIMIT $2`,
+    [courseId, Math.max(1, Math.min(limit, 50))],
+  );
+  return {
+    average: agg[0]?.avg ? Number(agg[0].avg) : 0,
+    total: agg[0]?.total ?? 0,
+    reviews: recent,
   };
 }
 

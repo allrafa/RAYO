@@ -16,6 +16,7 @@ import { TurmaLandingPage, type TurmaLanding } from "./TurmaLandingPage";
 import { TurmaCommunityTab } from "./TurmaCommunityTab";
 import { TurmaMembersTab } from "./TurmaMembersTab";
 import { TrailPaywall } from "../trilhas/TrailPaywall";
+import { CourseReviewCard } from "./CourseReviewCard";
 
 type TurmaTab = "aulas" | "comunidade" | "membros" | "sobre";
 
@@ -164,7 +165,27 @@ export function TurmaShell() {
       </div>
 
       <div className="max-w-5xl mx-auto">
-        {tab === "aulas" && <CourseDetailPage courseId={turmaId} onBack={back} />}
+        {tab === "aulas" && (
+          <>
+            {/* Task #152 — CTA "Avaliar este curso" pra alunos elegíveis
+                (matriculado + ≥1 lição concluída). Quando já avaliaram, o
+                componente mostra a nota atual com botão "Editar". */}
+            {landing.can_review ? (
+              <div className="px-4 pt-4">
+                <CourseReviewCard
+                  courseId={turmaId}
+                  existingReview={landing.viewer_review ?? null}
+                  onUpdated={(next) =>
+                    setLanding((prev) =>
+                      prev ? { ...prev, viewer_review: next } : prev,
+                    )
+                  }
+                />
+              </div>
+            ) : null}
+            <CourseDetailPage courseId={turmaId} onBack={back} />
+          </>
+        )}
         {tab === "comunidade" && <TurmaCommunityTab classId={turmaId} />}
         {tab === "membros" && <TurmaMembersTab classId={turmaId} />}
         {tab === "sobre" && (

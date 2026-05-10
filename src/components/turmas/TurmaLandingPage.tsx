@@ -35,6 +35,12 @@ export interface TurmaLanding {
   trail_id?: number | null;
   trail_slug?: string | null;
   has_trail_access?: boolean;
+  // Task #152 — avaliação real do aluno. `viewer_review` existe quando o
+  // viewer já avaliou; `can_review` = matriculado + ≥1 lição concluída.
+  reviews_count?: number;
+  viewer_completed_lessons?: number;
+  viewer_review?: { rating: number; comment: string | null; updated_at: string } | null;
+  can_review?: boolean;
 }
 
 interface TurmaLandingPageProps {

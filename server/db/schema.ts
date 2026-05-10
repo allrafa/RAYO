@@ -1108,6 +1108,24 @@ export async function initializeSchema() {
     )
   `);
 
+  // Task #152 — Avaliações reais de cursos pelos alunos. UNIQUE(user, course)
+  // garante idempotência (re-submissão = update). `courses.rating` é
+  // recalculado como AVG(rating) a cada submit/update/delete via service.
+  await query(`
+    CREATE TABLE IF NOT EXISTS course_reviews (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+      rating SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+      comment TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE(user_id, course_id)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_course_reviews_course ON course_reviews(course_id)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_course_reviews_user ON course_reviews(user_id)`);
+
   console.log("[DB] Schema initialized successfully.");
 }
 
