@@ -191,6 +191,9 @@ export function MusicPage({ onBack }: MusicPageProps) {
                     className="w-64 hover:shadow-lg transition-all duration-300 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rayo-terra-500"
                     onClick={() => handlePlayPlaylist(category.name, playlist)}
                     onKeyDown={(e) => {
+                      // Guard: só dispara quando a tecla foi no card,
+                      // não nos botões internos (Heart/MoreHorizontal/Play).
+                      if (e.target !== e.currentTarget) return;
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         handlePlayPlaylist(category.name, playlist);
