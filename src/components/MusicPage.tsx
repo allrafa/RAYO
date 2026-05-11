@@ -245,7 +245,7 @@ export function MusicPage({ onBack }: MusicPageProps) {
                         </Badge>
                         <Button
                           size="sm"
-                          aria-label={`Reproduzir ${playlist.name}`}
+                          aria-label={(currentTrack?.id === `music-${category.name}-${playlist.name}` && isPlaying ? "Pausar " : "Reproduzir ") + playlist.name}
                           onClick={(e) => {
                             e.stopPropagation();
                             handlePlayPlaylist(category.name, playlist);
