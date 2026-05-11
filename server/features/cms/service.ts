@@ -327,7 +327,7 @@ export async function listPublicContent(opts: {
   const { rows } = await query(
     `SELECT id, kind, title, slug, short_description, cover_url, segments, interests,
             tags, is_premium, price, duration_seconds, hook, author, pages, view_count,
-            published_at, external_url,
+            published_at, media_url, external_url,
             video_provider, video_external_id, video_status,
             video_duration_sec, video_thumbnail_url
        FROM content_items

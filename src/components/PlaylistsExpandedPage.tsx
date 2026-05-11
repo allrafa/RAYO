@@ -1,22 +1,23 @@
-import { useState, useEffect, useRef } from "react";
-import { Search, X, Play, Pause, Music, Star } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Search, X, Play, Pause, Music, Loader2 } from "lucide-react";
 import { useApp } from "./AppContext";
 import { useAudioPlayer } from "../contexts/AudioPlayerContext";
 import { enhancedToast } from "./EnhancedToast";
+import { api } from "../lib/api";
 
-interface FunctionalPlaylist {
-  id: string;
+// Shape returned by /api/content?kind=audio (CMS público).
+interface CmsAudio {
+  id: number;
   title: string;
-  duration: string;
-  episodes: number;
-  category: string;
-  isPremium: boolean;
-  rating: number;
-  plays: number;
-  image: string;
-  overlayText: string;
-  isNew: boolean;
-  audio_url?: string | null;
+  short_description: string | null;
+  cover_url: string | null;
+  duration_seconds: number | null;
+  is_premium: boolean;
+  view_count: number;
+  published_at: string | null;
+  interests: string[];
+  media_url: string | null;
+  external_url: string | null;
 }
 
 interface PlaylistsExpandedPageProps {
@@ -24,184 +25,89 @@ interface PlaylistsExpandedPageProps {
   onClose: () => void;
 }
 
+const PLACEHOLDER_COVER =
+  "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80";
+
+function formatDuration(seconds: number | null): string {
+  if (!seconds || seconds <= 0) return "—";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}min`;
+  return `${m}min`;
+}
+
+function formatPlays(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
+function isRecent(iso: string | null): boolean {
+  if (!iso) return false;
+  const days = (Date.now() - new Date(iso).getTime()) / 86_400_000;
+  return days >= 0 && days <= 14;
+}
+
 export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [items, setItems] = useState<CmsAudio[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { userData: _userData } = useApp();
   const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
 
-  // Categorias (sem emojis grandes / gradients pastéis — DS v2.0).
-  const playlistCategories = [
-    { id: "all", name: "Todas" },
-    { id: "trending", name: "Em alta" },
-    { id: "communication", name: "Comunicação" },
-    { id: "intimacy", name: "Intimidade" },
-    { id: "conflicts", name: "Resolução" },
-    { id: "parenting", name: "Filhos" },
-    { id: "spirituality", name: "Fé" },
-    { id: "finances", name: "Finanças" },
-  ];
+  // Carrega áudios reais publicados no CMS (kind=audio). Sem fallback
+  // pra mocks: se vier vazio, mostramos empty state honesto pro produtor
+  // saber que precisa cadastrar conteúdo.
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    (async () => {
+      const res = await api.get<{ items: CmsAudio[] }>("/api/content?kind=audio&limit=50");
+      if (cancelled) return;
+      if (res.success && res.data) {
+        setItems(res.data.items ?? []);
+      } else {
+        setItems([]);
+        setLoadError(res.error?.message ?? "Não foi possível carregar as playlists.");
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen]);
 
-  // Dados mockados — substituição por API é fora de escopo desta task.
-  const functionalPlaylists: Record<string, FunctionalPlaylist[]> = {
-    trending: [
-      {
-        id: "1",
-        // Sample MP3 público (SoundHelix, royalty-free) só pra QA — substituir
-        // por mídia real quando os dados migrarem pro CMS (`content_items` kind audio).
-        audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-        title: "Comunicação Não-Violenta no Relacionamento",
-        duration: "2h 15min",
-        episodes: 12,
-        category: "communication",
-        isPremium: false,
-        rating: 4.9,
-        plays: 15420,
-        image: "https://images.unsplash.com/photo-1556858310-a0bbdbb87272?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3VwbGUlMjBpbnRpbWF0ZSUyMGNvbnZlcnNhdGlvbiUyMHBlYWNlZnVsfGVufDF8fHx8MTc1OTc4NTkxOHww&ixlib=rb-4.1.0&q=80&w=1080",
-        overlayText: "Transforme conflitos em conexão",
-        isNew: false,
-      },
-      {
-        id: "2",
-        title: "Reavivando a Intimidade Perdida",
-        duration: "1h 45min",
-        episodes: 8,
-        category: "intimacy",
-        isPremium: true,
-        rating: 4.8,
-        plays: 12890,
-        image: "https://images.unsplash.com/photo-1755884684493-16b21f4adf96?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxyb21hbnRpYyUyMGNvdXBsZSUyMGNvbm5lY3Rpb24lMjBsb3ZlfGVufDF8fHx8MTc1OTc4NTkyMnww&ixlib=rb-4.1.0&q=80&w=1080",
-        overlayText: "Reconecte-se em um nível mais profundo",
-        isNew: true,
-      },
-    ],
-    communication: [
-      {
-        id: "3",
-        title: "Escuta Ativa: A Arte de Ouvir de Verdade",
-        duration: "1h 30min",
-        episodes: 6,
-        category: "communication",
-        isPremium: false,
-        rating: 4.7,
-        plays: 8750,
-        image: "https://images.unsplash.com/photo-1604313477128-4e121c72c5ab?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsaXN0ZW5pbmclMjBhY3RpdmUlMjBjb21tdW5pY2F0aW9uJTIwdGhlcmFweXxlbnwxfHx8fDE3NTk3ODU5MjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-        overlayText: "Melhore sua capacidade de ouvir",
-        isNew: false,
-      },
-      {
-        id: "4",
-        title: "Expressando Necessidades Sem Atacar",
-        duration: "2h 00min",
-        episodes: 10,
-        category: "communication",
-        isPremium: true,
-        rating: 4.9,
-        plays: 11200,
-        image: "https://images.unsplash.com/photo-1556858310-a0bbdbb87272?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3VwbGUlMjBpbnRpbWF0ZSUyMGNvbnZlcnNhdGlvbiUyMHBlYWNlZnVsfGVufDF8fHx8MTc1OTc4NTkxOHww&ixlib=rb-4.1.0&q=80&w=1080",
-        overlayText: "Comunique-se sem ferir",
-        isNew: false,
-      },
-    ],
-    intimacy: [
-      {
-        id: "5",
-        title: "5 Linguagens do Amor na Prática",
-        duration: "1h 20min",
-        episodes: 5,
-        category: "intimacy",
-        isPremium: false,
-        rating: 4.8,
-        plays: 18650,
-        image: "https://images.unsplash.com/photo-1758874089525-3a9bb15a125b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxsb3ZlJTIwbGFuZ3VhZ2VzJTIwY291cGxlJTIwdG91Y2h8ZW58MXx8fHwxNzU5Nzg1OTM2fDA&ixlib=rb-4.1.0&q=80&w=1080",
-        overlayText: "Descubra como amar melhor",
-        isNew: false,
-      },
-    ],
-    conflicts: [
-      {
-        id: "6",
-        title: "Resolvendo Conflitos com Sabedoria",
-        duration: "2h 30min",
-        episodes: 14,
-        category: "conflicts",
-        isPremium: true,
-        rating: 4.9,
-        plays: 9850,
-        image: "https://images.unsplash.com/photo-1746128820947-b7dae1bab3f1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxjb3VwbGUlMjBjb25mbGljdCUyMHJlc29sdXRpb24lMjBwZWFjZWZ1bHxlbnwxfHx8fDE3NTk3ODU5Mjd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-        overlayText: "Transforme brigas em crescimento",
-        isNew: true,
-      },
-    ],
-    parenting: [
-      {
-        id: "7",
-        title: "Educação Positiva: Criando com Amor",
-        duration: "3h 15min",
-        episodes: 18,
-        category: "parenting",
-        isPremium: true,
-        rating: 4.9,
-        plays: 14200,
-        image: "https://images.unsplash.com/photo-1628676348963-f88c671333f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxoYXBweSUyMGZhbWlseSUyMHBhcmVudGluZyUyMGNoaWxkcmVufGVufDF8fHx8MTc1OTc4NTkyOXww&ixlib=rb-4.1.0&q=80&w=1080",
-        overlayText: "Eduque sem gritar nem castigar",
-        isNew: false,
-      },
-    ],
-    spirituality: [
-      {
-        id: "8",
-        title: "Oração em Família: Fortalecendo Vínculos",
-        duration: "1h 50min",
-        episodes: 9,
-        category: "spirituality",
-        isPremium: false,
-        rating: 4.7,
-        plays: 7350,
-        image: "https://images.unsplash.com/photo-1606898058619-45956523572f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxwcmF5ZXIlMjBzcGlyaXR1YWwlMjBmYW1pbHklMjBwZWFjZWZ1bHxlbnwxfHx8fDE3NTk3ODU5MzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-        overlayText: "Una sua família através da fé",
-        isNew: false,
-      },
-    ],
-    finances: [
-      {
-        id: "9",
-        title: "Finanças do Casal: Prosperidade Juntos",
-        duration: "2h 40min",
-        episodes: 16,
-        category: "finances",
-        isPremium: true,
-        rating: 4.8,
-        plays: 10750,
-        image: "https://images.unsplash.com/photo-1624953901694-f78005396ed1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHxjb3VwbGUlMjBmaW5hbmNlJTIwcGxhbm5pbmclMjBwcm9zcGVyaXR5fGVufDF8fHx8MTc1OTc4NTkzNHww&ixlib=rb-4.1.0&q=80&w=1080",
-        overlayText: "Construam riqueza em harmonia",
-        isNew: true,
-      },
-    ],
-  };
+  // Categorias derivadas dos `interests` reais dos itens. Mantém "Todas"
+  // como primeira opção.
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const it of items) {
+      for (const i of it.interests ?? []) {
+        if (i.trim()) set.add(i.trim());
+      }
+    }
+    const ordered = Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+    return [{ id: "all", name: "Todas" }, ...ordered.map((id) => ({ id, name: id }))];
+  }, [items]);
 
-  const getAllPlaylists = () => Object.values(functionalPlaylists).flat();
-
-  const getFilteredPlaylists = () => {
-    let playlists =
-      selectedCategory === "all"
-        ? getAllPlaylists()
-        : functionalPlaylists[selectedCategory as keyof typeof functionalPlaylists] || [];
-
+  const filteredPlaylists = useMemo(() => {
+    let list = items;
+    if (selectedCategory !== "all") {
+      list = list.filter((p) => (p.interests ?? []).includes(selectedCategory));
+    }
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      playlists = playlists.filter(
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
         (p) =>
-          p.title.toLowerCase().includes(query) ||
-          p.overlayText.toLowerCase().includes(query),
+          p.title.toLowerCase().includes(q) ||
+          (p.short_description ?? "").toLowerCase().includes(q),
       );
     }
-
-    return playlists;
-  };
-
-  const filteredPlaylists = getFilteredPlaylists();
+    return list;
+  }, [items, selectedCategory, searchQuery]);
 
   useEffect(() => {
     if (isOpen) {
@@ -212,32 +118,28 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
     }
   }, [isOpen]);
 
-  // Task #172 — player real via AudioPlayerContext (mini-player global).
-  // Cards mock não têm audio_url ainda; o card seed "1" recebeu uma
-  // amostra pública pra QA conseguir validar end-to-end. Cards sem URL
-  // mostram "Em breve" honesto.
-  const handlePlayPause = (playlist: FunctionalPlaylist) => {
-    if (!playlist.audio_url) {
-      enhancedToast.info("Em breve");
+  const handlePlayPause = (playlist: CmsAudio) => {
+    const audioUrl = playlist.media_url ?? playlist.external_url ?? null;
+    if (!audioUrl) {
+      enhancedToast.info("Faixa sem mídia. Atualize o conteúdo no CMS.");
       return;
     }
     playTrack({
       id: `playlist-${playlist.id}`,
       title: playlist.title,
-      subtitle: "Playlist funcional",
-      audioUrl: playlist.audio_url,
-      coverUrl: playlist.image,
+      subtitle: playlist.interests?.[0] ?? "Áudio",
+      audioUrl,
+      coverUrl: playlist.cover_url ?? undefined,
     });
   };
 
   if (!isOpen) return null;
 
   const activeCategoryName =
-    playlistCategories.find((c) => c.id === selectedCategory)?.name || "Todas";
+    categories.find((c) => c.id === selectedCategory)?.name || "Todas";
 
   return (
     <div className="rh-pl-page" role="dialog" aria-modal="true" aria-label="Playlists Funcionais">
-      {/* Header */}
       <div className="rh-pl-head">
         <p className="rh-pl-eyebrow">Coleções · Áudio</p>
         <div className="rh-pl-title-row">
@@ -273,53 +175,64 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
         </div>
       </div>
 
-      {/* Category pills */}
-      <div className="rh-pl-cat-row" role="tablist" aria-label="Categorias">
-        {playlistCategories.map((category) => {
-          const isActive = selectedCategory === category.id;
-          return (
-            <button
-              key={category.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              className={`rh-pl-cat ${isActive ? "active" : ""}`}
-              onClick={() => setSelectedCategory(category.id)}
-            >
-              {category.name}
-            </button>
-          );
-        })}
-      </div>
+      {categories.length > 1 && (
+        <div className="rh-pl-cat-row" role="tablist" aria-label="Categorias">
+          {categories.map((category) => {
+            const isActive = selectedCategory === category.id;
+            return (
+              <button
+                key={category.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={`rh-pl-cat ${isActive ? "active" : ""}`}
+                onClick={() => setSelectedCategory(category.id)}
+              >
+                {category.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Body */}
       <div className="rh-pl-body">
         <p className="rh-pl-meta">
-          {activeCategoryName} · {filteredPlaylists.length} playlist
+          {activeCategoryName} · {filteredPlaylists.length} áudio
           {filteredPlaylists.length !== 1 ? "s" : ""}
         </p>
 
-        {filteredPlaylists.length > 0 ? (
+        {loading ? (
+          <div className="rh-pl-empty">
+            <Loader2 className="w-7 h-7 animate-spin" aria-hidden="true" />
+            <p className="rh-pl-empty-sub">Carregando áudios…</p>
+          </div>
+        ) : filteredPlaylists.length > 0 ? (
           <div className="rh-pl-grid">
             {filteredPlaylists.map((playlist) => {
               const isCurrent = currentTrack?.id === `playlist-${playlist.id}` && isPlaying;
+              const cover = playlist.cover_url ?? PLACEHOLDER_COVER;
+              const overlay = playlist.short_description ?? "";
               return (
                 <button
                   key={playlist.id}
                   type="button"
                   className="rh-pl-card"
                   onClick={() => handlePlayPause(playlist)}
-                  aria-label={`${isCurrent ? "Pausar" : "Reproduzir"} playlist ${playlist.title}`}
+                  aria-label={`${isCurrent ? "Pausar" : "Reproduzir"} áudio ${playlist.title}`}
                 >
                   <div className="rh-pl-cover">
-                    <img src={playlist.image} alt="" loading="lazy" />
+                    <img src={cover} alt="" loading="lazy" />
 
-                    {playlist.isNew && <span className="rh-pl-new" aria-label="Nova" />}
-                    {playlist.isPremium && <span className="rh-pl-pro">PRO</span>}
+                    {isRecent(playlist.published_at) && (
+                      <span className="rh-pl-new" aria-label="Novo" />
+                    )}
+                    {playlist.is_premium && <span className="rh-pl-pro">PRO</span>}
 
-                    <span className="rh-pl-tag">
-                      {playlist.episodes} episódios
-                    </span>
+                    {playlist.duration_seconds ? (
+                      <span className="rh-pl-tag">
+                        {formatDuration(playlist.duration_seconds)}
+                      </span>
+                    ) : null}
 
                     <span
                       className="rh-pl-play"
@@ -337,10 +250,11 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
                   <div className="rh-pl-foot">
                     <h3 className="rh-pl-foot-title">{playlist.title}</h3>
                     <p className="rh-pl-foot-meta">
-                      <Star className="star w-3 h-3" aria-hidden="true" fill="currentColor" />
-                      <span>{playlist.rating.toFixed(1)}</span>
-                      <span>·</span>
-                      <span>{playlist.duration}</span>
+                      {overlay && <span>{overlay}</span>}
+                      {overlay && playlist.view_count > 0 && <span>·</span>}
+                      {playlist.view_count > 0 && (
+                        <span>{formatPlays(playlist.view_count)} plays</span>
+                      )}
                     </p>
                   </div>
                 </button>
@@ -352,20 +266,32 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
             <div className="rh-pl-empty-icon">
               <Music className="w-7 h-7" />
             </div>
-            <h3 className="rh-pl-empty-title">Nenhuma playlist encontrada</h3>
+            <h3 className="rh-pl-empty-title">
+              {loadError
+                ? "Não foi possível carregar as playlists"
+                : items.length === 0
+                  ? "Ainda não há áudios publicados"
+                  : "Nenhum áudio encontrado"}
+            </h3>
             <p className="rh-pl-empty-sub">
-              Tente ajustar sua busca ou explorar outras categorias para descobrir conteúdos.
+              {loadError
+                ? loadError
+                : items.length === 0
+                  ? "Produtores podem cadastrar áudios em Admin → CMS → novo conteúdo (tipo Áudio)."
+                  : "Tente ajustar sua busca ou explorar outras categorias."}
             </p>
-            <button
-              type="button"
-              className="rh-pl-empty-btn"
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedCategory("all");
-              }}
-            >
-              Ver todas as playlists
-            </button>
+            {items.length > 0 && (
+              <button
+                type="button"
+                className="rh-pl-empty-btn"
+                onClick={() => {
+                  setSearchQuery("");
+                  setSelectedCategory("all");
+                }}
+              >
+                Ver todos os áudios
+              </button>
+            )}
           </div>
         )}
       </div>
