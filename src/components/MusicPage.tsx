@@ -183,10 +183,19 @@ export function MusicPage({ onBack }: MusicPageProps) {
             <div className="overflow-x-auto scrollbar-hide">
               <div className="flex gap-4 pb-2" style={{ width: 'max-content' }}>
                 {category.playlists.map((playlist, index) => (
-                  <Card 
-                    key={index} 
-                    className="w-64 hover:shadow-lg transition-all duration-300 cursor-pointer group"
+                  <Card
+                    key={index}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Reproduzir playlist ${playlist.name} de ${category.name}`}
+                    className="w-64 hover:shadow-lg transition-all duration-300 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rayo-terra-500"
                     onClick={() => handlePlayPlaylist(category.name, playlist)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handlePlayPlaylist(category.name, playlist);
+                      }
+                    }}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">
