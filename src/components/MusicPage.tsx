@@ -94,7 +94,7 @@ const musicCategories = [
 ];
 
 export function MusicPage({ onBack }: MusicPageProps) {
-  const { playTrack } = useAudioPlayer();
+  const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
   // Task #172 — player real via AudioPlayerContext. Mocks não têm
   // audio_url ainda; o seed "Deep Work" recebeu amostra pública pra QA.
   const handlePlayPlaylist = (
@@ -187,7 +187,7 @@ export function MusicPage({ onBack }: MusicPageProps) {
                     key={index}
                     role="button"
                     tabIndex={0}
-                    aria-label={`Reproduzir playlist ${playlist.name} de ${category.name}`}
+                    aria-label={(currentTrack?.id === `music-${category.name}-${playlist.name}` && isPlaying ? "Pausar" : "Reproduzir") + ` playlist ${playlist.name} de ${category.name}`}
                     className="w-64 hover:shadow-lg transition-all duration-300 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rayo-terra-500"
                     onClick={() => handlePlayPlaylist(category.name, playlist)}
                     onKeyDown={(e) => {
@@ -218,16 +218,20 @@ export function MusicPage({ onBack }: MusicPageProps) {
                           </div>
                         </div>
                         <div className="flex items-center space-x-1">
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label="Favoritar (em breve)"
+                            onClick={(e) => e.stopPropagation()}
                             className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <Heart className="w-4 h-4" />
                           </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label="Mais opções (em breve)"
+                            onClick={(e) => e.stopPropagation()}
                             className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <MoreHorizontal className="w-4 h-4" />
@@ -239,8 +243,13 @@ export function MusicPage({ onBack }: MusicPageProps) {
                         <Badge variant="secondary" className="text-xs">
                           {playlist.tracks} faixas
                         </Badge>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
+                          aria-label={`Reproduzir ${playlist.name}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePlayPlaylist(category.name, playlist);
+                          }}
                           className="h-8 w-8 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-110"
                         >
                           <Play className="w-4 h-4" />
