@@ -177,9 +177,11 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
 
   // Task #171 — roteia um card editorial pro destino certo, em ordem
   // de prioridade: conteúdo vinculado (player interno ou turma) →
-  // link interno/externo → toast "Em breve". Fallback de seção é
-  // injetado pelo caller ("trending" abre PlaylistsExpanded; "podcasts"
-  // abre MusicPage), só usado quando NADA está configurado.
+  // link interno/externo → toast "Em breve". Sem fallback genérico
+  // pra página de explorar — admin precisa configurar o destino, ou o
+  // card mostra mensagem honesta. As actions "Ver tudo" / "Toda a
+  // biblioteca" do header da seção continuam abrindo PlaylistsExpanded/
+  // MusicPage; só os cards individuais respeitam essa regra.
   const openHomeFeedCard = useCallback((row: HomeFeedRow) => {
     // Conteúdo vinculado tem prioridade. O backend só permite content_kind
     // em {audio, video, reels, curso} — qualquer outro tipo nem chega aqui.
@@ -293,19 +295,12 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
   const discussions = dashboard?.recentPosts?.slice(0, 3) ?? [];
   const trending = homeCategories.trending.slice(0, 3);
   const podcasts = homeCategories.podcasts.slice(0, 4);
+  // Task #171 — admin-curado tem prioridade sobre YouTube auto. Sem isso,
+  // qualquer playlist disponível no YouTube esconderia os cards
+  // configurados no admin.
   const collections = (
-    youtubeData?.playlists?.length
-      ? youtubeData.playlists.slice(0, 3).map((p, i) => ({
-          id: `yt-${p.id}`,
-          title: p.title,
-          subtitle: p.description ?? "",
-          image_url: p.thumbnail?.high ?? null,
-          badge_text: `${p.itemCount ?? 0} vídeos`,
-          eyebrow: p.title,
-          fallbackIdx: i,
-          onClick: () => handlePlaylistClick(p),
-        }))
-      : homeCategories.madeForYou.slice(0, 3).map((row, i) => ({
+    homeCategories.madeForYou.length
+      ? homeCategories.madeForYou.slice(0, 3).map((row, i) => ({
           id: `cms-${row.id}`,
           title: row.title,
           subtitle: row.subtitle ?? "",
@@ -314,6 +309,16 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
           eyebrow: row.subtitle ?? row.title,
           fallbackIdx: i,
           onClick: () => openHomeFeedCard(row),
+        }))
+      : (youtubeData?.playlists ?? []).slice(0, 3).map((p, i) => ({
+          id: `yt-${p.id}`,
+          title: p.title,
+          subtitle: p.description ?? "",
+          image_url: p.thumbnail?.high ?? null,
+          badge_text: `${p.itemCount ?? 0} vídeos`,
+          eyebrow: p.title,
+          fallbackIdx: i,
+          onClick: () => handlePlaylistClick(p),
         }))
   );
   const shorts = youtubeData?.shorts?.slice(0, 5) ?? [];
