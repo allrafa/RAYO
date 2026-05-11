@@ -56,10 +56,16 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Marca quando o usuário pediu pra começar uma faixa nova; o effect
+  // abaixo cuida de load()/play() depois que o React aplicou o novo src.
+  // Isso é mais determinístico que microtask + queueMicrotask, que é
+  // sensível a render concorrente.
+  const pendingPlayRef = useRef<string | null>(null);
+
   const playTrack = useCallback((track: AudioTrack) => {
     setCurrentTrack((prev) => {
-      // Mesma faixa: alterna play/pause sem recarregar.
       if (prev && prev.id === track.id) {
+        // Mesma faixa: toggle pause/play sem recarregar.
         const el = audioRef.current;
         if (el) {
           if (el.paused) void el.play().catch(() => setIsPlaying(false));
@@ -69,16 +75,21 @@ export function AudioPlayerProvider({ children }: { children: ReactNode }) {
       }
       setCurrentTime(0);
       setDuration(0);
-      // Aguarda o React aplicar o novo src antes de chamar play().
-      queueMicrotask(() => {
-        const el = audioRef.current;
-        if (!el) return;
-        el.load();
-        void el.play().catch(() => setIsPlaying(false));
-      });
+      pendingPlayRef.current = track.id;
       return track;
     });
   }, []);
+
+  // Quando currentTrack muda pra uma faixa pendente, o React já aplicou
+  // o novo src no <audio> via JSX — agora load()/play() é seguro.
+  useEffect(() => {
+    if (!currentTrack || pendingPlayRef.current !== currentTrack.id) return;
+    pendingPlayRef.current = null;
+    const el = audioRef.current;
+    if (!el) return;
+    el.load();
+    void el.play().catch(() => setIsPlaying(false));
+  }, [currentTrack]);
 
   const togglePlay = useCallback(() => {
     const el = audioRef.current;

@@ -4,6 +4,21 @@ import { useApp } from "./AppContext";
 import { useAudioPlayer } from "../contexts/AudioPlayerContext";
 import { enhancedToast } from "./EnhancedToast";
 
+interface FunctionalPlaylist {
+  id: string;
+  title: string;
+  duration: string;
+  episodes: number;
+  category: string;
+  isPremium: boolean;
+  rating: number;
+  plays: number;
+  image: string;
+  overlayText: string;
+  isNew: boolean;
+  audio_url?: string | null;
+}
+
 interface PlaylistsExpandedPageProps {
   isOpen: boolean;
   onClose: () => void;
@@ -29,13 +44,13 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
   ];
 
   // Dados mockados — substituição por API é fora de escopo desta task.
-  const functionalPlaylists = {
+  const functionalPlaylists: Record<string, FunctionalPlaylist[]> = {
     trending: [
       {
         id: "1",
         // Sample MP3 público (SoundHelix, royalty-free) só pra QA — substituir
         // por mídia real quando os dados migrarem pro CMS (`content_items` kind audio).
-        audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" as string | null,
+        audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
         title: "Comunicação Não-Violenta no Relacionamento",
         duration: "2h 15min",
         episodes: 12,
@@ -201,7 +216,7 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
   // Cards mock não têm audio_url ainda; o card seed "1" recebeu uma
   // amostra pública pra QA conseguir validar end-to-end. Cards sem URL
   // mostram "Em breve" honesto.
-  const handlePlayPause = (playlist: { id: string; title: string; image: string; audio_url?: string | null }) => {
+  const handlePlayPause = (playlist: FunctionalPlaylist) => {
     if (!playlist.audio_url) {
       enhancedToast.info("Em breve");
       return;
@@ -293,7 +308,7 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
                   key={playlist.id}
                   type="button"
                   className="rh-pl-card"
-                  onClick={() => handlePlayPause(playlist as { id: string; title: string; image: string; audio_url?: string | null })}
+                  onClick={() => handlePlayPause(playlist)}
                   aria-label={`${isCurrent ? "Pausar" : "Tocar"} playlist ${playlist.title}`}
                 >
                   <div className="rh-pl-cover">
