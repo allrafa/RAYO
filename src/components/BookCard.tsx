@@ -3,11 +3,12 @@
 // Card de livro para exibição na Biblioteca
 // ============================================================================
 
-import { BookOpen, CheckCircle } from 'lucide-react';
-import { Card, CardContent } from './ui/card';
+import { BookOpen, CheckCircle, Heart } from 'lucide-react';
 import { Button } from './ui/button';
+import { Progress } from './ui/progress';
 import { Book as BookType, formatBookProgress } from './types/BookTypes';
 import { useTheme } from './ThemeProvider';
+import { cardKeyHandler, stopBubble } from '../lib/cardClickTargets';
 
 interface BookCardProps {
   book: BookType;
@@ -32,7 +33,16 @@ export function BookCard({
   if (variant === 'grid') {
     return (
       <div
-        className="ra-card ra-card-hover overflow-hidden group"
+        // Task #165 — Hierarquia de cliques (padrão Facebook): wrapper
+        // inteiro vira `role="button"` que abre o detalhe (mesmo destino
+        // de `onRead`); CTA interno usa `stopBubble` pra não disparar
+        // duas vezes. Foco visível com ring terra-500.
+        role={onRead ? 'button' : undefined}
+        tabIndex={onRead ? 0 : undefined}
+        onClick={onRead}
+        onKeyDown={onRead ? cardKeyHandler(onRead) : undefined}
+        aria-label={onRead ? `Abrir ${book.title}` : undefined}
+        className="ra-card ra-card-hover overflow-hidden group focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)] focus-visible:ring-offset-2"
         style={{
           padding: 0,
           background:
@@ -40,18 +50,19 @@ export function BookCard({
           borderTop: '3px solid transparent',
           borderImage:
             'linear-gradient(90deg, var(--rayo-forest-900), var(--rayo-terra-500), var(--rayo-sage-500)) 1',
+          cursor: onRead ? 'pointer' : undefined,
         }}
       >
         <div className="p-3">
-          {/* Cover Image - CLICÁVEL */}
+          {/* Cover Image — clique também abre o detalhe (mesmo destino do
+              wrapper). Cursor zoom-in pra sinalizar interação. */}
           <div 
-            className="relative aspect-[2/3] mb-3 rounded-lg overflow-hidden cursor-pointer"
+            className="relative aspect-[2/3] mb-3 rounded-lg overflow-hidden"
             style={{
               background: theme === 'dark' 
                 ? 'linear-gradient(135deg, #374151 0%, #1F2937 100%)'
                 : 'linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)'
             }}
-            onClick={onRead}
           >
             <img 
               src={book.coverImage} 
@@ -134,7 +145,7 @@ export function BookCard({
                   : 'var(--rayo-terra-500)'
               }}
               variant={book.isEnrolled ? 'default' : 'outline'}
-              onClick={onRead}
+              onClick={onRead ? stopBubble(onRead) : undefined}
               onMouseEnter={(e) => {
                 if (book.isEnrolled) {
                   e.currentTarget.style.background = 'var(--rayo-terra-700)';
@@ -170,7 +181,17 @@ export function BookCard({
 
   // List variant (para listas horizontais ou verticais)
   return (
-    <div className="ra-card ra-card-hover" style={{ padding: 0 }}>
+    <div
+      // Task #165 — mesma hierarquia da grid: wrapper inteiro abre o
+      // detalhe (`onRead`); CTA/Favoritar internos usam `stopBubble`.
+      role={onRead ? 'button' : undefined}
+      tabIndex={onRead ? 0 : undefined}
+      onClick={onRead}
+      onKeyDown={onRead ? cardKeyHandler(onRead) : undefined}
+      aria-label={onRead ? `Abrir ${book.title}` : undefined}
+      className="ra-card ra-card-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)] focus-visible:ring-offset-2"
+      style={{ padding: 0, cursor: onRead ? 'pointer' : undefined }}
+    >
       <div className="p-4 flex gap-4">
         {/* Cover */}
         <div 
@@ -229,7 +250,7 @@ export function BookCard({
               <>
                 <Button 
                   size="sm" 
-                  onClick={onRead}
+                  onClick={onRead ? stopBubble(onRead) : undefined}
                   style={{
                     background: 'var(--rayo-terra-500)',
                     color: theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF'
@@ -240,7 +261,8 @@ export function BookCard({
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  onClick={onToggleFavorite}
+                  onClick={onToggleFavorite ? stopBubble(onToggleFavorite) : undefined}
+                  aria-label={book.isFavorite ? 'Remover dos favoritos' : 'Favoritar'}
                   style={{
                     color: book.isFavorite ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-700)'
                   }}
@@ -252,7 +274,7 @@ export function BookCard({
               <Button 
                 size="sm" 
                 variant="outline"
-                onClick={onRead}
+                onClick={onRead ? stopBubble(onRead) : undefined}
                 style={{
                   borderColor: 'var(--rayo-terra-500)',
                   color: 'var(--rayo-terra-500)'

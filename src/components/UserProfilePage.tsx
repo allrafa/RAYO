@@ -9,6 +9,12 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Heart, MessageCircle, UserPlus, UserCheck, X, Award, Bookmark, Camera, Loader2 } from "lucide-react";
 import { enhancedToast } from "./EnhancedToast";
 import { PostImageLightbox } from "./PostImageLightbox";
+import {
+  cardKeyHandler,
+  stopBubble,
+  openCommunityBySlug,
+  openPostById,
+} from "../lib/cardClickTargets";
 
 // Task #92 — Perfil público estilo Reddit. Carrega karma, posts,
 // comentários e comunidades do usuário-alvo via os endpoints novos
@@ -233,48 +239,23 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
     }
   };
 
+  // Task #165 — usamos os helpers compartilhados de cardClickTargets
+  // (mesmos CustomEvents da busca/Task #164). Fechamos o overlay e
+  // pedimos pro pai trocar de aba pra que a navegação seja visível.
   const openCommunity = (slug: string) => {
-    try {
-      sessionStorage.setItem("rayo-pending-community-slug", slug);
-    } catch { /* noop */ }
-    window.dispatchEvent(new CustomEvent("rayo:open-community", { detail: { slug } }));
-    // Sem navegar pra aba Comunidade, o clique parece inerte porque o
-    // perfil continua renderizado por cima. Fechamos o overlay de perfil
-    // e pedimos pro pai trocar de aba.
+    openCommunityBySlug(slug);
     onClose?.();
     onNavigateToCommunity?.();
   };
 
   // Task #115 — cards de Posts/Comentários/Salvos clicáveis abrem o post na
   // Comunidade. `highlightCommentId` (opcional) é entregue via sessionStorage
-  // pra que o CommentsPanel role/destaque o comentário ao montar — mesmo
-  // contrato do `rayo-pending-post`/CustomEvent já existente em ComunidadePage.
+  // pra que o CommentsPanel role/destaque o comentário ao montar.
   const openPost = (postId: number, highlightCommentId?: number) => {
-    try {
-      sessionStorage.setItem("rayo-pending-post", String(postId));
-      if (highlightCommentId) {
-        sessionStorage.setItem("rayo-pending-post-comment", String(highlightCommentId));
-      } else {
-        sessionStorage.removeItem("rayo-pending-post-comment");
-      }
-    } catch { /* noop */ }
-    window.dispatchEvent(
-      new CustomEvent("rayo:open-post", {
-        detail: { id: postId, highlight_comment_id: highlightCommentId },
-      }),
-    );
+    openPostById(postId, highlightCommentId);
     onClose?.();
     onNavigateToCommunity?.();
   };
-
-  // Helpers de a11y/UX comum aos três cards clicáveis.
-  const cardKeyHandler = (fn: () => void) => (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      fn();
-    }
-  };
-  const stopPropagationClick = (e: React.MouseEvent) => e.stopPropagation();
 
   const totalKarma = useMemo(
     () => (karma ? karma.post_karma + karma.comment_karma : 0),
@@ -459,7 +440,7 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
                     {p.forum_slug && (
                       <button
                         type="button"
-                        onClick={(e) => { stopPropagationClick(e); openCommunity(p.forum_slug!); }}
+                        onClick={stopBubble(() => openCommunity(p.forum_slug!))}
                         className="hover:underline"
                         style={{ color: "var(--rayo-terra-500)", fontWeight: 600 }}
                       >
@@ -469,6 +450,26 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
                     <span>· {formatRelative(p.created_at)}</span>
                   </div>
                   <p className="line-clamp-3" style={{ color: "var(--rayo-forest-900)" }}>{p.content}</p>
+                  {p.images && p.images.length > 0 && (
+                    <div className="mt-2 flex gap-1 overflow-hidden rounded">
+                      {p.images.slice(0, 3).map((src, i) => (
+                        <button
+                          type="button"
+                          key={i}
+                          onClick={stopBubble(() => setLightbox({ images: p.images!, index: i }))}
+                          className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
+                          style={{ background: "transparent", border: 0, padding: 0, cursor: "zoom-in" }}
+                          aria-label={`Ver imagem ${i + 1} em tamanho real`}
+                        >
+                          <ImageWithFallback
+                            src={src}
+                            alt={`Imagem ${i + 1}`}
+                            className="w-20 h-20 object-cover rounded"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-2">
                     <span className="flex items-center gap-1"><Heart className="w-3 h-3" />{p.like_count}</span>
                     <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" />{p.comment_count}</span>
@@ -498,7 +499,7 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
                   {p.forum_slug && (
                     <button
                       type="button"
-                      onClick={(e) => { stopPropagationClick(e); openCommunity(p.forum_slug!); }}
+                      onClick={stopBubble(() => openCommunity(p.forum_slug!))}
                       className="hover:underline"
                       style={{ color: "var(--rayo-terra-500)", fontWeight: 600 }}
                     >
@@ -515,10 +516,7 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
                       <button
                         type="button"
                         key={i}
-                        onClick={(e) => {
-                          stopPropagationClick(e);
-                          setLightbox({ images: p.images!, index: i });
-                        }}
+                        onClick={stopBubble(() => setLightbox({ images: p.images!, index: i }))}
                         className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
                         style={{ background: "transparent", border: 0, padding: 0, cursor: "zoom-in" }}
                         aria-label={`Ver imagem ${i + 1} em tamanho real`}
@@ -560,7 +558,7 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
                   {c.forum_slug && (
                     <button
                       type="button"
-                      onClick={(e) => { stopPropagationClick(e); openCommunity(c.forum_slug!); }}
+                      onClick={stopBubble(() => openCommunity(c.forum_slug!))}
                       className="hover:underline"
                       style={{ color: "var(--rayo-terra-500)", fontWeight: 600 }}
                     >
