@@ -151,19 +151,41 @@ function normalizeLinkUrl(v: unknown): string | null {
   );
 }
 
-// Garante que o content_item_id (se enviado) referencia um conteúdo
-// existente. Sem isso, o INSERT/UPDATE bate na FK e devolve 500 cru —
-// preferimos um 400 com mensagem clara pro admin.
-async function ensureContentItemExists(id: number | null): Promise<void> {
+// Tipos de conteúdo cujo destino o frontend sabe abrir a partir do home
+// card. Outros (artigo / livro / serie) não têm rota dedicada hoje, então
+// rejeitamos o link no admin pra evitar card que parece quebrado em prod.
+const HOME_FEED_LINKABLE_KINDS = new Set(["audio", "video", "reels", "curso"]);
+
+// Valida o content_item_id (se enviado): existe, está publicado, e é de
+// um tipo que o card consegue abrir. Sem isso o INSERT/UPDATE bateria na
+// FK com 500 cru, OU o card publicado apontaria pra rascunho/arquivado e
+// sumiria silenciosamente da home pública.
+async function ensureContentItemLinkable(id: number | null): Promise<void> {
   if (id === null) return;
-  const { rows } = await query<{ id: number }>(
-    `SELECT id FROM content_items WHERE id = $1`,
+  const { rows } = await query<{ id: number; status: string; kind: string }>(
+    `SELECT id, status, kind FROM content_items WHERE id = $1`,
     [id],
   );
   if (rows.length === 0) {
     throw new HomeFeedError(
       "Conteúdo vinculado não encontrado",
       "CONTENT_NOT_FOUND",
+      400,
+    );
+  }
+  const row = rows[0];
+  if (row.status !== "published") {
+    throw new HomeFeedError(
+      "Conteúdo vinculado precisa estar publicado",
+      "CONTENT_NOT_PUBLISHED",
+      400,
+    );
+  }
+  if (!HOME_FEED_LINKABLE_KINDS.has(row.kind)) {
+    throw new HomeFeedError(
+      `Tipo "${row.kind}" não pode ser vinculado a um card de destaque ` +
+      `(suportados: ${[...HOME_FEED_LINKABLE_KINDS].join(", ")})`,
+      "CONTENT_KIND_NOT_LINKABLE",
       400,
     );
   }
@@ -243,7 +265,7 @@ export async function listPublicHomeFeed() {
 
 export async function createHomeFeedItem(user: SafeUser, input: HomeFeedItemInput) {
   const payload = buildPayload(input);
-  await ensureContentItemExists(payload.content_item_id);
+  await ensureContentItemLinkable(payload.content_item_id);
   const { rows } = await query(
     `INSERT INTO home_feed_items
        (section, title, subtitle, image_url, gradient, badge_text, meta_text,
@@ -292,7 +314,7 @@ export async function updateHomeFeedItem(
     link_url: has("link_url") ? input.link_url ?? null : cur.link_url,
   };
   const payload = buildPayload(merged);
-  await ensureContentItemExists(payload.content_item_id);
+  await ensureContentItemLinkable(payload.content_item_id);
   const { rows } = await query(
     `UPDATE home_feed_items SET
         section = $1, title = $2, subtitle = $3, image_url = $4, gradient = $5,

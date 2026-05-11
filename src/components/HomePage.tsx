@@ -180,10 +180,9 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
   // link interno/externo → toast "Em breve". Fallback de seção é
   // injetado pelo caller ("trending" abre PlaylistsExpanded; "podcasts"
   // abre MusicPage), só usado quando NADA está configurado.
-  const openHomeFeedCard = useCallback((
-    row: HomeFeedRow,
-    fallback?: () => void,
-  ) => {
+  const openHomeFeedCard = useCallback((row: HomeFeedRow) => {
+    // Conteúdo vinculado tem prioridade. O backend só permite content_kind
+    // em {audio, video, reels, curso} — qualquer outro tipo nem chega aqui.
     if (row.content_item_id && row.content_kind) {
       const k = row.content_kind;
       if (k === "audio" || k === "video" || k === "reels") {
@@ -196,10 +195,6 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
         setIsInCourseDetail(true);
         return;
       }
-      // serie/livro/artigo: ainda não temos viewer dedicado na home — cai
-      // pro detalhe via /api/content (Academia já roteia).
-      onNavigate?.("academia");
-      return;
     }
     if (row.link_url) {
       const url = row.link_url;
@@ -210,9 +205,10 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
       }
       return;
     }
-    if (fallback) { fallback(); return; }
+    // Sem destino configurado: mensagem honesta. NÃO caímos mais pra
+    // PlaylistsExpanded/MusicPage genérica — isso era o bug original.
     enhancedToast.info("Em breve");
-  }, [setCurrentVideoId, setIsInVideoPage, setCurrentCourseId, setIsInCourseDetail, onNavigate]);
+  }, [setCurrentVideoId, setIsInVideoPage, setCurrentCourseId, setIsInCourseDetail]);
 
   // ── Data loaders ───────────────────────────────────────────────
   const loadDashboard = useCallback(async () => {
@@ -317,7 +313,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
           badge_text: row.badge_text ?? "",
           eyebrow: row.subtitle ?? row.title,
           fallbackIdx: i,
-          onClick: () => openHomeFeedCard(row, () => setIsInPlaylistsExpanded(true)),
+          onClick: () => openHomeFeedCard(row),
         }))
   );
   const shorts = youtubeData?.shorts?.slice(0, 5) ?? [];
@@ -566,7 +562,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                     key={row.id}
                     type="button"
                     className="rh-alta"
-                    onClick={() => openHomeFeedCard(row, () => setIsInPlaylistsExpanded(true))}
+                    onClick={() => openHomeFeedCard(row)}
                   >
                     <div className={`rh-alta-img ${row.image_url ? "" : fallbackClass("fallback", i, altaFallbacks)}`}>
                       {row.image_url && <img src={row.image_url} alt="" loading="lazy" />}
@@ -599,7 +595,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                     key={row.id}
                     type="button"
                     className="rh-pod"
-                    onClick={() => openHomeFeedCard(row, () => setIsInMusicPage(true))}
+                    onClick={() => openHomeFeedCard(row)}
                   >
                     <div className={`rh-pod-img ${row.image_url ? "" : fallbackClass("fallback", i, podFallbacks)}`}>
                       {row.image_url && <img src={row.image_url} alt="" loading="lazy" />}
