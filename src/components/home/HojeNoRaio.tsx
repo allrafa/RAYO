@@ -178,8 +178,8 @@ export function HojeNoRaio({
 
   // Task #164/#167 — Card todo clicável sempre que não estiver concluído.
   // O backend agora garante ctaTarget não-nulo (sentinel interno quando
-  // não há URL externa), então a guarda simplificou pra apenas !isDone.
-  const cardClickable = !!item.ctaTarget && !isDone;
+  // não há URL externa), então na prática só `isDone` desativa o card.
+  const cardClickable = !isDone;
   return (
     <div
       className={`rh-hoje-main${item.coverUrl ? " has-cover" : ""}`}
