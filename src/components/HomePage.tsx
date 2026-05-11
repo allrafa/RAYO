@@ -195,6 +195,9 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
       if (k === "curso") {
         setCurrentCourseId(row.content_item_id);
         setIsInCourseDetail(true);
+        // TurmaShell renderiza dentro da aba Academia — sem trocar de
+        // aba, o detalhe não aparece quando o clique vem da Home.
+        onNavigate?.("academia");
         return;
       }
     }
@@ -210,7 +213,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
     // Sem destino configurado: mensagem honesta. NÃO caímos mais pra
     // PlaylistsExpanded/MusicPage genérica — isso era o bug original.
     enhancedToast.info("Em breve");
-  }, [setCurrentVideoId, setIsInVideoPage, setCurrentCourseId, setIsInCourseDetail]);
+  }, [setCurrentVideoId, setIsInVideoPage, setCurrentCourseId, setIsInCourseDetail, onNavigate]);
 
   // ── Data loaders ───────────────────────────────────────────────
   const loadDashboard = useCallback(async () => {
