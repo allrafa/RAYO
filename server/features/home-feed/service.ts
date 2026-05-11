@@ -44,6 +44,7 @@ export interface HomeFeedItemRow {
   sort_order: number;
   is_active: boolean;
   content_item_id: number | null;
+  link_url: string | null;
   created_by: number | null;
   created_at: Date;
   updated_at: Date;
@@ -83,6 +84,7 @@ export interface HomeFeedItemInput {
   sort_order?: number;
   is_active?: boolean;
   content_item_id?: number | null;
+  link_url?: string | null;
 }
 
 function validateSection(section: unknown): asserts section is HomeFeedSection {
@@ -126,7 +128,45 @@ function buildPayload(input: HomeFeedItemInput) {
     sort_order: toIntOrNull(input.sort_order) ?? 0,
     is_active: input.is_active === undefined ? true : !!input.is_active,
     content_item_id: toIntOrNull(input.content_item_id),
+    link_url: normalizeLinkUrl(input.link_url),
   };
+}
+
+// Aceita: caminho interno começando com "/" (ex.: /trilhas/foco) ou URL
+// http(s) absoluta. Qualquer outra coisa vira `null` (silenciosamente —
+// o admin já mostra o campo vazio se a string foi inválida).
+function normalizeLinkUrl(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  const raw = String(v).trim();
+  if (raw === "") return null;
+  if (raw.length > 500) {
+    throw new HomeFeedError("URL muito longa (máx 500)", "LINK_URL_TOO_LONG", 400);
+  }
+  if (raw.startsWith("/")) return raw;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  throw new HomeFeedError(
+    "Link externo deve começar com http(s):// ou / (caminho interno)",
+    "LINK_URL_INVALID",
+    400,
+  );
+}
+
+// Garante que o content_item_id (se enviado) referencia um conteúdo
+// existente. Sem isso, o INSERT/UPDATE bate na FK e devolve 500 cru —
+// preferimos um 400 com mensagem clara pro admin.
+async function ensureContentItemExists(id: number | null): Promise<void> {
+  if (id === null) return;
+  const { rows } = await query<{ id: number }>(
+    `SELECT id FROM content_items WHERE id = $1`,
+    [id],
+  );
+  if (rows.length === 0) {
+    throw new HomeFeedError(
+      "Conteúdo vinculado não encontrado",
+      "CONTENT_NOT_FOUND",
+      400,
+    );
+  }
 }
 
 export async function listAdminHomeFeed(filters?: { section?: string }) {
@@ -145,7 +185,7 @@ export async function listAdminHomeFeed(filters?: { section?: string }) {
   const { rows } = await query(
     `SELECT h.id, h.section, h.title, h.subtitle, h.image_url, h.gradient,
             h.badge_text, h.meta_text, h.progress, h.sort_order, h.is_active,
-            h.content_item_id, h.created_by, h.created_at, h.updated_at,
+            h.content_item_id, h.link_url, h.created_by, h.created_at, h.updated_at,
             ci.status   AS linked_content_status,
             ci.title    AS linked_content_title,
             ci.kind     AS linked_content_kind
@@ -180,7 +220,8 @@ export async function listPublicHomeFeed() {
   const { rows } = await query(
     `SELECT h.id, h.section, h.title, h.subtitle, h.image_url, h.gradient,
             h.badge_text, h.meta_text, h.progress, h.sort_order,
-            h.content_item_id
+            h.content_item_id, h.link_url,
+            ci.kind AS content_kind
        FROM home_feed_items h
        LEFT JOIN content_items ci ON ci.id = h.content_item_id
        WHERE h.is_active = TRUE
@@ -194,7 +235,7 @@ export async function listPublicHomeFeed() {
     trending: [],
     podcasts: [],
   };
-  for (const r of rows as HomeFeedItemRow[]) {
+  for (const r of rows as Array<HomeFeedItemRow & { content_kind: string | null }>) {
     if (sections[r.section]) sections[r.section].push(r);
   }
   return { sections };
@@ -202,16 +243,18 @@ export async function listPublicHomeFeed() {
 
 export async function createHomeFeedItem(user: SafeUser, input: HomeFeedItemInput) {
   const payload = buildPayload(input);
+  await ensureContentItemExists(payload.content_item_id);
   const { rows } = await query(
     `INSERT INTO home_feed_items
        (section, title, subtitle, image_url, gradient, badge_text, meta_text,
-        progress, sort_order, is_active, content_item_id, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        progress, sort_order, is_active, content_item_id, link_url, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
      RETURNING *`,
     [
       payload.section, payload.title, payload.subtitle, payload.image_url,
       payload.gradient, payload.badge_text, payload.meta_text, payload.progress,
-      payload.sort_order, payload.is_active, payload.content_item_id, user.id,
+      payload.sort_order, payload.is_active, payload.content_item_id,
+      payload.link_url, user.id,
     ],
   );
   return rows[0];
@@ -246,19 +289,22 @@ export async function updateHomeFeedItem(
     sort_order: has("sort_order") ? (input.sort_order as number) : cur.sort_order,
     is_active: has("is_active") ? !!input.is_active : cur.is_active,
     content_item_id: has("content_item_id") ? input.content_item_id ?? null : cur.content_item_id,
+    link_url: has("link_url") ? input.link_url ?? null : cur.link_url,
   };
   const payload = buildPayload(merged);
+  await ensureContentItemExists(payload.content_item_id);
   const { rows } = await query(
     `UPDATE home_feed_items SET
         section = $1, title = $2, subtitle = $3, image_url = $4, gradient = $5,
         badge_text = $6, meta_text = $7, progress = $8, sort_order = $9,
-        is_active = $10, content_item_id = $11, updated_at = NOW()
-      WHERE id = $12
+        is_active = $10, content_item_id = $11, link_url = $12, updated_at = NOW()
+      WHERE id = $13
       RETURNING *`,
     [
       payload.section, payload.title, payload.subtitle, payload.image_url,
       payload.gradient, payload.badge_text, payload.meta_text, payload.progress,
-      payload.sort_order, payload.is_active, payload.content_item_id, id,
+      payload.sort_order, payload.is_active, payload.content_item_id,
+      payload.link_url, id,
     ],
   );
   return rows[0];

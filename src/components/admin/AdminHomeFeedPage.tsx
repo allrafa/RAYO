@@ -45,6 +45,7 @@ interface HomeFeedItem {
   sort_order: number;
   is_active: boolean;
   content_item_id: number | null;
+  link_url: string | null;
   created_at: string;
   updated_at: string;
   // Populated by GET /api/admin/home-feed (LEFT JOIN content_items).
@@ -61,7 +62,7 @@ interface FormState {
   defaultSection: Section;
 }
 
-const EMPTY_FORM: Omit<HomeFeedItem, "id" | "created_at" | "updated_at" | "content_item_id"> = {
+const EMPTY_FORM: Omit<HomeFeedItem, "id" | "created_at" | "updated_at"> = {
   section: "made_for_you",
   title: "",
   subtitle: "",
@@ -72,6 +73,8 @@ const EMPTY_FORM: Omit<HomeFeedItem, "id" | "created_at" | "updated_at" | "conte
   progress: null,
   sort_order: 0,
   is_active: true,
+  content_item_id: null,
+  link_url: null,
 };
 
 export function AdminHomeFeedPage() {
@@ -441,6 +444,8 @@ function HomeFeedForm({ item, defaultSection, onClose }: HomeFeedFormProps) {
       progress: data.progress ?? null,
       sort_order: data.sort_order ?? 0,
       is_active: data.is_active ?? true,
+      content_item_id: data.content_item_id ?? null,
+      link_url: data.link_url?.trim() || null,
     };
     const res = item
       ? await api.patch(`/api/admin/home-feed/${item.id}`, payload)
@@ -530,6 +535,30 @@ function HomeFeedForm({ item, defaultSection, onClose }: HomeFeedFormProps) {
           </Field>
         </div>
 
+        <Field label="Conteúdo vinculado (opcional)">
+          <ContentPicker
+            value={data.content_item_id ?? null}
+            onChange={(v) => patch("content_item_id", v)}
+          />
+          <p className="text-xs mt-1" style={{ color: "var(--rayo-ink-400)" }}>
+            Quando vinculado, o card abre o conteúdo (player interno ou turma)
+            ao invés do destino genérico.
+          </p>
+        </Field>
+
+        <Field label="Link externo (opcional)">
+          <Input
+            value={data.link_url ?? ""}
+            onChange={(v) => patch("link_url", v || null)}
+            placeholder="https://... ou /trilhas/foco"
+            maxLength={500}
+          />
+          <p className="text-xs mt-1" style={{ color: "var(--rayo-ink-400)" }}>
+            Usado apenas se nenhum conteúdo estiver vinculado. Aceita URL
+            absoluta (http/https) ou caminho interno começando com "/".
+          </p>
+        </Field>
+
         <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: "var(--rayo-ink-700)" }}>
           <input
             type="checkbox"
@@ -588,5 +617,140 @@ function Input({
         borderColor: "var(--rayo-sand-300)",
       }}
     />
+  );
+}
+
+// Combobox simples para vincular um conteúdo publicado/draft. Busca em
+// `/api/admin/cms` por título; mostra o selecionado com botão "remover".
+interface ContentLite {
+  id: number;
+  title: string;
+  kind: string;
+  status: string;
+}
+
+function ContentPicker({
+  value, onChange,
+}: {
+  value: number | null;
+  onChange: (v: number | null) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [results, setResults] = useState<ContentLite[]>([]);
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<ContentLite | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Resolve label do item já vinculado (ao montar / quando value muda).
+  useEffect(() => {
+    if (!value) { setSelected(null); return; }
+    if (selected?.id === value) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await api.get<{ item: ContentLite }>(`/api/admin/cms/${value}`);
+      if (!cancelled && res.success && res.data) setSelected(res.data.item);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  // Debounce simples na busca.
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(async () => {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (search.trim()) params.set("search", search.trim());
+      params.set("limit", "20");
+      const res = await api.get<{ items: ContentLite[] }>(`/api/admin/cms?${params}`);
+      setLoading(false);
+      if (res.success && res.data) setResults(res.data.items);
+      else setResults([]);
+    }, 200);
+    return () => clearTimeout(t);
+  }, [search, open]);
+
+  if (selected) {
+    return (
+      <div
+        className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border"
+        style={{
+          background: "var(--rayo-sand-50)",
+          borderColor: "var(--rayo-sand-300)",
+        }}
+      >
+        <div className="min-w-0">
+          <div className="truncate text-sm" style={{ color: "var(--rayo-forest-900)", fontWeight: 600 }}>
+            {selected.title}
+          </div>
+          <div className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
+            {selected.kind} · {selected.status}
+          </div>
+        </div>
+        <Button
+          variant="ghost" size="sm"
+          onClick={() => { onChange(null); setSelected(null); }}
+        >
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={search}
+        onChange={(e) => { setSearch(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Buscar conteúdo por título..."
+        className="w-full px-3 py-2 rounded-md border outline-none"
+        style={{
+          background: "var(--rayo-sand-50)",
+          color: "var(--rayo-forest-900)",
+          borderColor: "var(--rayo-sand-300)",
+        }}
+      />
+      {open && (
+        <div
+          className="absolute left-0 right-0 mt-1 rounded-md border shadow-lg max-h-64 overflow-auto z-10"
+          style={{
+            background: "var(--rayo-sand-50)",
+            borderColor: "var(--rayo-sand-300)",
+          }}
+        >
+          {loading ? (
+            <div className="p-3 text-sm" style={{ color: "var(--rayo-ink-400)" }}>Buscando...</div>
+          ) : results.length === 0 ? (
+            <div className="p-3 text-sm" style={{ color: "var(--rayo-ink-400)" }}>
+              Nenhum conteúdo encontrado.
+            </div>
+          ) : (
+            results.map((it) => (
+              <button
+                key={it.id}
+                type="button"
+                className="w-full text-left px-3 py-2 hover:opacity-80 border-b last:border-0"
+                style={{ borderColor: "var(--rayo-sand-300)" }}
+                onClick={() => {
+                  onChange(it.id);
+                  setSelected(it);
+                  setOpen(false);
+                  setSearch("");
+                }}
+              >
+                <div className="text-sm truncate" style={{ color: "var(--rayo-forest-900)", fontWeight: 600 }}>
+                  {it.title}
+                </div>
+                <div className="text-xs" style={{ color: "var(--rayo-ink-400)" }}>
+                  {it.kind} · {it.status}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 }

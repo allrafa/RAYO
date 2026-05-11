@@ -84,6 +84,10 @@ interface HomeFeedRow {
   image_url: string | null; gradient: string | null;
   badge_text: string | null; meta_text: string | null;
   progress: number | null; sort_order: number;
+  // Task #171 — destino real do card.
+  content_item_id: number | null;
+  content_kind: string | null;
+  link_url: string | null;
 }
 type HomeFeedSections = Record<HomeFeedSectionKey, HomeFeedRow[]>;
 
@@ -168,7 +172,47 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
     isInOrbChat, setIsInOrbChat,
     isInCentralConversas, setIsInCentralConversas,
     setCurrentCourseId, setIsInCourseDetail,
+    setCurrentVideoId, setIsInVideoPage,
   } = useApp();
+
+  // Task #171 — roteia um card editorial pro destino certo, em ordem
+  // de prioridade: conteúdo vinculado (player interno ou turma) →
+  // link interno/externo → toast "Em breve". Fallback de seção é
+  // injetado pelo caller ("trending" abre PlaylistsExpanded; "podcasts"
+  // abre MusicPage), só usado quando NADA está configurado.
+  const openHomeFeedCard = useCallback((
+    row: HomeFeedRow,
+    fallback?: () => void,
+  ) => {
+    if (row.content_item_id && row.content_kind) {
+      const k = row.content_kind;
+      if (k === "audio" || k === "video" || k === "reels") {
+        setCurrentVideoId(String(row.content_item_id));
+        setIsInVideoPage(true);
+        return;
+      }
+      if (k === "curso") {
+        setCurrentCourseId(row.content_item_id);
+        setIsInCourseDetail(true);
+        return;
+      }
+      // serie/livro/artigo: ainda não temos viewer dedicado na home — cai
+      // pro detalhe via /api/content (Academia já roteia).
+      onNavigate?.("academia");
+      return;
+    }
+    if (row.link_url) {
+      const url = row.link_url;
+      if (/^https?:\/\//i.test(url)) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else if (url.startsWith("/")) {
+        window.location.assign(url);
+      }
+      return;
+    }
+    if (fallback) { fallback(); return; }
+    enhancedToast.info("Em breve");
+  }, [setCurrentVideoId, setIsInVideoPage, setCurrentCourseId, setIsInCourseDetail, onNavigate]);
 
   // ── Data loaders ───────────────────────────────────────────────
   const loadDashboard = useCallback(async () => {
@@ -273,7 +317,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
           badge_text: row.badge_text ?? "",
           eyebrow: row.subtitle ?? row.title,
           fallbackIdx: i,
-          onClick: () => {},
+          onClick: () => openHomeFeedCard(row, () => setIsInPlaylistsExpanded(true)),
         }))
   );
   const shorts = youtubeData?.shorts?.slice(0, 5) ?? [];
@@ -522,7 +566,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                     key={row.id}
                     type="button"
                     className="rh-alta"
-                    onClick={() => setIsInPlaylistsExpanded(true)}
+                    onClick={() => openHomeFeedCard(row, () => setIsInPlaylistsExpanded(true))}
                   >
                     <div className={`rh-alta-img ${row.image_url ? "" : fallbackClass("fallback", i, altaFallbacks)}`}>
                       {row.image_url && <img src={row.image_url} alt="" loading="lazy" />}
@@ -555,7 +599,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                     key={row.id}
                     type="button"
                     className="rh-pod"
-                    onClick={() => setIsInMusicPage(true)}
+                    onClick={() => openHomeFeedCard(row, () => setIsInMusicPage(true))}
                   >
                     <div className={`rh-pod-img ${row.image_url ? "" : fallbackClass("fallback", i, podFallbacks)}`}>
                       {row.image_url && <img src={row.image_url} alt="" loading="lazy" />}

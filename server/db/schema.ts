@@ -958,6 +958,7 @@ export async function initializeSchema() {
       updated_at TIMESTAMP DEFAULT NOW()
     )
   `);
+  await query(`ALTER TABLE home_feed_items ADD COLUMN IF NOT EXISTS link_url VARCHAR(500)`);
   await query(`
     DO $$
     BEGIN
