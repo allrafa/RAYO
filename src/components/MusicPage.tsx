@@ -1,4 +1,4 @@
-import { ArrowLeft, Play, Heart, Download, Shuffle, MoreHorizontal, Clock, Users } from "lucide-react";
+import { ArrowLeft, Play, Pause, Heart, Download, Shuffle, MoreHorizontal, Clock, Users } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -243,17 +243,22 @@ export function MusicPage({ onBack }: MusicPageProps) {
                         <Badge variant="secondary" className="text-xs">
                           {playlist.tracks} faixas
                         </Badge>
-                        <Button
-                          size="sm"
-                          aria-label={(currentTrack?.id === `music-${category.name}-${playlist.name}` && isPlaying ? "Pausar " : "Reproduzir ") + playlist.name}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlayPlaylist(category.name, playlist);
-                          }}
-                          className="h-8 w-8 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-110"
-                        >
-                          <Play className="w-4 h-4" />
-                        </Button>
+                        {(() => {
+                          const active = currentTrack?.id === `music-${category.name}-${playlist.name}` && isPlaying;
+                          return (
+                            <Button
+                              size="sm"
+                              aria-label={(active ? "Pausar " : "Reproduzir ") + playlist.name}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePlayPlaylist(category.name, playlist);
+                              }}
+                              className="h-8 w-8 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:scale-110"
+                            >
+                              {active ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                            </Button>
+                          );
+                        })()}
                       </div>
                     </CardContent>
                   </Card>
