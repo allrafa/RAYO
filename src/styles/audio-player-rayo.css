@@ -1,0 +1,139 @@
+/* Task #172 — Mini-player global de áudio (estilo Spotify).
+   Fica fixo no rodapé acima da bottom nav mobile (que tem ~64px) e
+   acima do desktop layout. */
+.rayo-global-audio-player {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 64px; /* desktop: nav é lateral, mas mobile tem bottom nav */
+  z-index: 9000;
+  background: var(--rayo-sand-50, #fff);
+  border-top: 1px solid var(--rayo-forest-100, #e5e7eb);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 1024px) {
+  .rayo-global-audio-player { bottom: 0; padding-bottom: 10px; }
+}
+
+.rayo-gap-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.rayo-gap-cover {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.rayo-gap-meta {
+  min-width: 0;
+  flex: 0 1 200px;
+}
+
+.rayo-gap-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rayo-forest-700, #1f2937);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rayo-gap-subtitle {
+  font-size: 12px;
+  color: var(--rayo-forest-500, #6b7280);
+  margin: 2px 0 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rayo-gap-play {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--rayo-terra-500, #c25e3a);
+  color: var(--rayo-sand-50, #fff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.rayo-gap-play:hover { background: var(--rayo-terra-700, #9c4a2d); transform: scale(1.05); }
+.rayo-gap-play:focus-visible { outline: 2px solid var(--rayo-terra-500); outline-offset: 2px; }
+
+.rayo-gap-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.rayo-gap-time {
+  font-size: 11px;
+  color: var(--rayo-forest-500, #6b7280);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: center;
+}
+
+.rayo-gap-track {
+  flex: 1 1 auto;
+  height: 4px;
+  background: var(--rayo-forest-100, #e5e7eb);
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+}
+
+.rayo-gap-track:focus-visible { outline: 2px solid var(--rayo-terra-500); outline-offset: 4px; }
+.rayo-gap-track[aria-disabled="true"] { cursor: not-allowed; opacity: 0.5; }
+
+.rayo-gap-track-fill {
+  height: 100%;
+  background: var(--rayo-terra-500, #c25e3a);
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+.rayo-gap-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rayo-forest-500, #6b7280);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: none;
+  cursor: pointer;
+}
+
+.rayo-gap-close:hover { background: var(--rayo-forest-100, #f3f4f6); color: var(--rayo-forest-700, #1f2937); }
+.rayo-gap-close:focus-visible { outline: 2px solid var(--rayo-terra-500); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .rayo-gap-meta { flex: 1 1 auto; }
+  .rayo-gap-progress {
+    /* Em telas estreitas, esconde a barra de seek (mantém só a barra
+       fina full-width acima dos controles seria ideal, mas como simplificação
+       deixamos a barra inline e escondemos os timestamps). */
+  }
+  .rayo-gap-time { display: none; }
+}

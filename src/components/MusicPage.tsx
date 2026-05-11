@@ -4,6 +4,7 @@ import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { enhancedToast } from "./EnhancedToast";
+import { useAudioPlayer } from "../contexts/AudioPlayerContext";
 
 
 interface MusicPageProps {
@@ -19,7 +20,7 @@ const musicCategories = [
     color: 'from-blue-500 to-purple-600',
     icon: '🧠',
     playlists: [
-      { name: 'Deep Work', tracks: 45, duration: '3h 12min', listeners: '2.3k' },
+      { name: 'Deep Work', tracks: 45, duration: '3h 12min', listeners: '2.3k', audio_url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' },
       { name: 'Concentração Total', tracks: 38, duration: '2h 45min', listeners: '1.8k' },
       { name: 'Study Beats', tracks: 52, duration: '3h 38min', listeners: '3.1k' },
       { name: 'Produtividade Zen', tracks: 29, duration: '2h 15min', listeners: '1.5k' }
@@ -93,11 +94,22 @@ const musicCategories = [
 ];
 
 export function MusicPage({ onBack }: MusicPageProps) {
-  const handlePlayPlaylist = (categoryName: string, playlistName: string) => {
-    enhancedToast.success({
-      title: "🎵 Reproduzindo",
-      description: `${playlistName} de ${categoryName}`,
-      haptic: true
+  const { playTrack } = useAudioPlayer();
+  // Task #172 — player real via AudioPlayerContext. Mocks não têm
+  // audio_url ainda; o seed "Deep Work" recebeu amostra pública pra QA.
+  const handlePlayPlaylist = (
+    categoryName: string,
+    playlist: { name: string; audio_url?: string },
+  ) => {
+    if (!playlist.audio_url) {
+      enhancedToast.info("Em breve");
+      return;
+    }
+    playTrack({
+      id: `music-${categoryName}-${playlist.name}`,
+      title: playlist.name,
+      subtitle: categoryName,
+      audioUrl: playlist.audio_url,
     });
   };
 
@@ -174,7 +186,7 @@ export function MusicPage({ onBack }: MusicPageProps) {
                   <Card 
                     key={index} 
                     className="w-64 hover:shadow-lg transition-all duration-300 cursor-pointer group"
-                    onClick={() => handlePlayPlaylist(category.name, playlist.name)}
+                    onClick={() => handlePlayPlaylist(category.name, playlist)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">

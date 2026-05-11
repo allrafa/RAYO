@@ -59,6 +59,9 @@ import { migrateLegacyStorage } from "./lib/storageMigration";
 migrateLegacyStorage();
 import "./styles/nav-rayo.css";
 import "./styles/playlists-rayo.css";
+import "./styles/audio-player-rayo.css";
+import { AudioPlayerProvider } from "./contexts/AudioPlayerContext";
+import { GlobalAudioPlayer } from "./components/GlobalAudioPlayer";
 import "./styles/app-rayo.css";
 import "./styles/auth-rayo.css";
 import "./styles/marketing-rayo.css";
@@ -715,8 +718,11 @@ export default function App() {
             <AnalyticsProvider>
               <UnreadMessagesProvider>
                 <UnreadBySectionProvider>
-                  <AppContent />
-                  <Toaster />
+                  <AudioPlayerProvider>
+                    <AppContent />
+                    <GlobalAudioPlayer />
+                    <Toaster />
+                  </AudioPlayerProvider>
                 </UnreadBySectionProvider>
               </UnreadMessagesProvider>
             </AnalyticsProvider>

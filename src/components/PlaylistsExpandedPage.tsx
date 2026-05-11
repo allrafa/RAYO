@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, X, Play, Pause, Music, Star } from "lucide-react";
 import { useApp } from "./AppContext";
+import { useAudioPlayer } from "../contexts/AudioPlayerContext";
+import { enhancedToast } from "./EnhancedToast";
 
 interface PlaylistsExpandedPageProps {
   isOpen: boolean;
@@ -10,10 +12,9 @@ interface PlaylistsExpandedPageProps {
 export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentPlayingId, setCurrentPlayingId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { userData: _userData } = useApp();
+  const { playTrack, currentTrack, isPlaying } = useAudioPlayer();
 
   // Categorias (sem emojis grandes / gradients pastéis — DS v2.0).
   const playlistCategories = [
@@ -32,6 +33,9 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
     trending: [
       {
         id: "1",
+        // Sample MP3 público (SoundHelix, royalty-free) só pra QA — substituir
+        // por mídia real quando os dados migrarem pro CMS (`content_items` kind audio).
+        audio_url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" as string | null,
         title: "Comunicação Não-Violenta no Relacionamento",
         duration: "2h 15min",
         episodes: 12,
@@ -193,13 +197,22 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
     }
   }, [isOpen]);
 
-  const handlePlayPause = (playlistId: string) => {
-    if (currentPlayingId === playlistId) {
-      setIsPlaying(!isPlaying);
-    } else {
-      setCurrentPlayingId(playlistId);
-      setIsPlaying(true);
+  // Task #172 — player real via AudioPlayerContext (mini-player global).
+  // Cards mock não têm audio_url ainda; o card seed "1" recebeu uma
+  // amostra pública pra QA conseguir validar end-to-end. Cards sem URL
+  // mostram "Em breve" honesto.
+  const handlePlayPause = (playlist: { id: string; title: string; image: string; audio_url?: string | null }) => {
+    if (!playlist.audio_url) {
+      enhancedToast.info("Em breve");
+      return;
     }
+    playTrack({
+      id: `playlist-${playlist.id}`,
+      title: playlist.title,
+      subtitle: "Playlist funcional",
+      audioUrl: playlist.audio_url,
+      coverUrl: playlist.image,
+    });
   };
 
   if (!isOpen) return null;
@@ -274,13 +287,13 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
         {filteredPlaylists.length > 0 ? (
           <div className="rh-pl-grid">
             {filteredPlaylists.map((playlist) => {
-              const isCurrent = currentPlayingId === playlist.id && isPlaying;
+              const isCurrent = currentTrack?.id === `playlist-${playlist.id}` && isPlaying;
               return (
                 <button
                   key={playlist.id}
                   type="button"
                   className="rh-pl-card"
-                  onClick={() => handlePlayPause(playlist.id)}
+                  onClick={() => handlePlayPause(playlist as { id: string; title: string; image: string; audio_url?: string | null })}
                   aria-label={`${isCurrent ? "Pausar" : "Tocar"} playlist ${playlist.title}`}
                 >
                   <div className="rh-pl-cover">
