@@ -40,7 +40,14 @@ export interface RayoVideoPlayerProps {
 function youtubeEmbed(url: string): string | null {
   const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([\w-]{6,})/);
   if (!match) return null;
-  return `https://www.youtube.com/embed/${match[1]}`;
+  // youtube-nocookie + params essenciais pra evitar "Error 153 — Video
+  // player configuration error" no embed (especialmente Safari iOS).
+  // - playsinline=1: toca inline em vez de tela cheia forçada no iOS.
+  // - rel=0: não recomenda vídeos de outros canais ao terminar.
+  // - modestbranding=1: esconde logo grande do YouTube.
+  // - origin: ajuda o YouTube a validar o embed contra a página atual.
+  const origin = typeof window !== "undefined" ? `&origin=${encodeURIComponent(window.location.origin)}` : "";
+  return `https://www.youtube-nocookie.com/embed/${match[1]}?playsinline=1&rel=0&modestbranding=1${origin}`;
 }
 
 function vimeoEmbed(url: string): string | null {
