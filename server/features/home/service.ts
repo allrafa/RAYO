@@ -99,6 +99,21 @@ export async function getTodayItem(userId: number): Promise<TodayItem | null> {
   const resolved = withResolvedBunnyFields(picked);
   const bunnyTarget = resolved.video_embed_url;
 
+  // Task #167 — ctaTarget NUNCA pode ser null. Quando o conteúdo do dia
+  // não tem URL externa nem embed Bunny, devolvemos um sentinel
+  // `internal://content/<id>` que o frontend reconhece pra abrir o
+  // player interno (mesmo fallback que `searchNavigate.ts` já usa pra
+  // audio/video/reels sem URL externa). Sem isso o card "Hoje no RAYO"
+  // ficava inerte e o usuário clicava sem nada acontecer.
+  const externalTarget =
+    bunnyTarget || picked.external_url?.trim() || picked.media_url?.trim() || null;
+  const isInternal = !externalTarget;
+  const ctaTarget = externalTarget || `internal://content/${picked.id}`;
+  const ctaLabel = isInternal
+    ? "Abrir conteúdo"
+    : picked.cta?.trim() ||
+      (picked.kind === "audio" ? "Ouvir agora" : "Assistir agora");
+
   return {
     id: picked.id,
     kind: picked.kind,
@@ -107,14 +122,8 @@ export async function getTodayItem(userId: number): Promise<TodayItem | null> {
     coverUrl: resolved.video_thumbnail_url || picked.cover_url,
     durationSeconds: picked.duration_seconds,
     hook: picked.hook,
-    ctaLabel:
-      picked.cta?.trim() ||
-      (picked.kind === "audio" ? "Ouvir agora" : "Assistir agora"),
-    ctaTarget:
-      bunnyTarget ||
-      picked.external_url?.trim() ||
-      picked.media_url?.trim() ||
-      null,
+    ctaLabel,
+    ctaTarget,
     segments: picked.segments ?? [],
     completedAt: compRows[0]?.completed_at ?? null,
   };

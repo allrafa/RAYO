@@ -11,6 +11,7 @@ import { CheckCircle2, ExternalLink, SkipForward } from "lucide-react";
 import { api } from "../../lib/api";
 import { enhancedToast } from "../EnhancedToast";
 import { cardKeyHandler, stopBubble } from "../../lib/cardClickTargets";
+import { useApp } from "../AppContext";
 
 interface TodayItem {
   id: number;
@@ -41,6 +42,10 @@ interface Props {
   /** Notifica o pai se há (ou não) item visível, pra colapsar a section
    *  inteira (incluindo aside) quando vazio/skipped. */
   onVisibilityChange?: (visible: boolean) => void;
+  /** Task #167 — usado pra abrir o player interno quando o conteúdo
+   *  do dia não tem URL externa (ctaTarget = `internal://content/<id>`).
+   *  Sem isso o card só conseguia abrir destinos externos. */
+  onTabChange?: (tab: string) => void;
 }
 
 function todayStr(): string { return new Date().toISOString().slice(0, 10); }
@@ -54,7 +59,14 @@ function readSkipped(userId?: number | string | null): boolean {
   catch { return false; }
 }
 
-export function HojeNoRaio({ refreshKey = 0, onCompleted, userId, onVisibilityChange }: Props) {
+export function HojeNoRaio({
+  refreshKey = 0,
+  onCompleted,
+  userId,
+  onVisibilityChange,
+  onTabChange,
+}: Props) {
+  const { setCurrentVideoId, setIsInVideoPage } = useApp();
   const [item, setItem] = useState<TodayItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
@@ -99,6 +111,16 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted, userId, onVisibilityCh
   const handleOpen = () => {
     if (!item.ctaTarget) return;
     if ("vibrate" in navigator) navigator.vibrate(15);
+    // Task #167 — sentinel `internal://content/<id>` indica que o
+    // conteúdo não tem URL externa; abrimos o player interno via
+    // AppContext (mesmo fluxo que searchNavigate.ts usa pra
+    // audio/video/reels sem URL externa).
+    if (item.ctaTarget.startsWith("internal://content/")) {
+      setCurrentVideoId(String(item.id));
+      setIsInVideoPage(true);
+      onTabChange?.("academia");
+      return;
+    }
     window.open(item.ctaTarget, "_blank", "noopener,noreferrer");
   };
 
@@ -154,8 +176,9 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted, userId, onVisibilityCh
     </div>
   );
 
-  // Task #164 — Card todo clicável quando há ctaTarget (área neutra/título
-  // abre o item). Botões internos usam stopBubble.
+  // Task #164/#167 — Card todo clicável sempre que não estiver concluído.
+  // O backend agora garante ctaTarget não-nulo (sentinel interno quando
+  // não há URL externa), então a guarda simplificou pra apenas !isDone.
   const cardClickable = !!item.ctaTarget && !isDone;
   return (
     <div

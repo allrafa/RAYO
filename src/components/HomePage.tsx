@@ -315,6 +315,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                   userId={authUser.id}
                   onCompleted={() => { void loadDashboard(); }}
                   onVisibilityChange={setHojeVisible}
+                  onTabChange={onNavigate}
                 />
                 {/* Aside: agenda do dia (sage = roda de conversa, ochre = desafio) */}
                 <div className="rh-hoje-aside">
