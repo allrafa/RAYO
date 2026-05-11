@@ -55,8 +55,23 @@ export function DesktopSidebar({
 
   return (
     <aside className={`rn-sidebar ${isMinimized ? "minimized" : ""}`} aria-label="Navegação principal">
-      {/* Brand */}
-      <div className="rn-brand">
+      {/* Brand — Task #167: clicável, volta pra Home (re-clique = scroll-top,
+          igual às abas). Botão real (não <a>) pra não conflitar com SPA. */}
+      <button
+        type="button"
+        className="rn-brand"
+        onClick={() => {
+          if (currentTab === "home") {
+            dispatchScrollTop("home");
+          } else {
+            onTabChange("home");
+          }
+          if ("vibrate" in navigator) navigator.vibrate(10);
+        }}
+        aria-label="Ir para a Home do RAYO"
+        title={isMinimized ? "Início" : undefined}
+        style={{ background: "transparent", border: 0, cursor: "pointer", textAlign: "left" }}
+      >
         <div className="rn-brand-mark" aria-hidden="true">R</div>
         {!isMinimized && (
           <div className="rn-brand-text">
@@ -64,7 +79,7 @@ export function DesktopSidebar({
             <span className="rn-brand-sub">Família</span>
           </div>
         )}
-      </div>
+      </button>
 
       {/* User row */}
       <div className="rn-user">
@@ -75,7 +90,12 @@ export function DesktopSidebar({
           aria-label={`Perfil de ${userData.name || "Usuário"}`}
         >
           <Avatar className="w-10 h-10 flex-shrink-0">
-            <AvatarImage src="/placeholder-avatar.jpg" alt={userData.name} />
+            {/* Task #167 — usa avatar_url do usuário autenticado.
+                AvatarImage só renderiza quando há src; fallback mostra
+                a inicial do nome. */}
+            {user?.avatar_url ? (
+              <AvatarImage src={user.avatar_url} alt={userData.name || user.name || "Avatar"} />
+            ) : null}
             <AvatarFallback
               style={{
                 background: "var(--rayo-forest-900)",
@@ -83,7 +103,7 @@ export function DesktopSidebar({
                 fontWeight: 600,
               }}
             >
-              {userData.name?.[0] || "U"}
+              {(userData.name || user?.name)?.[0]?.toUpperCase() || "U"}
             </AvatarFallback>
           </Avatar>
           {!isMinimized && (

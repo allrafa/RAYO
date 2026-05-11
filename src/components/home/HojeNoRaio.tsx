@@ -181,8 +181,11 @@ export function HojeNoRaio({ refreshKey = 0, onCompleted, userId, onVisibilityCh
       {item.coverUrl && (
         <img src={item.coverUrl} alt="" className="rh-hoje-cover" loading="lazy" />
       )}
+      {/* Task #167 — copy honesta: não é live stream, é a sugestão
+          editorial diária (1 item por usuário/segmento/dia). O label
+          antigo "Ao vivo · em destaque" confundia. */}
       <div className="rh-hoje-main-eyebrow">
-        {isDone ? "Concluído hoje" : "Ao vivo · em destaque"}
+        {isDone ? "Concluído hoje" : "Hoje no RAYO · sugestão do dia"}
       </div>
       <h3 className="rh-hoje-main-title">
         {item.hook || item.title}
