@@ -309,7 +309,7 @@ export function PlaylistsExpandedPage({ isOpen, onClose }: PlaylistsExpandedPage
                   type="button"
                   className="rh-pl-card"
                   onClick={() => handlePlayPause(playlist)}
-                  aria-label={`${isCurrent ? "Pausar" : "Tocar"} playlist ${playlist.title}`}
+                  aria-label={`${isCurrent ? "Pausar" : "Reproduzir"} playlist ${playlist.title}`}
                 >
                   <div className="rh-pl-cover">
                     <img src={playlist.image} alt="" loading="lazy" />

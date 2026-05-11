@@ -50,8 +50,8 @@ export function GlobalAudioPlayer() {
             tabIndex={canSeek ? 0 : -1}
             aria-label="Posição do áudio"
             aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(progress)}
+            aria-valuemax={canSeek ? Math.round(duration) : 0}
+            aria-valuenow={canSeek ? Math.round(currentTime) : 0}
             aria-valuetext={canSeek ? `${fmt(currentTime)} de ${fmt(duration)}` : "Áudio carregando"}
             aria-disabled={!canSeek}
             onClick={(e) => {
