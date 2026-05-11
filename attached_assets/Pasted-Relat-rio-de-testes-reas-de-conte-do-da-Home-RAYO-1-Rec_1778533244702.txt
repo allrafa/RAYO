@@ -1,0 +1,46 @@
+Relatório de testes — Áreas de conteúdo da Home RAYO
+1. "Recomendado para você" (cursos) — ❌ Não funciona
+Os cards de cursos (Comunicação Não-Violenta, Finanças para Casais, Educação Positiva, Fundamentos do Relacionamento, etc.) não são clicáveis efetivamente. Tentei clicar em diferentes pontos (imagem e título) e a URL continua em rayo.app.br/ — nenhuma navegação ocorre. A única forma de chegar à página de detalhe do curso é via menu "Turmas" → catálogo, e mesmo lá só existe o waitlist "Garantir minha vaga" (sem checkout).
+2. "Feito para você" (playlists/coleções) — ⚠️ Parcialmente funciona / Player quebrado
+O card abre um modal de playlist corretamente (vejo lista de 6 vídeos com títulos, durações e visualizações). Porém ao clicar em um vídeo da lista:
+
+Aparece um overlay preto fixed inset-0 z-[9999] (escurece a tela toda).
+O iframe do player existe, mas está posicionado com top: 1629px ou top: -860px — fora do viewport, então o player nunca aparece visualmente.
+A URL do iframe é https://www.youtube.com/embed/mock-video-1 — ou seja, vídeo mock/placeholder, não um vídeo real.
+O overlay não responde corretamente ao botão de fechar (precisei forçar via JS).
+
+3. "Em alta no RAYO" (cards 01/02/03) — ⚠️ Funciona mas leva a lugar errado
+Clicar em "Viral do Relacionamento" (01) leva para a página "Playlists para você" (uma lista geral de 9 playlists), não para o conteúdo "Viral do Relacionamento" especificamente. Os cards nessa listagem têm botão de play sobreposto:
+
+Ao clicar no play, o ícone alterna para Pause (UI responde visualmente).
+Mas verificando o DOM: 0 elementos <audio>, 0 <video>, 0 <iframe> — não há nada tocando de verdade. É apenas uma alternância de estado visual, sem mídia carregada.
+
+4. "Podcasts para você" (RAIO Talks, Histórias Reais) — ⚠️ Comportamento confuso
+Clicar no botão de play do podcast não inicia áudio nenhum (0 audio tags no DOM) e ainda navega/rola para uma seção totalmente diferente ("Energia & Motivação"). Não tem player de áudio funcional.
+5. "Shorts RAYO" — ❌ Mesmo bug do player
+Cliquei em "Dica Rápida: Como Pedir Desculpas":
+
+Abre o overlay z-[9999] preto.
+Cria um iframe com src youtube.com/embed/mock-video-X (mock).
+O iframe está posicionado fora do viewport (top: -860), invisível.
+Resultado: tela preta sem reprodução.
+
+6. "Hoje no RAYO" (banner do topo) — ✅ Visual ok, ações estáticas
+Botões "Marcar como feito" / "Pular hoje" estão presentes; não verifiquei a fundo, mas as agendas/desafios laterais ("Roda de conversa: limites no namoro", "Uma palavra de afeto antes de dormir") são apenas exibições.
+
+Diagnóstico geral
+A plataforma está em estado de protótipo/mockup: a UI está bem desenhada e responsiva, mas a camada de conteúdo e mídia é toda mockada:
+
+Todos os players de vídeo usam URLs youtube.com/embed/mock-video-* (não existem).
+Os controles de play/pause de áudio são puramente visuais — sem <audio> real sendo instanciado.
+O componente de player tem um bug de layout sério: o overlay cobre a tela toda, mas o iframe dentro recebe posicionamento absoluto fora da viewport (top negativo ou muito grande), ficando invisível.
+Vários cards/links não têm handler de navegação ou têm handler que leva ao lugar errado (ex.: "Em alta" → Playlists genéricas).
+Nenhuma das rotas de conteúdo (cursos, vídeos, áudios, shorts, podcasts) entrega mídia funcional ao usuário final.
+
+Recomendações de correção (prioridade)
+
+Substituir os URLs mock dos vídeos pelos vídeos reais (YouTube embed IDs verdadeiros, Vimeo, Mux, Panda etc.).
+Corrigir o CSS do player modal — o iframe está renderizando fora do container fixed inset-0. Provável problema de position: absolute sem relative no pai, ou top com valor incorreto.
+Implementar elemento <audio> real para playlists de podcast/áudio (hoje só alterna ícone).
+Corrigir roteamento dos cards: cards de curso na Home precisam navegar para /turmas/[slug]; cards de "Em alta" precisam levar para a playlist específica, não para a listagem geral.
+Validar o botão "Fechar player" — não está respondendo ao ESC nem ao clique no botão X corretamente.
