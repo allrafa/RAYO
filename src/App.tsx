@@ -23,6 +23,7 @@ import { ComunidadePage } from "./components/ComunidadePage";
 import { PerfilPage } from "./components/PerfilPage";
 import { CentralConversasPage } from "./components/TrilhaTransformacao/CentralConversasPage";
 import { ConversasPage } from "./components/ConversasPage";
+import { VideoPage } from "./components/VideoPage";
 import { ConsentBanner } from "./components/ConsentBanner";
 import { LandingPage } from "./components/LandingPage";
 import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
@@ -602,6 +603,25 @@ function AppContent() {
           currentTab={currentTab}
           onTabChange={setCurrentTab}
         />
+      )}
+
+      {/* Task #168 — overlay global do player interno de vídeo/áudio.
+          Diversos fluxos (busca, "Hoje no RAYO" interno, cards de
+          video/audio/reels da Academia) chamam setIsInVideoPage(true),
+          mas não havia onde a VideoPage estivesse efetivamente montada
+          — o resultado era "tela preta" (na verdade, simplesmente nada
+          abria). Renderizamos aqui no nível raiz pra cobrir todos os
+          fluxos. */}
+      {appContext?.isInVideoPage && appContext?.currentVideoId && (
+        <div className="fixed inset-0 z-[9999] bg-background overflow-y-auto">
+          <VideoPage
+            videoId={appContext.currentVideoId}
+            onBack={() => {
+              appContext.setIsInVideoPage(false);
+              appContext.setCurrentVideoId(null);
+            }}
+          />
+        </div>
       )}
 
       <ConsentBanner onOpenPrivacyPolicy={() => setCurrentTab("privacy")} />

@@ -16,6 +16,7 @@ interface VideoPageProps {
 // Shape returned by /api/content?kind=video — the public CMS feed.
 interface CmsVideo {
   id: number;
+  kind?: string;
   title: string;
   short_description: string | null;
   long_description: string | null;
@@ -35,6 +36,7 @@ interface CmsVideo {
 
 interface VideoVM {
   id: string;
+  kind: string;
   title: string;
   description: string;
   duration: string;
@@ -80,6 +82,7 @@ function relativeDate(iso: string | null): string {
 function mapVideo(v: CmsVideo): VideoVM {
   return {
     id: String(v.id),
+    kind: v.kind ?? "video",
     title: v.title,
     description: v.long_description ?? v.short_description ?? "",
     duration: formatDuration(v.duration_seconds),
@@ -106,19 +109,30 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
   const [currentVideo, setCurrentVideo] = useState<VideoVM | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Load video catalogue from the CMS public API. Falls back to a clear empty
-  // state when the catalogue is empty or the request fails (no silent mocks).
+  // Load the requested item by id (covers audio/reels/video kinds, not just
+  // the video feed) plus a small list of related videos. Task #168 — antes
+  // o componente buscava só `kind=video&limit=50` e descartava o id quando
+  // o conteúdo era audio/reels, fazendo o player abrir o "primeiro vídeo
+  // disponível" em vez do conteúdo solicitado.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const res = await api.get<{ items: CmsVideo[] }>("/api/content?kind=video&limit=50");
+      const [byId, listRes] = await Promise.all([
+        api.get<{ item: CmsVideo }>(`/api/content/${encodeURIComponent(videoId)}`),
+        api.get<{ items: CmsVideo[] }>("/api/content?kind=video&limit=20"),
+      ]);
       if (cancelled) return;
-      if (res.data) {
-        const mapped = res.data.items.map(mapVideo);
-        setVideos(mapped);
-        setCurrentVideo(mapped.find((v) => v.id === videoId) ?? mapped[0] ?? null);
-      }
+      const mapped = listRes.data ? listRes.data.items.map(mapVideo) : [];
+      setVideos(mapped);
+      // Task #168 — só usamos o item solicitado (ou um match exato na
+      // lista de relacionados). Não caímos pra `mapped[0]`: abrir um
+      // vídeo aleatório quando o id pedido falha confunde o usuário
+      // (ele clicou num conteúdo específico). Sem match → empty state.
+      const target = byId.data?.item
+        ? mapVideo(byId.data.item)
+        : mapped.find((v) => v.id === videoId) ?? null;
+      setCurrentVideo(target);
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -128,6 +142,15 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
     setCurrentVideo(video);
     enhancedToast.success(`Carregando: ${video.title}`);
   };
+
+  // Task #168 — Esc fecha o player.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onBack();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onBack]);
 
   if (loading) {
     return (
@@ -186,6 +209,7 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
             video_thumbnail_url={currentVideo.video_thumbnail_url}
             external_url={currentVideo.external_url}
             media_url={currentVideo.media_url}
+            kind={currentVideo.kind}
           />
 
           <div className="mt-4 space-y-4">

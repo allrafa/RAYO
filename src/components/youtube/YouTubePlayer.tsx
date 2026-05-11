@@ -4,9 +4,18 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Heart, Share2 } from 'lucide-react';
 import { YouTubeVideo } from './YouTubeTypes';
 import { useVideoProgress } from '../hooks/useVideoProgress';
+
+// Task #168 — IDs mock (`mock-video-*`/`mock-short-*`) gerados por
+// YouTubeService.getMockData() não existem no YouTube e fazem o iframe
+// renderizar a tela de erro preta do próprio YouTube. Detectamos o
+// padrão e mostramos um placeholder honesto em vez de tentar embedar.
+function isMockVideoId(id: string): boolean {
+  return /^mock-(video|short|playlist)-/i.test(id);
+}
 
 interface YouTubePlayerProps {
   video: YouTubeVideo;
@@ -47,6 +56,15 @@ export function YouTubePlayer({ video, onClose, autoplay = true }: YouTubePlayer
       window.scrollTo(0, scrollY);
     };
   }, []);
+
+  // Task #168 — Esc fecha o player.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   // Simula tracking de progresso
   useEffect(() => {
@@ -124,9 +142,14 @@ export function YouTubePlayer({ video, onClose, autoplay = true }: YouTubePlayer
     }
   };
 
+  const isMock = isMockVideoId(video.id);
   const embedUrl = `https://www.youtube.com/embed/${video.id}?autoplay=${autoplay ? 1 : 0}&rel=0&modestbranding=1`;
 
-  return (
+  // Task #168 — renderizado via portal pra escapar do `transform:
+  // translateY(...)` do PullToRefresh, que cria containing block e
+  // quebra `position: fixed` em descendentes (mesmo gotcha do
+  // CommentsPanel listado em replit.md).
+  const overlay = (
     <div 
       className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4 overflow-hidden"
       style={{ margin: 0 }}
@@ -181,16 +204,32 @@ export function YouTubePlayer({ video, onClose, autoplay = true }: YouTubePlayer
       </div>
 
       {/* Player */}
-      <div className="w-full max-w-6xl aspect-video">
-        <iframe
-          ref={iframeRef}
-          src={embedUrl}
-          title={video.title}
-          className="w-full h-full rounded-lg"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          onLoad={() => setIsPlaying(autoplay)}
-        />
+      <div className="w-full max-w-6xl aspect-video relative z-10">
+        {isMock ? (
+          <div
+            className="w-full h-full rounded-lg flex flex-col items-center justify-center text-center px-6 gap-3"
+            style={{
+              background: 'linear-gradient(135deg, var(--rayo-forest-900,#15302a) 0%, var(--rayo-ink-700,#3a2f24) 100%)',
+              color: '#fff',
+            }}
+          >
+            <p style={{ fontWeight: 700, fontSize: '1.125rem' }}>Conteúdo em produção</p>
+            <p style={{ opacity: 0.8, maxWidth: 480 }}>
+              Este vídeo é uma prévia de catálogo e ainda não tem mídia
+              publicada. Volte em breve.
+            </p>
+          </div>
+        ) : (
+          <iframe
+            ref={iframeRef}
+            src={embedUrl}
+            title={video.title}
+            className="w-full h-full rounded-lg"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            onLoad={() => setIsPlaying(autoplay)}
+          />
+        )}
       </div>
 
       {/* Click fora para fechar */}
@@ -201,4 +240,7 @@ export function YouTubePlayer({ video, onClose, autoplay = true }: YouTubePlayer
       />
     </div>
   );
+
+  if (typeof document === 'undefined') return overlay;
+  return createPortal(overlay, document.body);
 }

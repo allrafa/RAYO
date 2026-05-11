@@ -4,7 +4,14 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Heart, Share2, Play, List, ChevronRight, ChevronLeft } from 'lucide-react';
+
+// Task #168 — IDs `mock-*` da getMockData() não existem no YouTube;
+// embedar gera tela preta de erro. Detectamos e mostramos placeholder.
+function isMockVideoId(id: string): boolean {
+  return /^mock-(video|short|playlist)-/i.test(id);
+}
 import { YouTubeVideo, YouTubePlaylist } from './YouTubeTypes';
 import { useVideoProgress } from '../hooks/useVideoProgress';
 import { Button } from '../ui/button';
@@ -67,6 +74,15 @@ export function YouTubePlayerWithPlaylist({
       window.scrollTo(0, scrollY);
     };
   }, []);
+
+  // Task #168 — Esc fecha o player.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   // Simula tracking de progresso
   useEffect(() => {
@@ -172,10 +188,15 @@ export function YouTubePlayerWithPlaylist({
     return `${count} visualizações`;
   };
 
+  const isMock = isMockVideoId(currentVideo.id);
   const embedUrl = `https://www.youtube.com/embed/${currentVideo.id}?autoplay=${autoplay ? 1 : 0}&rel=0&modestbranding=1`;
   const hasPlaylist = playlistVideos.length > 0;
 
-  return (
+  // Task #168 — renderizado via portal pra escapar do `transform:
+  // translateY(...)` do PullToRefresh, que cria containing block e
+  // quebra `position: fixed` em descendentes (mesmo gotcha do
+  // CommentsPanel listado em replit.md).
+  const overlay = (
     <div 
       className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center overflow-hidden"
       style={{ margin: 0, padding: 0 }}
@@ -237,15 +258,31 @@ export function YouTubePlayerWithPlaylist({
           {/* Player */}
           <div className="flex-1 flex items-center justify-center p-0 lg:p-4">
             <div className="w-full aspect-video max-h-[calc(100vh-80px)] lg:max-h-full">
-              <iframe
-                ref={iframeRef}
-                src={embedUrl}
-                title={currentVideo.title}
-                className="w-full h-full lg:rounded-lg"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                onLoad={() => setIsPlaying(autoplay)}
-              />
+              {isMock ? (
+                <div
+                  className="w-full h-full lg:rounded-lg flex flex-col items-center justify-center text-center px-6 gap-3"
+                  style={{
+                    background: 'linear-gradient(135deg, var(--rayo-forest-900,#15302a) 0%, var(--rayo-ink-700,#3a2f24) 100%)',
+                    color: '#fff',
+                  }}
+                >
+                  <p style={{ fontWeight: 700, fontSize: '1.125rem' }}>Conteúdo em produção</p>
+                  <p style={{ opacity: 0.8, maxWidth: 480 }}>
+                    Este vídeo é uma prévia de catálogo e ainda não tem mídia
+                    publicada. Volte em breve.
+                  </p>
+                </div>
+              ) : (
+                <iframe
+                  ref={iframeRef}
+                  src={embedUrl}
+                  title={currentVideo.title}
+                  className="w-full h-full lg:rounded-lg"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  onLoad={() => setIsPlaying(autoplay)}
+                />
+              )}
             </div>
           </div>
 
@@ -426,4 +463,7 @@ export function YouTubePlayerWithPlaylist({
       />
     </div>
   );
+
+  if (typeof document === 'undefined') return overlay;
+  return createPortal(overlay, document.body);
 }

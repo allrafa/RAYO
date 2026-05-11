@@ -26,6 +26,14 @@ export interface RayoVideoPlayerProps {
    * Usado como `<video src=…>` quando não há Bunny nem external_url.
    */
   media_url?: string | null;
+  /**
+   * Task #168 — quando informado como "audio", usamos `<audio
+   * controls>` em vez de `<video>` no fallback de media_url e
+   * mostramos um estado honesto "Conteúdo em produção" se não houver
+   * mídia. Sem isso, conteúdos kind=audio caíam no caso "5) Sem
+   * vídeo" e abriam só a capa estática.
+   */
+  kind?: string | null;
   className?: string;
 }
 
@@ -107,37 +115,68 @@ export function RayoVideoPlayer(props: RayoVideoPlayerProps) {
     );
   }
 
-  // 4) Fallback legado: media_url (arquivo MP4 hospedado em Object
-  //    Storage ou similar). Nesse caso usamos um <video> nativo.
+  // 4) Fallback legado: media_url (arquivo MP4/MP3 hospedado em
+  //    Object Storage ou similar). Para kind=audio usamos <audio>;
+  //    o resto cai em <video>.
   if (props.media_url) {
+    const isAudio = props.kind === "audio";
     return (
       <div className={cls}>
-        <video
-          src={props.media_url}
-          title={props.title}
-          poster={props.cover_url ?? undefined}
-          controls
-          preload="metadata"
-          className="absolute inset-0 w-full h-full object-contain"
-        />
+        {isAudio ? (
+          <>
+            {props.cover_url ? (
+              <ImageWithFallback
+                src={props.cover_url}
+                alt={props.title}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : null}
+            <div className="absolute inset-0 bg-black/55 flex items-end p-4">
+              <audio
+                src={props.media_url}
+                title={props.title}
+                controls
+                preload="metadata"
+                className="w-full"
+              />
+            </div>
+          </>
+        ) : (
+          <video
+            src={props.media_url}
+            title={props.title}
+            poster={props.cover_url ?? undefined}
+            controls
+            preload="metadata"
+            className="absolute inset-0 w-full h-full object-contain"
+          />
+        )}
       </div>
     );
   }
 
-  // 5) Sem vídeo: capa estática.
+  // 5) Sem mídia publicada: estado honesto "Conteúdo em produção"
+  //    (Task #168 — antes mostrava só a capa estática, dava sensação
+  //    de "tela preta" quando o item ainda não tinha media_url).
+  const fallbackLabel =
+    props.kind === "audio" ? "Áudio em produção" :
+    props.kind === "reels" ? "Reel em produção" :
+    "Conteúdo em produção";
   return (
     <div className={cls}>
       {props.cover_url ? (
         <ImageWithFallback
           src={props.cover_url}
           alt={props.title}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover opacity-40"
         />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center text-white/60 text-sm">
-          Vídeo indisponível
-        </div>
-      )}
+      ) : null}
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/60 text-white text-center px-6">
+        <p style={{ fontWeight: 700 }}>{fallbackLabel}</p>
+        <p className="text-sm opacity-80">
+          Esse conteúdo ainda não tem mídia publicada. Volte em breve.
+        </p>
+      </div>
     </div>
   );
 }
