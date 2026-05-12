@@ -2,6 +2,8 @@
 
 Testes end-to-end que rodam contra o **dev server real** (`npm run dev`) e o **banco de dev**. Os usuários de teste são criados via API REST e descartados ao final (mesmo em caso de falha) — o banco fica limpo.
 
+> **CI**: a suíte roda automaticamente em todo push/PR via `.github/workflows/tests.yml` (job `e2e`, depois do `unit`). O workflow sobe um Postgres como service, instala chromium com `npx playwright install --with-deps chromium`, levanta o dev server em background e só então dispara `npx playwright test`. Artefatos (HTML report, traces, vídeos) são publicados em caso de falha. Para a suíte unitária leve, veja [`tests/unit/README.md`](../unit/README.md).
+
 ## Pré-requisitos
 
 - O dev server precisa estar rodando na porta 5000 (no Replit, isso é o workflow **`Start application`**; localmente, `npm run dev`).

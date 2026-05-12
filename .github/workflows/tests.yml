@@ -1,0 +1,91 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npm run test:unit
+
+  e2e:
+    name: E2E tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: unit
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rayo
+          POSTGRES_PASSWORD: rayo
+          POSTGRES_DB: rayo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rayo"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://rayo:rayo@localhost:5432/rayo_test
+      NODE_ENV: development
+      SESSION_SECRET: ci-test-secret-do-not-use-in-prod
+      PUBLIC_SITE_URL: http://localhost:5000
+      APP_URL: http://localhost:5000
+      PLAYWRIGHT_BASE_URL: http://localhost:5000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start dev server
+        run: |
+          npm run dev > /tmp/dev-server.log 2>&1 &
+          echo $! > /tmp/dev-server.pid
+          # Espera o server responder antes de soltar os testes
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:5000 > /dev/null 2>&1; then
+              echo "Dev server up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Dev server falhou em subir. Logs:"
+          cat /tmp/dev-server.log
+          exit 1
+      - name: Run Playwright tests
+        run: npx playwright test
+      - name: Stop dev server
+        if: always()
+        run: |
+          if [ -f /tmp/dev-server.pid ]; then
+            kill "$(cat /tmp/dev-server.pid)" 2>/dev/null || true
+          fi
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: tests/e2e/.artifacts
+          retention-days: 7
+      - name: Upload dev server logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-server-log
+          path: /tmp/dev-server.log
+          retention-days: 7
