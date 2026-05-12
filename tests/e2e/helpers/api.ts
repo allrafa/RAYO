@@ -13,7 +13,17 @@ if (!databaseUrl) {
   throw new Error("DATABASE_URL não definido — Playwright precisa do banco de dev pra cleanup.");
 }
 
-const pool = new Pool({ connectionString: databaseUrl, max: 4 });
+let pool = new Pool({ connectionString: databaseUrl, max: 4 });
+
+function getPool(): Pool {
+  // Reabre o pool se algum spec anterior (mesmo worker) já chamou
+  // `closeDbPool()` no afterAll. Sem isso, a 2ª spec do worker explode
+  // com "Cannot use a pool after calling end on the pool".
+  if ((pool as unknown as { ended?: boolean }).ended) {
+    pool = new Pool({ connectionString: databaseUrl, max: 4 });
+  }
+  return pool;
+}
 
 export async function closeDbPool() {
   await pool.end().catch(() => {});
@@ -49,7 +59,7 @@ export function makeTestEmail(prefix: string): string {
  * de envio de código (Resend) que não roda em teste. Idempotente.
  */
 async function markEmailVerified(email: string): Promise<void> {
-  await pool.query(
+  await getPool().query(
     `INSERT INTO email_verification_codes (email, code, verified, expires_at)
      VALUES ($1, '000000', TRUE, NOW() + INTERVAL '1 hour')`,
     [email],
@@ -110,7 +120,7 @@ export async function loginViaApi(
  */
 export async function deleteUsersById(ids: number[]): Promise<void> {
   if (ids.length === 0) return;
-  const client = await pool.connect();
+  const client = await getPool().connect();
   try {
     await client.query("BEGIN");
     const tables: { sql: string; params?: unknown[] }[] = [
@@ -159,7 +169,7 @@ export async function deleteUsersById(ids: number[]): Promise<void> {
  */
 export async function deleteAllTestUsersByEmailPrefix(prefix?: string): Promise<void> {
   const effective = prefix ?? workerEmailPrefix();
-  const { rows } = await pool.query<{ id: number }>(
+  const { rows } = await getPool().query<{ id: number }>(
     `SELECT id FROM users WHERE email LIKE $1 || '%' AND email LIKE '%@rayo.test'`,
     [effective],
   );
