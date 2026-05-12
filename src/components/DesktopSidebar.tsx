@@ -7,6 +7,7 @@ import { useUnreadMessages } from "./hooks/useUnreadMessages";
 import { useUnreadBySection } from "./hooks/useUnreadBySection";
 import { toast } from "sonner@2.0.3";
 import { dispatchScrollTop } from "../lib/scrollTop";
+import { preloadTab } from "../lib/routePreload";
 
 interface DesktopSidebarProps {
   currentTab: string;
@@ -134,6 +135,8 @@ export function DesktopSidebar({
                 }
                 if ("vibrate" in navigator) navigator.vibrate(10);
               }}
+              onMouseEnter={() => preloadTab(item.id)}
+              onFocus={() => preloadTab(item.id)}
               title={isMinimized ? item.label : undefined}
               aria-label={isMinimized ? item.label : undefined}
               aria-current={isActive ? "page" : undefined}

@@ -1,5 +1,6 @@
 import { Home, GraduationCap, Users, User } from "lucide-react";
 import { dispatchScrollTop } from "../lib/scrollTop";
+import { preloadTab } from "../lib/routePreload";
 import { useUnreadBySection } from "./hooks/useUnreadBySection";
 
 interface NavigationProps {
@@ -60,6 +61,9 @@ export function Navigation({ currentTab, onTabChange }: NavigationProps) {
                 }
                 if ("vibrate" in navigator) navigator.vibrate(10);
               }}
+              onMouseEnter={() => preloadTab(tab.id)}
+              onFocus={() => preloadTab(tab.id)}
+              onTouchStart={() => preloadTab(tab.id)}
               aria-label={ariaLabel}
               aria-current={isActive ? "page" : undefined}
             >

@@ -53,15 +53,24 @@ function lazyNamed<M, K extends keyof M & string>(
   ) as LazyOf<M, K>;
 }
 
-const AdminShell = lazyNamed(() => import("./components/admin/AdminShell"), "AdminShell");
-const AcademiaWithBookReader = lazyNamed(
-  () => import("./components/AcademiaWithBookReader"),
-  "AcademiaWithBookReader",
-);
-const ConselheiroPage = lazyNamed(() => import("./components/ConselheiroPage"), "ConselheiroPage");
-const ComunidadePage = lazyNamed(() => import("./components/ComunidadePage"), "ComunidadePage");
-const PerfilPage = lazyNamed(() => import("./components/PerfilPage"), "PerfilPage");
-const ConversasPage = lazyNamed(() => import("./components/ConversasPage"), "ConversasPage");
+// Task #181 — Loaders compartilhados com `src/lib/routePreload.ts` pra
+// que hover/focus na bottom nav / sidebar pré-carregue exatamente o
+// mesmo chunk que o React.lazy vai resolver no clique.
+import {
+  academiaLoader,
+  adminLoader,
+  comunidadeLoader,
+  conselheiroLoader,
+  conversasLoader,
+  perfilLoader,
+} from "./lib/routePreload";
+
+const AdminShell = lazyNamed(adminLoader, "AdminShell");
+const AcademiaWithBookReader = lazyNamed(academiaLoader, "AcademiaWithBookReader");
+const ConselheiroPage = lazyNamed(conselheiroLoader, "ConselheiroPage");
+const ComunidadePage = lazyNamed(comunidadeLoader, "ComunidadePage");
+const PerfilPage = lazyNamed(perfilLoader, "PerfilPage");
+const ConversasPage = lazyNamed(conversasLoader, "ConversasPage");
 const VideoPage = lazyNamed(() => import("./components/VideoPage"), "VideoPage");
 const LandingPage = lazyNamed(() => import("./components/LandingPage"), "LandingPage");
 const PrivacyPolicyPage = lazyNamed(
