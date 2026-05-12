@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { BrowserRouter, useLocation, useNavigate } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
 import { DesktopSidebar } from "./components/DesktopSidebar";
 import { TopNavbar } from "./components/TopNavbar";
@@ -118,17 +119,56 @@ function getPublicPageFromUrl(): PublicRoute | null {
   return null;
 }
 
-// Task #99 — `/academia` é alias legado: redireciona pra `/turmas`
-// preservando query params, antes de qualquer renderização.
-function maybeRedirectAcademiaToTurmas(): void {
+// Task #176 — Roteamento real: cada aba do shell tem URL canônica.
+// Mapas tab ↔ path. `currentTab` agora é DERIVADO de useLocation;
+// `setCurrentTab(tab)` por baixo chama navigate(pathFromTab(tab)).
+// Isso preserva todas as APIs legadas (Navigation, DesktopSidebar,
+// TopNavbar, HomePage, etc. continuam recebendo `onTabChange`) sem
+// precisar tocar nesses componentes.
+//
+// `/turmas` (sem :id) é alias legado pra /academia — redirecionamos no
+// boot pra preservar bookmarks/links externos. `/turmas/:id` continua
+// público (turma-landing) e é interceptado em getPublicPageFromUrl
+// antes mesmo de chegar aqui.
+function maybeRedirectLegacyTurmasToAcademia(): void {
   if (typeof window === "undefined") return;
   const p = window.location.pathname.replace(/\/+$/, "") || "/";
-  if (p === "/academia") {
+  if (p === "/turmas") {
     const search = window.location.search || "";
-    window.history.replaceState(null, "", `/turmas${search}`);
+    window.history.replaceState(null, "", `/academia${search}`);
   }
 }
-maybeRedirectAcademiaToTurmas();
+maybeRedirectLegacyTurmasToAcademia();
+
+const TAB_PATHS: Record<string, string> = {
+  home: "/",
+  academia: "/academia",
+  comunidade: "/comunidade",
+  conversas: "/conversas",
+  perfil: "/perfil",
+  conselheiro: "/conselheiro",
+  admin: "/admin",
+  "trilha-conversas": "/trilha-conversas",
+  landingpage: "/landingpage",
+};
+
+function tabFromPath(pathname: string): string {
+  const p = pathname.replace(/\/+$/, "") || "/";
+  if (p === "/" || p === "") return "home";
+  if (p === "/academia" || p.startsWith("/academia/") || p === "/turmas") return "academia";
+  if (p === "/comunidade" || p.startsWith("/comunidade/") || p.startsWith("/c/")) return "comunidade";
+  if (p === "/conversas" || p.startsWith("/conversas/")) return "conversas";
+  if (p === "/perfil" || p.startsWith("/perfil/") || p.startsWith("/u/")) return "perfil";
+  if (p === "/conselheiro") return "conselheiro";
+  if (p === "/admin" || p.startsWith("/admin/")) return "admin";
+  if (p === "/trilha-conversas") return "trilha-conversas";
+  if (p === "/landingpage") return "landingpage";
+  return "home";
+}
+
+function pathFromTab(tab: string): string {
+  return TAB_PATHS[tab] ?? "/";
+}
 
 // Task #70 — `/login` e `/cadastro` são entradas diretas no fluxo de auth
 // (sem welcome / onboarding). Mantidos como rotas reais para serem
@@ -166,18 +206,31 @@ function AppContent() {
     }
   }, [user, setTheme]);
 
-  // Task #99 — `/turmas` (e `?tab=turmas`) entram direto na aba Turmas
-  // (id interno continua "academia" pra não quebrar o switch existente).
-  const [currentTab, setCurrentTab] = useState(() => {
-    if (typeof window !== "undefined") {
-      const path = window.location.pathname.replace(/\/+$/, "") || "/";
-      const tabParam = new URLSearchParams(window.location.search).get("tab");
-      if (path === "/turmas" || path === "/academia" || tabParam === "turmas" || tabParam === "academia") {
-        return "academia";
+  // Task #176 — currentTab é DERIVADO da URL (useLocation). Não tem mais
+  // useState próprio — qualquer mudança de aba passa pelo navigate, e o
+  // back/forward do navegador volta a funcionar de graça. setCurrentTab
+  // mantém a mesma assinatura (string → void) por compatibilidade com
+  // todos os componentes legados (Navigation, DesktopSidebar, TopNavbar,
+  // HomePage, NotificationBell, ConselheiroPage, etc.).
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentTab = tabFromPath(location.pathname);
+  const setCurrentTab = useCallback(
+    (tab: string) => {
+      // "privacy" não é uma aba real — é overlay. Mantemos o nome legado
+      // pra preservar callsites (LandingPage onOpenPrivacyPolicy,
+      // ConsentBanner) sem precisar tocar neles.
+      if (tab === "privacy") {
+        setShowPrivacyOverlay(true);
+        return;
       }
-    }
-    return "home";
-  });
+      const target = pathFromTab(tab);
+      if (window.location.pathname.replace(/\/+$/, "") !== target.replace(/\/+$/, "")) {
+        navigate(target);
+      }
+    },
+    [navigate],
+  );
   const [isSidebarMinimized, setIsSidebarMinimized] = useState(false);
   const [resetToken, setResetToken] = useState<string | null>(() => getResetTokenFromUrl());
   // Returning visitors (anyone who has logged in or registered on this device
@@ -260,13 +313,14 @@ function AppContent() {
   }, []);
 
   // Task #45 — deep-link `/u/<id>` para perfis compartilhados. Captura
-  // o id na primeira renderização, troca pra aba Perfil e deixa o
-  // sessionStorage `rayo-pending-profile` pra PerfilPage abrir o
-  // perfil correto (mesmo contrato usado pela busca). A URL é limpa
-  // para não disparar de novo num refresh.
+  // o id e estaciona em sessionStorage pra PerfilPage abrir o perfil
+  // correto (mesmo contrato usado pela busca/cards).
+  // Task #176 — em vez de replaceState manual, usamos navigate(replace)
+  // pra trocar a URL pra `/perfil` (canônica da aba). A URL pública
+  // /u/:id mais robusta (que sobrevive a refresh) fica pra Task #178.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const match = window.location.pathname.match(/^\/u\/(\d+)\/?$/);
+    const match = location.pathname.match(/^\/u\/(\d+)\/?$/);
     if (!match) return;
     const id = match[1];
     try {
@@ -274,41 +328,15 @@ function AppContent() {
     } catch {
       // ignore
     }
-    setCurrentTab("perfil");
-    try {
-      window.history.replaceState({}, "", "/");
-    } catch {
-      // ignore
-    }
-  }, []);
+    navigate("/perfil", { replace: true });
+  }, [location.pathname, navigate]);
 
-  // Task #92 — deep-link `/c/<slug>` para comunidades. Mesma mecânica do
-  // `/u/<id>`: mantém autenticado (NÃO é página pública), parqueia o slug
-  // em sessionStorage e troca pra aba Comunidade. ComunidadePage lê
-  // `rayo-pending-community-slug` e abre a vista da comunidade.
-  // Task #122 — também detecta `/c/<slug>/p/<id>` (discussão dedicada,
-  // compartilhável). Nesse caso parqueia também o id em `rayo-pending-post`
-  // (mesma chave usada pela busca/perfil), e ComunidadePage abre o
-  // CommentsPanel direto — slug fica só pro SEO/canonical e pra UI sugerir
-  // a comunidade no header do post.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    // Task #122 — Tab derivada do pathname (URL = source of truth).
-    // `/c/<slug>` ou `/c/<slug>/p/<id>` → aba Comunidade; resto → Home.
-    // Listener de popstate garante que back/forward do navegador
-    // restaurem a aba correta sem desync URL ↔ UI.
-    const syncTabFromPath = () => {
-      const path = window.location.pathname;
-      if (/^\/c\/[a-z0-9-]+(?:\/p\/\d+)?\/?$/i.test(path)) {
-        setCurrentTab((prev) => (prev === "comunidade" ? prev : "comunidade"));
-      } else if (path === "/" || path === "") {
-        setCurrentTab((prev) => (prev === "comunidade" ? "home" : prev));
-      }
-    };
-    syncTabFromPath();
-    window.addEventListener("popstate", syncTabFromPath);
-    return () => window.removeEventListener("popstate", syncTabFromPath);
-  }, []);
+  // Task #176 — sync URL ↔ aba feito agora pelo router (currentTab é
+  // derivado de useLocation). `/c/<slug>` e `/c/<slug>/p/<id>` continuam
+  // tratadas dentro de ComunidadePage, que parsea o pathname e escuta
+  // popstate pra abrir a comunidade/discussão certa. tabFromPath já
+  // mapeia ambos os formatos pra "comunidade", então a aba destacada
+  // no Navigation/DesktopSidebar fica correta automaticamente.
 
   // Task #99 — abre o TurmaShell quando a landing pública estacionou
   // o id em sessionStorage (membro logado clicou "Entrar na turma" em
@@ -330,18 +358,32 @@ function AppContent() {
     } catch {
       // ignore
     }
-    setCurrentTab("academia");
+    navigate("/academia", { replace: true });
     appContext?.setCurrentCourseId(turmaId);
     appContext?.setIsInCourseDetail(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Task #176 — depois do login, se o usuário ainda está em /login ou
+  // /cadastro (rotas anônimas que disparam o AuthPage), manda pra /
+  // pra evitar mostrar a Home com URL `/login` na barra. replace: true
+  // pra back não voltar pro form.
+  useEffect(() => {
+    if (!user) return;
+    const p = location.pathname.replace(/\/+$/, "") || "/";
+    if (p === "/login" || p === "/cadastro") {
+      navigate("/", { replace: true });
+    }
+  }, [user, location.pathname, navigate]);
+
   // Task #71 — deep-link `/conversas/<id>` for notification + email links.
-  // Mirrors the `/u/:id` contract: park the target id in sessionStorage,
-  // switch to the Conversas tab, and clean the URL so refresh doesn't replay.
+  // Park the target id in sessionStorage and reescreve a URL pra
+  // /conversas (rota canônica da aba). Task #179 vai trocar isso por
+  // /conversas/:id sobrevivendo a refresh; por ora mantém o contrato
+  // legado pra não regredir a abertura via notificações.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const match = window.location.pathname.match(/^\/conversas\/(\d+)\/?$/);
+    const match = location.pathname.match(/^\/conversas\/(\d+)\/?$/);
     if (!match) return;
     const id = match[1];
     try {
@@ -349,13 +391,8 @@ function AppContent() {
     } catch {
       // ignore
     }
-    setCurrentTab("conversas");
-    try {
-      window.history.replaceState({}, "", "/");
-    } catch {
-      // ignore
-    }
-  }, []);
+    navigate("/conversas", { replace: true });
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     if (resetToken && user) {
@@ -489,7 +526,7 @@ function AppContent() {
     // itself hides sections the user can't access (Users → admin-only,
     // Moderation → moderator+).
     if (!userHasRole(user, "producer")) {
-      setTimeout(() => setCurrentTab("home"), 0);
+      setTimeout(() => navigate("/", { replace: true }), 0);
       return null;
     }
     return <AdminShell onExitAdmin={() => setCurrentTab("home")} />;
@@ -526,11 +563,9 @@ function AppContent() {
               onStartPremium={() => setCurrentTab("home")}
               onClose={() => setCurrentTab("home")}
               showCloseButton={true}
-              onOpenPrivacyPolicy={() => setCurrentTab("privacy")}
+              onOpenPrivacyPolicy={() => setShowPrivacyOverlay(true)}
             />
           );
-        case "privacy":
-          return <PrivacyPolicyPage onBack={() => setCurrentTab("perfil")} />;
         default:
           return (
             <HomePage
@@ -627,7 +662,17 @@ function AppContent() {
         </div>
       )}
 
-      <ConsentBanner onOpenPrivacyPolicy={() => setCurrentTab("privacy")} />
+      <ConsentBanner onOpenPrivacyPolicy={() => setShowPrivacyOverlay(true)} />
+
+      {/* Task #176 — overlay de Política de Privacidade dentro do shell
+          autenticado (acionado pelo ConsentBanner ou pela LandingPage).
+          Antes era um "tab" virtual no switch; agora é overlay puro
+          pra não conflitar com o roteamento real (URL não muda). */}
+      {showPrivacyOverlay && (
+        <div className="fixed inset-0 z-[10000] bg-background overflow-y-auto">
+          <PrivacyPolicyPage onBack={() => setShowPrivacyOverlay(false)} />
+        </div>
+      )}
     </div>
   );
 }
@@ -711,24 +756,26 @@ export default function App() {
     );
   }
   return (
-    <ThemeProvider>
-      <AccessibilityProvider>
-        <AuthProvider>
-          <AppProvider>
-            <AnalyticsProvider>
-              <UnreadMessagesProvider>
-                <UnreadBySectionProvider>
-                  <AudioPlayerProvider>
-                    <AppContent />
-                    <GlobalAudioPlayer />
-                    <Toaster />
-                  </AudioPlayerProvider>
-                </UnreadBySectionProvider>
-              </UnreadMessagesProvider>
-            </AnalyticsProvider>
-          </AppProvider>
-        </AuthProvider>
-      </AccessibilityProvider>
-    </ThemeProvider>
+    <BrowserRouter>
+      <ThemeProvider>
+        <AccessibilityProvider>
+          <AuthProvider>
+            <AppProvider>
+              <AnalyticsProvider>
+                <UnreadMessagesProvider>
+                  <UnreadBySectionProvider>
+                    <AudioPlayerProvider>
+                      <AppContent />
+                      <GlobalAudioPlayer />
+                      <Toaster />
+                    </AudioPlayerProvider>
+                  </UnreadBySectionProvider>
+                </UnreadMessagesProvider>
+              </AnalyticsProvider>
+            </AppProvider>
+          </AuthProvider>
+        </AccessibilityProvider>
+      </ThemeProvider>
+    </BrowserRouter>
   );
 }
