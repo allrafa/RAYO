@@ -167,6 +167,35 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
     return () => { cancelled = true; };
   }, [courseId, course.isEnrolled]);
 
+  // Task #177 — Ativação de aula via URL `/academia/curso/:id/aula/:lessonId`.
+  // O sync URL→Context em App.tsx estaciona o lesson_id em
+  // sessionStorage["rayo-pending-lesson"]. Aqui consumimos depois que
+  // os módulos carregam: rolamos até `[data-lesson-id="<id>"]` e
+  // aplicamos `.rayo-comment-highlight` (mesma animação reaproveitada).
+  // Se a aula não existir nos módulos carregados, removemos o stash
+  // mesmo assim pra não vazar pra navegações futuras.
+  useEffect(() => {
+    if (modules.length === 0) return;
+    let pending: string | null = null;
+    try { pending = sessionStorage.getItem("rayo-pending-lesson"); } catch { /* ignore */ }
+    if (!pending) return;
+    try { sessionStorage.removeItem("rayo-pending-lesson"); } catch { /* ignore */ }
+    const lessonExists = modules.some((m) => (m.lessonList || []).some((l) => String(l.id) === pending));
+    if (!lessonExists) return;
+    // Aguarda 1 frame pro DOM estar pintado.
+    requestAnimationFrame(() => {
+      const node = document.querySelector<HTMLElement>(`[data-lesson-id="${pending}"]`);
+      if (!node) return;
+      try {
+        node.scrollIntoView({ behavior: "smooth", block: "center" });
+      } catch {
+        node.scrollIntoView();
+      }
+      node.classList.add("rayo-comment-highlight");
+      window.setTimeout(() => node.classList.remove("rayo-comment-highlight"), 2200);
+    });
+  }, [modules]);
+
   const instructor = {
     name: course.instructor || "RAYO Academy",
     title: "Especialista",
@@ -484,7 +513,11 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                           const isLessonCompleted = lessonStatus === 'completed';
                           const isCompleting = completingLessonId === lesson.id;
                           return (
-                            <div key={lesson.id} className="flex items-center justify-between text-sm py-1.5">
+                            <div
+                              key={lesson.id}
+                              data-lesson-id={lesson.id}
+                              className="flex items-center justify-between text-sm py-1.5 px-2 -mx-2 rounded-md transition-colors"
+                            >
                               <div className="flex items-center gap-2 flex-1">
                                 {isLessonCompleted ? (
                                   <CheckCircle className="w-4 h-4 text-[var(--rayo-forest-700)] shrink-0" />
