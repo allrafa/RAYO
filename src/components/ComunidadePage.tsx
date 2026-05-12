@@ -96,7 +96,18 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   const [currentView, setCurrentView] = useState<"feed" | "grupos" | "trending" | "conversas">("feed");
   // Task #92 — Community detail page por slug. Quando setado, sobrepõe
   // tudo (header de tabs + composer escondidos) e renderiza CommunityDetailPage.
-  const [activeCommunitySlug, setActiveCommunitySlug] = useState<string | null>(null);
+  // Task #176 — URL é fonte da verdade tanto pra `/c/<slug>` (community
+  // detail) quanto pra `/c/<slug>/p/<id>` (discussão dedicada). Sem este
+  // initializer, refresh ou entrada direta em `/c/<slug>` caía no feed
+  // genérico em vez da comunidade — App.tsx não estaciona mais o slug
+  // em sessionStorage (CustomEvent vem da busca/cards, mas link direto
+  // / refresh não passa por lá).
+  const parseSlugFromPath = (): string | null => {
+    if (typeof window === "undefined") return null;
+    const m = window.location.pathname.match(/^\/c\/([a-z0-9-]+)(?:\/p\/\d+)?\/?$/i);
+    return m ? m[1].toLowerCase() : null;
+  };
+  const [activeCommunitySlug, setActiveCommunitySlug] = useState<string | null>(parseSlugFromPath);
   // Task #122 — Discussão dedicada `/c/<slug>/p/<id>`. URL é a fonte
   // da verdade: derivamos o estado do pathname no mount e em popstate.
   // Entrar em discussão = pushState; sair = history.back() (com
