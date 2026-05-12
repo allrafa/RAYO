@@ -21,6 +21,12 @@ npx playwright test
 # Um único spec
 npx playwright test tests/e2e/messages.spec.ts
 
+# Paralelo: por padrão é serial (1 worker) localmente pra evitar contenção
+# no banco de dev. Em CI (`process.env.CI`) sobe pra 4 workers e
+# `fullyParallel: true`. Override via flag ou env:
+PLAYWRIGHT_WORKERS=4 npx playwright test
+npx playwright test --workers=4
+
 # UI mode (Playwright UI runner — só local; precisa de display)
 npx playwright test --ui
 
@@ -79,7 +85,9 @@ O container do Replit não consegue rodar `chromium.launch()` direto: o Playwrig
 
 ## Convenções de cleanup
 
-- Emails de teste seguem o padrão `test-*@rayo.test`. O `beforeAll` da suíte de mensagens dispara um safety-net (`deleteAllTestUsersByEmailPrefix`) pra varrer restos de execuções anteriores.
+- Emails de teste seguem o padrão `test-w<idx>-*@rayo.test` — o segmento `w<idx>` vem de `process.env.TEST_WORKER_INDEX` (escopo por worker do Playwright). Isso garante que rodar em paralelo (CI) não derruba dados de workers vizinhos.
+- `makeTestEmail("test-a")` aplica o prefixo do worker automaticamente — não precisa pensar nisso no spec.
+- `deleteAllTestUsersByEmailPrefix()` (sem args) também usa o prefixo do worker. Passar `"test-"` explicitamente apaga TUDO e só deve ser usado em runs single-worker (local).
 - Se um teste crashar muito feio, rode manualmente:
   ```bash
   psql "$DATABASE_URL" -c "DELETE FROM users WHERE email LIKE 'test-%@rayo.test';"

@@ -23,7 +23,10 @@ test.describe("DM — fluxo crítico de Mensagens", () => {
 
   test.beforeAll(async () => {
     // Safety net: limpa restos de runs anteriores que não fizeram cleanup.
-    await deleteAllTestUsersByEmailPrefix("test-");
+    // Sem argumento → usa prefixo escopado por worker (`test-w<idx>-`),
+    // o que é seguro em runs paralelas em CI (não derruba dados de
+    // workers vizinhos ainda em execução).
+    await deleteAllTestUsersByEmailPrefix();
   });
 
   test.afterEach(async () => {

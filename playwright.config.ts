@@ -5,6 +5,10 @@ const baseURL = replitDomain
   ? `https://${replitDomain}`
   : process.env.PLAYWRIGHT_BASE_URL || "http://localhost:5000";
 
+// Comparação explícita evita ativar paralelismo se algum runner exótico
+// setar `CI="false"` (string truthy mas semanticamente desligada).
+const isCI = process.env.CI === "true" || process.env.CI === "1";
+
 // O lifecycle do browser é controlado pelo fixture custom em
 // `tests/e2e/fixtures.ts` (CDP no Replit, `chromium.launch()` local).
 // Aqui mantemos só baseURL, projects (viewport mobile) e artifacts.
@@ -15,9 +19,16 @@ export default defineConfig({
   globalTeardown: "./tests/e2e/global-teardown.ts",
   timeout: 60_000,
   expect: { timeout: 10_000 },
-  fullyParallel: false,
-  workers: 1,
-  retries: 0,
+  // Em CI cada job tem o próprio Postgres efêmero — dá pra paralelizar.
+  // Localmente (dev share o banco) mantemos serial pra evitar contenção.
+  // `--workers <N>` na CLI sobrescreve esse default.
+  fullyParallel: isCI,
+  workers: process.env.PLAYWRIGHT_WORKERS
+    ? Math.max(1, parseInt(process.env.PLAYWRIGHT_WORKERS, 10) || 1)
+    : isCI
+      ? 4
+      : 1,
+  retries: isCI ? 1 : 0,
   reporter: [
     ["list"],
     ["html", { outputFolder: "tests/e2e/.artifacts/report", open: "never" }],

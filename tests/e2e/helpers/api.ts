@@ -23,8 +23,25 @@ function uniqueSlug(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * Prefixo escopado por worker do Playwright. Em paralelo (CI), cada worker
+ * recebe um índice via `TEST_WORKER_INDEX` — usar isso no e-mail garante
+ * que o cleanup `deleteAllTestUsersByEmailPrefix()` de um worker NUNCA
+ * apague usuários ainda em uso por outro worker.
+ */
+export function workerEmailPrefix(): string {
+  const idx = process.env.TEST_WORKER_INDEX ?? "0";
+  return `test-w${idx}-`;
+}
+
 export function makeTestEmail(prefix: string): string {
-  return `${uniqueSlug(prefix)}@rayo.test`;
+  // Normaliza: se o caller passou algo começando com "test-", troca pelo
+  // prefixo do worker; caso contrário, prepende o prefixo do worker.
+  const wp = workerEmailPrefix();
+  const normalized = prefix.startsWith("test-")
+    ? prefix.replace(/^test-/, wp)
+    : `${wp}${prefix}`;
+  return `${uniqueSlug(normalized)}@rayo.test`;
 }
 
 /**
@@ -132,11 +149,19 @@ export async function deleteUsersById(ids: number[]): Promise<void> {
   }
 }
 
-/** Limpa restos de qualquer execução anterior (safety net por prefix de email). */
-export async function deleteAllTestUsersByEmailPrefix(prefix = "test-"): Promise<void> {
+/**
+ * Limpa restos de execuções anteriores (safety net por prefix de email).
+ *
+ * Default: usa o prefixo do worker atual (`test-w<idx>-`) — seguro em paralelo.
+ * Caller pode passar um prefixo explícito; nesse caso prefixe com `test-w<idx>-`
+ * pra preservar o isolamento por worker, ou use `"test-"` SOMENTE em runs
+ * single-worker (local) pra varrer leftovers globais.
+ */
+export async function deleteAllTestUsersByEmailPrefix(prefix?: string): Promise<void> {
+  const effective = prefix ?? workerEmailPrefix();
   const { rows } = await pool.query<{ id: number }>(
     `SELECT id FROM users WHERE email LIKE $1 || '%' AND email LIKE '%@rayo.test'`,
-    [prefix],
+    [effective],
   );
   await deleteUsersById(rows.map((r) => r.id));
 }
