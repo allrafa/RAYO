@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   MessageCircle, MessageSquarePlus, Search, MoreVertical, Send, ArrowLeft, Loader2,
   Check, CheckCheck, Archive, Trash2, ArchiveRestore, Image as ImageIcon,
@@ -387,7 +388,25 @@ export function ConversasPage() {
   const [conversationsLoading, setConversationsLoading] = useState(true);
   const [conversationsError, setConversationsError] = useState<string | null>(null);
 
-  const [activeId, setActiveId] = useState<number | null>(null);
+  // Task #179 — activeId é DERIVADO da URL `/conversas/:id`. Sem isso,
+  // refresh dentro de uma conversa caía na inbox vazia e share do link
+  // não funcionava. `setActiveId(x)` foi mantido como API (mesma
+  // assinatura) mas por baixo navega — todos os ~10 callsites
+  // existentes (handleStartConversation, openConversationFromArchived,
+  // SwipeRow.onOpen, header back, handleDeleteConfirm, onScrollTop,
+  // etc) continuam funcionando sem precisar tocar neles. Back/forward
+  // do navegador fechar a conversa funciona de graça.
+  const dmLocation = useLocation();
+  const dmNavigate = useNavigate();
+  const dmConvMatch = dmLocation.pathname.match(/^\/conversas\/(\d+)\/?$/);
+  const activeId = dmConvMatch ? Number(dmConvMatch[1]) : null;
+  const setActiveId = useCallback(
+    (id: number | null) => {
+      if (id == null) dmNavigate("/conversas");
+      else dmNavigate(`/conversas/${id}`);
+    },
+    [dmNavigate],
+  );
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messagesError, setMessagesError] = useState<string | null>(null);
@@ -566,11 +585,15 @@ export function ConversasPage() {
     }, "conversas");
   }, []);
 
+  // Task #179 — Stash legado `rayo-pending-conversation`/
+  // `raio-pending-conversation` foi consumido por SPAs antigos. Como
+  // /conversas/:id agora é rota persistente, novos callsites navegam
+  // direto pela URL. Mantemos o consumo do stash legado por uma janela
+  // de transição (cobre tabs abertas com SPA pré-#179) — convertemos
+  // pra navigate em vez de setState direto.
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      // Task #163 — fallback pra chave legada `raio-pending-conversation`
-      // cobre tabs com SPA antigo no mesmo device.
       const pending =
         sessionStorage.getItem("rayo-pending-conversation") ??
         sessionStorage.getItem("raio-pending-conversation");
@@ -578,10 +601,12 @@ export function ConversasPage() {
         sessionStorage.removeItem("rayo-pending-conversation");
         sessionStorage.removeItem("raio-pending-conversation");
         const id = Number.parseInt(pending, 10);
-        if (Number.isFinite(id) && id > 0) setActiveId(id);
+        if (Number.isFinite(id) && id > 0) {
+          dmNavigate(`/conversas/${id}`, { replace: true });
+        }
       }
     } catch { /* ignore */ }
-  }, []);
+  }, [dmNavigate]);
 
   useEffect(() => {
     setConversationsLoading(true);

@@ -475,23 +475,11 @@ function AppContent() {
     }
   }, [user, location.pathname, navigate]);
 
-  // Task #71 — deep-link `/conversas/<id>` for notification + email links.
-  // Park the target id in sessionStorage and reescreve a URL pra
-  // /conversas (rota canônica da aba). Task #179 vai trocar isso por
-  // /conversas/:id sobrevivendo a refresh; por ora mantém o contrato
-  // legado pra não regredir a abertura via notificações.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const match = location.pathname.match(/^\/conversas\/(\d+)\/?$/);
-    if (!match) return;
-    const id = match[1];
-    try {
-      sessionStorage.setItem("rayo-pending-conversation", id);
-    } catch {
-      // ignore
-    }
-    navigate("/conversas", { replace: true });
-  }, [location.pathname, navigate]);
+  // Task #179 — `/conversas/:id` agora é rota persistente. NÃO fazemos
+  // mais replaceState pra `/conversas`: ConversasPage lê o pathname com
+  // useLocation e abre a conversa correspondente. Refresh, back/forward
+  // e share do link funcionam sem stash. Notificações/e-mails continuam
+  // mandando `/conversas/:id` direto na URL.
 
   useEffect(() => {
     if (resetToken && user) {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
 import { useApp } from "./AppContext";
@@ -38,6 +39,9 @@ export function NotificationBell({ onTabChange }: NotificationBellProps) {
   // App.tsx só roda no mount, então quando o sino é clicado durante a
   // sessão temos que setar o curso atual via AppContext na hora.
   const app = useApp();
+  // Task #179 — usado pra navegar pra `/conversas/:id` quando o sino é
+  // clicado (rota persistente; substitui o stash em sessionStorage).
+  const bellNavigate = useNavigate();
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationPayload[]>([]);
@@ -123,12 +127,11 @@ export function NotificationBell({ onTabChange }: NotificationBellProps) {
     if (link) {
       const convMatch = link.match(/^\/conversas\/(\d+)\/?$/);
       if (convMatch) {
-        try {
-          sessionStorage.setItem("rayo-pending-conversation", convMatch[1]);
-        } catch {
-          /* ignore */
-        }
-        onTabChange("conversas");
+        // Task #179 — `/conversas/:id` é rota persistente. Navega
+        // direto pra URL canônica via react-router (useLocation no
+        // ConversasPage reage e abre a conversa). pushState manual
+        // NÃO dispara re-render do useLocation — precisa ser navigate.
+        bellNavigate(`/conversas/${convMatch[1]}`);
         return;
       }
       const profileMatch = link.match(/^\/u\/(\d+)\/?$/);

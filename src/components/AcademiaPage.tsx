@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search, Star, Users, ArrowRight, Play, ChevronLeft, ChevronRight, Trophy, Clock, BookOpen, Lock, CheckCircle, ShoppingCart, ChevronUp, Sparkles, Book, Headphones, Video, Film, Layers, GraduationCap, Package, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
 import { Button } from "./ui/button";
@@ -746,9 +747,48 @@ function MarketplaceView({
   const popularSectionRef = useRef<HTMLDivElement>(null);
   const allCoursesRef = useRef<HTMLDivElement>(null);
 
-  // Default selected segment = first one in user's onboarding profile (or "all")
-  const initialSegment = userSegments.length > 0 ? userSegments[0] : "all";
-  const [selectedSegment, setSelectedSegment] = useState<string>(initialSegment);
+  // Task #179 — `?segmento=…` na URL é a fonte da verdade pro filtro
+  // de segmento no catálogo. Permite compartilhar links tipo
+  // `/academia?segmento=casados` e o estado é restaurado em refresh /
+  // back-forward. Sem `?segmento`, cai pro primeiro segmento do
+  // onboarding (ou "all"). useSearchParams cuida da serialização.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialSegment =
+    searchParams.get("segmento") ??
+    (userSegments.length > 0 ? userSegments[0] : "all");
+  const [selectedSegment, setSelectedSegmentState] =
+    useState<string>(initialSegment);
+
+  // Sync state → URL (replace, sem entrada extra no histórico).
+  // "all" e o default-do-onboarding ficam SEM query string pra URLs
+  // limpas; só serializamos quando o usuário escolheu algo explícito.
+  const setSelectedSegment = useCallback(
+    (next: string) => {
+      setSelectedSegmentState(next);
+      const params = new URLSearchParams(searchParams);
+      if (next === "all") params.delete("segmento");
+      else params.set("segmento", next);
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  // Sync URL → state quando back/forward muda `?segmento`. Valida o
+  // valor contra SEGMENTS pra não envenenar estado com `?segmento=foo`.
+  // Quando não há query, restaura o default (primeiro segmento do
+  // onboarding ou "all") — sem isso a URL `/academia` ficaria divergente
+  // do state após back/forward (apontado em code review).
+  useEffect(() => {
+    const qs = searchParams.get("segmento");
+    const allowed = new Set(SEGMENTS.map((s) => s.value));
+    if (qs && allowed.has(qs)) {
+      if (qs !== selectedSegment) setSelectedSegmentState(qs);
+      return;
+    }
+    const fallback = userSegments.length > 0 ? userSegments[0] : "all";
+    if (selectedSegment !== fallback) setSelectedSegmentState(fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, userSegments]);
 
   // Format counts (loaded from CMS public endpoint, one request per kind).
   const [formatCounts, setFormatCounts] = useState<Record<string, number>>({});
