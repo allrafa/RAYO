@@ -250,6 +250,16 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   );
   const selfSub = selfMatch ? (selfMatch[1] ?? "posts") : "posts";
 
+  // Task #178 — Normaliza `/u/:id/salvos`: a tab "Salvos" só existe
+  // pro próprio usuário (UserProfilePage esconde pra não-self), então
+  // a URL não levaria a nada visível. Replace pra `/u/:id/posts`
+  // mantém o histórico limpo (sem entrada extra no back).
+  useEffect(() => {
+    if (otherProfileId !== null && otherProfileSub === "salvos") {
+      navigate(`/u/${otherProfileId}/posts`, { replace: true });
+    }
+  }, [otherProfileId, otherProfileSub, navigate]);
+
   // Task #178 — Carrega/limpa o perfil público quando a URL muda.
   // Substitui o antigo listener `rayo:open-profile` + sessionStorage
   // (App.tsx mapeia o evento pra navigate, então a mudança de URL
