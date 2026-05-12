@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { BrowserRouter, useLocation, useNavigate } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
 import { DesktopSidebar } from "./components/DesktopSidebar";
@@ -11,37 +11,87 @@ import { AccessibilityProvider } from "./components/AccessibilityContext";
 import { AppProvider, useApp } from "./components/AppContext";
 import { AnalyticsProvider } from "./components/AnalyticsContext";
 import { AuthProvider, useAuth, userHasRole } from "./components/AuthContext";
-import { AdminShell } from "./components/admin/AdminShell";
 import { ThemeProvider, useTheme } from "./components/ThemeProvider";
 import { UnreadMessagesProvider } from "./components/hooks/useUnreadMessages";
 import { UnreadBySectionProvider } from "./components/hooks/useUnreadBySection";
 import { Toaster } from "./components/ui/sonner";
 import { AuthPage } from "./components/AuthPage";
 import { HomePage } from "./components/HomePage";
-import { AcademiaWithBookReader } from "./components/AcademiaWithBookReader";
-import { ConselheiroPage } from "./components/ConselheiroPage";
-import { ComunidadePage } from "./components/ComunidadePage";
-import { PerfilPage } from "./components/PerfilPage";
+// CentralConversasPage é importado eager pq HomePage também o importa
+// estaticamente — lazificar dispararia warning do Vite ("dynamic import
+// will not move module into another chunk") e o chunk não se separaria
+// do bundle inicial de qualquer forma.
 import { CentralConversasPage } from "./components/TrilhaTransformacao/CentralConversasPage";
-import { ConversasPage } from "./components/ConversasPage";
-import { VideoPage } from "./components/VideoPage";
 import { ConsentBanner } from "./components/ConsentBanner";
-import { LandingPage } from "./components/LandingPage";
-import { PrivacyPolicyPage } from "./components/PrivacyPolicyPage";
-import { TermsPage } from "./components/TermsPage";
-import { RecursosPage } from "./components/marketing/RecursosPage";
-import { ComoFuncionaPage } from "./components/marketing/ComoFuncionaPage";
-import { EmpresaPage } from "./components/marketing/EmpresaPage";
-import { ContatoPage } from "./components/marketing/ContatoPage";
-import { FaqPage } from "./components/marketing/FaqPage";
-import { ImprensaPage } from "./components/marketing/ImprensaPage";
-import { ExcluirDadosPage } from "./components/marketing/ExcluirDadosPage";
-import { BlogIndexPage } from "./components/marketing/BlogIndexPage";
-import { BlogPostPage } from "./components/marketing/BlogPostPage";
-import { TurmaLandingPage } from "./components/turmas/TurmaLandingPage";
-import { TrilhasCatalogPage } from "./components/trilhas/TrilhasCatalogPage";
-import { TrilhaDetailPage } from "./components/trilhas/TrilhaDetailPage";
-import { TrilhaSucessoPage } from "./components/trilhas/TrilhaSucessoPage";
+import { RouteFallback, PublicRouteFallback } from "./components/RouteFallback";
+
+// Task #180 — Code splitting por rota. Cada área pesada é um chunk
+// próprio carregado sob demanda. HomePage/AuthPage/Welcome/Onboarding
+// ficam EAGER porque são o caminho inicial mais comum (Home pra usuária
+// logada, Auth pra anônima); carregar lazy adicionaria flicker no
+// first-paint sem benefício real. ConsentBanner e Navigation/Top/Side
+// também ficam eager: aparecem em quase toda tela.
+//
+// Pattern: helper `lazyNamed` adapta export nomeado pra default que o
+// React.lazy exige. Sem ele, cada import vira `.then(m => ({ default:
+// m.X }))` repetido.
+function lazyNamed<K extends string>(
+  loader: () => Promise<Record<K, React.ComponentType<any>>>,
+  name: K,
+) {
+  return lazy(() => loader().then((m) => ({ default: m[name] })));
+}
+
+const AdminShell = lazyNamed(() => import("./components/admin/AdminShell"), "AdminShell");
+const AcademiaWithBookReader = lazyNamed(
+  () => import("./components/AcademiaWithBookReader"),
+  "AcademiaWithBookReader",
+);
+const ConselheiroPage = lazyNamed(() => import("./components/ConselheiroPage"), "ConselheiroPage");
+const ComunidadePage = lazyNamed(() => import("./components/ComunidadePage"), "ComunidadePage");
+const PerfilPage = lazyNamed(() => import("./components/PerfilPage"), "PerfilPage");
+const ConversasPage = lazyNamed(() => import("./components/ConversasPage"), "ConversasPage");
+const VideoPage = lazyNamed(() => import("./components/VideoPage"), "VideoPage");
+const LandingPage = lazyNamed(() => import("./components/LandingPage"), "LandingPage");
+const PrivacyPolicyPage = lazyNamed(
+  () => import("./components/PrivacyPolicyPage"),
+  "PrivacyPolicyPage",
+);
+const TermsPage = lazyNamed(() => import("./components/TermsPage"), "TermsPage");
+const RecursosPage = lazyNamed(() => import("./components/marketing/RecursosPage"), "RecursosPage");
+const ComoFuncionaPage = lazyNamed(
+  () => import("./components/marketing/ComoFuncionaPage"),
+  "ComoFuncionaPage",
+);
+const EmpresaPage = lazyNamed(() => import("./components/marketing/EmpresaPage"), "EmpresaPage");
+const ContatoPage = lazyNamed(() => import("./components/marketing/ContatoPage"), "ContatoPage");
+const FaqPage = lazyNamed(() => import("./components/marketing/FaqPage"), "FaqPage");
+const ImprensaPage = lazyNamed(() => import("./components/marketing/ImprensaPage"), "ImprensaPage");
+const ExcluirDadosPage = lazyNamed(
+  () => import("./components/marketing/ExcluirDadosPage"),
+  "ExcluirDadosPage",
+);
+const BlogIndexPage = lazyNamed(
+  () => import("./components/marketing/BlogIndexPage"),
+  "BlogIndexPage",
+);
+const BlogPostPage = lazyNamed(() => import("./components/marketing/BlogPostPage"), "BlogPostPage");
+const TurmaLandingPage = lazyNamed(
+  () => import("./components/turmas/TurmaLandingPage"),
+  "TurmaLandingPage",
+);
+const TrilhasCatalogPage = lazyNamed(
+  () => import("./components/trilhas/TrilhasCatalogPage"),
+  "TrilhasCatalogPage",
+);
+const TrilhaDetailPage = lazyNamed(
+  () => import("./components/trilhas/TrilhaDetailPage"),
+  "TrilhaDetailPage",
+);
+const TrilhaSucessoPage = lazyNamed(
+  () => import("./components/trilhas/TrilhaSucessoPage"),
+  "TrilhaSucessoPage",
+);
 import { analytics } from "./lib/analytics/mixpanel";
 import { isReturningDevice, markDeviceAsReturning } from "./lib/deviceMemory";
 import { RAYO_SCROLL_TOP } from "./lib/scrollTop";
@@ -597,7 +647,9 @@ function AppContent() {
     return (
       <>
         {showPrivacyOverlay ? (
-          <PrivacyPolicyPage onBack={() => setShowPrivacyOverlay(false)} />
+          <Suspense fallback={<PublicRouteFallback />}>
+            <PrivacyPolicyPage onBack={() => setShowPrivacyOverlay(false)} />
+          </Suspense>
         ) : (
           preAuthContent
         )}
@@ -616,7 +668,11 @@ function AppContent() {
       setTimeout(() => navigate("/", { replace: true }), 0);
       return null;
     }
-    return <AdminShell onExitAdmin={() => setCurrentTab("home")} />;
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <AdminShell onExitAdmin={() => setCurrentTab("home")} />
+      </Suspense>
+    );
   }
 
   const renderCurrentPage = () => {
@@ -719,7 +775,9 @@ function AppContent() {
         aria-label="Conteúdo principal"
       >
         <PageTransition tabKey={currentTab}>
-          {renderCurrentPage()}
+          <Suspense fallback={<RouteFallback />}>
+            {renderCurrentPage()}
+          </Suspense>
         </PageTransition>
       </main>
 
@@ -739,13 +797,15 @@ function AppContent() {
           fluxos. */}
       {appContext?.isInVideoPage && appContext?.currentVideoId && (
         <div className="fixed inset-0 z-[9999] bg-background overflow-y-auto">
-          <VideoPage
-            videoId={appContext.currentVideoId}
-            onBack={() => {
-              appContext.setIsInVideoPage(false);
-              appContext.setCurrentVideoId(null);
-            }}
-          />
+          <Suspense fallback={<RouteFallback />}>
+            <VideoPage
+              videoId={appContext.currentVideoId}
+              onBack={() => {
+                appContext.setIsInVideoPage(false);
+                appContext.setCurrentVideoId(null);
+              }}
+            />
+          </Suspense>
         </div>
       )}
 
@@ -757,7 +817,9 @@ function AppContent() {
           pra não conflitar com o roteamento real (URL não muda). */}
       {showPrivacyOverlay && (
         <div className="fixed inset-0 z-[10000] bg-background overflow-y-auto">
-          <PrivacyPolicyPage onBack={() => setShowPrivacyOverlay(false)} />
+          <Suspense fallback={<RouteFallback />}>
+            <PrivacyPolicyPage onBack={() => setShowPrivacyOverlay(false)} />
+          </Suspense>
         </div>
       )}
     </div>
@@ -836,7 +898,9 @@ export default function App() {
     return (
       <ThemeProvider>
         <AccessibilityProvider>
-          <PublicShell route={publicRoute} />
+          <Suspense fallback={<PublicRouteFallback />}>
+            <PublicShell route={publicRoute} />
+          </Suspense>
           <Toaster />
         </AccessibilityProvider>
       </ThemeProvider>
