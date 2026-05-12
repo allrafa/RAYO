@@ -8,6 +8,10 @@ import {
 import { withResolvedBunnyFields } from "../../lib/bunnyStream.js";
 import { sendClassOpenEmail } from "../../lib/email.js";
 import { logger } from "../../utils/logger.js";
+import {
+  extractYouTubeVideoId,
+  fetchYouTubeMetadata,
+} from "../../lib/youtubeMetadata.js";
 
 const APP_URL =
   process.env.APP_URL ||
@@ -484,12 +488,66 @@ async function withSlugRetry<T>(
   throw lastErr instanceof Error ? lastErr : new CmsError("Slug em conflito", "SLUG_CONFLICT", 409);
 }
 
+// Task #183 — Auto-preencher capa e duração quando o produtor cadastra
+// `kind=video` apontando pra URL do YouTube em external_url. Só roda
+// quando o campo está vazio/null/0 — nunca sobrescreve valor manual.
+// Best-effort: fetch nunca lança; se falhar, payload segue com os
+// campos vazios (mesmo comportamento de hoje, sem regressão).
+export interface YouTubeAutofillResult {
+  attempted: boolean;
+  coverFilled: boolean;
+  durationFilled: boolean;
+  failed: boolean;
+}
+
+async function autoFillFromYouTube(
+  payload: ReturnType<typeof buildPayload>,
+): Promise<YouTubeAutofillResult> {
+  const result: YouTubeAutofillResult = {
+    attempted: false, coverFilled: false, durationFilled: false, failed: false,
+  };
+  if (payload.kind !== "video") return result;
+  if (!payload.external_url) return result;
+  if (!extractYouTubeVideoId(payload.external_url)) return result;
+  const needsCover = !payload.cover_url;
+  const needsDuration =
+    payload.duration_seconds == null || payload.duration_seconds <= 0;
+  if (!needsCover && !needsDuration) return result;
+  result.attempted = true;
+  try {
+    const meta = await fetchYouTubeMetadata(payload.external_url);
+    if (!meta) { result.failed = true; return result; }
+    if (needsCover && meta.thumbnailUrl) {
+      payload.cover_url = meta.thumbnailUrl;
+      result.coverFilled = true;
+    }
+    if (needsDuration && meta.durationSeconds && meta.durationSeconds > 0) {
+      payload.duration_seconds = meta.durationSeconds;
+      result.durationFilled = true;
+    }
+    // Falha quando tentamos mas nada foi preenchido (ex.: noembed devolveu
+    // só title sem duração e a thumbnail já estava lá). Mantém o contrato:
+    // o produtor é avisado pra preencher o que ficou faltando.
+    if (
+      (needsCover && !result.coverFilled) ||
+      (needsDuration && !result.durationFilled)
+    ) {
+      result.failed = true;
+    }
+  } catch (err) {
+    logger.warn("youtube auto-fill failed", { err: String(err) });
+    result.failed = true;
+  }
+  return result;
+}
+
 export async function createContent(user: SafeUser, input: ContentInput) {
   const payload = buildPayload(input);
+  const youtubeAutofill = await autoFillFromYouTube(payload);
   const slugBase = input.slug?.trim() ? slugify(input.slug) : slugify(payload.title);
   const publishedAt = payload.status === "published" ? new Date() : null;
 
-  return withSlugRetry(slugBase, undefined, async (slug) => {
+  const item = await withSlugRetry(slugBase, undefined, async (slug) => {
     const { rows } = await query(
       `INSERT INTO content_items
         (kind, title, slug, short_description, long_description, cover_url,
@@ -509,6 +567,7 @@ export async function createContent(user: SafeUser, input: ContentInput) {
     );
     return rows[0];
   });
+  return { item, youtubeAutofill };
 }
 
 export async function updateContent(user: SafeUser, id: number, input: Partial<ContentInput>) {
@@ -541,6 +600,9 @@ export async function updateContent(user: SafeUser, id: number, input: Partial<C
   };
 
   const payload = buildPayload(merged);
+  // Task #183 — só dispara o auto-fill se external_url MUDOU ou se cover/duration
+  // ainda estão vazios; preserva valor manual do produtor.
+  const youtubeAutofill = await autoFillFromYouTube(payload);
   // Disallow turning a series into another kind while it still has episodes
   // (orphaned episodes would violate the app-level "episodes only on series"
   // invariant). Producers must delete episodes first.
@@ -588,9 +650,10 @@ export async function updateContent(user: SafeUser, id: number, input: Partial<C
     return rows[0];
   };
 
-  return needsSlugRetry
+  const item = await (needsSlugRetry
     ? withSlugRetry(baseSlug, id, runUpdate)
-    : runUpdate(current.slug!);
+    : runUpdate(current.slug!));
+  return { item, youtubeAutofill };
 }
 
 // Each home card that links to a given content_item. Used by both

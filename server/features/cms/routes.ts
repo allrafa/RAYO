@@ -37,6 +37,7 @@ import {
   VALID_KINDS,
 } from "./service.js";
 import { uploadMiddleware, publicUrlFor, inferAssetKindFromMime } from "./upload.js";
+import { fetchYouTubeMetadata, extractYouTubeVideoId } from "../../lib/youtubeMetadata.js";
 
 function handle(err: unknown, res: Response, next: NextFunction) {
   if (err instanceof CmsError) {
@@ -280,6 +281,32 @@ adminCmsRouter.post("/media/upload", (req: Request, res: Response, next: NextFun
   });
 });
 
+// Task #183 — Buscar metadata pública de um vídeo do YouTube (capa +
+// duração) sob demanda, pra alimentar o botão "Buscar do YouTube" no
+// AdminCmsForm. Sem auth extra porque o adminCmsRouter já exige
+// `producer+`. Nunca lança — devolve `{ found:false }` se a URL não for
+// do YouTube ou se a metadata não puder ser obtida.
+adminCmsRouter.post("/youtube-metadata", async (req, res, next) => {
+  try {
+    const url = typeof req.body?.url === "string" ? req.body.url.trim() : "";
+    if (!url) { sendError(res, "URL é obrigatória", "URL_REQUIRED", 400); return; }
+    const videoId = extractYouTubeVideoId(url);
+    if (!videoId) {
+      success(res, { found: false, reason: "NOT_YOUTUBE" });
+      return;
+    }
+    const meta = await fetchYouTubeMetadata(url);
+    if (!meta) { success(res, { found: false, reason: "FETCH_FAILED" }); return; }
+    success(res, {
+      found: true,
+      videoId: meta.videoId,
+      thumbnailUrl: meta.thumbnailUrl,
+      durationSeconds: meta.durationSeconds,
+      title: meta.title,
+    });
+  } catch (err) { next(err); }
+});
+
 // 2) Content list/create at the router root.
 adminCmsRouter.get("/", async (req, res, next) => {
   try {
@@ -298,8 +325,8 @@ adminCmsRouter.get("/", async (req, res, next) => {
 
 adminCmsRouter.post("/", async (req: Request, res, next) => {
   try {
-    const item = await createContent(req.user!, req.body);
-    success(res, { item }, 201);
+    const result = await createContent(req.user!, req.body);
+    success(res, { item: result.item, youtube_autofill: result.youtubeAutofill }, 201);
   } catch (err) { handle(err, res, next); }
 });
 
@@ -318,8 +345,8 @@ adminCmsRouter.patch("/:id", async (req, res, next) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
-    const item = await updateContent(req.user!, id, req.body);
-    success(res, { item });
+    const result = await updateContent(req.user!, id, req.body);
+    success(res, { item: result.item, youtube_autofill: result.youtubeAutofill });
   } catch (err) { handle(err, res, next); }
 });
 

@@ -235,16 +235,49 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
         price: typeof data.price === "string" ? parseFloat(data.price) : data.price,
       };
       let id = data.id;
+      type SaveResp = {
+        item: ContentDetail;
+        youtube_autofill?: {
+          attempted: boolean;
+          coverFilled: boolean;
+          durationFilled: boolean;
+          failed: boolean;
+        };
+      };
+      let autofill: SaveResp["youtube_autofill"] | undefined;
       if (id) {
-        await api.patch(`/api/admin/cms/${id}`, payload);
+        const res = await api.patch<SaveResp>(`/api/admin/cms/${id}`, payload);
+        if (res.data) {
+          autofill = res.data.youtube_autofill;
+          setData((prev) => ({
+            ...prev,
+            cover_url: res.data!.item.cover_url ?? prev.cover_url,
+            duration_seconds: res.data!.item.duration_seconds ?? prev.duration_seconds,
+          }));
+        }
       } else {
-        const res = await api.post<{ item: ContentDetail }>(`/api/admin/cms`, payload);
+        const res = await api.post<SaveResp>(`/api/admin/cms`, payload);
         if (res.data) {
           id = res.data.item.id;
-          setData((prev) => ({ ...prev, id, slug: res.data!.item.slug }));
+          autofill = res.data.youtube_autofill;
+          setData((prev) => ({
+            ...prev,
+            id,
+            slug: res.data!.item.slug,
+            cover_url: res.data!.item.cover_url ?? prev.cover_url,
+            duration_seconds: res.data!.item.duration_seconds ?? prev.duration_seconds,
+          }));
         }
       }
       toast.success(publish ? "Publicado" : "Salvo");
+      // Task #183 — aviso não-bloqueante quando o auto-fill do YouTube tentou
+      // mas não conseguiu preencher capa/duração. O conteúdo foi salvo de
+      // qualquer forma; o produtor é avisado pra preencher manualmente.
+      if (autofill?.attempted && autofill.failed) {
+        toast.warning(
+          "Não foi possível buscar dados do YouTube — preencha capa/duração manualmente",
+        );
+      }
       if (publish) onClose();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao salvar";
@@ -515,8 +548,56 @@ export function AdminCmsForm({ contentId, defaultKind, onClose }: Props) {
               )}
               {(data.kind === "video" || data.kind === "reels") && (
                 <Field label="URL externa (YouTube / Vimeo)" hint="Fallback caso prefira referenciar um vídeo já hospedado em outro lugar. Tem prioridade menor que o upload Bunny acima.">
-                  <input className={cls} style={inputStyle} value={data.external_url ?? ""}
-                    onChange={(e) => set("external_url", e.target.value)} />
+                  <div className="flex gap-2 items-center">
+                    <input className={cls} style={inputStyle} value={data.external_url ?? ""}
+                      onChange={(e) => set("external_url", e.target.value)} />
+                    {data.kind === "video" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          const url = (data.external_url ?? "").trim();
+                          if (!url) { toast.error("Cole a URL do YouTube primeiro"); return; }
+                          try {
+                            const res = await api.post<{
+                              found: boolean;
+                              reason?: string;
+                              thumbnailUrl?: string | null;
+                              durationSeconds?: number | null;
+                              title?: string | null;
+                            }>(`/api/admin/cms/youtube-metadata`, { url });
+                            const d = res.data;
+                            if (!d || !d.found) {
+                              if (d?.reason === "NOT_YOUTUBE") {
+                                toast.error("URL não é do YouTube");
+                              } else {
+                                toast.error("Não foi possível buscar dados do YouTube — preencha capa/duração manualmente");
+                              }
+                              return;
+                            }
+                            const updates: string[] = [];
+                            if (d.thumbnailUrl && !data.cover_url) {
+                              set("cover_url", d.thumbnailUrl);
+                              updates.push("capa");
+                            }
+                            if (d.durationSeconds && (!data.duration_seconds || data.duration_seconds <= 0)) {
+                              set("duration_seconds", d.durationSeconds);
+                              updates.push("duração");
+                            }
+                            if (updates.length === 0) {
+                              toast.info("Capa e duração já estavam preenchidas");
+                            } else {
+                              toast.success(`Preenchido: ${updates.join(" e ")}`);
+                            }
+                          } catch {
+                            toast.error("Não foi possível buscar dados do YouTube — preencha capa/duração manualmente");
+                          }
+                        }}
+                      >
+                        Buscar do YouTube
+                      </Button>
+                    )}
+                  </div>
                 </Field>
               )}
               {(data.kind === "audio" || data.kind === "video" || data.kind === "reels") && (
