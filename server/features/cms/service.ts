@@ -500,8 +500,11 @@ export interface YouTubeAutofillResult {
   failed: boolean;
 }
 
-async function autoFillFromYouTube(
+// `fetcher` é injetável pra facilitar testes (ver tests/unit/youtubeAutofill.test.ts).
+// Em produção, default = fetchYouTubeMetadata.
+export async function autoFillFromYouTube(
   payload: ReturnType<typeof buildPayload>,
+  fetcher: typeof fetchYouTubeMetadata = fetchYouTubeMetadata,
 ): Promise<YouTubeAutofillResult> {
   const result: YouTubeAutofillResult = {
     attempted: false, coverFilled: false, durationFilled: false, failed: false,
@@ -515,7 +518,7 @@ async function autoFillFromYouTube(
   if (!needsCover && !needsDuration) return result;
   result.attempted = true;
   try {
-    const meta = await fetchYouTubeMetadata(payload.external_url);
+    const meta = await fetcher(payload.external_url);
     if (!meta) { result.failed = true; return result; }
     if (needsCover && meta.thumbnailUrl) {
       payload.cover_url = meta.thumbnailUrl;
