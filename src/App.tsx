@@ -34,12 +34,23 @@ import { RouteFallback, PublicRouteFallback } from "./components/RouteFallback";
 //
 // Pattern: helper `lazyNamed` adapta export nomeado pra default que o
 // React.lazy exige. Sem ele, cada import vira `.then(m => ({ default:
-// m.X }))` repetido.
-function lazyNamed<K extends string>(
-  loader: () => Promise<Record<K, React.ComponentType<any>>>,
+// m.X }))` repetido. O conditional type preserva os props originais
+// do componente exportado — call sites mantêm checagem de prop type
+// igualzinho ao import eager (sem `any` em lugar nenhum).
+type LazyOf<M, K extends keyof M> = M[K] extends React.ComponentType<infer P>
+  ? React.LazyExoticComponent<React.ComponentType<P>>
+  : never;
+
+function lazyNamed<M, K extends keyof M & string>(
+  loader: () => Promise<M>,
   name: K,
-) {
-  return lazy(() => loader().then((m) => ({ default: m[name] })));
+): LazyOf<M, K> {
+  return lazy(() =>
+    loader().then((m) => {
+      const Component = m[name] as unknown as React.ComponentType<unknown>;
+      return { default: Component };
+    }),
+  ) as LazyOf<M, K>;
 }
 
 const AdminShell = lazyNamed(() => import("./components/admin/AdminShell"), "AdminShell");
