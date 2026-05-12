@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { BrowserRouter, useLocation, useNavigate } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
 import { DesktopSidebar } from "./components/DesktopSidebar";
@@ -338,6 +338,106 @@ function AppContent() {
   // mapeia ambos os formatos pra "comunidade", então a aba destacada
   // no Navigation/DesktopSidebar fica correta automaticamente.
 
+  // Task #177 — Roteamento de Academia: turma e player de vídeo agora têm
+  // URL canônica (`/academia/curso/:id`, `/academia/curso/:id/aula/:lessonId`,
+  // `/video/:id`). A URL é a fonte de verdade — fazemos sync bidirecional
+  // com os flags legados (`isInCourseDetail`/`currentCourseId`/`isInVideoPage`/
+  // `currentVideoId`) pra que TODOS os ~15 callsites existentes (HomePage,
+  // AcademiaPage, NotificationBell, FavoritesPage, SmartRecommendations,
+  // searchNavigate, MobileSearchPage, TopNavbar, HojeNoRaio, UnifiedContinue,
+  // TurmaShell.back, etc) continuem funcionando sem modificação — eles
+  // chamam `setCurrentCourseId(x)+setIsInCourseDetail(true)` e o sync se
+  // encarrega de empurrar a URL nova; back/forward do navegador e refresh
+  // funcionam por construção.
+  //
+  // Aula (`/academia/curso/:id/aula/:lessonId`) é aceita como URL válida
+  // mas não tem UI de seleção de aula ainda — o lesson_id fica estacionado
+  // em sessionStorage `rayo-pending-lesson` pra um futuro "scroll-to-lesson"
+  // dentro de CourseDetailPage. Marca atual: course-level URL.
+  useEffect(() => {
+    if (!appContext) return;
+    const p = location.pathname.replace(/\/+$/, "") || "/";
+    const courseMatch = p.match(/^\/academia\/curso\/(\d+)(?:\/aula\/(\d+))?$/);
+    const videoMatch = p.match(/^\/video\/([\w-]+)$/);
+
+    if (courseMatch) {
+      const id = Number(courseMatch[1]);
+      const lessonId = courseMatch[2] ?? null;
+      if (lessonId) {
+        try { sessionStorage.setItem("rayo-pending-lesson", lessonId); } catch { /* ignore */ }
+      }
+      if (appContext.currentCourseId !== id || !appContext.isInCourseDetail) {
+        appContext.setCurrentCourseId(id);
+        appContext.setIsInCourseDetail(true);
+      }
+    } else if (appContext.isInCourseDetail) {
+      appContext.setIsInCourseDetail(false);
+      appContext.setCurrentCourseId(null);
+    }
+
+    if (videoMatch) {
+      const id = videoMatch[1];
+      if (appContext.currentVideoId !== id || !appContext.isInVideoPage) {
+        appContext.setCurrentVideoId(id);
+        appContext.setIsInVideoPage(true);
+      }
+    } else if (appContext.isInVideoPage) {
+      appContext.setIsInVideoPage(false);
+      appContext.setCurrentVideoId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  // Reverso: Context → URL. Quando um callsite legado flipa
+  // isInCourseDetail/isInVideoPage, empurramos a URL canônica. Vídeo tem
+  // prioridade (overlay sobreposto). Sair (flag=false) volta uma entrada
+  // do histórico (vídeo) ou cai pra /academia (turma) — preserva o "back".
+  //
+  // Hydration guard via useRef: o branch "fechar" (flag=false &&
+  // URL=canônica) só dispara em transição REAL true→false, não no estado
+  // inicial false do mount. Sem isso, abrir direto em /academia/curso/5
+  // (refresh ou deep-link) faria este effect rodar antes do URL→Context
+  // hidratar o flag, executando navigate("/academia") e quebrando o deep
+  // link (ping-pong de redirect). O effect URL→Context cuida da hidratação;
+  // este aqui só reage a mudanças vindas do AppContext.
+  const prevCourseDetail = useRef(false);
+  const prevVideoPage = useRef(false);
+  useEffect(() => {
+    if (!appContext) return;
+    const p = location.pathname.replace(/\/+$/, "") || "/";
+    const wasCourse = prevCourseDetail.current;
+    const wasVideo = prevVideoPage.current;
+    prevCourseDetail.current = appContext.isInCourseDetail;
+    prevVideoPage.current = appContext.isInVideoPage;
+
+    if (appContext.isInVideoPage && appContext.currentVideoId) {
+      const expected = `/video/${appContext.currentVideoId}`;
+      if (p !== expected) navigate(expected);
+      return;
+    }
+    // Só "fecha" o vídeo quando ele ESTAVA aberto e agora não está mais.
+    if (wasVideo && !appContext.isInVideoPage && p.startsWith("/video/")) {
+      navigate(-1);
+      return;
+    }
+
+    if (appContext.isInCourseDetail && appContext.currentCourseId) {
+      const expected = `/academia/curso/${appContext.currentCourseId}`;
+      if (!p.startsWith(expected)) navigate(expected);
+      return;
+    }
+    // Só "fecha" a turma quando ela ESTAVA aberta e agora não está mais.
+    if (wasCourse && !appContext.isInCourseDetail && p.startsWith("/academia/curso/")) {
+      navigate("/academia");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    appContext?.isInCourseDetail,
+    appContext?.currentCourseId,
+    appContext?.isInVideoPage,
+    appContext?.currentVideoId,
+  ]);
+
   // Task #99 — abre o TurmaShell quando a landing pública estacionou
   // o id em sessionStorage (membro logado clicou "Entrar na turma" em
   // /turmas/:id). Roda uma vez no mount; limpa o stash depois pra não
@@ -358,9 +458,10 @@ function AppContent() {
     } catch {
       // ignore
     }
-    navigate("/academia", { replace: true });
-    appContext?.setCurrentCourseId(turmaId);
-    appContext?.setIsInCourseDetail(true);
+    // Task #177 — navega direto pra URL canônica da turma; o sync
+    // bidirecional em AppContent vai hidratar `currentCourseId`/
+    // `isInCourseDetail` quando o pathname mudar.
+    navigate(`/academia/curso/${turmaId}`, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
