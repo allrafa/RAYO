@@ -98,7 +98,39 @@ interface UserProfilePageProps {
   // automaticamente pra aba Comunidade (sem isso o evento dispara mas
   // o usuário continua na tela de perfil).
   onNavigateToCommunity?: () => void;
+  // Task #178 — Tabs controlados pra suportar sub-rotas
+  // (`/perfil/posts|comentarios|salvos`, `/u/:id/posts|...`). Quando
+  // `activeTab` é fornecido, Tabs vira controlled e cada clique no
+  // TabsTrigger chama `onTabChange(slug)` — PerfilPage usa o callback
+  // pra fazer `navigate(/perfil/<slug>)` ou `navigate(/u/:id/<slug>)`.
+  // Sem essas props, Tabs continua uncontrolled (defaultValue="posts").
+  activeTab?: string;
+  onTabChange?: (slugPt: string) => void;
 }
+
+// Task #178 — mapping bidirecional entre sub-rotas pt-BR e values
+// internos das Tabs (Radix). Aceita aliases em inglês pra robustez.
+const TAB_SLUG_TO_VALUE: Record<string, string> = {
+  posts: "posts",
+  comentarios: "comments",
+  comments: "comments",
+  comunidades: "communities",
+  communities: "communities",
+  conquistas: "achievements",
+  achievements: "achievements",
+  salvos: "saved",
+  saved: "saved",
+  sobre: "about",
+  about: "about",
+};
+const TAB_VALUE_TO_SLUG: Record<string, string> = {
+  posts: "posts",
+  comments: "comentarios",
+  communities: "comunidades",
+  achievements: "conquistas",
+  saved: "salvos",
+  about: "sobre",
+};
 
 function formatRelative(dateStr: string): string {
   const d = new Date(dateStr);
@@ -112,7 +144,7 @@ function formatRelative(dateStr: string): string {
   return d.toLocaleDateString("pt-BR");
 }
 
-export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: UserProfilePageProps) {
+export function UserProfilePage({ userId, onClose, onNavigateToCommunity, activeTab, onTabChange }: UserProfilePageProps) {
   const { user: viewer, uploadAvatar } = useAuth();
   const isSelf = viewer?.id === userId;
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -204,11 +236,39 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
     }
   }, [isSelf]);
 
+  // Task #178 — Quando controlled (PerfilPage passa activeTab), também
+  // notificamos o pai pra ele empurrar a URL nova (`/perfil/<slug>` ou
+  // `/u/:id/<slug>`). O carregamento lazy de "saved" acontece igual nos
+  // dois modos.
   const handleTabChange = (value: string) => {
     if (value === "saved" && isSelf && savedPosts === null && !savedLoading) {
       void loadSaved();
     }
+    if (onTabChange) {
+      onTabChange(TAB_VALUE_TO_SLUG[value] ?? value);
+    }
   };
+
+  const isControlled = activeTab !== undefined;
+  const internalTabValue = isControlled
+    ? (TAB_SLUG_TO_VALUE[activeTab!] ?? "posts")
+    : undefined;
+
+  // Task #178 — quando o usuário aterriza direto em `/perfil/salvos`
+  // (refresh ou deep-link), `handleTabChange` não dispara — então
+  // hidratamos o lazy load aqui também.
+  useEffect(() => {
+    if (
+      isControlled &&
+      internalTabValue === "saved" &&
+      isSelf &&
+      savedPosts === null &&
+      !savedLoading
+    ) {
+      void loadSaved();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isControlled, internalTabValue, isSelf]);
 
   const onToggleFollow = async () => {
     if (!follow || followBusy || isSelf) return;
@@ -397,7 +457,13 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity }: User
           telas pequenas (sem clipping de label, padding lateral confortável)
           e auto-justify no desktop. NÃO usar `grid-cols-N` aqui — em mobile
           isso aperta os títulos e quebra acessibilidade. */}
-      <Tabs defaultValue="posts" className="pt-3 pb-5" onValueChange={handleTabChange}>
+      <Tabs
+        {...(isControlled
+          ? { value: internalTabValue }
+          : { defaultValue: "posts" })}
+        className="pt-3 pb-5"
+        onValueChange={handleTabChange}
+      >
         <div className="px-4 -mx-1 overflow-x-auto no-scrollbar">
           <TabsList
             className="inline-flex w-max min-w-full gap-1 lg:w-full lg:justify-between bg-transparent p-0"

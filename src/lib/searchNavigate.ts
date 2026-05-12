@@ -60,7 +60,12 @@ export function navigateToSearchHit(r: SearchHit, deps: SearchNavigateDeps) {
   }
 
   if (r.kind === "user") {
-    deps.onTabChange("perfil");
+    // Task #178 — NÃO chamar `onTabChange("perfil")` aqui. App.tsx
+    // escuta `rayo:open-profile` e navega direto pra `/u/:id`
+    // (tabFromPath já mapeia /u/* → "perfil"). Sem essa remoção, o
+    // histórico ganhava entrada intermediária `/perfil` antes de
+    // `/u/:id`, fazendo o back parecer com bug. sessionStorage stash
+    // mantido só por compat — App.tsx é a fonte da verdade.
     try {
       sessionStorage.setItem("rayo-pending-profile", String(r.id));
     } catch {

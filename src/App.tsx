@@ -298,8 +298,20 @@ function AppContent() {
   // aninhados não precisam receber `setCurrentTab` por prop. As páginas
   // alvo (PerfilPage, ComunidadePage) continuam escutando o mesmo evento
   // e o stash de sessionStorage pra abrir o item certo.
+  // Task #178 — `rayo:open-profile` agora navega DIRETO pra `/u/:id`
+  // (URL persistente). PerfilPage lê a URL como fonte da verdade. Sem
+  // event.detail.id, mantém o fallback de só ativar a aba (compat).
+  // Post/Community continuam navegando pra suas abas — o estado
+  // detalhado vem da URL (ComunidadePage parseia /c/<slug>(/p/<id>)).
   useEffect(() => {
-    const onOpenProfile = () => setCurrentTab("perfil");
+    const onOpenProfile = (e: Event) => {
+      const detail = (e as CustomEvent<{ id?: number }>).detail;
+      if (detail?.id) {
+        navigate(`/u/${detail.id}`);
+      } else {
+        setCurrentTab("perfil");
+      }
+    };
     const onOpenPost = () => setCurrentTab("comunidade");
     const onOpenCommunity = () => setCurrentTab("comunidade");
     window.addEventListener(RAYO_OPEN_PROFILE, onOpenProfile as EventListener);
@@ -310,26 +322,12 @@ function AppContent() {
       window.removeEventListener(RAYO_OPEN_POST, onOpenPost as EventListener);
       window.removeEventListener(RAYO_OPEN_COMMUNITY, onOpenCommunity as EventListener);
     };
-  }, []);
+  }, [navigate, setCurrentTab]);
 
-  // Task #45 — deep-link `/u/<id>` para perfis compartilhados. Captura
-  // o id e estaciona em sessionStorage pra PerfilPage abrir o perfil
-  // correto (mesmo contrato usado pela busca/cards).
-  // Task #176 — em vez de replaceState manual, usamos navigate(replace)
-  // pra trocar a URL pra `/perfil` (canônica da aba). A URL pública
-  // /u/:id mais robusta (que sobrevive a refresh) fica pra Task #178.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const match = location.pathname.match(/^\/u\/(\d+)\/?$/);
-    if (!match) return;
-    const id = match[1];
-    try {
-      sessionStorage.setItem("rayo-pending-profile", id);
-    } catch {
-      // ignore
-    }
-    navigate("/perfil", { replace: true });
-  }, [location.pathname, navigate]);
+  // Task #178 — `/u/:id` é rota persistente. NÃO fazemos mais
+  // replaceState pra `/perfil` no mount: PerfilPage lê o pathname com
+  // useLocation e carrega o perfil público correspondente. Refresh,
+  // back/forward e share do link funcionam de graça.
 
   // Task #176 — sync URL ↔ aba feito agora pelo router (currentTab é
   // derivado de useLocation). `/c/<slug>` e `/c/<slug>/p/<id>` continuam

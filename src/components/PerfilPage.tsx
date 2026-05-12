@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   User, Bell,
   ChevronRight, LogOut, Moon, Sun, Globe,
@@ -212,44 +213,82 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
     setOtherProfileLoading(false);
   }, []);
 
-  // Task #115 — re-tap na aba Perfil fecha o overlay de perfil público
-  // (quando aberto via /u/:id ou clique em outro usuário) e devolve o
-  // usuário pra própria área pessoal. Scroll global continua acontecendo
-  // pelo listener em App.tsx.
+  // Task #178 — URL é fonte da verdade pra qual perfil mostrar.
+  // - `/u/:id` (ou `/u/:id/posts|comentarios|salvos`) → overlay de
+  //   perfil público.
+  // - `/perfil` (ou `/perfil/posts|comentarios|salvos|assinaturas|
+  //   configuracoes`) → área pessoal.
+  // Refresh, back/forward e share de link funcionam sem stash em
+  // sessionStorage. O CustomEvent legado `rayo:open-profile` continua
+  // funcionando porque App.tsx mapeia o evento → `navigate(/u/:id)`.
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Task #178 — Sub-rotas precisam cobrir TODAS as tabs do
+  // UserProfilePage (posts/comentarios/comunidades/conquistas/salvos/
+  // sobre). Sem isso, clicar "Comunidades"/"Conquistas"/"Sobre"
+  // empurraria URL não-reconhecida e o effect URL→state limparia o
+  // overlay (regressão crítica detectada no review).
+  // Self ainda aceita os slugs extras `assinaturas`/`configuracoes`
+  // (seções abaixo das tabs, scroll-to-section).
+  const PROFILE_TAB_SLUGS =
+    "posts|comentarios|comunidades|conquistas|salvos|sobre";
+  const otherProfileMatch = location.pathname.match(
+    new RegExp(`^/u/(\\d+)(?:/(${PROFILE_TAB_SLUGS}))?/?$`),
+  );
+  const otherProfileId = otherProfileMatch
+    ? Number(otherProfileMatch[1])
+    : null;
+  const otherProfileSub = otherProfileMatch
+    ? (otherProfileMatch[2] ?? "posts")
+    : null;
+
+  const selfMatch = location.pathname.match(
+    new RegExp(
+      `^/perfil(?:/(${PROFILE_TAB_SLUGS}|assinaturas|configuracoes))?/?$`,
+    ),
+  );
+  const selfSub = selfMatch ? (selfMatch[1] ?? "posts") : "posts";
+
+  // Task #178 — Carrega/limpa o perfil público quando a URL muda.
+  // Substitui o antigo listener `rayo:open-profile` + sessionStorage
+  // (App.tsx mapeia o evento pra navigate, então a mudança de URL
+  // dispara este effect).
   useEffect(() => {
-    return onScrollTop(() => {
+    if (otherProfileId) {
+      void loadOtherProfile(otherProfileId);
+    } else {
       setOtherProfile(null);
       setOtherProfileError(null);
-    }, "perfil");
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ id: number }>).detail;
-      if (detail?.id) void loadOtherProfile(detail.id);
-    };
-    window.addEventListener("rayo:open-profile", handler as EventListener);
-    try {
-      // Task #163 — chave migrada pra `rayo-pending-profile`; fallback
-      // pra legada cobre tabs com SPA antigo no mesmo device.
-      const pending =
-        sessionStorage.getItem("rayo-pending-profile") ??
-        sessionStorage.getItem("raio-pending-profile");
-      if (pending) {
-        sessionStorage.removeItem("rayo-pending-profile");
-        sessionStorage.removeItem("raio-pending-profile");
-        void loadOtherProfile(Number(pending));
-      }
-    } catch {
-      // ignore
     }
-    return () => {
-      window.removeEventListener(
-        "rayo:open-profile",
-        handler as EventListener,
-      );
-    };
-  }, [loadOtherProfile]);
+  }, [otherProfileId, loadOtherProfile]);
+
+  // Task #115/#178 — re-tap na aba Perfil enquanto está em /u/:id
+  // navega de volta pra /perfil (área pessoal). Scroll global continua
+  // acontecendo pelo listener em App.tsx.
+  useEffect(() => {
+    return onScrollTop(() => {
+      if (otherProfileId !== null) {
+        navigate("/perfil");
+      }
+    }, "perfil");
+  }, [otherProfileId, navigate]);
+
+  // Task #178 — Sub-rotas `/perfil/assinaturas` e `/perfil/configuracoes`
+  // não são tabs do UserProfilePage embutido — são seções abaixo na
+  // própria PerfilPage. Quando a URL aterrissa nessas sub-rotas, rolamos
+  // suavemente até a seção. setTimeout cobre o caso onde o componente
+  // ainda está hidratando o layout (assinaturas só aparece em mobile).
+  useEffect(() => {
+    if (selfSub !== "assinaturas" && selfSub !== "configuracoes") return;
+    const id =
+      selfSub === "assinaturas" ? "perfil-assinaturas" : "perfil-configuracoes";
+    const t = window.setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+    return () => window.clearTimeout(t);
+  }, [selfSub]);
   const [exportingData, setExportingData] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -368,11 +407,12 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
             <div className="mb-3">
               <UserProfilePage
                 userId={otherProfile.id}
-                onClose={() => {
-                  setOtherProfile(null);
-                  setOtherProfileError(null);
-                }}
+                onClose={() => navigate("/perfil")}
                 onNavigateToCommunity={() => onNavigate?.("comunidade")}
+                activeTab={otherProfileSub ?? "posts"}
+                onTabChange={(slug) =>
+                  navigate(`/u/${otherProfile.id}/${slug}`)
+                }
               />
             </div>
           )}
@@ -395,6 +435,12 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                 <UserProfilePage
                   userId={user.id}
                   onNavigateToCommunity={() => onNavigate?.("comunidade")}
+                  activeTab={
+                    selfSub === "assinaturas" || selfSub === "configuracoes"
+                      ? "posts"
+                      : selfSub
+                  }
+                  onTabChange={(slug) => navigate(`/perfil/${slug}`)}
                 />
               </div>
             )}
@@ -544,7 +590,9 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
                 acima. Foram removidos pra deduplicar. */}
 
             {/* Menu Sections - Mobile Only */}
-            <div className="lg:hidden max-w-md mx-auto px-6 space-y-6">
+            {/* Task #178 — id="perfil-configuracoes" alvo da sub-rota
+                /perfil/configuracoes (scrollIntoView). */}
+            <div id="perfil-configuracoes" className="lg:hidden max-w-md mx-auto px-6 space-y-6">
               {menuSections.map((section, sectionIndex) => (
                 <div key={sectionIndex}>
                   <h3 
@@ -701,7 +749,9 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
               </div>
 
               {/* Task #130 — Minhas assinaturas Stripe (mobile) */}
-              <div className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-4">
+              {/* Task #178 — id="perfil-assinaturas" alvo da sub-rota
+                  /perfil/assinaturas (scrollIntoView). */}
+              <div id="perfil-assinaturas" className="max-w-md lg:max-w-none mx-auto px-6 lg:px-0 mb-4">
                 <MinhasAssinaturasCard />
               </div>
 
