@@ -17,10 +17,16 @@ interface CreateCommunityModalProps {
 
 const ICON_CHOICES = ["💬", "❤️", "🙏", "🌱", "🏠", "👨‍👩‍👧", "💍", "🕊️", "📖", "✨"];
 
+const CATEGORY_CHOICES = [
+  "Casamento", "Namoro", "Noivado", "Solteiros", "Pais",
+  "Família", "Fé", "Finanças", "Saúde emocional", "Outros",
+];
+
 export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCommunityModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("💬");
+  const [category, setCategory] = useState("");
   const [rules, setRules] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -28,13 +34,19 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCo
     setName("");
     setDescription("");
     setIcon("💬");
+    setCategory("");
     setRules("");
   };
 
   const onSubmit = async () => {
     const trimmed = name.trim();
+    const cat = category.trim();
     if (!trimmed) {
       enhancedToast.error({ title: "Nome obrigatório", description: "Dê um nome à comunidade", haptic: true });
+      return;
+    }
+    if (!cat) {
+      enhancedToast.error({ title: "Categoria obrigatória", description: "Escolha um tema pra comunidade", haptic: true });
       return;
     }
     setBusy(true);
@@ -44,6 +56,7 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCo
         name: trimmed,
         description: description.trim() || null,
         icon,
+        category: cat,
         rules: rules.trim() || null,
       },
     );
@@ -117,6 +130,30 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCo
 
           <div className="space-y-1">
             <label className="text-xs font-medium" style={{ color: "var(--rayo-ink-600)" }}>
+              Categoria <span style={{ color: "var(--rayo-terra-500)" }}>*</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {CATEGORY_CHOICES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCategory(c)}
+                  className="px-2.5 py-1 rounded-full text-xs transition-colors"
+                  style={{
+                    background: category === c ? "var(--rayo-terra-500)" : "var(--rayo-sand-50)",
+                    color: category === c ? "white" : "var(--rayo-ink-700)",
+                    border: `1px solid ${category === c ? "var(--rayo-terra-500)" : "var(--rayo-sand-300)"}`,
+                  }}
+                  aria-pressed={category === c}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium" style={{ color: "var(--rayo-ink-600)" }}>
               Descrição
             </label>
             <Textarea
@@ -148,7 +185,7 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCo
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancelar
           </Button>
-          <Button onClick={onSubmit} disabled={busy || !name.trim()}>
+          <Button onClick={onSubmit} disabled={busy || !name.trim() || !category.trim()}>
             {busy ? "Criando…" : "Criar comunidade"}
           </Button>
         </div>

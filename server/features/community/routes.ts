@@ -68,6 +68,8 @@ import {
   updatePost,
   deletePost,
   createForumByUser,
+  authorizeForumEdit,
+  updateForum,
   setPostHiddenWithAuth,
   setCommentHiddenWithAuth,
   setPostSaved,
@@ -245,6 +247,33 @@ router.get("/forums", async (req, res, next) => {
     const forums = await listForums(req.user?.id);
     success(res, { forums });
   } catch (err) {
+    next(err);
+  }
+});
+
+// Task #198 — edit por criador/mod local. Admin tem rota separada
+// (/api/admin/community/forums/:id) com poderes mais amplos (slug, is_official,
+// is_active). Aqui o criador/mod local edita apenas: name, description, icon,
+// category, life_context, rules, cover_url. Bloqueamos campos elevados
+// removendo-os do payload antes de delegar pro updateForum.
+router.patch("/forums/:idOrSlug", requireAuth, async (req, res, next) => {
+  try {
+    const raw = req.params.idOrSlug;
+    const asNum = parseInt(raw, 10);
+    const ref: number | string = Number.isFinite(asNum) && String(asNum) === raw ? asNum : raw;
+    const forumId = await authorizeForumEdit(ref, req.user!.id, hasRole(req.user, "moderator"));
+    const body = (req.body || {}) as Record<string, unknown>;
+    const safe: Record<string, unknown> = {};
+    for (const k of ["name", "description", "icon", "category", "life_context", "rules", "cover_url"]) {
+      if (body[k] !== undefined) safe[k] = body[k];
+    }
+    const result = await updateForum(forumId, safe);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
     next(err);
   }
 });

@@ -1364,14 +1364,18 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit, highligh
   const { user: viewer } = useAuth();
   const isAuthor = !!(viewer && post.author_id && viewer.id === post.author_id);
   const isModeratorPlus = userHasRole(viewer, "moderator");
+  // Task #198 — moderador local da comunidade (sem role global) também
+  // pode excluir/ocultar; backend já autoriza via setPostHiddenWithAuth/
+  // deletePost (isForumModerator OR moderator+ global).
+  const canModerateLocal = !!post.viewer_can_moderate;
   const canEdit = isAuthor;
-  const canDelete = isAuthor || isModeratorPlus;
+  const canDelete = isAuthor || isModeratorPlus || canModerateLocal;
   const [savedLocal, setSavedLocal] = useState<boolean>(!!post.is_saved);
   useEffect(() => { setSavedLocal(!!post.is_saved); }, [post.is_saved]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteReason, setDeleteReason] = useState("");
   const [busy, setBusy] = useState(false);
-  const showReasonField = !isAuthor && isModeratorPlus;
+  const showReasonField = !isAuthor && (isModeratorPlus || canModerateLocal);
 
   useEffect(() => {
     if (!confirmDelete) setDeleteReason("");

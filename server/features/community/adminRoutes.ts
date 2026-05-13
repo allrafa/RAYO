@@ -94,7 +94,7 @@ router.get("/forums", async (req, res, next) => {
       page: Number.isFinite(page) ? page : 1,
       limit: Number.isFinite(limit) ? limit : 30,
     });
-    success(res, result);
+    success(res, result); // { forums, total, page, limit }
   } catch (err) { next(err); }
 });
 

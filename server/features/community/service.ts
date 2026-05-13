@@ -96,6 +96,21 @@ async function hydratePostsRows<T extends Record<string, any>>(
   // Task #122 — agregação de reações multi-emoji em batch (evita N+1).
   const reactionsMap = await aggregateReactions("post_reactions", "post_id", ids);
   const userReactionMap = await userReactionsFor("post_reactions", "post_id", ids, viewerId);
+  // Task #198 — flag pro frontend mostrar ações de moderação per-community
+  // sem precisar de role global. Hidratamos em batch via DISTINCT forum_id.
+  let modForumSet: Set<number> = new Set();
+  if (viewerId && rows.length > 0) {
+    const forumIds = Array.from(
+      new Set(rows.map((r) => Number((r as any).forum_id)).filter((n) => Number.isFinite(n))),
+    );
+    if (forumIds.length > 0) {
+      const { rows: modRows } = await query<{ forum_id: number }>(
+        `SELECT forum_id FROM forum_moderators WHERE user_id = $1 AND forum_id = ANY($2::int[])`,
+        [viewerId, forumIds],
+      );
+      modForumSet = new Set(modRows.map((r) => Number(r.forum_id)));
+    }
+  }
   return Promise.all(
     rows.map(async (r) => {
       // Task #93 — preserva os sentinels CRUS em `image_refs` ANTES de
@@ -115,6 +130,9 @@ async function hydratePostsRows<T extends Record<string, any>>(
         is_saved: viewerId ? savedSet.has(pid) : false,
         reactions: reactionsMap.get(pid) || [],
         user_reaction: userReactionMap.get(pid) || null,
+        viewer_can_moderate: viewerId
+          ? modForumSet.has(Number((r as any).forum_id))
+          : false,
       };
     }),
   );
@@ -1202,6 +1220,22 @@ function validateForumPatch(patch: ForumInput, isCreate: boolean): void {
     }
     patch.rules = r || null;
   }
+  if (isCreate) {
+    // Task #198 — categoria é obrigatória na criação por usuário e admin
+    // (validator: "category required by task form").
+    const cat = String(patch.category || "").trim();
+    if (!cat) throw new AppError("Categoria é obrigatória", "CATEGORY_REQUIRED", 400);
+    if (cat.length > 60) {
+      throw new AppError("Categoria excede 60 caracteres", "CATEGORY_TOO_LONG", 400);
+    }
+    patch.category = cat;
+  } else if (patch.category !== undefined && patch.category !== null) {
+    const cat = String(patch.category).trim();
+    if (cat.length > 60) {
+      throw new AppError("Categoria excede 60 caracteres", "CATEGORY_TOO_LONG", 400);
+    }
+    patch.category = cat || null;
+  }
   if (patch.cover_url !== undefined && patch.cover_url !== null) {
     const c = String(patch.cover_url).trim();
     // Aceita só sentinels de object storage (defesa em profundidade contra
@@ -1345,6 +1379,29 @@ export async function adminCreateForum(adminId: number, input: ForumInput) {
   }
 }
 
+// Task #198 — autorização do edit de comunidade: criador, mod local OU
+// moderator+ global. Devolve {forum_id} pra caller usar no updateForum.
+// Aceita id numérico ou slug pra simplificar a rota /api/community/forums/:idOrSlug.
+export async function authorizeForumEdit(
+  idOrSlug: number | string,
+  userId: number,
+  isModeratorPlusGlobal: boolean,
+): Promise<number> {
+  const where = typeof idOrSlug === "number" ? "id = $1" : "slug = $1";
+  const { rows } = await query<{ id: number; created_by: number | null }>(
+    `SELECT id, created_by FROM forums WHERE ${where}`,
+    [idOrSlug],
+  );
+  if (rows.length === 0) {
+    throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
+  }
+  const { id, created_by } = rows[0];
+  if (isModeratorPlusGlobal) return id;
+  if (created_by === userId) return id;
+  if (await isForumModerator(id, userId)) return id;
+  throw new AppError("Sem permissão", "FORBIDDEN", 403);
+}
+
 // Update genérico (admin OU mod local — caller checa autorização).
 // Campos editáveis: name, description, icon, category, life_context,
 // cover_url, rules, is_official, is_active, slug.
@@ -1447,7 +1504,7 @@ export async function listAdminForums(opts?: {
   for (const r of rows) {
     if (r.cover_url) r.cover_url = await resolveStoredMediaUrl(r.cover_url);
   }
-  return rows;
+  return { forums: rows, total, page, limit };
 }
 
 export async function addForumModerator(forumId: number, userId: number, addedBy: number) {
