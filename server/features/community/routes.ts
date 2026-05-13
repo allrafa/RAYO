@@ -252,17 +252,16 @@ router.get("/forums", async (req, res, next) => {
   }
 });
 
-// Task #198 — edit de METADATA por CRIADOR ou ADMIN apenas.
-// Constraint OLA: moderador local modera conteúdo, NÃO edita metadata.
-// Moderator+ global (não-admin) também é negado aqui. Admin usa rota
-// elevada em /api/admin/community/forums/:id (pode trocar slug,
-// is_official, is_active, sort_order, etc).
+// Task #198/#199 — edit de METADATA por CRIADOR, MODERADOR LOCAL,
+// MODERATOR+ GLOBAL ou ADMIN. Campos sensíveis (slug, is_official,
+// is_active, sort_order) continuam restritos à rota admin elevada
+// em /api/admin/community/forums/:id — aqui aplicamos allowlist.
 router.patch("/forums/:idOrSlug", requireAuth, async (req, res, next) => {
   try {
     const raw = req.params.idOrSlug;
     const asNum = parseInt(raw, 10);
     const ref: number | string = Number.isFinite(asNum) && String(asNum) === raw ? asNum : raw;
-    const forumId = await authorizeForumMetadataEdit(ref, req.user!.id, hasRole(req.user, "admin"));
+    const forumId = await authorizeForumMetadataEdit(ref, req.user!.id, hasRole(req.user, "moderator"));
     const body = (req.body || {}) as Record<string, unknown>;
     const safe: Record<string, unknown> = {};
     for (const k of ["name", "description", "icon", "category", "life_context", "rules", "cover_url"]) {
@@ -308,8 +307,8 @@ router.post(
       const raw = req.params.idOrSlug;
       const asNum = parseInt(raw, 10);
       const ref: number | string = Number.isFinite(asNum) && String(asNum) === raw ? asNum : raw;
-      // ACL: criador ou admin (mesma do PATCH metadata).
-      await authorizeForumMetadataEdit(ref, req.user!.id, hasRole(req.user, "admin"));
+      // ACL: criador, moderador local ou moderator+ global (mesma do PATCH metadata).
+      await authorizeForumMetadataEdit(ref, req.user!.id, hasRole(req.user, "moderator"));
       const file = req.file;
       if (!file) {
         sendError(res, "Arquivo é obrigatório", "FILE_REQUIRED", 400);

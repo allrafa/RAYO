@@ -271,10 +271,12 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
   }
 
   const moderators = forum.moderators || [];
-  // Edit autorizado pra criador da comunidade OU admin global.
+  // Task #199 — Edit autorizado pra: criador, moderador local
+  // (forum.is_moderator) OU moderator+ global (admin/moderator role).
   const canEdit = !!user && (
-    userHasRole(user, "admin") ||
-    (forum.created_by != null && user.id === forum.created_by)
+    userHasRole(user, "moderator") ||
+    (forum.created_by != null && user.id === forum.created_by) ||
+    !!forum.is_moderator
   );
 
   const orderPillStyle = (active: boolean): React.CSSProperties => ({
