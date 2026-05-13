@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { validateRegister, validateLogin } from "./validation.js";
-import { registerUser, loginUser, logoutUser, sendVerificationCode, verifyCode, requestPasswordReset, resetPassword, changePassword } from "./service.js";
+import { registerUser, loginUser, logoutUser, sendVerificationCode, verifyCode, requestPasswordReset, resetPassword, changePassword, resendVerificationCodeForUser } from "./service.js";
 import { success, created, error } from "../../utils/response.js";
 import { requireAuth } from "../../middleware/auth.js";
 import oauthRouter from "./oauth.js";
@@ -43,6 +43,23 @@ router.post("/send-code", async (req: Request, res: Response, next: NextFunction
 
     await sendVerificationCode(email.trim().toLowerCase());
     success(res, { message: "Código enviado com sucesso" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Task #205 — reenvio de código pra usuário JÁ logado (não exige `email` no
+// body; usa o e-mail da sessão). Serve fluxos inline tipo "Confirme seu
+// e-mail" sem sair do contexto (modal de criar comunidade etc). Cooldown
+// de 60s reaproveitado via `resendVerificationCodeForUser`. Não usa
+// `rateLimiter` extra aqui porque o `/api/auth` global já aplica
+// 20req/15min por IP em POSTs sensíveis e o cooldown de 60s no service
+// já evita abuse específico desse endpoint.
+router.post("/resend-verification", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.id;
+    const result = await resendVerificationCodeForUser(userId);
+    success(res, { email: result.email, message: "Código enviado" });
   } catch (err) {
     next(err);
   }

@@ -341,6 +341,146 @@ export async function loginUser(input: LoginInput, ip?: string, userAgent?: stri
 //  2) Senão tenta pelo email → vincula o provider id à conta existente.
 //  3) Senão cria uma conta nova (password_hash NULL, email já considerado verificado).
 // Mantém a forma funcional do resto do módulo: cada caminho retorna SafeUser pronto.
+// Task #205 — registra que um e-mail está "verified" sem precisar do
+// fluxo de código (usado por OAuth providers que já validaram o e-mail
+// no lado deles). Idempotente: se já existe linha verified=TRUE pro
+// e-mail, é no-op. Usa NOT EXISTS porque a tabela
+// `email_verification_codes` não tem UNIQUE em `email` (suporta múltiplos
+// códigos históricos), então ON CONFLICT não funciona aqui.
+// O `code` placeholder "oauth" e `expires_at` no passado deixam claro
+// no DB que essa linha veio de um trusted provider, não de um envio real.
+export async function markEmailVerifiedFromTrustedProvider(email: string): Promise<void> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return;
+  try {
+    await query(
+      `INSERT INTO email_verification_codes (email, code, expires_at, verified)
+       SELECT $1, 'oauth', NOW(), TRUE
+       WHERE NOT EXISTS (
+         SELECT 1 FROM email_verification_codes
+          WHERE LOWER(email) = LOWER($1) AND verified = TRUE
+       )`,
+      [normalized],
+    );
+  } catch (err) {
+    // Falha aqui não pode quebrar o login OAuth — só logar.
+    console.warn(
+      `[auth] markEmailVerifiedFromTrustedProvider falhou pra ${normalized}: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
+}
+
+// Task #205 — backfill one-shot pra usuários que entraram via OAuth
+// ANTES dessa task existir. Roda no boot via initializeSchema. Idempotente.
+export async function backfillOAuthVerifiedEmails(): Promise<number> {
+  try {
+    const { rows } = await query<{ email: string }>(
+      `SELECT u.email
+         FROM users u
+        WHERE (u.google_id IS NOT NULL OR u.facebook_id IS NOT NULL)
+          AND NOT EXISTS (
+            SELECT 1 FROM email_verification_codes ev
+             WHERE LOWER(ev.email) = LOWER(u.email) AND ev.verified = TRUE
+          )`,
+    );
+    if (rows.length === 0) return 0;
+    for (const r of rows) {
+      await markEmailVerifiedFromTrustedProvider(r.email);
+    }
+    return rows.length;
+  } catch (err) {
+    console.warn(
+      `[auth] backfillOAuthVerifiedEmails falhou: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+    return 0;
+  }
+}
+
+// Task #205 — versão pra reenviar código pra um usuário JÁ logado (sem
+// passar pelo gate EMAIL_EXISTS de sendVerificationCode, que serve só
+// pro fluxo de signup). Mesma lógica de cooldown/insert/email.
+export async function resendVerificationCodeForUser(
+  userId: number,
+): Promise<{ email: string; cooldownSeconds?: number }> {
+  const u = await query<{ email: string }>(
+    "SELECT email FROM users WHERE id = $1",
+    [userId],
+  );
+  if (u.rows.length === 0) {
+    const err = new Error("Usuário não encontrado") as Error & { statusCode: number; code: string };
+    err.statusCode = 404;
+    err.code = "USER_NOT_FOUND";
+    throw err;
+  }
+  const email = u.rows[0].email.trim().toLowerCase();
+
+  // Task #205 — guard: se o user já está verified, não destruir a linha
+  // verified=TRUE pra inserir um código novo (de-verifica até confirmar).
+  // Devolve sucesso "noop" pro client retomar a ação.
+  const alreadyVerified = await query(
+    `SELECT 1 FROM email_verification_codes
+      WHERE LOWER(email) = LOWER($1) AND verified = TRUE LIMIT 1`,
+    [email],
+  );
+  if (alreadyVerified.rows.length > 0) {
+    return { email };
+  }
+
+  const recent = await query(
+    `SELECT created_at FROM email_verification_codes
+     WHERE email = $1
+     ORDER BY created_at DESC LIMIT 1`,
+    [email],
+  );
+  if (recent.rows.length > 0) {
+    const lastSent = new Date(recent.rows[0].created_at).getTime();
+    const elapsed = Date.now() - lastSent;
+    if (elapsed < RESEND_COOLDOWN_MS) {
+      const remaining = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+      const err = new Error(`Aguarde ${remaining} segundos para reenviar o código`) as Error & { statusCode: number; code: string };
+      err.statusCode = 429;
+      err.code = "COOLDOWN";
+      throw err;
+    }
+  }
+
+  await query("DELETE FROM email_verification_codes WHERE email = $1", [email]);
+
+  const code = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + VERIFICATION_CODE_EXPIRY_MS);
+  await query(
+    `INSERT INTO email_verification_codes (email, code, expires_at)
+     VALUES ($1, $2, $3)`,
+    [email, code, expiresAt],
+  );
+
+  const isDev = process.env.NODE_ENV !== "production";
+  const sendResult = await sendVerificationCodeEmail(email, code);
+  if (!sendResult.sent) {
+    if (isDev) {
+      console.log(`\n========================================`);
+      console.log(`📧 CÓDIGO DE VERIFICAÇÃO (dev fallback - resend)`);
+      console.log(`   Email: ${email}`);
+      console.log(`   Código: ${code}`);
+      console.log(`   Expira em: 10 minutos`);
+      console.log(`========================================\n`);
+    } else {
+      const err = new Error(
+        "Não foi possível enviar o código por e-mail. Tente novamente em instantes.",
+      ) as Error & { statusCode: number; code: string };
+      err.statusCode = 502;
+      err.code = "EMAIL_SEND_FAILED";
+      throw err;
+    }
+  }
+
+  return { email };
+}
+
 export async function findOrCreateOAuthUser(params: {
   provider: "google" | "facebook";
   providerId: string;
@@ -350,6 +490,13 @@ export async function findOrCreateOAuthUser(params: {
   // Task #72 — Apple removido, Facebook adicionado. O id col mapeia 1:1.
   const idCol = params.provider === "google" ? "google_id" : "facebook_id";
   const email = params.email.trim().toLowerCase();
+
+  // Task #205 — provider OAuth já validou o e-mail do user; espelhamos
+  // esse trust marcando o e-mail como verified=TRUE no nosso lado, pra
+  // que `isUserEmailVerified` (gating de criar comunidade etc) passe sem
+  // exigir um segundo fluxo de código. Idempotente; falhas são logadas
+  // e não bloqueiam o login.
+  await markEmailVerifiedFromTrustedProvider(email);
 
   const byId = await query(
     `SELECT ${USER_SAFE_COLUMNS} FROM users WHERE ${idCol} = $1`,

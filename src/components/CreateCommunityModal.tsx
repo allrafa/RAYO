@@ -6,6 +6,7 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { api } from "../lib/api";
 import { enhancedToast } from "./EnhancedToast";
+import { EmailVerificationInline } from "./EmailVerificationInline";
 
 // Task #198 — Modal pra usuário criar a própria comunidade. Slug é
 // derivado do nome no backend (ensureUniqueSlug). Categoria/ícone são
@@ -51,6 +52,9 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Task #205 — quando o backend devolve EMAIL_NOT_VERIFIED, trocamos
+  // o conteúdo do modal pelo painel inline (sem perder os campos).
+  const [needsEmailVerify, setNeedsEmailVerify] = useState(false);
 
   const reset = () => {
     setName("");
@@ -60,6 +64,7 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
     setRules("");
     setCoverUrl(null);
     setCoverPreview(null);
+    setNeedsEmailVerify(false);
   };
 
   // Pre-fill quando entra em modo edição (ou reseta quando volta a criar).
@@ -179,6 +184,11 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
       onCreated?.(res.data.forum.slug);
     } else {
       const code = res.error?.code;
+      // Task #205 — em vez de toast genérico, troca pro fluxo inline.
+      if (code === "EMAIL_NOT_VERIFIED") {
+        setNeedsEmailVerify(true);
+        return;
+      }
       enhancedToast.error({
         title: code === "RATE_LIMIT_EXCEEDED" ? "Limite atingido" : "Não foi possível criar",
         description: res.error?.message || "Tente novamente",
@@ -191,14 +201,32 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o && !isEdit) reset(); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Editar comunidade" : "Criar comunidade"}</DialogTitle>
+          <DialogTitle>
+            {needsEmailVerify
+              ? "Confirme seu e-mail"
+              : isEdit
+              ? "Editar comunidade"
+              : "Criar comunidade"}
+          </DialogTitle>
           <DialogDescription>
-            {isEdit
+            {needsEmailVerify
+              ? "Só falta um passo pra criar a sua comunidade."
+              : isEdit
               ? "Atualize nome, descrição, ícone, categoria e regras."
               : "Comunidades são espaços abertos pra conversar. Você será o primeiro moderador."}
           </DialogDescription>
         </DialogHeader>
 
+        {needsEmailVerify ? (
+          <EmailVerificationInline
+            reason="Pra criar comunidades, precisamos confirmar seu e-mail uma vez."
+            onCancel={() => setNeedsEmailVerify(false)}
+            onVerified={() => {
+              setNeedsEmailVerify(false);
+              void onSubmit();
+            }}
+          />
+        ) : (
         <div className="space-y-4 py-2">
           <div className="space-y-1">
             <label className="text-xs font-medium" style={{ color: "var(--rayo-ink-600)" }}>
@@ -363,6 +391,7 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
             {busy ? (isEdit ? "Salvando…" : "Criando…") : (isEdit ? "Salvar" : "Criar comunidade")}
           </Button>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

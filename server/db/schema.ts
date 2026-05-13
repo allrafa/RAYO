@@ -1167,6 +1167,17 @@ export async function initializeSchema() {
   // busca continua usando Seq Scan (ILIKE puro). O dataset atual é
   // pequeno o bastante pra UX se manter ok.
 
+  // Task #205 — backfill: usuários OAuth (Google/Facebook) que entraram
+  // antes dessa task receberem uma linha verified=TRUE em
+  // email_verification_codes pra passar em isUserEmailVerified. Idempotente.
+  try {
+    const { backfillOAuthVerifiedEmails } = await import("../features/auth/service.js");
+    const n = await backfillOAuthVerifiedEmails();
+    if (n > 0) console.log(`[DB] Backfilled email-verified status for ${n} OAuth user(s).`);
+  } catch (err) {
+    console.warn(`[DB] Backfill OAuth verified emails skipped: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   console.log("[DB] Schema initialized successfully.");
 }
 
