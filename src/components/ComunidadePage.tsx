@@ -128,11 +128,14 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     return () => clearTimeout(t);
   }, [searchInput, urlQ, setSearchParams]);
   const setSearchTab = useCallback((t: SearchTab) => {
+    // Tab change empurra entrada nova no histórico (back/forward navega
+    // entre tabs). Mudança de texto continua usando replace pra não
+    // poluir histórico durante digitação.
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
       next.set("tab", t);
       return next;
-    }, { replace: true });
+    });
   }, [setSearchParams]);
   const clearSearch = useCallback(() => {
     setSearchInput("");
@@ -1652,6 +1655,16 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit, highligh
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Title (quando presente) */}
+        {post.title && (
+          <h3
+            className="text-[17px] font-bold mb-2 leading-snug"
+            style={{ color: 'var(--rayo-forest-900)' }}
+          >
+            {renderHighlighted(post.title, highlightTerm)}
+          </h3>
+        )}
 
         {/* Content */}
         <p 

@@ -27,8 +27,67 @@ interface CommunitySearchResultsProps {
   onTabChange: (t: Tab) => void;
 }
 
-interface PageState<T> {
-  items: T[];
+interface ReactionAggregate { emoji: string; count: number }
+
+interface SearchPostItem {
+  id: number;
+  forum_id: number;
+  forum_name: string;
+  forum_slug: string;
+  forum_icon: string | null;
+  title: string | null;
+  content: string;
+  category: string | null;
+  is_pinned: boolean;
+  like_count: number;
+  comment_count: number;
+  share_count: number;
+  user_liked: boolean;
+  is_saved: boolean;
+  reactions: ReactionAggregate[];
+  user_reaction: string | null;
+  images: string[];
+  image_refs: string[];
+  author_id: number;
+  author_name: string;
+  author_avatar: string | null;
+  created_at: string;
+}
+interface SearchForumItem {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  icon: string | null;
+  category: string | null;
+  member_count: number;
+  post_count: number;
+  is_subscribed: boolean;
+}
+interface SearchCommentItem {
+  id: number;
+  post_id: number;
+  post_title: string | null;
+  post_excerpt: string | null;
+  forum_slug: string;
+  content: string;
+  like_count: number;
+  created_at: string;
+  author_name: string;
+  author_avatar: string | null;
+}
+interface SearchUserItem {
+  id: number;
+  name: string;
+  avatar_url: string | null;
+  bio: string | null;
+  role: "client" | "producer" | "moderator" | "admin";
+  post_count: number;
+}
+type SearchItem = SearchPostItem | SearchForumItem | SearchCommentItem | SearchUserItem;
+
+interface PageState {
+  items: SearchItem[];
   page: number;
   totalPages: number;
   total: number;
@@ -37,7 +96,7 @@ interface PageState<T> {
   error: string | null;
 }
 
-const EMPTY: PageState<any> = {
+const EMPTY: PageState = {
   items: [], page: 1, totalPages: 0, total: 0, loading: false, loadingMore: false, error: null,
 };
 
@@ -61,7 +120,7 @@ const TAB_ORDER: Tab[] = ["posts", "comunidades", "comentarios", "midia", "perfi
 
 export function CommunitySearchResults({ q, tab, onTabChange }: CommunitySearchResultsProps) {
   const [counts, setCounts] = useState<Record<Tab, number> | null>(null);
-  const [state, setState] = useState<PageState<any>>(EMPTY);
+  const [state, setState] = useState<PageState>(EMPTY);
   // Race-fix: cada request carrega a search key (`q::tab`) ativa no
   // momento; comparamos via ref (sempre fresh) ao receber a resposta.
   const searchKey = `${q.trim()}::${tab}`;
@@ -79,7 +138,7 @@ export function CommunitySearchResults({ q, tab, onTabChange }: CommunitySearchR
     setState({ ...EMPTY, loading: true });
     void (async () => {
       const res = await api.get<{
-        items: any[]; page: number; totalPages: number; total: number;
+        items: SearchItem[]; page: number; totalPages: number; total: number;
       }>(`/api/community/search?q=${encodeURIComponent(trimmed)}&tab=${tab}&page=1`);
       if (activeKeyRef.current !== myKey) return;
       if (res.success && res.data) {
@@ -128,7 +187,7 @@ export function CommunitySearchResults({ q, tab, onTabChange }: CommunitySearchR
     });
     if (nextPage === 0) return;
     const trimmed = q.trim();
-    const res = await api.get<{ items: any[]; page: number; totalPages: number; total: number }>(
+    const res = await api.get<{ items: SearchItem[]; page: number; totalPages: number; total: number }>(
       `/api/community/search?q=${encodeURIComponent(trimmed)}&tab=${tab}&page=${nextPage}`,
     );
     if (activeKeyRef.current !== myKey) return;
@@ -203,7 +262,7 @@ export function CommunitySearchResults({ q, tab, onTabChange }: CommunitySearchR
 
 function ResultsBody({
   q, tab, state, onLoadMore, onRetry,
-}: { q: string; tab: Tab; state: PageState<any>; onLoadMore: () => void; onRetry: () => void }) {
+}: { q: string; tab: Tab; state: PageState; onLoadMore: () => void; onRetry: () => void }) {
   if (state.loading) {
     return <ResultsSkeleton tab={tab} />;
   }
@@ -239,7 +298,7 @@ function ResultsBody({
   return (
     <div className={tab === "midia" ? "" : "space-y-3"}>
       {tab === "posts"
-        ? state.items.map((p) => (
+        ? (state.items as SearchPostItem[]).map((p) => (
             <PostCard
               key={p.id}
               post={hydratePostShape(p)}
@@ -249,12 +308,12 @@ function ResultsBody({
             />
           ))
         : tab === "midia"
-        ? <MediaGrid items={state.items} />
+        ? <MediaGrid items={state.items as SearchPostItem[]} />
         : tab === "comunidades"
-        ? <div className="space-y-3">{state.items.map((f) => <ForumRow key={f.id} forum={f} />)}</div>
+        ? <div className="space-y-3">{(state.items as SearchForumItem[]).map((f) => <ForumRow key={f.id} forum={f} />)}</div>
         : tab === "comentarios"
-        ? <div className="space-y-3">{state.items.map((c) => <CommentRow key={c.id} comment={c} q={q} />)}</div>
-        : <div className="space-y-3">{state.items.map((u) => <UserRow key={u.id} user={u} q={q} />)}</div>
+        ? <div className="space-y-3">{(state.items as SearchCommentItem[]).map((c) => <CommentRow key={c.id} comment={c} q={q} />)}</div>
+        : <div className="space-y-3">{(state.items as SearchUserItem[]).map((u) => <UserRow key={u.id} user={u} q={q} />)}</div>
       }
 
       {state.page < state.totalPages && (
@@ -307,12 +366,12 @@ function ResultsSkeleton({ tab }: { tab: Tab }) {
 
 // Mídia tab: grade responsiva de thumbnails. Click na thumb abre
 // lightbox; "Ver discussão" abre o post completo.
-function MediaGrid({ items }: { items: any[] }) {
+function MediaGrid({ items }: { items: SearchPostItem[] }) {
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number; postId: number } | null>(null);
   const tiles = items
     .map((p) => ({
       postId: p.id,
-      images: Array.isArray(p.images) ? p.images.filter((s: any) => typeof s === "string" && s) : [],
+      images: Array.isArray(p.images) ? p.images.filter((s): s is string => typeof s === "string" && !!s) : [],
       content: p.content,
       title: p.title,
       author: p.author_name,
@@ -400,7 +459,7 @@ function MediaGrid({ items }: { items: any[] }) {
 }
 
 // Adapta o shape "raw" do server pro shape interno que PostCard espera.
-function hydratePostShape(p: any) {
+function hydratePostShape(p: SearchPostItem) {
   return {
     id: p.id,
     author: p.author_name,
@@ -428,7 +487,7 @@ function hydratePostShape(p: any) {
   };
 }
 
-function ForumRow({ forum }: { forum: any }) {
+function ForumRow({ forum }: { forum: SearchForumItem }) {
   const open = () => openCommunityBySlug(forum.slug);
   const [subscribed, setSubscribed] = useState<boolean>(!!forum.is_subscribed);
   const [busy, setBusy] = useState(false);
@@ -524,7 +583,7 @@ const ROLE_BADGE: Record<string, { label: string; bg: string; fg: string } | nul
   admin: { label: "Admin", bg: "#7c2d12", fg: "#fff" },
 };
 
-function CommentRow({ comment, q }: { comment: any; q: string }) {
+function CommentRow({ comment, q }: { comment: SearchCommentItem; q: string }) {
   const open = () => openPostById(comment.post_id, comment.id);
   return (
     <Card
@@ -564,11 +623,11 @@ function CommentRow({ comment, q }: { comment: any; q: string }) {
   );
 }
 
-function UserRow({ user, q }: { user: any; q: string }) {
+function UserRow({ user, q }: { user: SearchUserItem; q: string }) {
   // O schema atual não tem coluna `username`/`display_name`, então o
   // handle exibido é derivado do id (`@u<id>`) — estável e único.
   const handle = `@u${user.id}`;
-  const role = ROLE_BADGE[user.role as string] ?? null;
+  const role = ROLE_BADGE[user.role] ?? null;
   return (
     <Card
       role="button"
