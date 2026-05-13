@@ -95,3 +95,6 @@ timeoutMs = 120000
 
 [userenv.production]
 ADMIN_EMAILS = "allrafaimc@gmail.com"
+
+[userenv.shared]
+RESEND_FROM_EMAIL = "RAYO <nao-responda@rayo.app.br>"
