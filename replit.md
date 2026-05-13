@@ -57,6 +57,7 @@ RAYO é uma plataforma digital para fortalecer famílias através de conteúdo t
 - **Object-Level Authorization**: producers só editam conteúdo próprio; `moderator+` override.
 - **No Fake Discounts**: preço de curso vem de `course.price`; promoções só do backend.
 - **Idempotent Daily Completions**: `POST /api/home/today/complete` usa `ON CONFLICT DO NOTHING`.
+- **Busca Comunidade & Publish (gotcha conhecida)**: a busca tabbed em `/comunidade` (`/api/community/search`) usa **ILIKE puro** (sem trigram). Os índices `pg_trgm` GIN com `gin_trgm_ops` foram tentados na Task #193 e revertidos: o diff de schema do Publish **não preserva o opclass** ao replicar pra prod e gera `CREATE INDEX ... USING gin ("col")` (sem opclass), que falha com `data type text has no default operator class for access method "gin"`. Não readicionar índices trigram no `initializeSchema()` enquanto não houver caminho de migração que respeite opclasses (custom migration scripts, deploy hooks ou self-heal startup DDL violam o skill `database`). Dataset pequeno = Seq Scan continua aceitável.
 - **Rate Limiter**: `rateLimiter(max, windowMs, opts)` em `server/middleware/security.ts` — bucket in-memory por instância, `opts.keyByUser` (cai pra IP quando anônimo) e `opts.skip(req)`. `optionalAuth` hidrata `req.user` antes de cada limiter autenticado. `app.set("trust proxy", 1)`. `/api/auth` POSTs sensíveis 20/15min por IP; resto 60/15min keyByUser. Demais autenticadas 120–600/15min keyByUser. Reiniciar workflow zera buckets.
 
 ### Stripe Billing — gating + webhook
