@@ -1164,7 +1164,10 @@ function ComunidadesView({ groups, loading, error, onRetry, isAuthenticated, onC
   const [visibleCount, setVisibleCount] = useState<number>(EXPLORAR_PAGE_SIZE);
 
   const subscribedGroups = useMemo(() => groups.filter(g => g.isJoined), [groups]);
-  const exploreGroups = useMemo(() => groups.filter(g => !g.isJoined), [groups]);
+  // Task #202 — Explorar = TODAS as comunidades (mantém ordem original).
+  // Não filtramos !isJoined; usuário enxerga inscritas + descoberta numa
+  // visão única (estilo Reddit r/all). Inscritas continua sendo o filtro.
+  const exploreGroups = groups;
 
   // Sub-tab default: respeita preferência salva na sessão; senão "inscritas"
   // se o usuário tem ≥1 assinatura, senão "explorar". Como `groups` chega
@@ -1399,7 +1402,7 @@ function ComunidadesView({ groups, loading, error, onRetry, isAuthenticated, onC
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleGroups.map((group) => (
-              <CommunityCard key={group.id} group={group} />
+              <CommunityCard key={group.id} group={group} context={subTab} />
             ))}
           </div>
 
@@ -1927,9 +1930,12 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit, highligh
 // COMMUNITY CARD COMPONENT (Task #202 — renomeada de GroupCard)
 interface CommunityCardProps {
   group: any;
+  // Task #202 — sub-tab atual ("inscritas" | "explorar"). Usado pra
+  // restringir o badge "Nova" ao contexto de descoberta (Explorar).
+  context?: "inscritas" | "explorar";
 }
 
-function CommunityCard({ group }: CommunityCardProps) {
+function CommunityCard({ group, context = "explorar" }: CommunityCardProps) {
   const [isJoined, setIsJoined] = useState<boolean>(!!group.isJoined);
   const [members, setMembers] = useState<number>(Number(group.members) || 0);
   const [busy, setBusy] = useState(false);
@@ -2042,7 +2048,7 @@ function CommunityCard({ group }: CommunityCardProps) {
               Você modera
             </Badge>
           )}
-          {group.created_at && (Date.now() - new Date(group.created_at).getTime()) < 14 * 24 * 60 * 60 * 1000 && (
+          {context === "explorar" && group.created_at && (Date.now() - new Date(group.created_at).getTime()) < 14 * 24 * 60 * 60 * 1000 && (
             <Badge style={{ fontSize: 10, fontWeight: 700, background: 'var(--rayo-sage-500)', color: '#fff' }}>
               Nova
             </Badge>
@@ -2113,12 +2119,12 @@ function CommunityCard({ group }: CommunityCardProps) {
           {isJoined ? (
             <>
               <CheckCircle className="w-4 h-4 mr-2" />
-              Membro
+              Sair
             </>
           ) : (
             <>
               <UserPlus className="w-4 h-4 mr-2" />
-              Participar
+              Entrar
             </>
           )}
         </Button>
