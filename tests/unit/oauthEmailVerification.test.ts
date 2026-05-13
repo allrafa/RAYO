@@ -112,6 +112,34 @@ describeIfDb("OAuth → markEmailVerifiedFromTrustedProvider (Task #205)", () =>
     assert.equal(await countVerifiedRows(email), 1);
   });
 
+  // Task #208 — o helper engole exceptions de DB pra NUNCA derrubar o
+  // login OAuth (a verificação de e-mail é um nice-to-have do callback,
+  // não pode quebrar o auth). Forçamos o erro com um e-mail acima do
+  // limite de VARCHAR(255) — o INSERT bate "value too long for type
+  // character varying(255)" e o try/catch absorve sem propagar.
+  it("markEmailVerifiedFromTrustedProvider engole erro de DB sem lançar", async () => {
+    const oversizedEmail = `${"a".repeat(300)}@rayo.test`;
+    // Não adiciona em createdEmails porque a row não existe (insert falha).
+    await assert.doesNotReject(
+      () => mod.markEmailVerifiedFromTrustedProvider(oversizedEmail),
+      "helper deve engolir erro do DB pra não derrubar o login OAuth",
+    );
+    // E confirma que de fato nada foi gravado.
+    const { rows } = await pool.query<{ n: string }>(
+      `SELECT COUNT(*)::text AS n FROM email_verification_codes WHERE email = $1`,
+      [oversizedEmail],
+    );
+    assert.equal(parseInt(rows[0]?.n ?? "0", 10), 0);
+  });
+
+  // Task #208 — entrada vazia/whitespace é no-op silencioso (early return),
+  // sem tentar tocar no DB. Trava esse contrato pra que callers OAuth com
+  // email faltante nunca passem por uma exception.
+  it("markEmailVerifiedFromTrustedProvider trata e-mail vazio como no-op", async () => {
+    await assert.doesNotReject(() => mod.markEmailVerifiedFromTrustedProvider(""));
+    await assert.doesNotReject(() => mod.markEmailVerifiedFromTrustedProvider("   "));
+  });
+
   it("backfillOAuthVerifiedEmails fixes a pre-existing OAuth user with no verified row", async () => {
     const email = uniqueEmail("backfill");
     // Simula usuário OAuth criado ANTES da Task #205 — google_id setado
