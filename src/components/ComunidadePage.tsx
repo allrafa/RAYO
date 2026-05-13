@@ -829,6 +829,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
               feedScope={feedScope}
               onScopeChange={setFeedScope}
               isAuthenticated={!!authUser}
+              hasSubscriptions={forums.some(f => f.is_subscribed)}
               onOpenGrupos={() => setCurrentView("grupos")}
             />
           )}
@@ -891,10 +892,11 @@ interface FeedViewProps {
   feedScope: "geral" | "minhas";
   onScopeChange: (s: "geral" | "minhas") => void;
   isAuthenticated: boolean;
+  hasSubscriptions: boolean;
   onOpenGrupos: () => void;
 }
 
-function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit, feedScope, onScopeChange, isAuthenticated, onOpenGrupos }: FeedViewProps) {
+function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit, feedScope, onScopeChange, isAuthenticated, hasSubscriptions, onOpenGrupos }: FeedViewProps) {
   // Task #197 — pílulas pra alternar escopo. Só renderiza "Minhas comunidades"
   // pra usuários logados (anônimo não tem assinaturas).
   const scopePillStyle = (active: boolean): React.CSSProperties => ({
@@ -983,7 +985,7 @@ function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit
                 marginBottom: 8,
               }}
             >
-              Nada por aqui ainda
+              {hasSubscriptions ? "Nenhum post por enquanto" : "Você ainda não acompanha nenhuma comunidade"}
             </h3>
             <p
               style={{
@@ -995,8 +997,9 @@ function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit
                 marginRight: 'auto',
               }}
             >
-              Você ainda não acompanha nenhuma comunidade. Explore os grupos
-              e entre nos que combinam com você.
+              {hasSubscriptions
+                ? "As comunidades que você acompanha ainda não têm posts. Que tal puxar uma conversa por lá ou explorar mais grupos?"
+                : "Entre nas comunidades que combinam com você pra ver os posts dos membros aqui."}
             </p>
             <Button
               type="button"
