@@ -1595,7 +1595,7 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit, highligh
       tabIndex={0}
       onClick={openDiscussion}
       onKeyDown={cardKeyHandler(openDiscussion)}
-      aria-label={`Abrir discussão da publicação de ${post.author}`}
+      aria-label={`Abrir discussão da publicação de ${post.author ?? 'usuário'}`}
       style={{ cursor: 'pointer' }}
     >
       <div>
@@ -1606,13 +1606,13 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit, highligh
               type="button"
               onClick={stopBubble(openAuthorProfile)}
               className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
-              aria-label={`Abrir perfil de ${post.author}`}
+              aria-label={`Abrir perfil de ${post.author ?? 'usuário'}`}
               disabled={!post.author_id}
               style={{ cursor: post.author_id ? 'pointer' : 'default' }}
             >
               <Avatar className="w-12 h-12">
                 <AvatarImage src={post.avatar} />
-                <AvatarFallback>{post.author.charAt(0)}</AvatarFallback>
+                <AvatarFallback>{(post.author ?? 'U').charAt(0)}</AvatarFallback>
               </Avatar>
             </button>
             <div>
@@ -1630,9 +1630,9 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit, highligh
                     border: 0,
                     padding: 0,
                   }}
-                  aria-label={`Abrir perfil de ${post.author}`}
+                  aria-label={`Abrir perfil de ${post.author ?? 'usuário'}`}
                 >
-                  {post.author}
+                  {post.author ?? 'Usuário'}
                 </button>
                 {post.isPinned && (
                   <Pin 
@@ -2330,13 +2330,13 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
               <div key={c.id} data-comment-id={c.id} className="flex gap-3 rounded-md p-1 -mx-1 transition-colors">
                 <Avatar className="w-8 h-8 flex-shrink-0">
                   <AvatarFallback style={{ background: 'var(--rayo-terra-100)', color: 'var(--rayo-terra-500)', fontSize: '12px' }}>
-                    {c.author_name.charAt(0).toUpperCase()}
+                    {(c.author_name ?? 'U').charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-[13px]" style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
-                      {c.author_name}
+                      {c.author_name ?? 'Usuário'}
                     </span>
                     <span className="text-[11px]" style={{ color: 'var(--rayo-ink-400)' }}>
                       {formatTime(c.created_at)}

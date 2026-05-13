@@ -430,11 +430,11 @@ export function CreatePlaylistModal({ open, onOpenChange }: CreatePlaylistModalP
                         </div>
                         <Avatar className="w-10 h-10">
                           <AvatarImage src={post.avatar} />
-                          <AvatarFallback>{post.author[0]}</AvatarFallback>
+                          <AvatarFallback>{(post.author ?? 'U')[0]}</AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-sm">{post.author}</span>
+                            <span className="font-medium text-sm">{post.author ?? 'Usuário'}</span>
                             <Badge variant="outline" className="text-xs">
                               {post.category}
                             </Badge>

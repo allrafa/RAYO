@@ -564,8 +564,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     comment_count: number;
     share_count: number;
     created_at: string;
-    author_name: string;
-    author_id: number;
+    author_name: string | null;
+    author_id: number | null;
     author_avatar?: string | null;
     forum_name?: string;
     forum_slug?: string;
@@ -579,7 +579,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   function mapAPIPost(p: APIPost): Post {
     return {
       id: p.id,
-      author: p.author_name,
+      author: p.author_name ?? "Usuário",
       avatar: p.author_avatar || "/placeholder-avatar.jpg",
       time: formatRelativeTime(p.created_at),
       content: p.content,
@@ -596,7 +596,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       forum_name: p.forum_name,
       forum_slug: p.forum_slug,
       forum_icon: p.forum_icon,
-      author_id: p.author_id,
+      author_id: p.author_id ?? undefined,
       is_saved: !!p.is_saved,
     };
   }
