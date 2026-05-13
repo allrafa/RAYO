@@ -1377,7 +1377,7 @@ export async function searchCommunity(
     );
     const total = countRows[0]?.n ?? 0;
     const { rows } = await query(
-      `SELECT u.id, u.name, u.avatar_url, u.bio,
+      `SELECT u.id, u.name, u.avatar_url, u.bio, u.role,
          (SELECT COUNT(*) FROM posts WHERE user_id = u.id AND is_hidden = FALSE AND class_id IS NULL)::int AS post_count
        FROM users u
        WHERE u.name ILIKE $1 OR COALESCE(u.bio, '') ILIKE $1

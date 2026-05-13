@@ -1317,6 +1317,33 @@ function TrendingView({ posts, loading, onComment, onShare, onMutated, onEdit }:
   );
 }
 
+// Task #193 — helper de highlight inline. Quebra o texto em segmentos
+// case-insensitive e envolve matches em <mark>. Termo < 2 chars ou vazio
+// devolve o texto original sem nenhum nó extra.
+function renderHighlighted(text: string | null | undefined, term: string | null | undefined): React.ReactNode {
+  const t = (text ?? "").toString();
+  const q = (term ?? "").trim();
+  if (!t) return null;
+  if (q.length < 2) return t;
+  const lower = t.toLowerCase();
+  const needle = q.toLowerCase();
+  const out: React.ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+  while (i < t.length) {
+    const idx = lower.indexOf(needle, i);
+    if (idx < 0) { out.push(t.slice(i)); break; }
+    if (idx > i) out.push(t.slice(i, idx));
+    out.push(
+      <mark key={key++} style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-500)", padding: "0 2px", borderRadius: 2 }}>
+        {t.slice(idx, idx + needle.length)}
+      </mark>,
+    );
+    i = idx + needle.length;
+  }
+  return out;
+}
+
 // POST CARD COMPONENT
 interface PostCardProps {
   post: any;
@@ -1325,11 +1352,13 @@ interface PostCardProps {
   // Task #93 — recarregar lista após delete; abrir modal de edição.
   onMutated?: () => void;
   onEdit?: (post: any) => void;
+  // Task #193 — highlight inline do termo buscado no corpo do post.
+  highlightTerm?: string;
 }
 
 // Task #99 — exportado pra ser reusado em contextos escopados (ex.:
 // TurmaCommunityTab). Requer AppProvider/AuthProvider no ascendente.
-export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCardProps) {
+export function PostCard({ post, onComment, onShare, onMutated, onEdit, highlightTerm }: PostCardProps) {
   // Task #122 — estado local de reações; hidratado a partir do que veio
   // no payload (`/api/community/posts*` agora devolve `reactions[]` e
   // `user_reaction`). EmojiReactionPicker faz a request e devolve o novo
@@ -1629,7 +1658,7 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit }: PostCa
           className="text-[15px] mb-4 leading-relaxed" 
           style={{ color: 'var(--rayo-forest-900)' }}
         >
-          {post.content}
+          {renderHighlighted(post.content, highlightTerm)}
         </p>
 
         {/* Images — Task #92: até 4 imagens em grid responsivo

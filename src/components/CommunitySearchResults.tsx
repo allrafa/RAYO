@@ -1,15 +1,12 @@
 // Task #193 — Resultados da busca tabbed da Comunidade (Reddit-style).
-// Renderizado pela ComunidadePage quando o usuário tem termo ativo (?q=).
-// 5 tabs: Posts | Comunidades | Comentários | Mídia | Perfis. Cada tab
-// pagina 10 itens por vez ("Carregar mais"). Tabs controlado (Radix):
-// NUNCA passar value+defaultValue juntos.
+// 5 tabs paginadas (20/pg). Tabs Radix controlado (NUNCA value+defaultValue).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
-import { MessageCircle, Users, ImageIcon, FileText, User as UserIcon, Loader2 } from "lucide-react";
+import { MessageCircle, Users, ImageIcon, FileText, User as UserIcon } from "lucide-react";
 import { api } from "../lib/api";
 import { PostCard } from "./ComunidadePage";
 import { PostImageLightbox } from "./PostImageLightbox";
@@ -65,44 +62,20 @@ const TAB_ORDER: Tab[] = ["posts", "comunidades", "comentarios", "midia", "perfi
 export function CommunitySearchResults({ q, tab, onTabChange }: CommunitySearchResultsProps) {
   const [counts, setCounts] = useState<Record<Tab, number> | null>(null);
   const [state, setState] = useState<PageState<any>>(EMPTY);
-  // Task #193 (race-fix) — toda request de busca carrega o "search key"
-  // (`q::tab`) que estava ativo quando ela disparou. Quando a resposta
-  // volta, comparamos com a key atual via ref (sempre fresh, imune a
-  // closures stale) e descartamos qualquer payload que não pertence mais
-  // ao estado atual. Cobre tanto fetch inicial quanto "Carregar mais".
+  // Race-fix: cada request carrega a search key (`q::tab`) ativa no
+  // momento; comparamos via ref (sempre fresh) ao receber a resposta.
   const searchKey = `${q.trim()}::${tab}`;
   const activeKeyRef = useRef(searchKey);
   useEffect(() => { activeKeyRef.current = searchKey; }, [searchKey]);
 
-  // Carrega counts dos 5 tabs sempre que `q` muda. Curto-circuita pra
-  // <2 chars. Counts dependem só de `q`, então a key de versionamento
-  // aqui é só o termo trim'd.
-  useEffect(() => {
-    const trimmed = q.trim();
-    if (trimmed.length < 2) {
-      setCounts(null);
-      return;
-    }
-    const myQ = trimmed;
-    void (async () => {
-      const res = await api.get<{ counts: Record<Tab, number> }>(
-        `/api/community/search?counts=1&q=${encodeURIComponent(myQ)}`,
-      );
-      // Só aceita se o `q` ativo ainda for este (ref é sempre fresh).
-      if (activeKeyRef.current.split("::")[0] !== myQ) return;
-      if (res.success && res.data) setCounts(res.data.counts);
-    })();
-  }, [q]);
-
-  // Carrega página 1 do tab ativo sempre que `q` ou `tab` mudam.
-  // Reseta state ANTES do fetch pra evitar UI transitória stale.
-  useEffect(() => {
+  const fetchPage1 = useCallback(() => {
     const trimmed = q.trim();
     if (trimmed.length < 2) {
       setState(EMPTY);
       return;
     }
     const myKey = `${trimmed}::${tab}`;
+    activeKeyRef.current = myKey;
     setState({ ...EMPTY, loading: true });
     void (async () => {
       const res = await api.get<{
@@ -118,15 +91,31 @@ export function CommunitySearchResults({ q, tab, onTabChange }: CommunitySearchR
           loading: false, loadingMore: false, error: null,
         });
       } else {
-        setState({ ...EMPTY, error: "Não foi possível buscar agora." });
+        setState({ ...EMPTY, error: res.error?.message || "Não foi possível buscar agora." });
       }
     })();
   }, [q, tab]);
 
+  useEffect(() => {
+    const trimmed = q.trim();
+    setCounts(null);
+    if (trimmed.length < 2) {
+      return;
+    }
+    const myQ = trimmed;
+    void (async () => {
+      const res = await api.get<{ counts: Record<Tab, number> }>(
+        `/api/community/search?counts=1&q=${encodeURIComponent(myQ)}`,
+      );
+      // Só aceita se o `q` ativo ainda for este (ref é sempre fresh).
+      if (activeKeyRef.current.split("::")[0] !== myQ) return;
+      if (res.success && res.data) setCounts(res.data.counts);
+    })();
+  }, [q]);
+
+  useEffect(() => { fetchPage1(); }, [fetchPage1]);
+
   const loadMore = useCallback(async () => {
-    // Snapshot da key/página no momento do clique. Se o usuário mudou de
-    // tab/query antes da resposta voltar, descartamos o payload pra não
-    // misturar resultados de escopos diferentes.
     const myKey = activeKeyRef.current;
     let nextPage = 0;
     setState((s) => {
@@ -145,9 +134,6 @@ export function CommunitySearchResults({ q, tab, onTabChange }: CommunitySearchR
     if (activeKeyRef.current !== myKey) return;
     if (res.success && res.data) {
       setState((s) => {
-        // Defesa extra: só anexa se a página retornada é exatamente a
-        // próxima do que temos hoje (evita merge duplicado se o usuário
-        // clica duas vezes em sequência).
         if (res.data!.page !== s.page + 1) {
           return { ...s, loadingMore: false };
         }
@@ -189,16 +175,15 @@ export function CommunitySearchResults({ q, tab, onTabChange }: CommunitySearchR
                 border: "1px solid " + (tab === t ? "var(--rayo-terra-500)" : "var(--rayo-sand-300)"),
               }}
             >
-              <span className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5">
                 {TAB_ICON[t]}
                 {TAB_LABEL[t]}
-                {counts && safeCount(t) > 0 && (
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, padding: "1px 6px", borderRadius: 999,
-                    background: tab === t ? "rgba(255,255,255,0.22)" : "var(--rayo-sand-50)",
-                    color: tab === t ? "#fff" : "var(--rayo-ink-400)",
-                  }}>{safeCount(t) > 99 ? "99+" : safeCount(t)}</span>
-                )}
+                <span style={{
+                  fontSize: 12, fontWeight: 700,
+                  color: tab === t ? "#fff" : "var(--rayo-ink-400)",
+                }} aria-label={counts ? `${safeCount(t)} resultados` : "carregando contador"}>
+                  ({counts == null ? "…" : safeCount(t) > 99 ? "99+" : safeCount(t)})
+                </span>
               </span>
             </TabsTrigger>
           ))}
@@ -207,7 +192,7 @@ export function CommunitySearchResults({ q, tab, onTabChange }: CommunitySearchR
         {TAB_ORDER.map((t) => (
           <TabsContent key={t} value={t} className="mt-0">
             {tab === t && (
-              <ResultsBody q={q} tab={t} state={state} onLoadMore={loadMore} />
+              <ResultsBody q={q} tab={t} state={state} onLoadMore={loadMore} onRetry={fetchPage1} />
             )}
           </TabsContent>
         ))}
@@ -217,17 +202,26 @@ export function CommunitySearchResults({ q, tab, onTabChange }: CommunitySearchR
 }
 
 function ResultsBody({
-  q, tab, state, onLoadMore,
-}: { q: string; tab: Tab; state: PageState<any>; onLoadMore: () => void }) {
+  q, tab, state, onLoadMore, onRetry,
+}: { q: string; tab: Tab; state: PageState<any>; onLoadMore: () => void; onRetry: () => void }) {
   if (state.loading) {
-    return (
-      <div className="py-12 flex justify-center" aria-live="polite">
-        <Loader2 className="w-6 h-6 animate-spin" style={{ color: "var(--rayo-terra-500)" }} />
-      </div>
-    );
+    return <ResultsSkeleton tab={tab} />;
   }
   if (state.error) {
-    return <p className="py-8 text-center" style={{ color: "var(--rayo-ink-400)" }}>{state.error}</p>;
+    return (
+      <div className="py-10 text-center" aria-live="polite">
+        <p style={{ color: "var(--rayo-forest-900)", fontWeight: 600, marginBottom: 8 }}>
+          {state.error}
+        </p>
+        <Button
+          type="button"
+          onClick={onRetry}
+          style={{ background: "var(--rayo-terra-500)", color: "#fff", fontWeight: 700, borderRadius: 999 }}
+        >
+          Tentar novamente
+        </Button>
+      </div>
+    );
   }
   if (state.items.length === 0) {
     return (
@@ -245,7 +239,15 @@ function ResultsBody({
   return (
     <div className={tab === "midia" ? "" : "space-y-3"}>
       {tab === "posts"
-        ? state.items.map((p) => <HighlightedPost key={p.id} post={p} q={q} />)
+        ? state.items.map((p) => (
+            <PostCard
+              key={p.id}
+              post={hydratePostShape(p)}
+              onComment={() => openPostById(p.id)}
+              onShare={() => openPostById(p.id)}
+              highlightTerm={q}
+            />
+          ))
         : tab === "midia"
         ? <MediaGrid items={state.items} />
         : tab === "comunidades"
@@ -275,72 +277,37 @@ function ResultsBody({
   );
 }
 
-// Posts com highlight: envolve PostCard num wrapper que injeta marca
-// visual sobre matches no title/content. Para preservar 100% do
-// comportamento do PostCard (reações, comentários, save, edit), mantemos
-// o componente original e usamos uma camada CSS pra realçar.
-// Implementação pragmática: injetamos `<mark>` substituindo o conteúdo
-// textual ANTES de passar pra PostCard via `dangerouslySetInnerHTML`?
-// Não — PostCard renderiza `post.content` como texto puro. Pra evitar
-// re-implementar o PostCard inteiro, mostramos o highlight num bloco
-// "snippet" acima do PostCard quando houver match no title/content.
-function HighlightedPost({ post, q }: { post: any; q: string }) {
-  const term = q.trim();
-  const matches: Array<{ label: string; text: string }> = [];
-  if (term.length >= 2) {
-    if (post.title && post.title.toLowerCase().includes(term.toLowerCase())) {
-      matches.push({ label: "Título", text: post.title });
-    }
-    if (post.content && post.content.toLowerCase().includes(term.toLowerCase())) {
-      matches.push({ label: "Trecho", text: extractSnippet(post.content, term) });
-    }
+// Skeleton de loading: linhas com formato adequado ao tab.
+const SKELETON_STYLE: React.CSSProperties = {
+  background: "var(--rayo-sand-200)",
+  animation: "pulse 1.4s ease-in-out infinite",
+};
+function ResultsSkeleton({ tab }: { tab: Tab }) {
+  if (tab === "midia") {
+    return (
+      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))" }} aria-hidden role="status" aria-label="Carregando resultados">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} style={{ ...SKELETON_STYLE, aspectRatio: "1 / 1", borderRadius: 10 }} />
+        ))}
+      </div>
+    );
   }
   return (
-    <div className="space-y-1">
-      {matches.length > 0 && (
-        <div
-          style={{
-            background: "var(--rayo-sand-50)",
-            border: "1px dashed var(--rayo-sand-300)",
-            borderRadius: 8,
-            padding: "8px 12px",
-            fontSize: 13,
-            color: "var(--rayo-ink-400)",
-          }}
-        >
-          {matches.map((m, i) => (
-            <div key={i} className={i > 0 ? "mt-1" : ""}>
-              <span style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }}>{m.label}: </span>
-              <Highlighted text={m.text} q={term} />
-            </div>
-          ))}
-        </div>
-      )}
-      <PostCard
-        post={hydratePostShape(post)}
-        onComment={() => openPostById(post.id)}
-        onShare={() => openPostById(post.id)}
-      />
+    <div className="space-y-3" aria-hidden role="status" aria-label="Carregando resultados">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} style={{
+          ...SKELETON_STYLE,
+          height: tab === "perfis" || tab === "comunidades" ? 80 : 120,
+          borderRadius: 12,
+        }} />
+      ))}
     </div>
   );
 }
 
-function extractSnippet(text: string, term: string, ctx = 60): string {
-  const idx = text.toLowerCase().indexOf(term.toLowerCase());
-  if (idx < 0) return text.slice(0, 140);
-  const start = Math.max(0, idx - ctx);
-  const end = Math.min(text.length, idx + term.length + ctx);
-  return (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
-}
-
-// Mídia tab: grade responsiva de thumbnails. Click numa thumb abre
-// lightbox; segundo click ("Ver discussão") abre o post completo via
-// openPostById. Cada post pode ter múltiplas imagens — mostramos a
-// primeira como thumb e indicamos o total no canto.
+// Mídia tab: grade responsiva de thumbnails. Click na thumb abre
+// lightbox; "Ver discussão" abre o post completo.
 function MediaGrid({ items }: { items: any[] }) {
-  // Achata pra um array de {postId, images, index} por imagem-thumb.
-  // Mostramos a 1ª imagem de cada post (thumbnail). O lightbox abre
-  // navegando entre TODAS as imagens daquele post.
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number; postId: number } | null>(null);
   const tiles = items
     .map((p) => ({
@@ -432,9 +399,7 @@ function MediaGrid({ items }: { items: any[] }) {
   );
 }
 
-// PostCard espera o shape interno do feed (chaves `author`, `time`, etc).
-// Os endpoints de busca devolvem o shape "raw" do server (igual aos endpoints
-// de listagem), então convertemos aqui pra reutilizar o componente sem fork.
+// Adapta o shape "raw" do server pro shape interno que PostCard espera.
 function hydratePostShape(p: any) {
   return {
     id: p.id,
@@ -465,6 +430,20 @@ function hydratePostShape(p: any) {
 
 function ForumRow({ forum }: { forum: any }) {
   const open = () => openCommunityBySlug(forum.slug);
+  const [subscribed, setSubscribed] = useState<boolean>(!!forum.is_subscribed);
+  const [busy, setBusy] = useState(false);
+  const toggleSubscribe = async () => {
+    if (busy) return;
+    const next = !subscribed;
+    setSubscribed(next);
+    setBusy(true);
+    const res = await api.post<{ subscribed: boolean }>(
+      `/api/community/forums/by-slug/${forum.slug}/subscribe`,
+      { subscribed: next },
+    );
+    setBusy(false);
+    if (!res.success) setSubscribed(!next);
+  };
   return (
     <Card
       role="button"
@@ -490,11 +469,6 @@ function ForumRow({ forum }: { forum: any }) {
           <h4 style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }} className="truncate">
             {forum.name}
           </h4>
-          {forum.is_subscribed && (
-            <Badge style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-500)", fontSize: 10 }}>
-              Inscrito
-            </Badge>
-          )}
         </div>
         <p className="text-[13px] truncate" style={{ color: "var(--rayo-ink-400)" }}>
           c/{forum.slug} · {forum.member_count} membros · {forum.post_count} posts
@@ -505,25 +479,50 @@ function ForumRow({ forum }: { forum: any }) {
           </p>
         )}
       </div>
-      <Button
-        type="button"
-        size="sm"
-        onClick={stopBubble(open)}
-        aria-label={`Visitar comunidade ${forum.name}`}
-        style={{
-          flexShrink: 0,
-          background: "var(--rayo-terra-500)",
-          color: "#fff",
-          fontWeight: 700,
-          borderRadius: 999,
-          padding: "0 14px",
-        }}
-      >
-        Visitar
-      </Button>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <Button
+          type="button"
+          size="sm"
+          onClick={stopBubble(toggleSubscribe)}
+          disabled={busy}
+          aria-label={subscribed ? `Sair da comunidade ${forum.name}` : `Entrar na comunidade ${forum.name}`}
+          style={{
+            background: subscribed ? "var(--rayo-sand-50)" : "var(--rayo-forest-900)",
+            color: subscribed ? "var(--rayo-forest-900)" : "#fff",
+            fontWeight: 700,
+            borderRadius: 999,
+            padding: "0 14px",
+            border: subscribed ? "1px solid var(--rayo-sand-300)" : "none",
+          }}
+        >
+          {subscribed ? "Inscrito" : "Entrar"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={stopBubble(open)}
+          aria-label={`Visitar comunidade ${forum.name}`}
+          style={{
+            background: "var(--rayo-terra-500)",
+            color: "#fff",
+            fontWeight: 700,
+            borderRadius: 999,
+            padding: "0 14px",
+          }}
+        >
+          Visitar
+        </Button>
+      </div>
     </Card>
   );
 }
+
+const ROLE_BADGE: Record<string, { label: string; bg: string; fg: string } | null> = {
+  client: null,
+  producer: { label: "Produtor", bg: "var(--rayo-forest-900)", fg: "#fff" },
+  moderator: { label: "Moderador", bg: "var(--rayo-terra-500)", fg: "#fff" },
+  admin: { label: "Admin", bg: "#7c2d12", fg: "#fff" },
+};
 
 function CommentRow({ comment, q }: { comment: any; q: string }) {
   const open = () => openPostById(comment.post_id, comment.id);
@@ -566,6 +565,10 @@ function CommentRow({ comment, q }: { comment: any; q: string }) {
 }
 
 function UserRow({ user, q }: { user: any; q: string }) {
+  // O schema atual não tem coluna `username`/`display_name`, então o
+  // handle exibido é derivado do id (`@u<id>`) — estável e único.
+  const handle = `@u${user.id}`;
+  const role = ROLE_BADGE[user.role as string] ?? null;
   return (
     <Card
       role="button"
@@ -581,11 +584,18 @@ function UserRow({ user, q }: { user: any; q: string }) {
         <AvatarFallback>{(user.name || "?").slice(0, 1).toUpperCase()}</AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
-        <h4 style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }} className="truncate">
-          <Highlighted text={user.name || ""} q={q} />
-        </h4>
-        <p className="text-[13px]" style={{ color: "var(--rayo-ink-400)" }}>
-          {user.post_count} posts
+        <div className="flex items-center gap-2 flex-wrap">
+          <h4 style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }} className="truncate">
+            <Highlighted text={user.name || ""} q={q} />
+          </h4>
+          {role && (
+            <Badge style={{ background: role.bg, color: role.fg, fontSize: 10, fontWeight: 700 }}>
+              {role.label}
+            </Badge>
+          )}
+        </div>
+        <p className="text-[12px]" style={{ color: "var(--rayo-ink-400)" }}>
+          <span style={{ fontWeight: 600 }}>{handle}</span> · {user.post_count} posts
         </p>
         {user.bio && (
           <p className="text-[13px] mt-1 line-clamp-2" style={{ color: "var(--rayo-ink-400)" }}>
