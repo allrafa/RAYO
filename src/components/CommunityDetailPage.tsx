@@ -188,10 +188,14 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
   // Members loader paginado (lazy: só dispara ao abrir aba).
   const loadMembersPage = useCallback(async (page: number) => {
     if (!forum) return;
+    // Stale guard: se o slug mudar enquanto o fetch está em voo,
+    // descartamos a resposta pra não vazar membros da comunidade anterior.
+    const slugAtFetch = forum.slug;
     setMembersLoading(true);
     const res = await api.get<{ members: ForumMember[]; total: number; page: number; totalPages: number }>(
       `/api/community/forums/${forum.id}/members?page=${page}&limit=30`,
     );
+    if (slugAtFetch !== slug) return;
     setMembersLoading(false);
     if (res.success && res.data) {
       setMembers((prev) => (page === 1 ? res.data!.members : [...prev, ...res.data!.members]));
@@ -199,7 +203,7 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
       setMembersPage(res.data.page);
       setMembersLoaded(true);
     }
-  }, [forum]);
+  }, [forum, slug]);
 
   useEffect(() => {
     if (activeTab === "members" && forum && !membersLoaded && !membersLoading) {

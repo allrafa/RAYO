@@ -1261,8 +1261,8 @@ function ComunidadesView({ groups, loading, error, onRetry, isAuthenticated, onC
               <Button onClick={onCreateCommunity} className="gap-2">
                 <Plus className="w-4 h-4" /> Criar comunidade
               </Button>
-              <Button variant="outline" onClick={() => { window.location.assign("/"); }}>
-                Voltar pro feed
+              <Button variant="outline" onClick={() => { window.location.reload(); }}>
+                Explorar comunidades em alta
               </Button>
             </>
           ) : (
@@ -1271,7 +1271,7 @@ function ComunidadesView({ groups, loading, error, onRetry, isAuthenticated, onC
                 Entrar pra criar
               </Button>
               <Button variant="outline" onClick={() => { window.location.assign("/cadastro"); }}>
-                Criar conta
+                Explorar comunidades em alta
               </Button>
             </>
           )}
@@ -1386,9 +1386,13 @@ function ComunidadesView({ groups, loading, error, onRetry, isAuthenticated, onC
               <Button onClick={() => onChangeSubTab("explorar")} className="gap-2">
                 Explorar comunidades
               </Button>
-              {isAuthenticated && onCreateCommunity && (
+              {isAuthenticated && onCreateCommunity ? (
                 <Button variant="outline" onClick={onCreateCommunity} className="gap-2">
                   <Plus className="w-4 h-4" /> Criar comunidade
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => onChangeSubTab("explorar")}>
+                  Explorar comunidades em alta
                 </Button>
               )}
             </div>
