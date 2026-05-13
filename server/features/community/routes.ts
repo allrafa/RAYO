@@ -68,6 +68,8 @@ import {
   updatePost,
   deletePost,
   createForumByUser,
+  setPostHiddenWithAuth,
+  setCommentHiddenWithAuth,
   setPostSaved,
   getUserSavedPosts,
   getPostDetail,
@@ -243,6 +245,47 @@ router.get("/forums", async (req, res, next) => {
     const forums = await listForums(req.user?.id);
     success(res, { forums });
   } catch (err) {
+    next(err);
+  }
+});
+
+// Task #198 — paridade de moderação per-community: mod local pode
+// ocultar/restaurar posts/comentários da própria comunidade sem
+// precisar de role global. Bypass continua valendo pra moderator+.
+router.post("/posts/:id/hide", requireAuth, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id) || id < 1) {
+      sendError(res, "ID inválido", "INVALID_POST_ID", 400);
+      return;
+    }
+    const hidden = req.body?.hidden !== false;
+    await setPostHiddenWithAuth(id, hidden, req.user!.id, hasRole(req.user, "moderator"));
+    success(res, { hidden });
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+router.post("/comments/:id/hide", requireAuth, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id) || id < 1) {
+      sendError(res, "ID inválido", "INVALID_COMMENT_ID", 400);
+      return;
+    }
+    const hidden = req.body?.hidden !== false;
+    await setCommentHiddenWithAuth(id, hidden, req.user!.id, hasRole(req.user, "moderator"));
+    success(res, { hidden });
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
     next(err);
   }
 });

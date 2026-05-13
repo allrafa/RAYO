@@ -39,27 +39,49 @@ interface Moderator {
   created_at: string;
 }
 
+const PAGE_LIMIT = 30;
+
 export function AdminCommunitiesPage() {
   const [forums, setForums] = useState<AdminForum[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<AdminForum | null>(null);
   const [managingMods, setManagingMods] = useState<AdminForum | null>(null);
 
+  // Debounce simples — 300ms — pra não bater no backend a cada tecla.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await api.get<{ forums: AdminForum[] }>("/api/admin/community/forums");
+    const params = new URLSearchParams({ page: String(page), limit: String(PAGE_LIMIT) });
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    const res = await api.get<{ forums: AdminForum[]; total: number }>(
+      `/api/admin/community/forums?${params.toString()}`,
+    );
     setLoading(false);
     if (res.success && res.data) {
       setForums(res.data.forums);
+      setTotal(res.data.total ?? res.data.forums.length);
       setError(null);
     } else {
       setError(res.error?.message || "Falha ao carregar comunidades");
     }
-  }, []);
+  }, [page, debouncedSearch]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
 
   const onToggleActive = async (f: AdminForum) => {
     const next = !f.is_active;
@@ -90,6 +112,20 @@ export function AdminCommunitiesPage() {
         <Button onClick={() => setShowCreate(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Nova comunidade
         </Button>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <Input
+          type="search"
+          placeholder="Buscar por nome ou slug…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="max-w-sm"
+        />
+        <p className="text-xs text-muted-foreground">
+          {total} {total === 1 ? "comunidade" : "comunidades"}
+          {debouncedSearch && ` correspondem a "${debouncedSearch}"`}
+        </p>
       </div>
 
       {loading && <p className="text-sm text-muted-foreground">Carregando…</p>}
@@ -157,6 +193,30 @@ export function AdminCommunitiesPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && !error && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            ← Anterior
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Página {page} de {totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Próxima →
+          </Button>
         </div>
       )}
 

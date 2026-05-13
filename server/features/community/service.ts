@@ -157,11 +157,13 @@ export async function getForumBySlug(slug: string, userId?: number) {
   const { rows } = await query(
     `SELECT f.id, f.name, f.slug, f.description, f.icon, f.life_context, f.category,
        f.cover_url, f.rules, f.is_official, f.created_by, f.created_at,
+       creator.name AS created_by_name,
        (SELECT COUNT(*) FROM posts p WHERE p.forum_id = f.id AND p.is_hidden = FALSE) AS post_count,
        (SELECT COUNT(*) FROM forum_subscriptions fs2 WHERE fs2.forum_id = f.id) AS member_count,
        ${subscribedExpr},
        ${isModExpr}
      FROM forums f
+     LEFT JOIN users creator ON creator.id = f.created_by
      WHERE f.slug = $1 AND f.is_active = true`,
     params,
   );
@@ -195,6 +197,63 @@ export async function getForumModerators(forumId: number) {
     });
   }
   return out;
+}
+
+// Task #198 — paridade de moderação per-community em hide/unhide. Ao invés de
+// duplicar UPDATE+mod_actions, autorizamos aqui (mod local OU role global)
+// e delegamos ao helper canônico do admin que já mantém hidden_at/hidden_by.
+// `setPostHidden`/`setCommentHidden` ficam re-importados via dynamic import
+// pra evitar ciclo (admin/service também usa community helpers em outros pontos).
+export async function setPostHiddenWithAuth(
+  postId: number,
+  hidden: boolean,
+  userId: number,
+  isModeratorPlus: boolean,
+): Promise<void> {
+  const { rows } = await query<{ forum_id: number }>(
+    `SELECT forum_id FROM posts WHERE id = $1`,
+    [postId],
+  );
+  if (rows.length === 0) {
+    throw new AppError("Post não encontrado", "POST_NOT_FOUND", 404);
+  }
+  const allowed = isModeratorPlus || (await isForumModerator(rows[0].forum_id, userId));
+  if (!allowed) {
+    throw new AppError("Sem permissão", "FORBIDDEN", 403);
+  }
+  const { setPostHidden } = await import("../admin/service.js");
+  await setPostHidden(postId, hidden, userId);
+  await query(
+    `INSERT INTO mod_actions (actor_id, target_kind, target_id, action, reason)
+     VALUES ($1, 'post', $2, $3, NULL)`,
+    [userId, postId, hidden ? "post_hidden" : "post_restored"],
+  );
+}
+
+export async function setCommentHiddenWithAuth(
+  commentId: number,
+  hidden: boolean,
+  userId: number,
+  isModeratorPlus: boolean,
+): Promise<void> {
+  const { rows } = await query<{ forum_id: number }>(
+    `SELECT p.forum_id FROM comments c JOIN posts p ON p.id = c.post_id WHERE c.id = $1`,
+    [commentId],
+  );
+  if (rows.length === 0) {
+    throw new AppError("Comentário não encontrado", "COMMENT_NOT_FOUND", 404);
+  }
+  const allowed = isModeratorPlus || (await isForumModerator(rows[0].forum_id, userId));
+  if (!allowed) {
+    throw new AppError("Sem permissão", "FORBIDDEN", 403);
+  }
+  const { setCommentHidden } = await import("../admin/service.js");
+  await setCommentHidden(commentId, hidden, userId);
+  await query(
+    `INSERT INTO mod_actions (actor_id, target_kind, target_id, action, reason)
+     VALUES ($1, 'comment', $2, $3, NULL)`,
+    [userId, commentId, hidden ? "comment_hidden" : "comment_restored"],
+  );
 }
 
 // Task #198 — true se user é moderador específico desta comunidade.
@@ -732,10 +791,9 @@ export async function deletePost(
   // Task #94 — quando moderador (não autor) remove, soft delete + insert
   // em mod_actions rodam na MESMA transação pra evitar estado parcial
   // (post escondido sem registro de auditoria). Auto-exclusão do autor
-  // continua silenciosa (sem entrada de auditoria/notificação).
+  // continua silenciosa (sem entrada de auditoria/notificação). Mod local
+  // (Task #198) registra mod_actions exatamente igual a mod global.
   const trimmedReason = typeof reason === "string" ? reason.trim().slice(0, 2000) : null;
-  // Mod local sem role global ainda registra mod_actions normalmente.
-  void canModerate;
   if (isAuthor) {
     await query(`UPDATE posts SET is_hidden = TRUE, updated_at = NOW() WHERE id = $1`, [postId]);
   } else {
@@ -1162,10 +1220,41 @@ function validateForumPatch(patch: ForumInput, isCreate: boolean): void {
   }
 }
 
+// Task #198 — gating: usuário precisa ter e-mail verificado pra criar
+// comunidade (mesma regra anti-spam usada em outras ações públicas).
+// Usa email_verification_codes (LOWER(email) match) como fonte da
+// verdade — registerUser insere uma linha verified=TRUE só quando o
+// código bate. Helpfully tolerante: se a tabela não existir ainda
+// (cenário de teste mínimo), retorna false silenciosamente.
+export async function isUserEmailVerified(userId: number): Promise<boolean> {
+  try {
+    const { rows } = await query<{ ok: boolean }>(
+      `SELECT EXISTS(
+         SELECT 1
+           FROM email_verification_codes ev
+           JOIN users u ON LOWER(u.email) = LOWER(ev.email)
+          WHERE u.id = $1 AND ev.verified = TRUE
+       ) AS ok`,
+      [userId],
+    );
+    return !!rows[0]?.ok;
+  } catch {
+    return false;
+  }
+}
+
 // Versão pública: usuário cria a própria comunidade. created_by = userId,
 // is_official=false. Criador vira moderador local + subscriber em uma
 // transação (estado consistente; sem janela "comunidade existe sem dono").
+// Requer e-mail verificado (anti-spam) — Task #198.
 export async function createForumByUser(userId: number, input: ForumInput) {
+  if (!(await isUserEmailVerified(userId))) {
+    throw new AppError(
+      "Confirme seu e-mail antes de criar uma comunidade.",
+      "EMAIL_NOT_VERIFIED",
+      403,
+    );
+  }
   validateForumPatch(input, true);
   const slug = input.slug
     ? await ensureUniqueSlug(input.slug)
@@ -1312,8 +1401,34 @@ export async function setForumActive(forumId: number, active: boolean) {
   return { forum_id: forumId, is_active: active };
 }
 
-// Lista pra admin (inclui inativas + criador).
-export async function listAdminForums() {
+// Lista pra admin (inclui inativas + criador). Task #198: aceita busca
+// por nome/slug e paginação simples (default 30/pág). Total devolvido
+// pra o frontend renderizar contador + paginação.
+export async function listAdminForums(opts?: {
+  search?: string | null;
+  page?: number;
+  limit?: number;
+}) {
+  const search = (opts?.search ?? "").trim();
+  const page = Math.max(1, Math.floor(opts?.page ?? 1));
+  const limit = Math.min(100, Math.max(1, Math.floor(opts?.limit ?? 30)));
+  const offset = (page - 1) * limit;
+
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (search) {
+    params.push(`%${search}%`);
+    where.push(`(f.name ILIKE $${params.length} OR f.slug ILIKE $${params.length})`);
+  }
+  const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+
+  const { rows: cnt } = await query<{ total: string }>(
+    `SELECT COUNT(*)::text AS total FROM forums f ${whereSql}`,
+    params,
+  );
+  const total = parseInt(cnt[0]?.total ?? "0", 10);
+
+  const dataParams = [...params, limit, offset];
   const { rows } = await query(
     `SELECT f.id, f.name, f.slug, f.description, f.icon, f.category, f.life_context,
             f.cover_url, f.rules, f.is_official, f.is_active, f.created_by, f.created_at,
@@ -1324,7 +1439,10 @@ export async function listAdminForums() {
             (SELECT COUNT(*) FROM forum_moderators fm WHERE fm.forum_id = f.id) AS moderator_count
        FROM forums f
        LEFT JOIN users u ON u.id = f.created_by
-       ORDER BY f.is_active DESC, f.sort_order ASC, f.id ASC`,
+       ${whereSql}
+       ORDER BY f.is_active DESC, f.sort_order ASC, f.id ASC
+       LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    dataParams,
   );
   for (const r of rows) {
     if (r.cover_url) r.cover_url = await resolveStoredMediaUrl(r.cover_url);

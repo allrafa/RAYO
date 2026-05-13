@@ -30,10 +30,12 @@ interface ForumDetail {
   description?: string | null;
   icon?: string | null;
   category?: string | null;
+  life_context?: string | null;
   cover_url?: string | null;
   rules?: string | null;
   is_official?: boolean;
   created_by?: number | null;
+  created_by_name?: string | null;
   created_at?: string | null;
   member_count: number;
   is_subscribed: boolean;
@@ -41,6 +43,14 @@ interface ForumDetail {
   post_count?: number | string;
   moderators?: ForumModerator[];
 }
+
+const LIFE_CONTEXT_LABEL: Record<string, string> = {
+  solteiro: "Solteiro",
+  namoro: "Namoro",
+  noivos: "Noivos",
+  casados: "Casados",
+  pais: "Pais",
+};
 
 interface CommunityPost {
   id: number;
@@ -372,6 +382,30 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
               <Calendar className="w-3 h-3" /> Criada em {formatDate(forum.created_at)}
             </p>
             <p>{forum.member_count} {forum.member_count === 1 ? "membro" : "membros"} · {forum.post_count ?? 0} posts</p>
+            {forum.life_context && (
+              <p>
+                Contexto:{" "}
+                <span style={{ color: "var(--rayo-forest-900)" }}>
+                  {LIFE_CONTEXT_LABEL[forum.life_context] || forum.life_context}
+                </span>
+              </p>
+            )}
+            {forum.category && (
+              <p>Categoria: <span style={{ color: "var(--rayo-forest-900)" }}>{forum.category}</span></p>
+            )}
+            {forum.created_by && forum.created_by_name && (
+              <p>
+                Criada por{" "}
+                <button
+                  type="button"
+                  onClick={() => onOpenProfile?.(forum.created_by!)}
+                  className="underline hover:no-underline"
+                  style={{ color: "var(--rayo-terra-600)" }}
+                >
+                  {forum.created_by_name}
+                </button>
+              </p>
+            )}
             {!forum.is_official && (
               <p style={{ color: "var(--rayo-ink-500)" }}>
                 Comunidade criada por um membro da plataforma.

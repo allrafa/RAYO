@@ -84,10 +84,17 @@ router.post(
 
 // ───── Forums CRUD ─────
 
-router.get("/forums", async (_req, res, next) => {
+router.get("/forums", async (req, res, next) => {
   try {
-    const forums = await listAdminForums();
-    success(res, { forums });
+    const search = typeof req.query.search === "string" ? req.query.search : null;
+    const page = parseInt(String(req.query.page ?? "1"), 10);
+    const limit = parseInt(String(req.query.limit ?? "30"), 10);
+    const result = await listAdminForums({
+      search,
+      page: Number.isFinite(page) ? page : 1,
+      limit: Number.isFinite(limit) ? limit : 30,
+    });
+    success(res, result);
   } catch (err) { next(err); }
 });
 
