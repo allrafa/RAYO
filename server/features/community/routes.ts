@@ -411,6 +411,13 @@ router.post("/posts", requireAuth, postCreateLimiter, async (req, res, next) => 
   }
 });
 
+// Task #196 — endpoint /posts/trending foi removido. Sem este shim, o
+// path cairia em /posts/:id e devolveria 400 INVALID_POST_ID. Devolve
+// 404 explícito pra deixar claro que o recurso não existe mais.
+router.get("/posts/trending", (_req, res) => {
+  sendError(res, "Recurso removido", "TRENDING_REMOVED", 404);
+});
+
 router.get("/posts/:id", async (req, res, next) => {
   try {
     const postId = parseInt(req.params.id, 10);
