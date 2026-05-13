@@ -145,26 +145,76 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   }, [setSearchParams]);
   const [currentView, setCurrentView] = useState<"feed" | "comunidades" | "conversas">("feed");
   const [showCreateCommunity, setShowCreateCommunity] = useState(false);
-  // Task #197 — escopo do feed: "geral" (todos os posts globais) ou
-  // "minhas" (só fóruns assinados). URL é fonte da verdade (`?escopo=minhas`),
-  // sessionStorage só persiste a preferência entre navegações da sessão.
-  // Default é "geral" pra novos visitantes e pra anônimos (que não têm
-  // assinaturas). `?escopo=geral` é omitido da URL (replace mode).
+  // Task #197 / #203 — escopo do feed: "geral" (todos os posts globais) ou
+  // "minhas" (só fóruns assinados). URL é fonte ÚNICA da verdade
+  // (`?escopo=minhas`); sessionStorage só guarda a preferência entre
+  // navegações da sessão. `?escopo=geral` é omitido da URL (replace mode).
+  //
+  // Task #203 — antes existiam 2 useEffects bidirecionais (state→URL e
+  // URL→state) sincronizando `feedScope`. Em algumas combinações de
+  // `setSearchParams` + render durante hidratação isso disparava um
+  // ciclo curto de re-renders que aparecia como "flash" (página renderiza
+  // e some). Agora `feedScope` é derivado puro de `searchParams`, e
+  // `setFeedScope` é um setter que só escreve na URL — sem state local
+  // duplicado, sem useEffect em ambas as direções.
   type FeedScope = "geral" | "minhas";
-  const parseScopeFromUrl = (): FeedScope | null => {
+  // URL é a ÚNICA fonte da verdade. sessionStorage é só persistência
+  // de preferência entre navegações da sessão — nunca é lido pra
+  // computar o estado de render (evita state divergente da URL).
+  const feedScope: FeedScope = useMemo(() => {
     const v = (searchParams.get("escopo") ?? "").toLowerCase();
-    return v === "minhas" || v === "geral" ? (v as FeedScope) : null;
-  };
-  const initialFeedScope: FeedScope = (() => {
-    const fromUrl = parseScopeFromUrl();
-    if (fromUrl) return fromUrl;
+    return v === "minhas" ? "minhas" : "geral";
+  }, [searchParams]);
+  const setFeedScope = useCallback((next: FeedScope) => {
     try {
-      const stored = sessionStorage.getItem("rayo-community-feed-scope");
-      if (stored === "minhas" || stored === "geral") return stored;
+      sessionStorage.setItem("rayo-community-feed-scope", next);
     } catch { /* noop */ }
-    return "geral";
-  })();
-  const [feedScope, setFeedScope] = useState<FeedScope>(initialFeedScope);
+    setSearchParams((prev) => {
+      const np = new URLSearchParams(prev);
+      if (next === "geral") np.delete("escopo");
+      else np.set("escopo", "minhas");
+      return np;
+    }, { replace: true });
+  }, [setSearchParams]);
+  // Normalização one-way no mount: se URL não tem `escopo` e sessionStorage
+  // diz "minhas", escreve `?escopo=minhas` na URL (replace mode). Isso
+  // restaura a preferência da sessão SEM quebrar a invariante "URL é
+  // fonte da verdade" (resultado: URL canônica + estado deterministico).
+  // Roda uma vez no mount; mudanças subsequentes vão pelo setFeedScope.
+  const didNormalizeScopeRef = useRef(false);
+  useEffect(() => {
+    if (didNormalizeScopeRef.current) return;
+    didNormalizeScopeRef.current = true;
+    const raw = (searchParams.get("escopo") ?? "").toLowerCase();
+    // Único valor canônico permitido na URL é "minhas". "geral" e
+    // qualquer valor inválido (ex: ?escopo=foo) viram ausência do
+    // parâmetro. Quando não há param e sessionStorage diz "minhas",
+    // restauramos a preferência da sessão.
+    let desired: "minhas" | null = null;
+    if (raw === "minhas") {
+      return; // já canônico
+    } else if (raw.length === 0) {
+      try {
+        const stored = sessionStorage.getItem("rayo-community-feed-scope");
+        if (stored === "minhas") desired = "minhas";
+      } catch { /* noop */ }
+      if (desired === null) return; // já canônico (sem param)
+    }
+    setSearchParams((prev) => {
+      const np = new URLSearchParams(prev);
+      if (desired === "minhas") np.set("escopo", "minhas");
+      else np.delete("escopo");
+      return np;
+    }, { replace: true });
+  }, [searchParams, setSearchParams]);
+  // Persiste o escopo derivado da URL no sessionStorage (one-way URL→storage).
+  // Cobre back/forward e deep-links — sem esse efeito, navegar pra
+  // `/comunidade?escopo=minhas` direto não atualizaria a preferência salva.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("rayo-community-feed-scope", feedScope);
+    } catch { /* noop */ }
+  }, [feedScope]);
   // Task #92 — Community detail page por slug. Quando setado, sobrepõe
   // tudo (header de tabs + composer escondidos) e renderiza CommunityDetailPage.
   // Task #176 — URL é fonte da verdade tanto pra `/c/<slug>` (community
@@ -461,35 +511,13 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     void reloadFeed();
   }, [reloadFeed]);
 
-  // Task #197 — sincroniza URL e sessionStorage com o escopo. `?escopo=geral`
-  // é omitido (replace mode) pra não poluir histórico, igual ao padrão de
-  // `?segmento=` em Academia.
-  useEffect(() => {
-    try {
-      sessionStorage.setItem("rayo-community-feed-scope", feedScope);
-    } catch { /* noop */ }
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (feedScope === "geral") next.delete("escopo");
-      else next.set("escopo", "minhas");
-      return next;
-    }, { replace: true });
-  }, [feedScope, setSearchParams]);
-
-  // Task #197 — URL → state: back/forward do navegador (ou navegação
-  // externa que mude `?escopo=`) precisa atualizar o estado pra manter
-  // a URL como fonte da verdade. Sem isso, voltar pra uma URL com
-  // `?escopo=minhas` não restaura o toggle.
-  useEffect(() => {
-    const fromUrl = (searchParams.get("escopo") ?? "").toLowerCase();
-    const next: FeedScope = fromUrl === "minhas" ? "minhas" : "geral";
-    if (next !== feedScope) setFeedScope(next);
-  }, [searchParams, feedScope]);
-
-  // Task #197 — logout reseta pra "geral" (anônimo não tem assinaturas).
+  // Task #203 — `feedScope` agora é derivado direto de `searchParams`
+  // (ver useMemo acima); back/forward + sessionStorage funcionam sem
+  // useEffect bidirecional. Único side-effect aqui é resetar pra "geral"
+  // quando o usuário desloga (anônimo não tem assinaturas).
   useEffect(() => {
     if (!authUser && feedScope !== "geral") setFeedScope("geral");
-  }, [authUser, feedScope]);
+  }, [authUser, feedScope, setFeedScope]);
 
   const submitComment = useCallback(async (postId: number, content: string) => {
     const res = await api.post<{ comment: Omit<CommentData, "reactions" | "user_reaction"> & { reactions?: ReactionAggregate[]; user_reaction?: string | null } }>(`/api/community/posts/${postId}/comments`, { content });

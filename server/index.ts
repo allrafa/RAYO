@@ -592,7 +592,11 @@ async function start() {
           const transformed = await vite.transformIndexHtml(req.originalUrl, raw);
           const finalHtml = applyPublicMeta(transformed, meta);
           res.set("Content-Type", "text/html; charset=utf-8");
-          res.set("Cache-Control", "public, max-age=300");
+          // Task #203 — index.html NUNCA pode ser cacheado pelo browser/CDN.
+          // Os chunks com hash continuam cacheáveis longos; só o HTML precisa
+          // ser fresco pra apontar pros chunks atuais (evita ChunkLoadError
+          // após deploy em quem tinha o HTML antigo cacheado).
+          res.set("Cache-Control", "no-cache, no-store, must-revalidate");
           res.send(finalHtml);
         } catch (err) {
           logger.warn("PublicSEO", `Failed to render ${req.path}: ${(err as Error).message}`);
@@ -620,20 +624,38 @@ async function start() {
           if (!meta) return next();
           const finalHtml = applyPublicMeta(prodIndexHtml, meta);
           res.set("Content-Type", "text/html; charset=utf-8");
-          res.set("Cache-Control", "public, max-age=300");
+          // Task #203 — index.html NUNCA pode ser cacheado pelo browser/CDN.
+          // Os chunks com hash continuam cacheáveis longos; só o HTML precisa
+          // ser fresco pra apontar pros chunks atuais (evita ChunkLoadError
+          // após deploy em quem tinha o HTML antigo cacheado).
+          res.set("Cache-Control", "no-cache, no-store, must-revalidate");
           res.send(finalHtml);
         } catch (err) {
           logger.warn("PublicSEO", `Failed to render ${req.path}: ${(err as Error).message}`);
           next();
         }
       });
-      app.use(express.static(buildPath));
+      app.use(express.static(buildPath, {
+        // Task #203 — cache agressivo SÓ para assets com hash (chunks JS/CSS,
+        // imagens). index.html cai no fallback abaixo com no-store, garantindo
+        // que cada navegação revalide os hashes atuais dos chunks.
+        index: false,
+        setHeaders: (res, filePath) => {
+          if (/\.html?$/i.test(filePath)) {
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+          } else if (/\/assets\//.test(filePath)) {
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          }
+        },
+      }));
       // SPA fallback: in Express 5 the legacy `app.get("*")` throws at
       // startup ("Missing parameter name") because path-to-regexp v8 no
       // longer accepts bare "*" as a wildcard. A trailing middleware is
       // the version-agnostic equivalent and only fires for unmatched
       // non-/api requests.
       app.use((_req, res) => {
+        // Task #203 — SPA fallback nunca pode ser cacheado.
+        res.set("Cache-Control", "no-cache, no-store, must-revalidate");
         res.sendFile(path.join(buildPath, "index.html"));
       });
       logger.info("Server", "Serving static build.");

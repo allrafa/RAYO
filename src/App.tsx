@@ -24,6 +24,7 @@ import { HomePage } from "./components/HomePage";
 import { CentralConversasPage } from "./components/TrilhaTransformacao/CentralConversasPage";
 import { ConsentBanner } from "./components/ConsentBanner";
 import { RouteFallback, PublicRouteFallback } from "./components/RouteFallback";
+import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 
 // Task #180 — Code splitting por rota. Cada área pesada é um chunk
 // próprio carregado sob demanda. HomePage/AuthPage/Welcome/Onboarding
@@ -667,9 +668,11 @@ function AppContent() {
     return (
       <>
         {showPrivacyOverlay ? (
-          <Suspense fallback={<PublicRouteFallback />}>
-            <PrivacyPolicyPage onBack={() => setShowPrivacyOverlay(false)} />
-          </Suspense>
+          <RouteErrorBoundary variant="fullscreen">
+            <Suspense fallback={<PublicRouteFallback />}>
+              <PrivacyPolicyPage onBack={() => setShowPrivacyOverlay(false)} />
+            </Suspense>
+          </RouteErrorBoundary>
         ) : (
           preAuthContent
         )}
@@ -689,9 +692,11 @@ function AppContent() {
       return null;
     }
     return (
-      <Suspense fallback={<RouteFallback />}>
-        <AdminShell onExitAdmin={() => setCurrentTab("home")} />
-      </Suspense>
+      <RouteErrorBoundary>
+        <Suspense fallback={<RouteFallback />}>
+          <AdminShell onExitAdmin={() => setCurrentTab("home")} />
+        </Suspense>
+      </RouteErrorBoundary>
     );
   }
 
@@ -795,9 +800,11 @@ function AppContent() {
         aria-label="Conteúdo principal"
       >
         <PageTransition tabKey={currentTab}>
-          <Suspense fallback={<RouteFallback />}>
-            {renderCurrentPage()}
-          </Suspense>
+          <RouteErrorBoundary>
+            <Suspense fallback={<RouteFallback />}>
+              {renderCurrentPage()}
+            </Suspense>
+          </RouteErrorBoundary>
         </PageTransition>
       </main>
 
@@ -817,15 +824,17 @@ function AppContent() {
           fluxos. */}
       {appContext?.isInVideoPage && appContext?.currentVideoId && (
         <div className="fixed inset-0 z-[9999] bg-background overflow-y-auto">
-          <Suspense fallback={<RouteFallback />}>
-            <VideoPage
-              videoId={appContext.currentVideoId}
-              onBack={() => {
-                appContext.setIsInVideoPage(false);
-                appContext.setCurrentVideoId(null);
-              }}
-            />
-          </Suspense>
+          <RouteErrorBoundary variant="fullscreen">
+            <Suspense fallback={<RouteFallback />}>
+                <VideoPage
+                videoId={appContext.currentVideoId}
+                onBack={() => {
+                  appContext.setIsInVideoPage(false);
+                  appContext.setCurrentVideoId(null);
+                }}
+              />
+            </Suspense>
+          </RouteErrorBoundary>
         </div>
       )}
 
@@ -837,9 +846,11 @@ function AppContent() {
           pra não conflitar com o roteamento real (URL não muda). */}
       {showPrivacyOverlay && (
         <div className="fixed inset-0 z-[10000] bg-background overflow-y-auto">
-          <Suspense fallback={<RouteFallback />}>
-            <PrivacyPolicyPage onBack={() => setShowPrivacyOverlay(false)} />
-          </Suspense>
+          <RouteErrorBoundary variant="fullscreen">
+            <Suspense fallback={<RouteFallback />}>
+              <PrivacyPolicyPage onBack={() => setShowPrivacyOverlay(false)} />
+            </Suspense>
+          </RouteErrorBoundary>
         </div>
       )}
     </div>
@@ -918,9 +929,11 @@ export default function App() {
     return (
       <ThemeProvider>
         <AccessibilityProvider>
-          <Suspense fallback={<PublicRouteFallback />}>
-            <PublicShell route={publicRoute} />
-          </Suspense>
+          <RouteErrorBoundary variant="fullscreen">
+            <Suspense fallback={<PublicRouteFallback />}>
+              <PublicShell route={publicRoute} />
+            </Suspense>
+          </RouteErrorBoundary>
           <Toaster />
         </AccessibilityProvider>
       </ThemeProvider>
