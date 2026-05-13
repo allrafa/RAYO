@@ -29,3 +29,44 @@ Refinos UX adicionais (Task #93): header da Comunidade trocou o composer inline 
 
 ### Follow contract
 `POST /api/users/:id/follow {follow:bool}` (default true). Self-follow recusa com 400/`SELF_FOLLOW`. Idempotente via `ON CONFLICT DO NOTHING` em `user_follows(follower_id, following_id)`. `GET /api/users/:id/follows` devolve `{followers_count, following_count, is_following}` — `is_following` é em relação ao `req.user.id`.
+
+### Busca tabbed: ILIKE puro (sem trigram) — gotcha de Publish
+A busca em `/comunidade` (`/api/community/search`) usa **ILIKE puro** intencionalmente. Os índices `pg_trgm` GIN com `gin_trgm_ops` foram tentados na Task #193 e revertidos: o diff de schema do Publish **não preserva o opclass** ao replicar pra prod e gera `CREATE INDEX ... USING gin ("col")` (sem opclass), que falha em prod com `data type text has no default operator class for access method "gin"`. **Não readicionar índices trigram no `initializeSchema()`** enquanto não houver caminho de migração que respeite opclasses (custom migration scripts, deploy hooks ou self-heal startup DDL violam o skill `database`). Dataset pequeno = Seq Scan continua aceitável.
+
+### CMS de comunidades + criação por usuários (Task #198)
+Schema: `forums` ganhou `cover_url`, `rules`, `created_by`, `is_official` (default `TRUE` em registros antigos via backfill idempotente). Nova tabela `forum_moderators` (PK `forum_id+user_id`, índice por user) — **moderadores per-community SEM precisar promover role global**.
+
+Service (`server/features/community/service.ts`):
+- `getForumBySlug` / `listForums` enriquecidos: `cover_url` resolvido via `resolveStoredMediaUrl`, `is_moderator`, `moderators[]`, `rules`, `is_official`, `created_by`.
+- `createForumByUser`: criador vira moderador local + subscriber em transação; nome/slug únicos via `ensureUniqueSlug`; UNIQUE violation → `SLUG_TAKEN 409`.
+- `adminCreateForum` / `updateForum` / `setForumActive` / `listAdminForums` / `addForumModerator` / `removeForumModerator`.
+- `deletePost` agora consulta `isForumModerator(forumId, userId)` quando o caller não é autor nem `moderator+` global — **mod local pode soft-deletar** e gera `mod_actions` normalmente.
+
+Rotas:
+- `POST /api/community/forums` (`requireAuth`, **5/dia keyByUser**) — criação por usuário.
+- `/api/admin/community/*` (`requireRole admin`, rateLimiter 300/15min) em `server/features/community/adminRoutes.ts`: `GET/POST /forums`, `PATCH /forums/:id`, `POST /forums/:id/active`, `GET/POST /forums/:id/moderators`, `DELETE /forums/:id/moderators/:userId`, `POST /forums/cover` (multer image-only 5MB → `objstore://forums/<file>`, otimização via `optimizeCmsImage`). Mountado em `server/index.ts` **ANTES** de `/api/admin` ser interceptado.
+
+Frontend:
+- `AdminCommunitiesPage` (em `src/components/admin/`): grid de cards com cover, badges Oficial/Inativa, modais de criar/editar (capa upload, slug livre, regras, ícone, contexto, `is_official`) e gestão de moderadores per-community por ID. Entrada na sidebar admin via `MessagesSquare` (minRole admin).
+- `CommunityDetailPage` reescrito: cover banner, badge "Oficial" / "Você modera", aba "Sobre" com regras + lista clicável de moderadores (avatar, link pro perfil, data desde) + criado em / contagens.
+- `ComunidadePage`: botão "Criar" no header da view Grupos (só pra autenticados) abrindo `CreateCommunityModal`. Após criar, recarrega `loadForums()` e abre direto a comunidade nova via `openCommunityBySlug`.
+- `CreateCommunityModal`: nome (slug derivado no server), descrição, ícone (emoji picker), regras opcionais. Quando POST devolve `403 EMAIL_NOT_VERIFIED`, monta `<EmailVerificationInline/>` sem perder os campos do form e retoma o submit ao confirmar.
+
+**Cover sentinel**: aceita SOMENTE `objstore://forums/<file>` (defesa contra URL externa). String vazia → `null`.
+
+**Limite de slug**: 2-60 chars `[a-z0-9-]`. Validação no `validateForumPatch`. Race no slug: `try/catch` UNIQUE → 409.
+
+### Reações multi-emoji
+Set fechado `["❤️","😂","🙏","💡","🔥","👏"]` espelhado em `ALLOWED_REACTION_EMOJIS` (server) e `REACTION_EMOJIS` (client). Tabelas `post_reactions` / `comment_reactions` (UNIQUE `user+target+emoji`), backfill ❤️ a partir de `post_likes` / `comment_likes` legados.
+
+Endpoints `POST /api/community/{posts,comments}/:id/reactions` devolvem `{reactions:[{emoji,count}], user_reaction}`. `like_count` continua somando **TOTAL** (preserva trending/karma); `togglePostLike` / `toggleCommentLike` viraram aliases pra ❤️. Hidratação em batch via `aggregateReactions` / `userReactionsFor`.
+
+`EmojiReactionPicker` (variants `full` / `compact`) é all-in-one. PostCard mantém estado local (não dispara `loadPosts` global). Discussão compartilhável `/c/<slug>/p/<id>` parqueia stash e ComunidadePage abre `CommentsPanel`; OG/JSON-LD `DiscussionForumPosting` em `publicMeta.ts`. `FavoriteIcon` virou Bookmark (Heart só no picker).
+
+### Cards de perfil clicáveis
+Posts/Comentários/Salvos no `UserProfilePage` viraram `role="button"` que disparam `rayo:open-post` + `sessionStorage["rayo-pending-post"]`. Comentários incluem `highlight_comment_id` (key extra `rayo-pending-post-comment`); `CommentsPanel` rola até `[data-comment-id="<id>"]` + `.rayo-comment-highlight` (animação 2,2s em `globals.css`).
+
+### CommentsPanel via Portal (regra geral pra overlays dentro de PullToRefresh)
+`CommentsPanel` é renderizado via `createPortal(jsx, document.body)`. Sem isso, o `transform: translateY(...)` do `PullToRefresh` cria **containing block** que **quebra `position: fixed` em descendentes** — o painel some no mobile. Body-scroll-lock + Esc/backdrop fechando.
+
+**Regra geral**: qualquer overlay/modal dentro de `PullToRefresh` precisa ir pro portal (ou usar shadcn `Sheet` / `Dialog`).

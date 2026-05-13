@@ -43,3 +43,47 @@ URLs são resolvidas via `resolveStoredMediaUrl` em leitura.
 
 ### DM lista única + Arquivadas colapsadas
 `ConversasPage` carrega ambos os escopos (`active` + `archived`) em paralelo e mostra UMA lista. As ativas vêm em cima; abaixo, uma seção colapsável "Arquivadas (N)" (default fechada). Clicar numa conversa arquivada **desarquiva e abre** (chama `/archive {archived:false}` e move pro topo das ativas). **NÃO use Tabs.** Pré-visualização de e-mail para áudio inclui duração: `🎤 Áudio (mm:ss)`.
+
+### Viewport sizing (regra geral pra "app shell")
+`.ra-page` (min-height: 100vh) deixa o shell crescer e quebra header/composer fixos. Regra:
+
+```css
+.rayo-dm-shell.ra-page { height: 100dvh; min-height: 0; overflow: hidden; }
+```
+
+- Desktop desconta 80px da TopNavbar via `calc(100dvh - 80px)`.
+- Toda coluna flex interna precisa de `min-h-0` pra `<ScrollArea>` rolar por dentro.
+- `body.rayo-dm-page` zera `padding-bottom` do `<main>`.
+- `body.rayo-dm-conversation-open` (só com convo aberta) esconde a bottom nav.
+- Estado lista-only no mobile/tablet (≤1023px) reserva 72px + safe-area.
+
+**Regra geral pra "app shell" (header + footer fixos com área central rolável)**: container raiz **NÃO pode usar `min-height`** — tem que usar `height` travada e ancestrais flex precisam de `min-h-0`.
+
+### Bubble fit-content (`.ra-chat-bubble`)
+`.ra-chat-bubble` **NUNCA** pode ter `max-width: %` direto — em flex-col aninhado colapsa pra `min-content` e quebra texto curto letra a letra. Regra:
+
+```css
+.ra-chat-bubble {
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+```
+
+E o **wrapper** carrega o cap real (`w-fit max-w-[min(80%,560px)]`).
+
+### `<AudioBubble>` (banido `<audio controls>` nativo)
+`<audio controls>` nativo está **banido das DMs**. Usar `<AudioBubble>` (`src/components/AudioBubble.tsx`) — variants `user | assistant | compact`. Hooks `onPlay` / `onTimeUpdate` chamam `sendListeningPing` (telemetria de leitura).
+
+### Status de leitura
+Ícone-only colorido, sem texto:
+- `CheckCheck` em `--rayo-terra-500` = lido
+- `Check` neutro = enviado
+
+### Preview de última mensagem (LATERAL JOIN)
+"🎤 Áudio (0:07)" exige `last_message_meta` no SELECT da query `listConversations` (LATERAL JOIN nos `messages` mais recentes da conversa). Sem o `meta`, o preview cai pra `[Áudio]` genérico.
+
+### Outros
+- `GROUP_WINDOW_MS` em `messageGrouping.ts` = 5min (agrupamento visual de mensagens consecutivas do mesmo autor).
+- Imagens DM com `onError` → placeholder `.ra-chat-attachment-fallback`.
