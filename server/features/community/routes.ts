@@ -73,6 +73,8 @@ import {
   getPostDetail,
   togglePostLike,
   togglePostReaction,
+  searchCommunity,
+  getCommunitySearchCounts,
   addComment,
   toggleCommentLike,
   toggleCommentReaction,
@@ -189,6 +191,31 @@ router.post(
     }
   },
 );
+
+// Task #193 — Busca tabbed da Comunidade (estilo Reddit).
+// `?q=&tab=&page=` devolve resultados paginados de UM tab (10/pg).
+// `?q=&counts=1` devolve só os contadores dos 5 tabs em UMA call.
+router.get("/search", async (req, res, next) => {
+  try {
+    const q = String(req.query.q ?? "").trim();
+    const counts = String(req.query.counts ?? "") === "1";
+    if (counts) {
+      const data = await getCommunitySearchCounts(q);
+      success(res, { query: q, counts: data });
+      return;
+    }
+    const tabRaw = String(req.query.tab ?? "posts").toLowerCase();
+    const ALLOWED = ["posts", "comunidades", "comentarios", "midia", "perfis"] as const;
+    const tab = (ALLOWED as readonly string[]).includes(tabRaw)
+      ? (tabRaw as (typeof ALLOWED)[number])
+      : "posts";
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const data = await searchCommunity(q, tab, page, req.user?.id);
+    success(res, data);
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ───── Forums ─────
 

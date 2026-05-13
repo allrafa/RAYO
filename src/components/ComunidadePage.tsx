@@ -1,7 +1,8 @@
 import { MessageCircle, Share2, MoreHorizontal, Plus, TrendingUp, Users, Clock, Pin, Send, Search, Sparkles, Trophy, UserPlus, ChevronRight, CheckCircle, Lock, Globe, Mail, Image as ImageIcon, Video, Smile, Bookmark, BookmarkCheck, Pencil, Trash2, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
-import { MobileSearchPage } from "./MobileSearchPage";
+import { useSearchParams } from "react-router-dom";
+import { CommunitySearchResults } from "./CommunitySearchResults";
 import { userHasRole } from "./AuthContext";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -90,9 +91,58 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   const [showCreatePost, setShowCreatePost] = useState(false);
   // Task #93 — modal de edição reusa o CreatePostModal com `editingPost`.
   const [editingPost, setEditingPost] = useState<any>(null);
-  // Task #93 — barra de busca clicável abre a MobileSearchPage existente.
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  // Task #193 — busca tabbed inline (Reddit-style). URL é a fonte da verdade
+  // (`?q=&tab=`) pra que o estado sobreviva refresh, back/forward e share.
+  // Input é controlado localmente pra digitação fluída; debounce de 250ms
+  // empurra o termo final pra URL (replace mode, sem encher o histórico).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ALLOWED_SEARCH_TABS = ["posts", "comunidades", "comentarios", "midia", "perfis"] as const;
+  type SearchTab = (typeof ALLOWED_SEARCH_TABS)[number];
+  const urlQ = searchParams.get("q") ?? "";
+  const urlTabRaw = (searchParams.get("tab") ?? "posts").toLowerCase();
+  const urlTab: SearchTab = (ALLOWED_SEARCH_TABS as readonly string[]).includes(urlTabRaw)
+    ? (urlTabRaw as SearchTab)
+    : "posts";
+  const [searchInput, setSearchInput] = useState(urlQ);
+  const isSearching = urlQ.trim().length >= 2;
+  // Sincroniza o input com a URL quando ela muda externamente (re-tap,
+  // back/forward, deep-link). Sem isso, ESC ou navegação ignora.
+  useEffect(() => { setSearchInput(urlQ); }, [urlQ]);
+  // Debounce: 250ms depois da última tecla, espelha o input no `?q=` da URL.
+  useEffect(() => {
+    const trimmed = searchInput.trim();
+    if (trimmed === urlQ) return;
+    const t = setTimeout(() => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (trimmed.length === 0) {
+          next.delete("q");
+          next.delete("tab");
+        } else {
+          next.set("q", trimmed);
+          if (!next.get("tab")) next.set("tab", "posts");
+        }
+        return next;
+      }, { replace: true });
+    }, 250);
+    return () => clearTimeout(t);
+  }, [searchInput, urlQ, setSearchParams]);
+  const setSearchTab = useCallback((t: SearchTab) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", t);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+  const clearSearch = useCallback(() => {
+    setSearchInput("");
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("q");
+      next.delete("tab");
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
   const [currentView, setCurrentView] = useState<"feed" | "grupos" | "trending" | "conversas">("feed");
   // Task #92 — Community detail page por slug. Quando setado, sobrepõe
   // tudo (header de tabs + composer escondidos) e renderiza CommunityDetailPage.
@@ -312,11 +362,13 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   // Task #115 — re-tap na aba Comunidade volta ao topo (handler global em
   // App.tsx já rola a window). Aqui aproveitamos pra resetar o subreddit
   // ativo se houver, devolvendo o usuário ao Feed sem precisar do botão Voltar.
+  // Task #193 — re-tap também limpa a busca tabbed (q/tab da URL).
   useEffect(() => {
     return onScrollTop(() => {
       setActiveCommunitySlug(null);
+      clearSearch();
     }, "comunidade");
-  }, []);
+  }, [clearSearch]);
 
   // Task #92 — deep-link `/c/<slug>`. Recebe via sessionStorage
   // (`rayo-pending-community-slug`) ou CustomEvent `rayo:open-community`.
@@ -546,7 +598,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
             borderBottom: '1px solid var(--rayo-sand-300)',
           }}
         >
-          <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-7xl mx-auto px-6" style={{ display: isSearching ? "none" : undefined }}>
             <div className="flex gap-1 pt-6 overflow-x-auto scrollbar-hide">
               <Button
                 variant="ghost"
@@ -676,25 +728,48 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
         >
           <div className="max-w-7xl mx-auto px-6 py-3">
             <div className="max-w-2xl mx-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                className="flex-1 flex items-center gap-3 text-left transition-colors"
+              {/* Task #193 — input real (substitui o botão que abria a
+                  MobileSearchPage). Digitar mostra os 5 tabs Reddit-style
+                  inline. ESC ou botão X limpa. */}
+              <div
+                className="flex-1 flex items-center gap-2"
                 style={{
                   height: 44,
-                  padding: '0 16px',
+                  padding: '0 12px 0 16px',
                   borderRadius: 999,
                   background: 'var(--rayo-sand-100)',
                   border: '1px solid var(--rayo-sand-300)',
-                  color: 'var(--rayo-ink-400)',
-                  fontSize: 15,
-                  cursor: 'pointer',
                 }}
-                aria-label="Buscar na comunidade"
               >
-                <Search className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate">Buscar comunidades, posts, pessoas…</span>
-              </button>
+                <Search className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--rayo-ink-400)' }} aria-hidden />
+                <input
+                  type="search"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Escape") clearSearch(); }}
+                  placeholder="Buscar posts, comunidades, pessoas…"
+                  aria-label="Buscar na comunidade"
+                  className="flex-1 bg-transparent border-0 outline-none text-[15px]"
+                  style={{ color: 'var(--rayo-forest-900)' }}
+                  autoComplete="off"
+                />
+                {searchInput.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    aria-label="Limpar busca"
+                    className="flex-shrink-0 flex items-center justify-center"
+                    style={{
+                      width: 28, height: 28, borderRadius: 999,
+                      background: 'var(--rayo-sand-300)',
+                      color: 'var(--rayo-forest-900)',
+                      border: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setShowCreatePost(true)}
@@ -720,7 +795,12 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
 
         {/* MAIN CONTENT */}
         <div className="max-w-7xl mx-auto px-6 py-8">
-          {currentView === "feed" && (
+          {/* Task #193 — quando há busca ativa, esconde o feed/grupos/trending
+              padrão e renderiza o painel tabbed Reddit-style. */}
+          {isSearching && (
+            <CommunitySearchResults q={urlQ} tab={urlTab} onTabChange={setSearchTab} />
+          )}
+          {!isSearching && currentView === "feed" && (
             <FeedView 
               posts={posts}
               onComment={(post) => {
@@ -738,7 +818,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
             />
           )}
 
-          {currentView === "grupos" && (
+          {!isSearching && currentView === "grupos" && (
             <GruposView 
               groups={groups}
               categories={categories}
@@ -748,7 +828,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
             />
           )}
 
-          {currentView === "trending" && (
+          {!isSearching && currentView === "trending" && (
             <TrendingView 
               posts={trendingPosts}
               loading={trendingLoading}
@@ -766,7 +846,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
             />
           )}
 
-          {currentView === "conversas" && (
+          {!isSearching && currentView === "conversas" && (
             <div className="-mx-6 -my-8">
               <ConversasPage />
             </div>
@@ -798,11 +878,6 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
             editingPost={editingPost}
           />
         )}
-        <MobileSearchPage
-          open={searchOpen}
-          onClose={() => setSearchOpen(false)}
-          onTabChange={() => setSearchOpen(false)}
-        />
       </div>
     </PullToRefresh>
   );

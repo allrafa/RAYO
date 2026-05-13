@@ -1177,6 +1177,224 @@ export async function getUserCommunities(targetUserId: number) {
   return { communities: rows };
 }
 
+// Task #193 — Busca tabbed da Comunidade (estilo Reddit). Cobre 5 escopos
+// no MESMO endpoint pra evitar 5 round-trips do client; cada chamada vem
+// com `tab` específico + page. Modo `counts=true` devolve só os totais
+// dos 5 tabs em UMA query consolidada (pra desenhar os contadores nas
+// tabs). ILIKE puro (sem trigram) pra manter migração zero — datasets
+// ainda pequenos. Posts/Comentários respeitam `class_id IS NULL` (não
+// vazar conteúdo de turma paga). `q` < 2 chars = empty result.
+export type CommunitySearchTab =
+  | "posts"
+  | "comunidades"
+  | "comentarios"
+  | "midia"
+  | "perfis";
+
+const SEARCH_PER_PAGE = 10;
+
+function buildLike(qRaw: string): string | null {
+  const q = (qRaw || "").trim();
+  if (q.length < 2) return null;
+  return `%${q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
+}
+
+export async function getCommunitySearchCounts(
+  qRaw: string,
+): Promise<Record<CommunitySearchTab, number>> {
+  const empty: Record<CommunitySearchTab, number> = {
+    posts: 0, comunidades: 0, comentarios: 0, midia: 0, perfis: 0,
+  };
+  const like = buildLike(qRaw);
+  if (!like) return empty;
+  const [posts, comunidades, comentarios, midia, perfis] = await Promise.all([
+    query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM posts
+        WHERE is_hidden = FALSE AND class_id IS NULL
+          AND (title ILIKE $1 OR content ILIKE $1)`,
+      [like],
+    ),
+    query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM forums
+        WHERE is_active = TRUE
+          AND (name ILIKE $1 OR description ILIKE $1 OR slug ILIKE $1)`,
+      [like],
+    ),
+    query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM comments c
+         JOIN posts p ON p.id = c.post_id
+        WHERE c.is_hidden = FALSE AND p.is_hidden = FALSE AND p.class_id IS NULL
+          AND c.content ILIKE $1`,
+      [like],
+    ),
+    query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM posts
+        WHERE is_hidden = FALSE AND class_id IS NULL
+          AND jsonb_typeof(images) = 'array' AND jsonb_array_length(images) > 0
+          AND (title ILIKE $1 OR content ILIKE $1)`,
+      [like],
+    ),
+    query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM users WHERE name ILIKE $1`,
+      [like],
+    ),
+  ]);
+  return {
+    posts: posts.rows[0]?.n ?? 0,
+    comunidades: comunidades.rows[0]?.n ?? 0,
+    comentarios: comentarios.rows[0]?.n ?? 0,
+    midia: midia.rows[0]?.n ?? 0,
+    perfis: perfis.rows[0]?.n ?? 0,
+  };
+}
+
+export async function searchCommunity(
+  qRaw: string,
+  tab: CommunitySearchTab,
+  page: number,
+  viewerId?: number,
+): Promise<{
+  tab: CommunitySearchTab;
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  items: any[];
+}> {
+  const like = buildLike(qRaw);
+  const safePage = Math.max(1, Number.isFinite(page) ? Math.floor(page) : 1);
+  const limit = SEARCH_PER_PAGE;
+  const offset = (safePage - 1) * limit;
+  const empty = { tab, page: safePage, limit, total: 0, totalPages: 0, items: [] };
+  if (!like) return empty;
+
+  if (tab === "posts" || tab === "midia") {
+    const mediaWhere = tab === "midia"
+      ? `AND jsonb_typeof(p.images) = 'array' AND jsonb_array_length(p.images) > 0`
+      : "";
+    const { rows: countRows } = await query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM posts p
+        WHERE p.is_hidden = FALSE AND p.class_id IS NULL
+          ${mediaWhere}
+          AND (p.title ILIKE $1 OR p.content ILIKE $1)`,
+      [like],
+    );
+    const total = countRows[0]?.n ?? 0;
+    const params: unknown[] = [like, limit, offset];
+    let likedExpr = "false AS user_liked";
+    if (viewerId) {
+      params.push(viewerId);
+      likedExpr = `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $${params.length}) AS user_liked`;
+    }
+    const { rows } = await query(
+      `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned, p.images,
+         p.like_count, p.comment_count, p.share_count, p.created_at,
+         u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
+         f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon,
+         ${likedExpr}
+       FROM posts p
+       JOIN users u ON u.id = p.user_id
+       JOIN forums f ON f.id = p.forum_id
+       WHERE p.is_hidden = FALSE AND p.class_id IS NULL
+         ${mediaWhere}
+         AND (p.title ILIKE $1 OR p.content ILIKE $1)
+       ORDER BY p.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      params,
+    );
+    const items = await hydratePostsRows(rows, viewerId);
+    return { tab, page: safePage, limit, total, totalPages: Math.ceil(total / limit), items };
+  }
+
+  if (tab === "comunidades") {
+    const { rows: countRows } = await query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM forums
+        WHERE is_active = TRUE
+          AND (name ILIKE $1 OR description ILIKE $1 OR slug ILIKE $1)`,
+      [like],
+    );
+    const total = countRows[0]?.n ?? 0;
+    const params: unknown[] = [like, limit, offset];
+    let subscribedExpr = "false AS is_subscribed";
+    if (viewerId) {
+      params.push(viewerId);
+      subscribedExpr = `EXISTS(SELECT 1 FROM forum_subscriptions fs WHERE fs.forum_id = f.id AND fs.user_id = $${params.length}) AS is_subscribed`;
+    }
+    const { rows } = await query(
+      `SELECT f.id, f.name, f.slug, f.description, f.icon, f.category, f.life_context,
+         (SELECT COUNT(*) FROM posts p WHERE p.forum_id = f.id AND p.is_hidden = FALSE AND p.class_id IS NULL)::int AS post_count,
+         (SELECT COUNT(*) FROM forum_subscriptions fs2 WHERE fs2.forum_id = f.id)::int AS member_count,
+         ${subscribedExpr}
+       FROM forums f
+       WHERE f.is_active = TRUE
+         AND (f.name ILIKE $1 OR f.description ILIKE $1 OR f.slug ILIKE $1)
+       ORDER BY (CASE WHEN f.name ILIKE $1 THEN 0 ELSE 1 END), member_count DESC, f.name ASC
+       LIMIT $2 OFFSET $3`,
+      params,
+    );
+    return { tab, page: safePage, limit, total, totalPages: Math.ceil(total / limit), items: rows };
+  }
+
+  if (tab === "comentarios") {
+    const { rows: countRows } = await query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM comments c
+         JOIN posts p ON p.id = c.post_id
+        WHERE c.is_hidden = FALSE AND p.is_hidden = FALSE AND p.class_id IS NULL
+          AND c.content ILIKE $1`,
+      [like],
+    );
+    const total = countRows[0]?.n ?? 0;
+    const { rows } = await query(
+      `SELECT c.id, c.post_id, c.content, c.like_count, c.created_at,
+         u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar,
+         p.title AS post_title, p.content AS post_excerpt,
+         f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon
+       FROM comments c
+       JOIN users u ON u.id = c.user_id
+       JOIN posts  p ON p.id = c.post_id
+       JOIN forums f ON f.id = p.forum_id
+       WHERE c.is_hidden = FALSE AND p.is_hidden = FALSE AND p.class_id IS NULL
+         AND c.content ILIKE $1
+       ORDER BY c.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [like, limit, offset],
+    );
+    const items = await Promise.all(
+      rows.map(async (r) => ({
+        ...r,
+        author_avatar: await resolveStoredMediaUrl(r.author_avatar),
+      })),
+    );
+    return { tab, page: safePage, limit, total, totalPages: Math.ceil(total / limit), items };
+  }
+
+  if (tab === "perfis") {
+    const { rows: countRows } = await query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM users WHERE name ILIKE $1`,
+      [like],
+    );
+    const total = countRows[0]?.n ?? 0;
+    const { rows } = await query(
+      `SELECT u.id, u.name, u.avatar_url, u.bio,
+         (SELECT COUNT(*) FROM posts WHERE user_id = u.id AND is_hidden = FALSE AND class_id IS NULL)::int AS post_count
+       FROM users u
+       WHERE u.name ILIKE $1
+       ORDER BY (CASE WHEN u.name ILIKE $1 THEN 0 ELSE 1 END), u.name ASC
+       LIMIT $2 OFFSET $3`,
+      [like, limit, offset],
+    );
+    const items = await Promise.all(
+      rows.map(async (r) => ({
+        ...r,
+        avatar_url: await resolveStoredMediaUrl(r.avatar_url),
+      })),
+    );
+    return { tab, page: safePage, limit, total, totalPages: Math.ceil(total / limit), items };
+  }
+
+  return empty;
+}
+
 export async function getUserKarma(targetUserId: number) {
   const { rows } = await query(
     `SELECT
