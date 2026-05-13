@@ -1379,13 +1379,16 @@ export async function adminCreateForum(adminId: number, input: ForumInput) {
   }
 }
 
-// Task #198 — autorização do edit de comunidade: criador, mod local OU
-// moderator+ global. Devolve {forum_id} pra caller usar no updateForum.
-// Aceita id numérico ou slug pra simplificar a rota /api/community/forums/:idOrSlug.
-export async function authorizeForumEdit(
+// Task #198 — autorização do edit de METADATA da comunidade.
+// Constraint inviolável: só CRIADOR (dono do objeto) ou ADMIN global
+// editam name/description/cover/regras/categoria. Moderador local
+// modera CONTEÚDO (posts/comentários), NÃO metadata. Moderator+
+// global (não-admin) também não tem direito de metadata aqui — admin
+// usa rota separada em /api/admin/community/forums/:id.
+export async function authorizeForumMetadataEdit(
   idOrSlug: number | string,
   userId: number,
-  isModeratorPlusGlobal: boolean,
+  isAdminGlobal: boolean,
 ): Promise<number> {
   const where = typeof idOrSlug === "number" ? "id = $1" : "slug = $1";
   const { rows } = await query<{ id: number; created_by: number | null }>(
@@ -1396,9 +1399,8 @@ export async function authorizeForumEdit(
     throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
   }
   const { id, created_by } = rows[0];
-  if (isModeratorPlusGlobal) return id;
+  if (isAdminGlobal) return id;
   if (created_by === userId) return id;
-  if (await isForumModerator(id, userId)) return id;
   throw new AppError("Sem permissão", "FORBIDDEN", 403);
 }
 

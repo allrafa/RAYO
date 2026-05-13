@@ -68,7 +68,7 @@ import {
   updatePost,
   deletePost,
   createForumByUser,
-  authorizeForumEdit,
+  authorizeForumMetadataEdit,
   updateForum,
   setPostHiddenWithAuth,
   setCommentHiddenWithAuth,
@@ -251,17 +251,17 @@ router.get("/forums", async (req, res, next) => {
   }
 });
 
-// Task #198 — edit por criador/mod local. Admin tem rota separada
-// (/api/admin/community/forums/:id) com poderes mais amplos (slug, is_official,
-// is_active). Aqui o criador/mod local edita apenas: name, description, icon,
-// category, life_context, rules, cover_url. Bloqueamos campos elevados
-// removendo-os do payload antes de delegar pro updateForum.
+// Task #198 — edit de METADATA por CRIADOR ou ADMIN apenas.
+// Constraint OLA: moderador local modera conteúdo, NÃO edita metadata.
+// Moderator+ global (não-admin) também é negado aqui. Admin usa rota
+// elevada em /api/admin/community/forums/:id (pode trocar slug,
+// is_official, is_active, sort_order, etc).
 router.patch("/forums/:idOrSlug", requireAuth, async (req, res, next) => {
   try {
     const raw = req.params.idOrSlug;
     const asNum = parseInt(raw, 10);
     const ref: number | string = Number.isFinite(asNum) && String(asNum) === raw ? asNum : raw;
-    const forumId = await authorizeForumEdit(ref, req.user!.id, hasRole(req.user, "moderator"));
+    const forumId = await authorizeForumMetadataEdit(ref, req.user!.id, hasRole(req.user, "admin"));
     const body = (req.body || {}) as Record<string, unknown>;
     const safe: Record<string, unknown> = {};
     for (const k of ["name", "description", "icon", "category", "life_context", "rules", "cover_url"]) {
