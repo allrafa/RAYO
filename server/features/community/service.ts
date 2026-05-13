@@ -201,46 +201,70 @@ export async function getAllPosts(
   limit: number = 20,
   userId?: number,
   classId?: number,
+  // Task #197 — quando true E userId presente, restringe o feed aos
+  // posts de fóruns que o usuário assina (`forum_subscriptions`).
+  // Anônimo passando subscribedOnly cai pra "todos" (UI esconde o
+  // toggle, então a chamada nunca deveria sair do client; defesa em
+  // profundidade pra não quebrar callers existentes).
+  subscribedOnly?: boolean,
 ) {
   // Task #99 — quando o caller pede classId, AUTORIZAÇÃO já foi feita no
   // router (requireAuth + matrícula OU moderator+). Aqui é apenas o filtro.
   const offset = (page - 1) * limit;
 
-  // Quando undefined, mostra SOMENTE posts globais (class_id IS NULL) pra
-  // não vazar conteúdo de turma no feed público da Comunidade. Com classId
-  // numérico, filtra estritamente pela turma.
-  const classWhere = classId
-    ? `AND p.class_id = $${userId ? 4 : 3}`
-    : `AND p.class_id IS NULL`;
+  // Monta WHERE dinamicamente. Mesmos filtros são aplicados no COUNT
+  // pra que `total` reflita o escopo solicitado (paginação correta).
+  const filterParams: unknown[] = [];
+  const filterConds: string[] = ["p.is_hidden = FALSE"];
 
-  const countParams: unknown[] = [];
-  if (classId) countParams.push(classId);
+  if (classId) {
+    filterParams.push(classId);
+    filterConds.push(`p.class_id = $${filterParams.length}`);
+  } else {
+    // Sem classId, mostra SOMENTE posts globais (class_id IS NULL) pra
+    // não vazar conteúdo de turma no feed público da Comunidade.
+    filterConds.push(`p.class_id IS NULL`);
+  }
+
+  if (subscribedOnly && userId) {
+    filterParams.push(userId);
+    filterConds.push(
+      `p.forum_id IN (SELECT forum_id FROM forum_subscriptions WHERE user_id = $${filterParams.length})`,
+    );
+  }
+
+  const whereSql = filterConds.join(" AND ");
+
   const { rows: countRows } = await query(
-    `SELECT COUNT(*) AS total FROM posts WHERE is_hidden = FALSE AND ${
-      classId ? `class_id = $1` : `class_id IS NULL`
-    }`,
-    countParams,
+    `SELECT COUNT(*) AS total FROM posts p WHERE ${whereSql}`,
+    filterParams,
   );
   const total = parseInt(countRows[0].total);
 
-  const params: unknown[] = [limit, offset];
-  if (userId) params.push(userId);
-  if (classId) params.push(classId);
+  // SELECT params: filtros + limit + offset + (opcional) userId pra user_liked.
+  const selectParams: unknown[] = [...filterParams, limit, offset];
+  const limitIdx = filterParams.length + 1;
+  const offsetIdx = filterParams.length + 2;
+
+  let userLikedExpr = "false AS user_liked";
+  if (userId) {
+    selectParams.push(userId);
+    userLikedExpr = `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $${selectParams.length}) AS user_liked`;
+  }
 
   const { rows } = await query(
     `SELECT p.id, p.forum_id, p.class_id, p.title, p.content, p.category, p.is_pinned, p.images,
        p.like_count, p.comment_count, p.share_count, p.created_at,
        u.name AS author_name, u.id AS author_id, u.avatar_url AS author_avatar,
        f.name AS forum_name, f.slug AS forum_slug, f.icon AS forum_icon,
-       ${userId ? `EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $3) AS user_liked` : `false AS user_liked`}
+       ${userLikedExpr}
      FROM posts p
      JOIN users u ON u.id = p.user_id
      JOIN forums f ON f.id = p.forum_id
-     WHERE p.is_hidden = FALSE
-     ${classWhere}
+     WHERE ${whereSql}
      ORDER BY p.is_pinned DESC, p.created_at DESC
-     LIMIT $1 OFFSET $2`,
-    params,
+     LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+    selectParams,
   );
 
   const posts = await hydratePostsRows(rows, userId);

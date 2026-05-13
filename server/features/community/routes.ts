@@ -373,7 +373,12 @@ router.get("/posts", async (req, res, next) => {
       if (!(await gateClassPostsAccess(req, res, cid))) return;
       classId = cid;
     }
-    const result = await getAllPosts(page, limit, userId, classId);
+    // Task #197 — `scope=subscribed` filtra pelos fóruns assinados do
+    // usuário. Default `all` preserva o comportamento original. Anônimo
+    // pedindo subscribed cai pra `all` (sem userId não há o que filtrar).
+    const scopeRaw = String(req.query.scope || "all").trim().toLowerCase();
+    const subscribedOnly = scopeRaw === "subscribed" && !!userId;
+    const result = await getAllPosts(page, limit, userId, classId, subscribedOnly);
     success(res, result);
   } catch (err) {
     next(err);

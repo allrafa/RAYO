@@ -222,7 +222,10 @@ interface AppContextType {
   toggleBookFavorite: (bookId: string) => void;
   getBookById: (bookId: string) => Book | undefined;
   
-  loadPosts: () => Promise<void>;
+  // Task #197 — `scope` opcional filtra o feed da Comunidade:
+  //  - "all" (default): todos os posts globais.
+  //  - "subscribed": só posts dos fóruns que o usuário assina.
+  loadPosts: (scope?: "all" | "subscribed") => Promise<void>;
   
   likePost: (postId: number) => void;
   sharePost: (postId: number) => void;
@@ -598,9 +601,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }
 
-  const loadPosts = useCallback(async () => {
+  const loadPosts = useCallback(async (scope: "all" | "subscribed" = "all") => {
     try {
-      const res = await api.get<{ posts: APIPost[]; total: number }>("/api/community/posts");
+      const qs = scope === "subscribed" ? "?scope=subscribed" : "";
+      const res = await api.get<{ posts: APIPost[]; total: number }>(`/api/community/posts${qs}`);
       if (res.success && res.data) {
         setPosts(res.data.posts.map(mapAPIPost));
       }

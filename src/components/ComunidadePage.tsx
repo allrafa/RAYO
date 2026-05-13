@@ -137,6 +137,26 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     }, { replace: true });
   }, [setSearchParams]);
   const [currentView, setCurrentView] = useState<"feed" | "grupos" | "conversas">("feed");
+  // Task #197 — escopo do feed: "geral" (todos os posts globais) ou
+  // "minhas" (só fóruns assinados). URL é fonte da verdade (`?escopo=minhas`),
+  // sessionStorage só persiste a preferência entre navegações da sessão.
+  // Default é "geral" pra novos visitantes e pra anônimos (que não têm
+  // assinaturas). `?escopo=geral` é omitido da URL (replace mode).
+  type FeedScope = "geral" | "minhas";
+  const parseScopeFromUrl = (): FeedScope | null => {
+    const v = (searchParams.get("escopo") ?? "").toLowerCase();
+    return v === "minhas" || v === "geral" ? (v as FeedScope) : null;
+  };
+  const initialFeedScope: FeedScope = (() => {
+    const fromUrl = parseScopeFromUrl();
+    if (fromUrl) return fromUrl;
+    try {
+      const stored = sessionStorage.getItem("rayo-community-feed-scope");
+      if (stored === "minhas" || stored === "geral") return stored;
+    } catch { /* noop */ }
+    return "geral";
+  })();
+  const [feedScope, setFeedScope] = useState<FeedScope>(initialFeedScope);
   // Task #92 — Community detail page por slug. Quando setado, sobrepõe
   // tudo (header de tabs + composer escondidos) e renderiza CommunityDetailPage.
   // Task #176 — URL é fonte da verdade tanto pra `/c/<slug>` (community
@@ -419,6 +439,50 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
 
   // Task #92 — "Em alta" puxa do servidor (likes+comments 48h).
 
+  // Task #197 — recarrega o feed respeitando o escopo selecionado.
+  // Declarado ANTES de submitComment pra evitar TDZ no useCallback que
+  // depende dele.
+  const reloadFeed = useCallback(
+    () => loadPosts(feedScope === "minhas" ? "subscribed" : "all"),
+    [loadPosts, feedScope],
+  );
+
+  // Task #197 — carrega o feed sempre que o escopo muda (ou no mount,
+  // sobrescrevendo o load default que o AppContext dispara).
+  useEffect(() => {
+    void reloadFeed();
+  }, [reloadFeed]);
+
+  // Task #197 — sincroniza URL e sessionStorage com o escopo. `?escopo=geral`
+  // é omitido (replace mode) pra não poluir histórico, igual ao padrão de
+  // `?segmento=` em Academia.
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("rayo-community-feed-scope", feedScope);
+    } catch { /* noop */ }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (feedScope === "geral") next.delete("escopo");
+      else next.set("escopo", "minhas");
+      return next;
+    }, { replace: true });
+  }, [feedScope, setSearchParams]);
+
+  // Task #197 — URL → state: back/forward do navegador (ou navegação
+  // externa que mude `?escopo=`) precisa atualizar o estado pra manter
+  // a URL como fonte da verdade. Sem isso, voltar pra uma URL com
+  // `?escopo=minhas` não restaura o toggle.
+  useEffect(() => {
+    const fromUrl = (searchParams.get("escopo") ?? "").toLowerCase();
+    const next: FeedScope = fromUrl === "minhas" ? "minhas" : "geral";
+    if (next !== feedScope) setFeedScope(next);
+  }, [searchParams, feedScope]);
+
+  // Task #197 — logout reseta pra "geral" (anônimo não tem assinaturas).
+  useEffect(() => {
+    if (!authUser && feedScope !== "geral") setFeedScope("geral");
+  }, [authUser, feedScope]);
+
   const submitComment = useCallback(async (postId: number, content: string) => {
     const res = await api.post<{ comment: Omit<CommentData, "reactions" | "user_reaction"> & { reactions?: ReactionAggregate[]; user_reaction?: string | null } }>(`/api/community/posts/${postId}/comments`, { content });
     if (res.success && res.data) {
@@ -429,11 +493,11 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
         reactions: Array.isArray(c.reactions) ? c.reactions : [],
         user_reaction: c.user_reaction ?? null,
       }]);
-      await loadPosts();
+      await reloadFeed();
       return true;
     }
     return false;
-  }, [loadPosts]);
+  }, [reloadFeed]);
 
   // Task #122 — atualiza reações de um comentário no estado local. O
   // EmojiReactionPicker faz a requisição; aqui só sincronizamos o
@@ -460,7 +524,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   const handleRefresh = async () => {
     setIsLoading(true);
     try {
-      await Promise.all([loadPosts(), loadForums()]);
+      await Promise.all([reloadFeed(), loadForums()]);
     } catch (error) {
       console.error("Erro ao atualizar feed:", error);
     } finally {
@@ -760,8 +824,12 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
                 setShowShare(true);
               }}
               trendingTopics={trendingTopics}
-              onMutated={loadPosts}
+              onMutated={reloadFeed}
               onEdit={(p) => setEditingPost(p)}
+              feedScope={feedScope}
+              onScopeChange={setFeedScope}
+              isAuthenticated={!!authUser}
+              onOpenGrupos={() => setCurrentView("grupos")}
             />
           )}
 
@@ -819,14 +887,34 @@ interface FeedViewProps {
   trendingTopics: any[];
   onMutated?: () => void;
   onEdit?: (post: any) => void;
+  // Task #197 — segmented control "Geral" × "Minhas comunidades".
+  feedScope: "geral" | "minhas";
+  onScopeChange: (s: "geral" | "minhas") => void;
+  isAuthenticated: boolean;
+  onOpenGrupos: () => void;
 }
 
-function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit }: FeedViewProps) {
+function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit, feedScope, onScopeChange, isAuthenticated, onOpenGrupos }: FeedViewProps) {
+  // Task #197 — pílulas pra alternar escopo. Só renderiza "Minhas comunidades"
+  // pra usuários logados (anônimo não tem assinaturas).
+  const scopePillStyle = (active: boolean): React.CSSProperties => ({
+    padding: '8px 16px',
+    borderRadius: 999,
+    border: '1px solid',
+    borderColor: active ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-200)',
+    background: active ? 'var(--rayo-terra-500)' : 'transparent',
+    color: active ? '#fff' : 'var(--rayo-ink-500)',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'all 150ms ease',
+  });
+  const isEmptyMinhas = feedScope === "minhas" && posts.length === 0;
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Main Feed */}
       <div className="lg:col-span-2 space-y-4">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h2 
             className="text-[24px]" 
             style={{ 
@@ -848,16 +936,92 @@ function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit
           </Badge>
         </div>
 
-        {posts.map((post) => (
-          <PostCard 
-            key={post.id} 
-            post={post}
-            onComment={() => onComment(post)}
-            onShare={() => onShare(post)}
-            onMutated={onMutated}
-            onEdit={onEdit}
-          />
-        ))}
+        {/* Task #197 — segmented control de escopo */}
+        <div
+          role="tablist"
+          aria-label="Escopo do feed"
+          className="flex items-center gap-2 mb-4 flex-wrap"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={feedScope === "geral"}
+            onClick={() => onScopeChange("geral")}
+            style={scopePillStyle(feedScope === "geral")}
+            data-testid="feed-scope-geral"
+          >
+            Geral
+          </button>
+          {isAuthenticated && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={feedScope === "minhas"}
+              onClick={() => onScopeChange("minhas")}
+              style={scopePillStyle(feedScope === "minhas")}
+              data-testid="feed-scope-minhas"
+            >
+              Minhas comunidades
+            </button>
+          )}
+        </div>
+
+        {isEmptyMinhas ? (
+          <div
+            className="ra-card"
+            style={{ padding: 32, textAlign: 'center' }}
+          >
+            <Users
+              className="mx-auto mb-3"
+              style={{ width: 40, height: 40, color: 'var(--rayo-terra-500)' }}
+            />
+            <h3
+              style={{
+                fontSize: 18,
+                fontWeight: 700,
+                color: 'var(--rayo-forest-900)',
+                marginBottom: 8,
+              }}
+            >
+              Nada por aqui ainda
+            </h3>
+            <p
+              style={{
+                fontSize: 14,
+                color: 'var(--rayo-ink-400)',
+                marginBottom: 16,
+                maxWidth: 360,
+                marginLeft: 'auto',
+                marginRight: 'auto',
+              }}
+            >
+              Você ainda não acompanha nenhuma comunidade. Explore os grupos
+              e entre nos que combinam com você.
+            </p>
+            <Button
+              type="button"
+              onClick={onOpenGrupos}
+              style={{
+                background: 'var(--rayo-terra-500)',
+                color: '#fff',
+                fontWeight: 600,
+              }}
+            >
+              Explorar grupos
+            </Button>
+          </div>
+        ) : (
+          posts.map((post) => (
+            <PostCard 
+              key={post.id} 
+              post={post}
+              onComment={() => onComment(post)}
+              onShare={() => onShare(post)}
+              onMutated={onMutated}
+              onEdit={onEdit}
+            />
+          ))
+        )}
       </div>
 
       {/* Sidebar */}
