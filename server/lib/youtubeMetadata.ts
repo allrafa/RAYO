@@ -68,6 +68,18 @@ export function youTubeThumbnailUrl(videoId: string): string {
   return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 }
 
+/** Conveniência: dado um `external_url` qualquer, devolve a thumbnail
+ *  determinística do YouTube quando a URL é reconhecida; null caso contrário.
+ *  Usado pelo fallback de capa em respostas públicas (listPublicContent /
+ *  getPublicContentDetail) pra cobrir vídeos legados cadastrados antes do
+ *  autofill da Task #183. */
+export function youtubeThumbnailFromExternalUrl(
+  rawUrl: string | null | undefined,
+): string | null {
+  const id = extractYouTubeVideoId(rawUrl);
+  return id ? youTubeThumbnailUrl(id) : null;
+}
+
 /** Busca metadata pública via noembed.com. Nunca lança — retorna null em
  *  caso de erro/timeout/resposta inválida. */
 export async function fetchYouTubeMetadata(

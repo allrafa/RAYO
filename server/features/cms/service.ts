@@ -11,6 +11,7 @@ import { logger } from "../../utils/logger.js";
 import {
   extractYouTubeVideoId,
   fetchYouTubeMetadata,
+  youtubeThumbnailFromExternalUrl,
 } from "../../lib/youtubeMetadata.js";
 
 const APP_URL =
@@ -23,6 +24,21 @@ const APP_URL =
 const CONTENT_MEDIA_FIELDS = ["cover_url", "media_url"] as const;
 const EPISODE_MEDIA_FIELDS = ["media_url"] as const;
 const ASSET_MEDIA_FIELDS = ["public_url"] as const;
+
+// Task #183 follow-up — Cobre vídeos legados (cadastrados antes do autofill
+// rodar em create/update) cujo `cover_url` está null mas `external_url`
+// aponta pra YouTube. Aplica thumbnail determinística como fallback de
+// LEITURA (não escreve no DB) só pra `kind === "video"`. Preserva qualquer
+// capa manual já preenchida.
+function applyYouTubeCoverFallback<
+  T extends { kind?: string | null; cover_url?: string | null; external_url?: string | null },
+>(item: T): T {
+  if (!item || item.kind !== "video") return item;
+  if (item.cover_url) return item;
+  const fallback = youtubeThumbnailFromExternalUrl(item.external_url);
+  if (!fallback) return item;
+  return { ...item, cover_url: fallback };
+}
 
 export class CmsError extends Error {
   statusCode: number;
@@ -344,9 +360,10 @@ export async function listPublicContent(opts: {
   const items = await Promise.all(
     rows.map(async (r) => {
       const resolved = await resolveMediaFields(r, CONTENT_MEDIA_FIELDS as unknown as ReadonlyArray<keyof typeof r>);
-      return withResolvedBunnyFields(resolved as typeof resolved & {
+      const withBunny = withResolvedBunnyFields(resolved as typeof resolved & {
         video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
       });
+      return applyYouTubeCoverFallback(withBunny);
     }),
   );
   return {
@@ -427,7 +444,8 @@ export async function getPublicContentDetail(id: number) {
   const withBunny = withResolvedBunnyFields(resolvedItem as typeof resolvedItem & {
     video_provider?: string | null; video_external_id?: string | null; video_thumbnail_url?: string | null;
   });
-  return { ...withBunny, episodes: resolvedEpisodes };
+  const withCoverFallback = applyYouTubeCoverFallback(withBunny);
+  return { ...withCoverFallback, episodes: resolvedEpisodes };
 }
 
 function buildPayload(input: ContentInput) {

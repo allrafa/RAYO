@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import {
   extractYouTubeVideoId,
   youTubeThumbnailUrl,
+  youtubeThumbnailFromExternalUrl,
 } from "../../server/lib/youtubeMetadata.js";
 
 describe("extractYouTubeVideoId", () => {
@@ -132,5 +133,33 @@ describe("youTubeThumbnailUrl", () => {
       youTubeThumbnailUrl("dQw4w9WgXcQ"),
       "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
     );
+  });
+});
+
+describe("youtubeThumbnailFromExternalUrl", () => {
+  it("returns the hqdefault URL for any recognized YouTube URL", () => {
+    assert.equal(
+      youtubeThumbnailFromExternalUrl(
+        "https://www.youtube.com/watch?v=14ry4itoUTo&t=21s",
+      ),
+      "https://img.youtube.com/vi/14ry4itoUTo/hqdefault.jpg",
+    );
+    assert.equal(
+      youtubeThumbnailFromExternalUrl("https://youtu.be/dQw4w9WgXcQ"),
+      "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+    );
+  });
+
+  it("returns null for non-YouTube URLs", () => {
+    assert.equal(
+      youtubeThumbnailFromExternalUrl("https://vimeo.com/76979871"),
+      null,
+    );
+  });
+
+  it("returns null for null/undefined/empty input", () => {
+    assert.equal(youtubeThumbnailFromExternalUrl(null), null);
+    assert.equal(youtubeThumbnailFromExternalUrl(undefined), null);
+    assert.equal(youtubeThumbnailFromExternalUrl(""), null);
   });
 });
