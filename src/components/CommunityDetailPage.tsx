@@ -623,6 +623,7 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
             icon: forum.icon ?? null,
             category: forum.category ?? null,
             rules: forum.rules ?? null,
+            cover_url: forum.cover_url ?? null,
           }}
           onUpdated={() => { void load(); }}
         />

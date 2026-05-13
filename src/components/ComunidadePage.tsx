@@ -1240,7 +1240,41 @@ function ComunidadesView({ groups, loading, error, onRetry, isAuthenticated, onC
   }
 
   if (groups.length === 0) {
-    return <EmptyStateNoCommunity />;
+    // Task #202 — empty global: ilustração + dual CTA. Não-autenticado vê
+    // "Entrar pra criar" (manda pro login); autenticado vê "Criar comunidade".
+    // Secundária = explorar (no-op aqui já que não há nada — esconde).
+    return (
+      <div className="text-center py-16 px-6">
+        <div className="text-6xl mb-4" aria-hidden>💬</div>
+        <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--rayo-forest-900)' }}>
+          Ainda não há comunidades por aqui
+        </h3>
+        <p className="text-sm mb-6 mx-auto" style={{ color: 'var(--rayo-ink-400)', maxWidth: 420 }}>
+          Comunidades são espaços abertos pra trocar sobre namoro, casamento, parentalidade e fé. Crie a primeira e convide quem importa.
+        </p>
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          {isAuthenticated && onCreateCommunity ? (
+            <>
+              <Button onClick={onCreateCommunity} className="gap-2">
+                <Plus className="w-4 h-4" /> Criar comunidade
+              </Button>
+              <Button variant="outline" onClick={() => { window.location.assign("/"); }}>
+                Voltar pro feed
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button onClick={() => { window.location.assign("/login"); }}>
+                Entrar pra criar
+              </Button>
+              <Button variant="outline" onClick={() => { window.location.assign("/cadastro"); }}>
+                Criar conta
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    );
   }
 
   const subPillStyle = (active: boolean): React.CSSProperties => ({
@@ -1336,23 +1370,31 @@ function ComunidadesView({ groups, loading, error, onRetry, isAuthenticated, onC
 
       {/* Grade única (estilo Reddit) */}
       {filteredGroups.length === 0 ? (
-        <div className="py-12 text-center space-y-3">
-          <p style={{ color: 'var(--rayo-ink-400)' }}>
-            {subTab === "inscritas"
-              ? "Você ainda não entrou em nenhuma comunidade."
-              : "Nenhuma comunidade nessa categoria por enquanto."}
+        subTab === "inscritas" ? (
+          <div className="text-center py-12 px-6">
+            <div className="text-5xl mb-3" aria-hidden>🤝</div>
+            <h3 className="text-lg font-bold mb-1" style={{ color: 'var(--rayo-forest-900)' }}>
+              Você ainda não entrou em nenhuma comunidade
+            </h3>
+            <p className="text-sm mb-5 mx-auto" style={{ color: 'var(--rayo-ink-400)', maxWidth: 380 }}>
+              Encontre espaços que combinam com sua fase ou crie a sua e chame quem você quiser.
+            </p>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <Button onClick={() => onChangeSubTab("explorar")} className="gap-2">
+                Explorar comunidades
+              </Button>
+              {isAuthenticated && onCreateCommunity && (
+                <Button variant="outline" onClick={onCreateCommunity} className="gap-2">
+                  <Plus className="w-4 h-4" /> Criar comunidade
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <p className="py-8 text-center" style={{ color: 'var(--rayo-ink-400)' }}>
+            Nenhuma comunidade nessa categoria por enquanto.
           </p>
-          {subTab === "inscritas" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onChangeSubTab("explorar")}
-              style={{ fontWeight: 600 }}
-            >
-              Explorar comunidades
-            </Button>
-          )}
-        </div>
+        )
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

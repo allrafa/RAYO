@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ImagePlus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -19,6 +20,7 @@ export interface EditableForum {
   icon?: string | null;
   category?: string | null;
   rules?: string | null;
+  cover_url?: string | null;
 }
 
 interface CreateCommunityModalProps {
@@ -44,6 +46,11 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
   const [category, setCategory] = useState("");
   const [rules, setRules] = useState("");
   const [busy, setBusy] = useState(false);
+  // Task #202 — capa só no modo edição (criação fica simples).
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reset = () => {
     setName("");
@@ -51,6 +58,8 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
     setIcon("💬");
     setCategory("");
     setRules("");
+    setCoverUrl(null);
+    setCoverPreview(null);
   };
 
   // Pre-fill quando entra em modo edição (ou reseta quando volta a criar).
@@ -62,10 +71,45 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
       setIcon(editingForum.icon || "💬");
       setCategory(editingForum.category || "");
       setRules(editingForum.rules || "");
+      setCoverUrl(editingForum.cover_url || null);
+      setCoverPreview(editingForum.cover_url || null);
     } else {
       reset();
     }
   }, [open, editingForum]);
+
+  const onPickCover = async (file: File) => {
+    if (!editingForum) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      enhancedToast.error({ title: "Formato não suportado", description: "Use JPG, PNG ou WebP", haptic: true });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      enhancedToast.error({ title: "Arquivo grande demais", description: "Limite de 5 MB", haptic: true });
+      return;
+    }
+    setUploadingCover(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch(`/api/community/forums/${editingForum.id}/cover`, {
+      method: "POST",
+      body: fd,
+      credentials: "include",
+    });
+    setUploadingCover(false);
+    const json = await res.json().catch(() => ({}));
+    if (json?.success && json?.data?.cover_url) {
+      setCoverUrl(json.data.cover_url as string);
+      setCoverPreview(URL.createObjectURL(file));
+      enhancedToast.success({ title: "Capa pronta", description: "Salve pra aplicar.", haptic: true });
+    } else {
+      enhancedToast.error({
+        title: "Não foi possível subir a capa",
+        description: json?.error?.message || "Tente novamente",
+        haptic: true,
+      });
+    }
+  };
 
   const onSubmit = async () => {
     const trimmed = name.trim();
@@ -80,15 +124,20 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
     }
     setBusy(true);
     if (isEdit && editingForum) {
+      const patchBody: Record<string, unknown> = {
+        name: trimmed,
+        description: description.trim() || null,
+        icon,
+        category: cat,
+        rules: rules.trim() || null,
+      };
+      // Só inclui cover_url se mudou em relação ao backend (evita reescrever).
+      if ((coverUrl || null) !== (editingForum.cover_url || null)) {
+        patchBody.cover_url = coverUrl; // null = remover, sentinel objstore = nova
+      }
       const res = await api.patch<{ forum: { slug: string; name: string } }>(
         `/api/community/forums/${editingForum.id}`,
-        {
-          name: trimmed,
-          description: description.trim() || null,
-          icon,
-          category: cat,
-          rules: rules.trim() || null,
-        },
+        patchBody,
       );
       setBusy(false);
       if (res.success) {
@@ -166,6 +215,71 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
               O endereço da comunidade (c/...) será gerado a partir do nome.
             </p>
           </div>
+
+          {isEdit && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium" style={{ color: "var(--rayo-ink-600)" }}>
+                Capa (opcional)
+              </label>
+              <div
+                className="relative w-full h-32 rounded-lg overflow-hidden flex items-center justify-center"
+                style={{
+                  background: "var(--rayo-sand-50)",
+                  border: `1px dashed var(--rayo-sand-300)`,
+                }}
+              >
+                {coverPreview ? (
+                  <>
+                    <img src={coverPreview} alt="Capa" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => { setCoverUrl(null); setCoverPreview(null); }}
+                      className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
+                      style={{ background: "rgba(0,0,0,0.55)", color: "white" }}
+                      aria-label="Remover capa"
+                      disabled={uploadingCover}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-col items-center gap-1 text-xs"
+                    style={{ color: "var(--rayo-ink-500)" }}
+                    disabled={uploadingCover}
+                  >
+                    <ImagePlus className="w-6 h-6" />
+                    {uploadingCover ? "Enviando…" : "Adicionar capa"}
+                  </button>
+                )}
+              </div>
+              {coverPreview && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs underline"
+                  style={{ color: "var(--rayo-terra-600)" }}
+                  disabled={uploadingCover}
+                >
+                  {uploadingCover ? "Enviando…" : "Trocar capa"}
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void onPickCover(f);
+                  e.target.value = "";
+                }}
+              />
+              <p className="text-[11px] text-muted-foreground">JPG, PNG ou WebP até 5 MB.</p>
+            </div>
+          )}
 
           <div className="space-y-1">
             <label className="text-xs font-medium" style={{ color: "var(--rayo-ink-600)" }}>Ícone</label>

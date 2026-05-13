@@ -353,6 +353,17 @@ export async function listForumMembers(
   const safeLimit = Math.max(1, Math.min(limit, 100));
   const offset = (page - 1) * safeLimit;
 
+  // Task #202 — gate por is_active: comunidades soft-deletadas não devem
+  // expor lista de membros. Se o forum não existe ou está inativo,
+  // retornamos lista vazia (404 fica a cargo do caller via slug lookup).
+  const { rows: forumRows } = await query<{ id: number }>(
+    `SELECT id FROM forums WHERE id = $1 AND is_active = true`,
+    [forumId],
+  );
+  if (forumRows.length === 0) {
+    return { members: [], total: 0, page: 1, limit: safeLimit, totalPages: 0 };
+  }
+
   const { rows: countRows } = await query<{ total: string }>(
     `SELECT COUNT(*) AS total FROM forum_subscriptions WHERE forum_id = $1`,
     [forumId],

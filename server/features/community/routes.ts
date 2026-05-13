@@ -279,6 +279,64 @@ router.patch("/forums/:idOrSlug", requireAuth, async (req, res, next) => {
   }
 });
 
+// Task #202 — upload de capa por CRIADOR ou ADMIN (mesma ACL do PATCH).
+// Reutiliza pipeline do post-attachment (multer + sharp). Sentinel
+// objstore://forums/<file> — frontend manda o cover_url no PATCH em sequência.
+const forumCoverUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (POST_IMAGE_MIMES.has(file.mimetype)) return cb(null, true);
+    cb(new Error("Apenas JPG, PNG ou WebP são aceitos"));
+  },
+}).single("file");
+
+router.post(
+  "/forums/:idOrSlug/cover",
+  requireAuth,
+  rateLimiter(20, 60 * 60 * 1000, { keyByUser: true }),
+  (req, res, next) => forumCoverUpload(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      sendError(res, "Capa deve ter até 5 MB", "FILE_TOO_LARGE", 413);
+      return;
+    }
+    sendError(res, err instanceof Error ? err.message : "Upload inválido", "INVALID_UPLOAD", 400);
+  }),
+  async (req, res, next) => {
+    try {
+      const raw = req.params.idOrSlug;
+      const asNum = parseInt(raw, 10);
+      const ref: number | string = Number.isFinite(asNum) && String(asNum) === raw ? asNum : raw;
+      // ACL: criador ou admin (mesma do PATCH metadata).
+      await authorizeForumMetadataEdit(ref, req.user!.id, hasRole(req.user, "admin"));
+      const file = req.file;
+      if (!file) {
+        sendError(res, "Arquivo é obrigatório", "FILE_REQUIRED", 400);
+        return;
+      }
+      let buffer = file.buffer;
+      let mime = file.mimetype;
+      try {
+        const optimized = await optimizeCmsImage(buffer, mime);
+        buffer = optimized.buffer;
+        mime = optimized.mimetype;
+      } catch { /* segue com original */ }
+      const ext = imageExt(mime) || path.extname(file.originalname) || ".jpg";
+      const safeName = `${Date.now()}-${Math.random().toString(16).slice(2, 10).padEnd(8, "0")}${ext}`;
+      const key = `forums/${safeName}`;
+      await putPublicObject(key, buffer, mime);
+      success(res, { cover_url: `objstore://${key}`, mime, size: buffer.length }, 201);
+    } catch (err) {
+      if (err instanceof AppError) {
+        sendError(res, err.message, err.code, err.statusCode);
+        return;
+      }
+      next(err);
+    }
+  },
+);
+
 // Task #198 — paridade de moderação per-community: mod local pode
 // ocultar/restaurar posts/comentários da própria comunidade sem
 // precisar de role global. Bypass continua valendo pra moderator+.
