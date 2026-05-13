@@ -112,6 +112,98 @@ export async function loginViaApi(
 }
 
 /**
+ * Task #206 — variante de `registerUser` que deixa o usuário SEM e-mail
+ * verificado. Reusa o /api/auth/register normal (que exige uma linha
+ * verified pra passar) e em seguida apaga TODAS as linhas de
+ * email_verification_codes do e-mail. Resultado: user existe, sessão
+ * funciona, mas `isUserEmailVerified(userId)` devolve false — exatamente
+ * o estado pre-confirmação que o gating de criar comunidade exige.
+ */
+export async function registerUnverifiedUser(
+  api: APIRequestContext,
+  input: { email?: string; name: string; password?: string; segments?: string[] } = { name: "Teste" },
+): Promise<TestUser> {
+  const user = await registerUser(api, input);
+  await getPool().query(
+    `DELETE FROM email_verification_codes WHERE LOWER(email) = LOWER($1)`,
+    [user.email],
+  );
+  return user;
+}
+
+/**
+ * Task #206 — insere uma linha NÃO verificada com `code` conhecido,
+ * simulando o que o backend gravaria após `POST /api/auth/resend-verification`.
+ * Usado pelo spec do fluxo inline pra que o usuário consiga digitar um
+ * código real e bater na rota /api/auth/verify-code sem depender do Resend.
+ * Apaga linhas anteriores pro mesmo e-mail (mesma semântica de `sendVerificationCode`).
+ */
+export async function insertUnverifiedCode(email: string, code = "123456"): Promise<void> {
+  const normalized = email.trim().toLowerCase();
+  const pool = getPool();
+  await pool.query(`DELETE FROM email_verification_codes WHERE LOWER(email) = LOWER($1)`, [normalized]);
+  await pool.query(
+    `INSERT INTO email_verification_codes (email, code, verified, expires_at)
+     VALUES ($1, $2, FALSE, NOW() + INTERVAL '10 minutes')`,
+    [normalized, code],
+  );
+}
+
+/**
+ * Task #206 — cria um usuário "OAuth-only" replicando exatamente o que
+ * `findOrCreateOAuthUser` faz no caminho de criação:
+ *   - INSERT users com `google_id` setado e `password_hash NULL`.
+ *   - INSERT email_verification_codes com `verified=TRUE` (espelho do
+ *     trust do provider — `markEmailVerifiedFromTrustedProvider`).
+ * Em seguida cria uma sessão direta no DB e devolve o token (pra o spec
+ * gravar como cookie `session_token` no contexto). Retorna também o id
+ * do user pra cleanup.
+ */
+export async function createOAuthUserWithSession(input: {
+  email?: string;
+  name?: string;
+  provider?: "google" | "facebook";
+}): Promise<TestUser & { sessionToken: string }> {
+  const email = (input.email ?? makeTestEmail("test-oauth")).toLowerCase();
+  const name = input.name ?? "OAuth Tester";
+  const providerCol = (input.provider ?? "google") === "google" ? "google_id" : "facebook_id";
+  const providerId = `oauth-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  const pool = getPool();
+  // Espelho de markEmailVerifiedFromTrustedProvider — verified=TRUE.
+  // CAST ::text pra evitar "inconsistent types deduced for parameter $1"
+  // (mesma armadilha que pegamos no service na Task #206).
+  await pool.query(
+    `INSERT INTO email_verification_codes (email, code, verified, expires_at)
+     SELECT $1::text, 'oauth', TRUE, NOW()
+     WHERE NOT EXISTS (
+       SELECT 1 FROM email_verification_codes
+        WHERE LOWER(email) = LOWER($1::text) AND verified = TRUE
+     )`,
+    [email],
+  );
+  const inserted = await pool.query<{ id: number }>(
+    `INSERT INTO users (email, password_hash, name, ${providerCol}, segments)
+     VALUES ($1, NULL, $2, $3, ARRAY[]::text[])
+     RETURNING id`,
+    [email, name, providerId],
+  );
+  const id = inserted.rows[0].id;
+
+  // Sessão direta — token raw + sha256 (mesma rotina de createSession).
+  const crypto = await import("node:crypto");
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  await pool.query(
+    `INSERT INTO sessions (user_id, token_hash, expires_at)
+     VALUES ($1, $2, NOW() + INTERVAL '30 days')`,
+    [id, tokenHash],
+  );
+
+  return { id, email, name, password: "(oauth-no-password)", sessionToken: token };
+}
+
+/**
  * Apaga usuários de teste por id. Usa CASCADE/manuals em ordem segura.
  * Como o schema do RAYO tem várias FKs de user_id sem ON DELETE CASCADE
  * declarado uniformemente, fazemos o cleanup defensivamente: apaga

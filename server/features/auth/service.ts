@@ -353,10 +353,12 @@ export async function markEmailVerifiedFromTrustedProvider(email: string): Promi
   const normalized = email.trim().toLowerCase();
   if (!normalized) return;
   try {
-    // Cast explícito pra text — sem ele o Postgres não consegue
-    // deduzir o tipo de $1 (usado tanto na coluna VARCHAR `email`
-    // quanto dentro de `LOWER($1)` no WHERE) e devolve
-    // "inconsistent types deduced for parameter $1".
+    // CAST explícito pra ::text — sem isso o Postgres deduz tipos
+    // diferentes pro mesmo $1 (VARCHAR(255) na coluna `email` do INSERT
+    // vs. text no `LOWER($1)` do WHERE) e devolve "inconsistent types
+    // deduced for parameter $1", fazendo o INSERT silenciosamente cair
+    // no catch e nunca gravar a linha verified. Bug capturado pelos
+    // testes da Task #206.
     await query(
       `INSERT INTO email_verification_codes (email, code, expires_at, verified)
        SELECT $1::text, 'oauth', NOW(), TRUE
