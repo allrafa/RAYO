@@ -12,11 +12,13 @@ import { Card } from "./ui/card";
 import { MessageCircle, Users, ImageIcon, FileText, User as UserIcon, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
 import { PostCard } from "./ComunidadePage";
+import { PostImageLightbox } from "./PostImageLightbox";
 import {
   cardKeyHandler,
   openCommunityBySlug,
   openPostById,
   openProfileById,
+  stopBubble,
   CARD_INTERACTIVE_CLASS,
 } from "../lib/cardClickTargets";
 
@@ -231,7 +233,7 @@ function ResultsBody({
     return (
       <div className="py-12 text-center" aria-live="polite">
         <p style={{ color: "var(--rayo-forest-900)", fontWeight: 600, marginBottom: 4 }}>
-          Nenhum resultado em {TAB_LABEL[tab]}
+          Nenhum resultado em {TAB_LABEL[tab]} para “{q.trim()}”
         </p>
         <p style={{ color: "var(--rayo-ink-400)", fontSize: 14 }}>
           Tente outras palavras-chave ou outra aba.
@@ -241,16 +243,16 @@ function ResultsBody({
   }
 
   return (
-    <div className="space-y-3">
-      {tab === "posts" || tab === "midia"
-        ? state.items.map((p) => (
-            <PostCard key={p.id} post={hydratePostShape(p)} onComment={() => openPostById(p.id)} onShare={() => openPostById(p.id)} />
-          ))
+    <div className={tab === "midia" ? "" : "space-y-3"}>
+      {tab === "posts"
+        ? state.items.map((p) => <HighlightedPost key={p.id} post={p} q={q} />)
+        : tab === "midia"
+        ? <MediaGrid items={state.items} />
         : tab === "comunidades"
-        ? state.items.map((f) => <ForumRow key={f.id} forum={f} />)
+        ? <div className="space-y-3">{state.items.map((f) => <ForumRow key={f.id} forum={f} />)}</div>
         : tab === "comentarios"
-        ? state.items.map((c) => <CommentRow key={c.id} comment={c} q={q} />)
-        : state.items.map((u) => <UserRow key={u.id} user={u} />)
+        ? <div className="space-y-3">{state.items.map((c) => <CommentRow key={c.id} comment={c} q={q} />)}</div>
+        : <div className="space-y-3">{state.items.map((u) => <UserRow key={u.id} user={u} q={q} />)}</div>
       }
 
       {state.page < state.totalPages && (
@@ -270,6 +272,163 @@ function ResultsBody({
         </div>
       )}
     </div>
+  );
+}
+
+// Posts com highlight: envolve PostCard num wrapper que injeta marca
+// visual sobre matches no title/content. Para preservar 100% do
+// comportamento do PostCard (reações, comentários, save, edit), mantemos
+// o componente original e usamos uma camada CSS pra realçar.
+// Implementação pragmática: injetamos `<mark>` substituindo o conteúdo
+// textual ANTES de passar pra PostCard via `dangerouslySetInnerHTML`?
+// Não — PostCard renderiza `post.content` como texto puro. Pra evitar
+// re-implementar o PostCard inteiro, mostramos o highlight num bloco
+// "snippet" acima do PostCard quando houver match no title/content.
+function HighlightedPost({ post, q }: { post: any; q: string }) {
+  const term = q.trim();
+  const matches: Array<{ label: string; text: string }> = [];
+  if (term.length >= 2) {
+    if (post.title && post.title.toLowerCase().includes(term.toLowerCase())) {
+      matches.push({ label: "Título", text: post.title });
+    }
+    if (post.content && post.content.toLowerCase().includes(term.toLowerCase())) {
+      matches.push({ label: "Trecho", text: extractSnippet(post.content, term) });
+    }
+  }
+  return (
+    <div className="space-y-1">
+      {matches.length > 0 && (
+        <div
+          style={{
+            background: "var(--rayo-sand-50)",
+            border: "1px dashed var(--rayo-sand-300)",
+            borderRadius: 8,
+            padding: "8px 12px",
+            fontSize: 13,
+            color: "var(--rayo-ink-400)",
+          }}
+        >
+          {matches.map((m, i) => (
+            <div key={i} className={i > 0 ? "mt-1" : ""}>
+              <span style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }}>{m.label}: </span>
+              <Highlighted text={m.text} q={term} />
+            </div>
+          ))}
+        </div>
+      )}
+      <PostCard
+        post={hydratePostShape(post)}
+        onComment={() => openPostById(post.id)}
+        onShare={() => openPostById(post.id)}
+      />
+    </div>
+  );
+}
+
+function extractSnippet(text: string, term: string, ctx = 60): string {
+  const idx = text.toLowerCase().indexOf(term.toLowerCase());
+  if (idx < 0) return text.slice(0, 140);
+  const start = Math.max(0, idx - ctx);
+  const end = Math.min(text.length, idx + term.length + ctx);
+  return (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
+}
+
+// Mídia tab: grade responsiva de thumbnails. Click numa thumb abre
+// lightbox; segundo click ("Ver discussão") abre o post completo via
+// openPostById. Cada post pode ter múltiplas imagens — mostramos a
+// primeira como thumb e indicamos o total no canto.
+function MediaGrid({ items }: { items: any[] }) {
+  // Achata pra um array de {postId, images, index} por imagem-thumb.
+  // Mostramos a 1ª imagem de cada post (thumbnail). O lightbox abre
+  // navegando entre TODAS as imagens daquele post.
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number; postId: number } | null>(null);
+  const tiles = items
+    .map((p) => ({
+      postId: p.id,
+      images: Array.isArray(p.images) ? p.images.filter((s: any) => typeof s === "string" && s) : [],
+      content: p.content,
+      title: p.title,
+      author: p.author_name,
+    }))
+    .filter((t) => t.images.length > 0);
+
+  if (tiles.length === 0) {
+    return (
+      <p className="py-8 text-center" style={{ color: "var(--rayo-ink-400)" }}>
+        Nenhum post com mídia neste filtro.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <div
+        className="grid gap-2"
+        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))" }}
+      >
+        {tiles.map((t) => (
+          <div
+            key={t.postId}
+            role="button"
+            tabIndex={0}
+            onClick={() => setLightbox({ images: t.images, index: 0, postId: t.postId })}
+            onKeyDown={cardKeyHandler(() => setLightbox({ images: t.images, index: 0, postId: t.postId }))}
+            className={CARD_INTERACTIVE_CLASS}
+            aria-label={`Abrir mídia do post de ${t.author}`}
+            style={{
+              position: "relative",
+              aspectRatio: "1 / 1",
+              borderRadius: 10,
+              overflow: "hidden",
+              background: "var(--rayo-sand-200)",
+              border: "1px solid var(--rayo-sand-300)",
+            }}
+          >
+            <img
+              src={t.images[0]}
+              alt={t.title || t.content?.slice(0, 60) || "Imagem do post"}
+              loading="lazy"
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0.4"; }}
+            />
+            {t.images.length > 1 && (
+              <span
+                style={{
+                  position: "absolute", top: 6, right: 6,
+                  background: "rgba(0,0,0,0.6)", color: "#fff",
+                  fontSize: 11, fontWeight: 700,
+                  padding: "2px 6px", borderRadius: 999,
+                }}
+              >
+                +{t.images.length - 1}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={stopBubble(() => openPostById(t.postId))}
+              aria-label="Ver discussão do post"
+              style={{
+                position: "absolute", left: 6, bottom: 6,
+                background: "var(--rayo-terra-500)", color: "#fff",
+                fontSize: 11, fontWeight: 700,
+                padding: "4px 8px", borderRadius: 999,
+                border: "none", cursor: "pointer",
+              }}
+            >
+              Ver discussão
+            </button>
+          </div>
+        ))}
+      </div>
+      {lightbox && (
+        <PostImageLightbox
+          images={lightbox.images}
+          index={lightbox.index}
+          onClose={() => setLightbox(null)}
+          onIndexChange={(i) => setLightbox((s) => (s ? { ...s, index: i } : s))}
+        />
+      )}
+    </>
   );
 }
 
@@ -305,12 +464,13 @@ function hydratePostShape(p: any) {
 }
 
 function ForumRow({ forum }: { forum: any }) {
+  const open = () => openCommunityBySlug(forum.slug);
   return (
     <Card
       role="button"
       tabIndex={0}
-      onClick={() => openCommunityBySlug(forum.slug)}
-      onKeyDown={cardKeyHandler(() => openCommunityBySlug(forum.slug))}
+      onClick={open}
+      onKeyDown={cardKeyHandler(open)}
       className={`p-4 flex items-center gap-3 ${CARD_INTERACTIVE_CLASS}`}
       aria-label={`Abrir comunidade ${forum.name}`}
       style={{ background: "var(--rayo-sand-50)", border: "1px solid var(--rayo-sand-300)" }}
@@ -345,6 +505,22 @@ function ForumRow({ forum }: { forum: any }) {
           </p>
         )}
       </div>
+      <Button
+        type="button"
+        size="sm"
+        onClick={stopBubble(open)}
+        aria-label={`Visitar comunidade ${forum.name}`}
+        style={{
+          flexShrink: 0,
+          background: "var(--rayo-terra-500)",
+          color: "#fff",
+          fontWeight: 700,
+          borderRadius: 999,
+          padding: "0 14px",
+        }}
+      >
+        Visitar
+      </Button>
     </Card>
   );
 }
@@ -389,7 +565,7 @@ function CommentRow({ comment, q }: { comment: any; q: string }) {
   );
 }
 
-function UserRow({ user }: { user: any }) {
+function UserRow({ user, q }: { user: any; q: string }) {
   return (
     <Card
       role="button"
@@ -406,14 +582,14 @@ function UserRow({ user }: { user: any }) {
       </Avatar>
       <div className="flex-1 min-w-0">
         <h4 style={{ fontWeight: 700, color: "var(--rayo-forest-900)" }} className="truncate">
-          {user.name}
+          <Highlighted text={user.name || ""} q={q} />
         </h4>
         <p className="text-[13px]" style={{ color: "var(--rayo-ink-400)" }}>
           {user.post_count} posts
         </p>
         {user.bio && (
           <p className="text-[13px] mt-1 line-clamp-2" style={{ color: "var(--rayo-ink-400)" }}>
-            {user.bio}
+            <Highlighted text={user.bio} q={q} />
           </p>
         )}
       </div>

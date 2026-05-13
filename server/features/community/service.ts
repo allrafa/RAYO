@@ -1191,7 +1191,7 @@ export type CommunitySearchTab =
   | "midia"
   | "perfis";
 
-const SEARCH_PER_PAGE = 10;
+const SEARCH_PER_PAGE = 20;
 
 function buildLike(qRaw: string): string | null {
   const q = (qRaw || "").trim();
@@ -1235,7 +1235,8 @@ export async function getCommunitySearchCounts(
       [like],
     ),
     query<{ n: number }>(
-      `SELECT COUNT(*)::int AS n FROM users WHERE name ILIKE $1`,
+      `SELECT COUNT(*)::int AS n FROM users
+        WHERE name ILIKE $1 OR COALESCE(bio, '') ILIKE $1`,
       [like],
     ),
   ]);
@@ -1370,7 +1371,8 @@ export async function searchCommunity(
 
   if (tab === "perfis") {
     const { rows: countRows } = await query<{ n: number }>(
-      `SELECT COUNT(*)::int AS n FROM users WHERE name ILIKE $1`,
+      `SELECT COUNT(*)::int AS n FROM users
+        WHERE name ILIKE $1 OR COALESCE(bio, '') ILIKE $1`,
       [like],
     );
     const total = countRows[0]?.n ?? 0;
@@ -1378,7 +1380,7 @@ export async function searchCommunity(
       `SELECT u.id, u.name, u.avatar_url, u.bio,
          (SELECT COUNT(*) FROM posts WHERE user_id = u.id AND is_hidden = FALSE AND class_id IS NULL)::int AS post_count
        FROM users u
-       WHERE u.name ILIKE $1
+       WHERE u.name ILIKE $1 OR COALESCE(u.bio, '') ILIKE $1
        ORDER BY (CASE WHEN u.name ILIKE $1 THEN 0 ELSE 1 END), u.name ASC
        LIMIT $2 OFFSET $3`,
       [like, limit, offset],

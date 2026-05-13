@@ -193,9 +193,12 @@ router.post(
 );
 
 // Task #193 — Busca tabbed da Comunidade (estilo Reddit).
-// `?q=&tab=&page=` devolve resultados paginados de UM tab (10/pg).
+// `?q=&tab=&page=` devolve resultados paginados de UM tab (20/pg).
 // `?q=&counts=1` devolve só os contadores dos 5 tabs em UMA call.
-router.get("/search", async (req, res, next) => {
+// Limiter dedicado: 60 reqs/15min keyByUser (cai pra IP em anônimo) —
+// alinha com o padrão "demais autenticadas" do replit.md (Rate Limiter).
+const searchLimiter = rateLimiter(60, 15 * 60 * 1000, { keyByUser: true });
+router.get("/search", searchLimiter, async (req, res, next) => {
   try {
     const q = String(req.query.q ?? "").trim();
     const counts = String(req.query.counts ?? "") === "1";

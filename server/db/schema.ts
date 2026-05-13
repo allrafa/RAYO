@@ -1132,6 +1132,27 @@ export async function initializeSchema() {
   await query(`ALTER TABLE course_reviews ADD COLUMN IF NOT EXISTS hidden_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);
   await query(`CREATE INDEX IF NOT EXISTS idx_course_reviews_visible ON course_reviews(course_id) WHERE is_hidden = FALSE`);
 
+  // Task #193 — Índices trigram pra acelerar a busca tabbed da Comunidade
+  // (ILIKE '%termo%' em posts.title/content, comments.content, forums.name/
+  // description/slug e users.name/bio). pg_trgm + GIN deixam essas queries
+  // usarem Index Scan em vez de Seq Scan conforme o dataset cresce.
+  // Idempotente (IF NOT EXISTS em tudo). Se o usuário PG não tiver permissão
+  // pra CREATE EXTENSION, falhamos silenciosamente — a feature continua
+  // funcionando com Seq Scan.
+  try {
+    await query(`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_posts_title_trgm    ON posts USING GIN (title gin_trgm_ops)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_posts_content_trgm  ON posts USING GIN (content gin_trgm_ops)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_comments_content_trgm ON comments USING GIN (content gin_trgm_ops)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_forums_name_trgm    ON forums USING GIN (name gin_trgm_ops)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_forums_desc_trgm    ON forums USING GIN (description gin_trgm_ops)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_forums_slug_trgm    ON forums USING GIN (slug gin_trgm_ops)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_users_name_trgm     ON users USING GIN (name gin_trgm_ops)`);
+    await query(`CREATE INDEX IF NOT EXISTS idx_users_bio_trgm      ON users USING GIN (bio gin_trgm_ops)`);
+  } catch (err) {
+    console.warn("[DB] pg_trgm setup skipped:", (err as Error).message);
+  }
+
   console.log("[DB] Schema initialized successfully.");
 }
 
