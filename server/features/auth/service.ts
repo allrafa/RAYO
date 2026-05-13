@@ -353,12 +353,16 @@ export async function markEmailVerifiedFromTrustedProvider(email: string): Promi
   const normalized = email.trim().toLowerCase();
   if (!normalized) return;
   try {
+    // Cast explícito pra text — sem ele o Postgres não consegue
+    // deduzir o tipo de $1 (usado tanto na coluna VARCHAR `email`
+    // quanto dentro de `LOWER($1)` no WHERE) e devolve
+    // "inconsistent types deduced for parameter $1".
     await query(
       `INSERT INTO email_verification_codes (email, code, expires_at, verified)
-       SELECT $1, 'oauth', NOW(), TRUE
+       SELECT $1::text, 'oauth', NOW(), TRUE
        WHERE NOT EXISTS (
          SELECT 1 FROM email_verification_codes
-          WHERE LOWER(email) = LOWER($1) AND verified = TRUE
+          WHERE LOWER(email) = LOWER($1::text) AND verified = TRUE
        )`,
       [normalized],
     );
