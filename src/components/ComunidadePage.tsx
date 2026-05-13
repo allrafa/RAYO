@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { onScrollTop } from "../lib/scrollTop";
 import { useScrollRestore } from "../lib/scrollRestore";
@@ -493,14 +493,6 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     }
   };
 
-  const categories = forums.map(f => ({
-    id: f.category.toLowerCase().replace(/\s+/g, '-'),
-    name: f.name,
-    icon: f.icon,
-    gradient: "from-[#3B82F6] to-[#2563EB]",
-    count: parseInt(f.post_count) || 0
-  }));
-
   const groups = forums.map(f => ({
     id: f.id,
     slug: f.slug,
@@ -824,7 +816,6 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
           {!isSearching && currentView === "grupos" && (
             <GruposView 
               groups={groups}
-              categories={categories}
               loading={forumsLoading}
               error={forumsError}
               onRetry={loadForums}
@@ -1029,18 +1020,43 @@ function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit
 // GRUPOS VIEW
 interface GruposViewProps {
   groups: any[];
-  categories: any[];
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
 }
 
-function GruposView({ groups, categories, loading, error, onRetry }: GruposViewProps) {
+// Tamanho da página: cresce em múltiplos desse valor a cada "Mostrar mais".
+const EXPLORAR_PAGE_SIZE = 6;
+
+function GruposView({ groups, loading, error, onRetry }: GruposViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState<number>(EXPLORAR_PAGE_SIZE);
+
+  // Categorias distintas extraídas dos próprios fóruns. Mantém a ordem
+  // de primeira aparição (estável entre renders) e ignora vazias.
+  const categories = useMemo(() => {
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    for (const g of groups) {
+      const c = (g.category ?? "").trim();
+      if (c && !seen.has(c)) { seen.add(c); ordered.push(c); }
+    }
+    return ordered;
+  }, [groups]);
 
   const filteredGroups = selectedCategory
     ? groups.filter(g => g.category === selectedCategory)
     : groups;
+
+  const visibleGroups = filteredGroups.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredGroups.length;
+
+  // Reseta paginação ao trocar de categoria pra evitar mostrar "Mostrar
+  // mais" referente a um filtro anterior.
+  const onSelectCategory = useCallback((cat: string | null) => {
+    setSelectedCategory(cat);
+    setVisibleCount(EXPLORAR_PAGE_SIZE);
+  }, []);
 
   if (loading && groups.length === 0) {
     return (
@@ -1060,201 +1076,103 @@ function GruposView({ groups, categories, loading, error, onRetry }: GruposViewP
 
   return (
     <div className="space-y-8">
-      {/* Categories Filter - Spotify Style */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 
-            className="text-[24px]" 
-            style={{ 
-              fontWeight: 700, 
-              color: 'var(--rayo-forest-900)' 
-            }}
+      {/* Header — Explorar Comunidades */}
+      <div className="flex items-end justify-between flex-wrap gap-2">
+        <div>
+          <h2
+            className="text-[28px] leading-tight"
+            style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
           >
-            Categorias
+            Explorar Comunidades
           </h2>
-          <Badge 
-            style={{ 
-              fontSize: '12px', 
-              fontWeight: 600,
-              background: 'var(--rayo-terra-100)',
-              color: 'var(--rayo-terra-500)',
-            }}
-          >
-            {filteredGroups.length} grupos
-          </Badge>
+          <p className="text-[14px] mt-1" style={{ color: 'var(--rayo-ink-400)' }}>
+            Descubra grupos sobre família, relacionamento, fé e propósito.
+          </p>
         </div>
-        
-        {/* Horizontal Scrollable Cards */}
-        <div className="overflow-x-auto scrollbar-hide -mx-6 px-6">
-          <div className="flex gap-4 pb-2 transition-all duration-300 ease-out" style={{ width: 'max-content' }}>
-            {/* Card "Todos" */}
-            <div className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out">
-              <Card 
-                className="w-48 cursor-pointer border-0 overflow-hidden transition-all"
-                style={{
-                  background: !selectedCategory 
-                    ? 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)'
-                    : 'var(--rayo-sand-300)',
-                  color: !selectedCategory ? '#FFFFFF' : 'var(--rayo-forest-900)',
-                  transform: !selectedCategory ? 'scale(1.05)' : 'scale(1)',
-                  boxShadow: !selectedCategory ? '0 10px 24px rgba(12,59,46,0.10)' : 'none',
-                }}
-                onClick={() => setSelectedCategory(null)}
-                onMouseEnter={(e) => {
-                  if (selectedCategory) {
-                    e.currentTarget.style.transform = 'scale(1.05)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedCategory) {
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }
-                }}
-              >
-                <div className="relative p-4 h-28">
-                  {!selectedCategory && (
-                    <div className="absolute top-2 right-2">
-                      <Badge 
-                        variant="secondary" 
-                        className="border-0" 
-                        style={{ 
-                          fontSize: '10px', 
-                          fontWeight: 600,
-                          background: 'rgba(255, 255, 255, 0.2)',
-                          color: '#FFFFFF',
-                        }}
-                      >
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Ativo
-                      </Badge>
-                    </div>
-                  )}
-                  <div className="flex flex-col justify-end h-full">
-                    <div className="text-[32px] mb-1">🌟</div>
-                    <h3 className="text-[14px] mb-1" style={{ fontWeight: 600 }}>Todos os Grupos</h3>
-                    <div className="flex items-center text-[11px] opacity-90">
-                      <Users className="w-3 h-3 mr-1" />
-                      {groups.length} grupos
-                    </div>
-                  </div>
-                  <div 
-                    className="absolute -bottom-2 -right-2 w-16 h-16 rounded-full" 
-                    style={{ background: 'rgba(255, 255, 255, 0.1)' }}
-                  />
-                </div>
-              </Card>
-            </div>
-
-            {/* Category Cards */}
-            {categories.map((category) => (
-              <div 
-                key={category.id}
-                className="hover:brightness-105 active:opacity-80 transition-all duration-200 ease-out"
-              >
-                <Card 
-                  className={`w-48 cursor-pointer border-0 bg-gradient-to-br ${category.gradient} text-white overflow-hidden transition-all`}
-                  style={{
-                    transform: selectedCategory === category.name ? 'scale(1.05)' : 'scale(1)',
-                    boxShadow: selectedCategory === category.name ? '0 10px 24px rgba(12,59,46,0.10)' : 'none',
-                  }}
-                  onClick={() => setSelectedCategory(category.name)}
-                  onMouseEnter={(e) => {
-                    if (selectedCategory !== category.name) {
-                      e.currentTarget.style.transform = 'scale(1.05)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (selectedCategory !== category.name) {
-                      e.currentTarget.style.transform = 'scale(1)';
-                    }
-                  }}
-                >
-                  <div className="relative p-4 h-28">
-                    {selectedCategory === category.name && (
-                      <div className="absolute top-2 right-2">
-                        <Badge 
-                          variant="secondary" 
-                          className="border-0" 
-                          style={{ 
-                            fontSize: '10px', 
-                            fontWeight: 600,
-                            background: 'rgba(255, 255, 255, 0.2)',
-                            color: '#FFFFFF',
-                          }}
-                        >
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Ativo
-                        </Badge>
-                      </div>
-                    )}
-                    <div className="flex flex-col justify-end h-full">
-                      <div className="text-[32px] mb-1">{category.icon}</div>
-                      <h3 className="text-[14px] mb-1" style={{ fontWeight: 600 }}>{category.name}</h3>
-                      <div className="flex items-center text-[11px] opacity-90">
-                        <Users className="w-3 h-3 mr-1" />
-                        {category.count.toLocaleString()} membros
-                      </div>
-                    </div>
-                    <div 
-                      className="absolute -top-2 -left-2 w-12 h-12 rounded-full" 
-                      style={{ background: 'rgba(255, 255, 255, 0.1)' }}
-                    />
-                  </div>
-                </Card>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* My Groups */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 
-            className="text-[24px]" 
-            style={{ 
-              fontWeight: 700, 
-              color: 'var(--rayo-forest-900)' 
-            }}
-          >
-            Meus Grupos
-          </h2>
-          <Badge 
-            style={{ 
-              fontSize: '12px', 
-              fontWeight: 600,
-              background: 'var(--rayo-terra-500)',
-              color: '#FFFFFF',
-            }}
-          >
-            {groups.filter(g => g.isJoined).length} grupos
-          </Badge>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredGroups.filter(g => g.isJoined).map((group) => (
-            <GroupCard key={group.id} group={group} />
-          ))}
-        </div>
-      </div>
-
-      {/* Discover Groups */}
-      <div>
-        <h2 
-          className="text-[24px] mb-4" 
-          style={{ 
-            fontWeight: 700, 
-            color: 'var(--rayo-forest-900)' 
+        <Badge
+          style={{
+            fontSize: '12px',
+            fontWeight: 600,
+            background: 'var(--rayo-terra-100)',
+            color: 'var(--rayo-terra-500)',
           }}
         >
-          Descubra Novos Grupos
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredGroups.filter(g => !g.isJoined).map((group) => (
-            <GroupCard key={group.id} group={group} />
+          {filteredGroups.length} {filteredGroups.length === 1 ? 'comunidade' : 'comunidades'}
+        </Badge>
+      </div>
+
+      {/* Chips de filtro por categoria */}
+      <div className="overflow-x-auto scrollbar-hide -mx-6 px-6" role="tablist" aria-label="Filtrar por categoria">
+        <div className="flex gap-2 pb-2" style={{ width: 'max-content' }}>
+          <CategoryChip
+            label="Todas"
+            active={selectedCategory === null}
+            onClick={() => onSelectCategory(null)}
+          />
+          {categories.map((cat) => (
+            <CategoryChip
+              key={cat}
+              label={cat}
+              active={selectedCategory === cat}
+              onClick={() => onSelectCategory(cat)}
+            />
           ))}
         </div>
       </div>
+
+      {/* Grade única (estilo Reddit) */}
+      {filteredGroups.length === 0 ? (
+        <p className="py-8 text-center" style={{ color: 'var(--rayo-ink-400)' }}>
+          Nenhuma comunidade nessa categoria por enquanto.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {visibleGroups.map((group) => (
+              <GroupCard key={group.id} group={group} />
+            ))}
+          </div>
+
+          {hasMore && (
+            <div className="pt-2 flex justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setVisibleCount((n) => n + EXPLORAR_PAGE_SIZE)}
+                style={{ fontWeight: 600 }}
+              >
+                Mostrar mais
+              </Button>
+            </div>
+          )}
+        </>
+      )}
     </div>
+  );
+}
+
+// Chip de filtro de categoria — estilo "pill" minimalista (Reddit-like).
+function CategoryChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className="rayo-focus-ring transition-all duration-150"
+      style={{
+        padding: '6px 14px',
+        borderRadius: 9999,
+        fontSize: 13,
+        fontWeight: 600,
+        whiteSpace: 'nowrap',
+        background: active ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-200)',
+        color: active ? '#FFFFFF' : 'var(--rayo-forest-900)',
+        border: '1px solid transparent',
+        cursor: 'pointer',
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
