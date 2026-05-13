@@ -122,6 +122,7 @@ import {
   RAYO_OPEN_COMMUNITY,
 } from "./lib/cardClickTargets";
 import { migrateLegacyStorage } from "./lib/storageMigration";
+import { enhancedToast } from "./components/EnhancedToast";
 
 // Task #163 — migra chaves `raio_*`/`raio-*` legadas (consent, theme,
 // user-extended, search-recents, etc.) para `rayo_*`/`rayo-*` no
@@ -343,6 +344,45 @@ function AppContent() {
 
   useEffect(() => {
     analytics.trackAppOpened();
+  }, []);
+
+  // Task #207 — quando o usuário clica no magic link de confirmação de
+  // e-mail, o backend redireciona pra `/?email_verified=ok|already|
+  // expired|invalid`. Aqui mostramos o toast certo e limpamos o param
+  // pra não disparar de novo em refresh. O painel inline (em outra aba)
+  // detecta via polling — esse efeito serve só pra UX da aba que abriu
+  // o link em si (mesmo browser, ex: celular).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const status = sp.get("email_verified");
+    if (!status) return;
+    if (status === "ok" || status === "already") {
+      enhancedToast.success({
+        title: "E-mail confirmado",
+        description:
+          status === "already"
+            ? "Esse e-mail já estava confirmado. Tudo pronto pra seguir."
+            : "Pronto, confirmamos seu e-mail.",
+        haptic: true,
+      });
+    } else if (status === "expired") {
+      enhancedToast.error({
+        title: "Link expirado",
+        description: "Peça um novo link ou use o código de 6 dígitos.",
+        haptic: true,
+      });
+    } else {
+      enhancedToast.error({
+        title: "Link inválido",
+        description: "Esse link não é mais válido. Solicite um novo.",
+        haptic: true,
+      });
+    }
+    sp.delete("email_verified");
+    const qs = sp.toString();
+    const next = window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
+    window.history.replaceState({}, "", next);
   }, []);
 
   // Task #115 — listener global "voltar ao topo" disparado quando o usuário

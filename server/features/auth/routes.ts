@@ -1,7 +1,7 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { validateRegister, validateLogin } from "./validation.js";
-import { registerUser, loginUser, logoutUser, sendVerificationCode, verifyCode, requestPasswordReset, resetPassword, changePassword, resendVerificationCodeForUser } from "./service.js";
+import { registerUser, loginUser, logoutUser, sendVerificationCode, verifyCode, requestPasswordReset, resetPassword, changePassword, resendVerificationCodeForUser, verifyEmailByMagicLink, isEmailVerifiedForUser } from "./service.js";
 import { success, created, error } from "../../utils/response.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { rateLimiter } from "../../middleware/security.js";
@@ -72,6 +72,48 @@ router.post(
   } catch (err) {
     next(err);
   }
+  },
+);
+
+// Task #207 — endpoint pro magic link de confirmação. GET (clicável
+// direto do e-mail), single-use por linha (idempotente em re-clicks),
+// SEM rate-limiter pesado: o token é cripto-aleatório (32 bytes) e a
+// chance de brute-force é zero. Sempre redireciona pro app pra que o
+// usuário caia de volta no contexto que abandonou (ex: criar comunidade
+// no celular). Status query param permite o app mostrar toast certo.
+router.get("/verify-email", async (req: Request, res: Response) => {
+  const token = typeof req.query.token === "string" ? req.query.token : "";
+  const appUrl =
+    process.env.APP_URL ||
+    (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "");
+  const baseRedirect = appUrl || "/";
+  const result = await verifyEmailByMagicLink(token);
+  const status = result.ok
+    ? result.alreadyVerified
+      ? "already"
+      : "ok"
+    : result.reason === "EXPIRED"
+    ? "expired"
+    : "invalid";
+  // Sempre 302 pra origem do app — `email_verified=ok|already|expired|invalid`.
+  res.redirect(302, `${baseRedirect}/?email_verified=${status}`);
+});
+
+// Task #207 — polling endpoint usado pelo `EmailVerificationInline` pra
+// auto-detectar quando o usuário confirmou via deep-link em outra aba
+// ou no celular. Rate limit generoso porque o painel chama a cada poucos
+// segundos enquanto o modal está aberto.
+router.get(
+  "/verification-status",
+  requireAuth,
+  rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const verified = await isEmailVerifiedForUser(req.user!.id);
+      success(res, { verified });
+    } catch (err) {
+      next(err);
+    }
   },
 );
 

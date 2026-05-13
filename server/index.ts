@@ -141,6 +141,14 @@ const isOAuthPath = (req: import("express").Request) =>
   req.path === "/google/callback" ||
   req.path === "/facebook" ||
   req.path === "/facebook/callback";
+// Task #207 — magic link de e-mail (GET, idempotente, token cripto-aleatório
+// de 256 bits) e polling de status (GET, requireAuth + limiter próprio
+// 120/15m no router). Ambos ficam fora do limiter geral de 60/15m porque
+// o painel inline pode chamar /verification-status a cada 4s enquanto
+// aberto e estouraria o orçamento global em poucos minutos.
+const isVerifyEmailPath = (req: import("express").Request) =>
+  req.method === "GET" &&
+  (req.path === "/verify-email" || req.path === "/verification-status");
 app.use(
   "/api/auth",
   // Strict per-IP limiter that ONLY applies to sensitive write endpoints
@@ -159,7 +167,7 @@ app.use(
   // called on every app boot/refresh and is not an abuse vector.
   rateLimiter(60, 15 * 60 * 1000, {
     keyByUser: true,
-    skip: (req) => isSensitiveAuthPost(req) || isAuthMe(req) || isOAuthPath(req),
+    skip: (req) => isSensitiveAuthPost(req) || isAuthMe(req) || isOAuthPath(req) || isVerifyEmailPath(req),
   }),
   authRoutes,
 );

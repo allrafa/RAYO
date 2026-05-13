@@ -131,6 +131,76 @@ function generateVerificationCode(): string {
   return String(crypto.randomInt(100000, 999999));
 }
 
+// Task #207 — magic link de confirmação. Token cru vai no e-mail; só
+// o hash sha256 é gravado no DB. URL absoluta usa APP_URL pra funcionar
+// como universal link no celular (mesmo domínio do app).
+function generateMagicLinkToken(): { rawToken: string; tokenHash: string } {
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = hashToken(rawToken);
+  return { rawToken, tokenHash };
+}
+
+function buildMagicLinkUrl(rawToken: string): string {
+  return `${getAppUrl()}/api/auth/verify-email?token=${encodeURIComponent(rawToken)}`;
+}
+
+// Task #207 — consome o token do magic link. Marca a linha mais recente
+// (não-expirada, não-verified) como verified=TRUE e devolve o e-mail
+// alvo. Idempotente em relação a re-clicks: se já foi verificado uma
+// vez, devolve `alreadyVerified=true` e não falha.
+export async function verifyEmailByMagicLink(
+  rawToken: string,
+): Promise<{ ok: true; email: string; alreadyVerified: boolean } | { ok: false; reason: "INVALID" | "EXPIRED" }> {
+  if (!rawToken || typeof rawToken !== "string") {
+    return { ok: false, reason: "INVALID" };
+  }
+  const tokenHash = hashToken(rawToken.trim());
+  const { rows } = await query<{
+    id: number;
+    email: string;
+    verified: boolean;
+    expires_at: Date;
+  }>(
+    `SELECT id, email, verified, expires_at
+       FROM email_verification_codes
+      WHERE verify_token_hash = $1
+      ORDER BY created_at DESC LIMIT 1`,
+    [tokenHash],
+  );
+  if (rows.length === 0) {
+    return { ok: false, reason: "INVALID" };
+  }
+  const row = rows[0];
+  if (row.verified) {
+    return { ok: true, email: row.email, alreadyVerified: true };
+  }
+  if (new Date(row.expires_at) < new Date()) {
+    return { ok: false, reason: "EXPIRED" };
+  }
+  await query(
+    "UPDATE email_verification_codes SET verified = TRUE WHERE id = $1",
+    [row.id],
+  );
+  return { ok: true, email: row.email, alreadyVerified: false };
+}
+
+// Task #207 — usado pelo painel inline (`EmailVerificationInline`) pra
+// detectar quando o usuário confirmou via deep-link em outra aba/celular.
+// Usa a mesma fonte da verdade do `isUserEmailVerified` do community
+// service (linha verified=TRUE em email_verification_codes).
+export async function isEmailVerifiedForUser(userId: number): Promise<boolean> {
+  const { rows } = await query<{ ok: boolean }>(
+    `SELECT EXISTS(
+       SELECT 1
+         FROM email_verification_codes ev
+         JOIN users u ON LOWER(u.email) = LOWER(ev.email)
+        WHERE u.id = $1 AND ev.verified = TRUE
+     ) AS ok`,
+    [userId],
+  );
+  return !!rows[0]?.ok;
+}
+
 export async function sendVerificationCode(email: string): Promise<{ cooldownSeconds?: number }> {
   const existing = await query("SELECT id FROM users WHERE email = $1", [email]);
   if (existing.rows.length > 0) {
@@ -163,15 +233,16 @@ export async function sendVerificationCode(email: string): Promise<{ cooldownSec
 
   const code = generateVerificationCode();
   const expiresAt = new Date(Date.now() + VERIFICATION_CODE_EXPIRY_MS);
+  const { rawToken, tokenHash } = generateMagicLinkToken();
 
   await query(
-    `INSERT INTO email_verification_codes (email, code, expires_at)
-     VALUES ($1, $2, $3)`,
-    [email, code, expiresAt]
+    `INSERT INTO email_verification_codes (email, code, expires_at, verify_token_hash)
+     VALUES ($1, $2, $3, $4)`,
+    [email, code, expiresAt, tokenHash]
   );
 
   const isDev = process.env.NODE_ENV !== "production";
-  const sendResult = await sendVerificationCodeEmail(email, code);
+  const sendResult = await sendVerificationCodeEmail(email, code, buildMagicLinkUrl(rawToken));
 
   if (!sendResult.sent) {
     if (isDev) {
@@ -458,14 +529,15 @@ export async function resendVerificationCodeForUser(
 
   const code = generateVerificationCode();
   const expiresAt = new Date(Date.now() + VERIFICATION_CODE_EXPIRY_MS);
+  const { rawToken, tokenHash } = generateMagicLinkToken();
   await query(
-    `INSERT INTO email_verification_codes (email, code, expires_at)
-     VALUES ($1, $2, $3)`,
-    [email, code, expiresAt],
+    `INSERT INTO email_verification_codes (email, code, expires_at, verify_token_hash)
+     VALUES ($1, $2, $3, $4)`,
+    [email, code, expiresAt, tokenHash],
   );
 
   const isDev = process.env.NODE_ENV !== "production";
-  const sendResult = await sendVerificationCodeEmail(email, code);
+  const sendResult = await sendVerificationCodeEmail(email, code, buildMagicLinkUrl(rawToken));
   if (!sendResult.sent) {
     if (isDev) {
       console.log(`\n========================================`);

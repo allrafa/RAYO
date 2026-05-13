@@ -116,21 +116,37 @@ function layout(body: string, preheader: string): string {
 </html>`;
 }
 
-export async function sendVerificationCodeEmail(email: string, code: string): Promise<SendResult> {
+export async function sendVerificationCodeEmail(
+  email: string,
+  code: string,
+  magicLinkUrl?: string,
+): Promise<SendResult> {
   const subject = `Seu código de verificação RAYO: ${code}`;
-  const preheader = `Use o código ${code} para continuar seu cadastro na RAYO.`;
+  const preheader = `Use o código ${code} ou toque em "Confirmar agora" para continuar.`;
+  const magicButton = magicLinkUrl
+    ? `
+      <div style="text-align:center;margin:0 0 24px 0;">
+        <a href="${magicLinkUrl}" style="display:inline-block;padding:14px 28px;background:${RAYO_ACCENT};color:${RAYO_BG};text-decoration:none;border-radius:8px;font-weight:600;">Confirmar agora</a>
+      </div>
+      <p style="margin:0 0 8px 0;color:${RAYO_MUTED};font-size:13px;text-align:center;">Toque no botão acima pra confirmar pelo celular sem digitar nada.</p>
+      <p style="margin:0 0 16px 0;color:${RAYO_MUTED};font-size:12px;text-align:center;">Ou use o código de 6 dígitos abaixo:</p>
+    `
+    : "";
   const html = layout(
     `
       <h1 style="margin:0 0 16px 0;font-size:22px;color:${RAYO_TEXT};">Confirme seu e-mail</h1>
-      <p style="margin:0 0 24px 0;color:${RAYO_TEXT};">Use o código abaixo para continuar seu cadastro na RAYO. Ele expira em <strong>10 minutos</strong>.</p>
-      <div style="text-align:center;margin:32px 0;">
+      <p style="margin:0 0 24px 0;color:${RAYO_TEXT};">Pra continuar na RAYO, confirme que esse e-mail é seu. O código e o link expiram em <strong>10 minutos</strong>.</p>
+      ${magicButton}
+      <div style="text-align:center;margin:16px 0 32px 0;">
         <div style="display:inline-block;padding:18px 32px;border-radius:12px;background:${RAYO_BG};color:${RAYO_ACCENT};font-size:32px;font-weight:700;letter-spacing:8px;font-family:'Courier New',monospace;">${code}</div>
       </div>
-      <p style="margin:0 0 8px 0;color:${RAYO_MUTED};font-size:14px;">Se você não solicitou este código, pode ignorar este e-mail com segurança.</p>
+      <p style="margin:0 0 8px 0;color:${RAYO_MUTED};font-size:14px;">Se você não solicitou este e-mail, pode ignorá-lo com segurança.</p>
     `,
     preheader,
   );
-  const text = `Seu código de verificação RAYO é: ${code}\n\nO código expira em 10 minutos.\n\nSe você não solicitou este código, pode ignorar este e-mail.`;
+  const text = magicLinkUrl
+    ? `Confirme seu e-mail RAYO.\n\nToque no link abaixo pra confirmar direto pelo celular (válido por 10 minutos):\n${magicLinkUrl}\n\nOu use o código de 6 dígitos: ${code}\n\nSe você não solicitou este e-mail, pode ignorá-lo.`
+    : `Seu código de verificação RAYO é: ${code}\n\nO código expira em 10 minutos.\n\nSe você não solicitou este código, pode ignorar este e-mail.`;
   return sendEmail({ to: email, subject, html, text });
 }
 

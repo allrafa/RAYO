@@ -75,6 +75,19 @@ export async function initializeSchema() {
     CREATE INDEX IF NOT EXISTS idx_verification_expires ON email_verification_codes(expires_at)
   `);
 
+  // Task #207 — magic link de confirmação por e-mail. Guardamos só o
+  // hash (sha256) do token; o token cru vai no link do e-mail. Coluna
+  // adicionada idempotentemente pra rodar em DBs existentes.
+  await query(`
+    ALTER TABLE email_verification_codes
+      ADD COLUMN IF NOT EXISTS verify_token_hash VARCHAR(64)
+  `);
+
+  await query(`
+    CREATE INDEX IF NOT EXISTS idx_verification_token_hash
+      ON email_verification_codes(verify_token_hash)
+  `);
+
   await query(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       id SERIAL PRIMARY KEY,

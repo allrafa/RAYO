@@ -45,6 +45,41 @@ export function EmailVerificationInline({ onVerified, onCancel, reason }: Props)
     }
   }, [stage]);
 
+  // Task #207 — quando o usuário clica no magic link do e-mail
+  // (especialmente no celular, em outra aba/app), o backend marca
+  // verified=TRUE. Aqui fazemos polling enquanto o painel está aberto
+  // pra detectar isso sem o usuário precisar voltar e clicar nada.
+  // Roda só no estágio "code" (depois que o código/link foi enviado)
+  // e respeita visibility da aba pra não esquentar o servidor à toa.
+  useEffect(() => {
+    if (stage !== "code") return;
+    let cancelled = false;
+    const checkOnce = async () => {
+      if (cancelled) return;
+      if (typeof document !== "undefined" && document.hidden) return;
+      const res = await api.get<{ verified: boolean }>("/api/auth/verification-status");
+      if (cancelled) return;
+      if (res.success && res.data?.verified) {
+        enhancedToast.success({
+          title: "E-mail confirmado",
+          description: "Confirmamos pelo link do e-mail. Seguindo…",
+          haptic: true,
+        });
+        onVerified();
+      }
+    };
+    const id = window.setInterval(() => { void checkOnce(); }, 4000);
+    const onFocus = () => { void checkOnce(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [stage, onVerified]);
+
   const sendCode = async () => {
     if (busy || cooldown > 0) return;
     setBusy(true);
