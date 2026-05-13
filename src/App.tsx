@@ -123,6 +123,8 @@ import {
 } from "./lib/cardClickTargets";
 import { migrateLegacyStorage } from "./lib/storageMigration";
 import { enhancedToast } from "./components/EnhancedToast";
+import { EmailVerificationInline } from "./components/EmailVerificationInline";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./components/ui/dialog";
 
 // Task #163 — migra chaves `raio_*`/`raio-*` legadas (consent, theme,
 // user-extended, search-recents, etc.) para `rayo_*`/`rayo-*` no
@@ -346,17 +348,25 @@ function AppContent() {
     analytics.trackAppOpened();
   }, []);
 
-  // Task #207 — quando o usuário clica no magic link de confirmação de
-  // e-mail, o backend redireciona pra `/?email_verified=ok|already|
-  // expired|invalid`. Aqui mostramos o toast certo e limpamos o param
-  // pra não disparar de novo em refresh. O painel inline (em outra aba)
-  // detecta via polling — esse efeito serve só pra UX da aba que abriu
-  // o link em si (mesmo browser, ex: celular).
+  // Task #207 / #209 — quando o usuário clica no magic link de
+  // confirmação de e-mail, o backend redireciona pra
+  // `/?email_verified=ok|already|expired|invalid`. Aqui mostramos o
+  // toast certo e limpamos o param pra não disparar de novo em refresh.
+  // O painel inline (em outra aba) detecta via polling — esse efeito
+  // serve só pra UX da aba que abriu o link em si (mesmo browser, ex:
+  // celular). Em `expired`/`invalid`, se houver usuário logado, abrimos
+  // o `<EmailVerificationDialog>` global e disparamos o reenvio em 1
+  // toque (na real, zero — `autoSend`). Esperamos a sessão carregar
+  // antes de decidir; um ref garante one-shot por carregamento de URL.
+  const expiredHandledRef = useRef(false);
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (isLoading) return;
+    if (expiredHandledRef.current) return;
     const sp = new URLSearchParams(window.location.search);
     const status = sp.get("email_verified");
     if (!status) return;
+    expiredHandledRef.current = true;
     if (status === "ok" || status === "already") {
       enhancedToast.success({
         title: "E-mail confirmado",
@@ -366,24 +376,41 @@ function AppContent() {
             : "Pronto, confirmamos seu e-mail.",
         haptic: true,
       });
-    } else if (status === "expired") {
-      enhancedToast.error({
-        title: "Link expirado",
-        description: "Peça um novo link ou use o código de 6 dígitos.",
-        haptic: true,
-      });
-    } else {
-      enhancedToast.error({
-        title: "Link inválido",
-        description: "Esse link não é mais válido. Solicite um novo.",
-        haptic: true,
-      });
+    } else if (status === "expired" || status === "invalid") {
+      const isExpired = status === "expired";
+      const title = isExpired ? "Link expirado" : "Link inválido";
+      const description = user
+        ? isExpired
+          ? "Vamos enviar um novo link agora mesmo."
+          : "Esse link não é mais válido. Vamos enviar um novo agora."
+        : isExpired
+        ? "Entre na sua conta pra solicitar um novo link."
+        : "Esse link não é mais válido. Entre pra solicitar um novo.";
+      if (user) {
+        setExpiredVerifyOpen(true);
+        enhancedToast.error({
+          title,
+          description,
+          haptic: true,
+          action: {
+            label: "Reenviar agora",
+            onClick: () => setExpiredVerifyOpen(true),
+          },
+        });
+      } else {
+        enhancedToast.error({ title, description, haptic: true });
+      }
     }
     sp.delete("email_verified");
     const qs = sp.toString();
     const next = window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
     window.history.replaceState({}, "", next);
-  }, []);
+  }, [isLoading, user]);
+
+  // Task #209 — dialog global pra reenvio de link de confirmação quando
+  // o usuário cai no app via `?email_verified=expired|invalid`. Reusa
+  // o `<EmailVerificationInline autoSend>` (mesmo do CreateCommunityModal).
+  const [expiredVerifyOpen, setExpiredVerifyOpen] = useState(false);
 
   // Task #115 — listener global "voltar ao topo" disparado quando o usuário
   // clica numa aba que já está ativa. Páginas que precisam de side-effect
@@ -884,6 +911,27 @@ function AppContent() {
           autenticado (acionado pelo ConsentBanner ou pela LandingPage).
           Antes era um "tab" virtual no switch; agora é overlay puro
           pra não conflitar com o roteamento real (URL não muda). */}
+      {/* Task #209 — dialog global de reenvio de link expirado/inválido.
+          Disparado pelo handler de `?email_verified=expired|invalid`
+          quando há sessão. `autoSend` faz o reenvio assim que o painel
+          aparece — usuário não precisa apertar nada na maioria dos casos. */}
+      <Dialog open={expiredVerifyOpen} onOpenChange={setExpiredVerifyOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar e-mail</DialogTitle>
+            <DialogDescription>
+              O link anterior não vale mais. Estamos enviando um novo agora.
+            </DialogDescription>
+          </DialogHeader>
+          <EmailVerificationInline
+            autoSend
+            reason="O link de confirmação anterior expirou. Vamos enviar um novo agora."
+            onVerified={() => setExpiredVerifyOpen(false)}
+            onCancel={() => setExpiredVerifyOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
       {showPrivacyOverlay && (
         <div className="fixed inset-0 z-[10000] bg-background overflow-y-auto">
           <RouteErrorBoundary variant="fullscreen">

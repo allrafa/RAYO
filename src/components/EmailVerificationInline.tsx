@@ -18,9 +18,14 @@ interface Props {
   onCancel: () => void;
   // Mensagem de contexto pro topo (ex: "Pra criar comunidades…").
   reason?: string;
+  // Task #209 — quando o painel é aberto a partir de `?email_verified=expired`
+  // já queremos disparar o reenvio em 1 toque (na real, zero toques) pra
+  // evitar uma fricção extra. O cooldown e estados de erro continuam
+  // aplicáveis normalmente.
+  autoSend?: boolean;
 }
 
-export function EmailVerificationInline({ onVerified, onCancel, reason }: Props) {
+export function EmailVerificationInline({ onVerified, onCancel, reason, autoSend }: Props) {
   const { user } = useAuth();
   const email = user?.email ?? "";
 
@@ -44,6 +49,17 @@ export function EmailVerificationInline({ onVerified, onCancel, reason }: Props)
       return () => window.clearTimeout(id);
     }
   }, [stage]);
+
+  // Task #209 — autoSend dispara o reenvio assim que o painel monta com
+  // e-mail disponível. Guard com ref pra rodar uma única vez por instância.
+  const autoSentRef = useRef(false);
+  useEffect(() => {
+    if (!autoSend || autoSentRef.current) return;
+    if (!email) return;
+    autoSentRef.current = true;
+    void sendCode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSend, email]);
 
   // Task #207 — quando o usuário clica no magic link do e-mail
   // (especialmente no celular, em outra aba/app), o backend marca
