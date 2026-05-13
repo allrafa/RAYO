@@ -553,6 +553,19 @@ export async function initializeSchema() {
   }
   await query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_forums_slug ON forums(slug)`);
 
+  // Task #198 — comunidades enriquecidas via CMS + criação por usuário.
+  // Idempotente: ALTER ADD COLUMN IF NOT EXISTS preserva fóruns seedados.
+  await query(`ALTER TABLE forums ADD COLUMN IF NOT EXISTS cover_url TEXT`);
+  await query(`ALTER TABLE forums ADD COLUMN IF NOT EXISTS rules TEXT`);
+  await query(`ALTER TABLE forums ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id) ON DELETE SET NULL`);
+  // is_official: DEFAULT TRUE no ADD COLUMN garante que linhas pré-existentes
+  // (todas seedadas pelo boot) virem TRUE de uma vez só, sem precisar de
+  // UPDATE recorrente. Novos INSERTs (createForumByUser/adminCreateForum)
+  // passam o valor explicitamente, então o default não influencia mais.
+  // Resultado: admin pode desmarcar "is_official" de uma comunidade legada
+  // e o boot NÃO vai reverter na próxima reinicialização.
+  await query(`ALTER TABLE forums ADD COLUMN IF NOT EXISTS is_official BOOLEAN NOT NULL DEFAULT TRUE`);
+
   await query(`
     CREATE TABLE IF NOT EXISTS forum_subscriptions (
       forum_id INTEGER NOT NULL REFERENCES forums(id) ON DELETE CASCADE,
@@ -562,6 +575,19 @@ export async function initializeSchema() {
     )
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_forum_subs_user ON forum_subscriptions(user_id)`);
+
+  // Task #198 — moderadores específicos por comunidade. Independente do
+  // role global (`moderator`/`admin`); um `client` pode ser moderador de
+  // uma comunidade que ele criou OU foi promovido por admin global.
+  await query(`
+    CREATE TABLE IF NOT EXISTS forum_moderators (
+      forum_id INTEGER NOT NULL REFERENCES forums(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (forum_id, user_id)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_forum_mods_user ON forum_moderators(user_id)`);
 
   await query(`
     CREATE TABLE IF NOT EXISTS user_follows (

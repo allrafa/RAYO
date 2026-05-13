@@ -129,6 +129,7 @@ export async function listForums(userId?: number) {
   }
   const { rows } = await query(
     `SELECT f.id, f.name, f.slug, f.description, f.icon, f.life_context, f.category,
+       f.cover_url, f.is_official, f.created_by,
        (SELECT COUNT(*) FROM posts p WHERE p.forum_id = f.id AND p.is_hidden = FALSE) AS post_count,
        (SELECT COUNT(*) FROM forum_subscriptions fs2 WHERE fs2.forum_id = f.id) AS member_count,
        ${subscribedExpr}
@@ -137,21 +138,29 @@ export async function listForums(userId?: number) {
      ORDER BY f.sort_order`,
     params,
   );
+  // Cover_url precisa virar URL real (sentinels objstore:// → signed URL).
+  for (const r of rows) {
+    if (r.cover_url) r.cover_url = await resolveStoredMediaUrl(r.cover_url);
+  }
   return rows;
 }
 
 export async function getForumBySlug(slug: string, userId?: number) {
   const params: Array<string | number> = [slug];
   let subscribedExpr = "false AS is_subscribed";
+  let isModExpr = "false AS is_moderator";
   if (userId) {
     params.push(userId);
     subscribedExpr = `EXISTS(SELECT 1 FROM forum_subscriptions fs WHERE fs.forum_id = f.id AND fs.user_id = $2) AS is_subscribed`;
+    isModExpr = `EXISTS(SELECT 1 FROM forum_moderators fm WHERE fm.forum_id = f.id AND fm.user_id = $2) AS is_moderator`;
   }
   const { rows } = await query(
     `SELECT f.id, f.name, f.slug, f.description, f.icon, f.life_context, f.category,
+       f.cover_url, f.rules, f.is_official, f.created_by, f.created_at,
        (SELECT COUNT(*) FROM posts p WHERE p.forum_id = f.id AND p.is_hidden = FALSE) AS post_count,
        (SELECT COUNT(*) FROM forum_subscriptions fs2 WHERE fs2.forum_id = f.id) AS member_count,
-       ${subscribedExpr}
+       ${subscribedExpr},
+       ${isModExpr}
      FROM forums f
      WHERE f.slug = $1 AND f.is_active = true`,
     params,
@@ -159,7 +168,43 @@ export async function getForumBySlug(slug: string, userId?: number) {
   if (rows.length === 0) {
     throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
   }
-  return rows[0];
+  const forum = rows[0];
+  if (forum.cover_url) forum.cover_url = await resolveStoredMediaUrl(forum.cover_url);
+  // Hidrata moderadores per-community (lista compacta — nome+avatar).
+  forum.moderators = await getForumModerators(forum.id);
+  return forum;
+}
+
+// Task #198 — moderadores per-community (list compacto pra header e Sobre).
+export async function getForumModerators(forumId: number) {
+  const { rows } = await query<{ user_id: number; name: string; avatar_url: string | null; created_at: string }>(
+    `SELECT u.id AS user_id, u.name, u.avatar_url, fm.created_at
+       FROM forum_moderators fm
+       JOIN users u ON u.id = fm.user_id
+      WHERE fm.forum_id = $1
+      ORDER BY fm.created_at ASC`,
+    [forumId],
+  );
+  const out = [];
+  for (const r of rows) {
+    out.push({
+      user_id: r.user_id,
+      name: r.name,
+      avatar_url: await resolveStoredMediaUrl(r.avatar_url),
+      created_at: r.created_at,
+    });
+  }
+  return out;
+}
+
+// Task #198 — true se user é moderador específico desta comunidade.
+// NÃO checa role global; combine com hasRole no caller para o bypass admin/mod.
+export async function isForumModerator(forumId: number, userId: number): Promise<boolean> {
+  const { rows } = await query<{ exists: boolean }>(
+    `SELECT EXISTS(SELECT 1 FROM forum_moderators WHERE forum_id = $1 AND user_id = $2) AS exists`,
+    [forumId, userId],
+  );
+  return !!rows[0]?.exists;
 }
 
 export async function getForumPosts(
@@ -662,7 +707,8 @@ export async function deletePost(
   reason?: string | null,
 ) {
   const { rows: existing } = await query(
-    `SELECT p.id, p.user_id, p.title, p.content, f.slug AS forum_slug, f.name AS forum_name
+    `SELECT p.id, p.user_id, p.title, p.content, p.forum_id,
+            f.slug AS forum_slug, f.name AS forum_name
      FROM posts p
      JOIN forums f ON f.id = p.forum_id
      WHERE p.id = $1 AND p.is_hidden = FALSE`,
@@ -673,7 +719,13 @@ export async function deletePost(
   }
   const post = existing[0];
   const isAuthor = post.user_id === userId;
-  if (!isAuthor && !isModeratorPlus) {
+  // Task #198 — moderador local também pode remover. Role global continua
+  // como override (`isModeratorPlus`); per-community modera só este forum.
+  const isLocalMod = !isAuthor && !isModeratorPlus
+    ? await isForumModerator(post.forum_id, userId)
+    : false;
+  const canModerate = isModeratorPlus || isLocalMod;
+  if (!isAuthor && !canModerate) {
     throw new AppError("Sem permissão", "FORBIDDEN", 403);
   }
 
@@ -682,6 +734,8 @@ export async function deletePost(
   // (post escondido sem registro de auditoria). Auto-exclusão do autor
   // continua silenciosa (sem entrada de auditoria/notificação).
   const trimmedReason = typeof reason === "string" ? reason.trim().slice(0, 2000) : null;
+  // Mod local sem role global ainda registra mod_actions normalmente.
+  void canModerate;
   if (isAuthor) {
     await query(`UPDATE posts SET is_hidden = TRUE, updated_at = NOW() WHERE id = $1`, [postId]);
   } else {
@@ -1017,6 +1071,287 @@ export async function addComment(postId: number, userId: number, content: string
 export async function toggleCommentLike(commentId: number, userId: number) {
   const r = await toggleCommentReaction(commentId, userId, "❤️");
   return { liked: r.user_reaction === "❤️" };
+}
+
+// ───── Task #198 — CRUD de comunidades (CMS + criação por usuário) ─────
+
+const FORUM_NAME_MAX = 80;
+const FORUM_DESC_MAX = 500;
+const FORUM_RULES_MAX = 5000;
+const FORUM_SLUG_RE = /^[a-z0-9-]+$/;
+
+function slugify(input: string, fallback: string): string {
+  const base = (input || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return base || fallback;
+}
+
+async function ensureUniqueSlug(base: string): Promise<string> {
+  let candidate = base;
+  let suffix = 2;
+  // Probe até achar livre. Sem TOCTOU bonito (sem advisory lock), mas o
+  // INSERT subsequente cobre via UNIQUE INDEX (try/catch no caller).
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { rows } = await query(`SELECT 1 FROM forums WHERE slug = $1`, [candidate]);
+    if (rows.length === 0) return candidate;
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+    if (suffix > 50) {
+      throw new AppError("Não foi possível gerar slug único", "SLUG_GENERATION_FAILED", 500);
+    }
+  }
+}
+
+interface ForumInput {
+  name?: string;
+  description?: string | null;
+  icon?: string | null;
+  category?: string | null;
+  life_context?: string | null;
+  cover_url?: string | null;
+  rules?: string | null;
+  is_official?: boolean;
+  is_active?: boolean;
+  slug?: string;
+}
+
+function validateForumPatch(patch: ForumInput, isCreate: boolean): void {
+  if (isCreate || patch.name !== undefined) {
+    const name = String(patch.name || "").trim();
+    if (!name) throw new AppError("Nome é obrigatório", "NAME_REQUIRED", 400);
+    if (name.length > FORUM_NAME_MAX) {
+      throw new AppError(`Nome excede ${FORUM_NAME_MAX} caracteres`, "NAME_TOO_LONG", 400);
+    }
+    patch.name = name;
+  }
+  if (patch.description !== undefined && patch.description !== null) {
+    const d = String(patch.description).trim();
+    if (d.length > FORUM_DESC_MAX) {
+      throw new AppError(`Descrição excede ${FORUM_DESC_MAX} caracteres`, "DESC_TOO_LONG", 400);
+    }
+    patch.description = d || null;
+  }
+  if (patch.rules !== undefined && patch.rules !== null) {
+    const r = String(patch.rules).trim();
+    if (r.length > FORUM_RULES_MAX) {
+      throw new AppError(`Regras excedem ${FORUM_RULES_MAX} caracteres`, "RULES_TOO_LONG", 400);
+    }
+    patch.rules = r || null;
+  }
+  if (patch.cover_url !== undefined && patch.cover_url !== null) {
+    const c = String(patch.cover_url).trim();
+    // Aceita só sentinels de object storage (defesa em profundidade contra
+    // injeção de URL externa). String vazia → null.
+    if (c && !c.startsWith("objstore://forums/")) {
+      throw new AppError("Capa inválida", "INVALID_COVER", 400);
+    }
+    patch.cover_url = c || null;
+  }
+  if (patch.slug !== undefined) {
+    const s = String(patch.slug || "").trim().toLowerCase();
+    if (!FORUM_SLUG_RE.test(s) || s.length < 2 || s.length > 60) {
+      throw new AppError("Slug inválido (use a-z, 0-9 e -, 2 a 60 chars)", "INVALID_SLUG", 400);
+    }
+    patch.slug = s;
+  }
+}
+
+// Versão pública: usuário cria a própria comunidade. created_by = userId,
+// is_official=false. Criador vira moderador local + subscriber em uma
+// transação (estado consistente; sem janela "comunidade existe sem dono").
+export async function createForumByUser(userId: number, input: ForumInput) {
+  validateForumPatch(input, true);
+  const slug = input.slug
+    ? await ensureUniqueSlug(input.slug)
+    : await ensureUniqueSlug(slugify(input.name || "", `c-${Date.now()}`));
+  const client = await getClient();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query<{ id: number }>(
+      // Explicit is_official=FALSE (default da coluna é TRUE pra
+      // backfill — não pode contar com o default aqui).
+      `INSERT INTO forums (name, slug, description, icon, category, life_context, rules, cover_url,
+                           created_by, is_official, is_active, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, FALSE, TRUE,
+               COALESCE((SELECT MAX(sort_order)+1 FROM forums), 1))
+       RETURNING id`,
+      [
+        input.name,
+        slug,
+        input.description || null,
+        input.icon || "💬",
+        input.category || null,
+        input.life_context || null,
+        input.rules || null,
+        input.cover_url || null,
+        userId,
+      ],
+    );
+    const forumId = rows[0].id;
+    await client.query(
+      `INSERT INTO forum_subscriptions (forum_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [forumId, userId],
+    );
+    await client.query(
+      `INSERT INTO forum_moderators (forum_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [forumId, userId],
+    );
+    await client.query("COMMIT");
+    trackEvent(userId, "community_created", { forum_id: forumId, slug });
+    return await getForumBySlug(slug, userId);
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    // UNIQUE violation no slug (race) → erro semântico claro.
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/unique/i.test(msg) && /slug/i.test(msg)) {
+      throw new AppError("Este nome/slug já existe", "SLUG_TAKEN", 409);
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// Variante admin: pode definir is_official, slug livre, sort_order, life_context.
+// Não vincula criador como moderador (admin pode promover depois).
+export async function adminCreateForum(adminId: number, input: ForumInput) {
+  validateForumPatch(input, true);
+  const slug = input.slug
+    ? await ensureUniqueSlug(input.slug)
+    : await ensureUniqueSlug(slugify(input.name || "", `c-${Date.now()}`));
+  try {
+    const { rows } = await query<{ id: number }>(
+      `INSERT INTO forums (name, slug, description, icon, category, life_context, rules, cover_url,
+                           created_by, is_official, is_active, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE,
+               COALESCE((SELECT MAX(sort_order)+1 FROM forums), 1))
+       RETURNING id`,
+      [
+        input.name,
+        slug,
+        input.description || null,
+        input.icon || "💬",
+        input.category || null,
+        input.life_context || null,
+        input.rules || null,
+        input.cover_url || null,
+        adminId,
+        input.is_official === true,
+      ],
+    );
+    trackEvent(adminId, "community_created_admin", { forum_id: rows[0].id, slug });
+    return await getForumBySlug(slug);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/unique/i.test(msg) && /slug/i.test(msg)) {
+      throw new AppError("Slug já existe", "SLUG_TAKEN", 409);
+    }
+    throw err;
+  }
+}
+
+// Update genérico (admin OU mod local — caller checa autorização).
+// Campos editáveis: name, description, icon, category, life_context,
+// cover_url, rules, is_official, is_active, slug.
+export async function updateForum(forumId: number, patch: ForumInput) {
+  validateForumPatch(patch, false);
+  const sets: string[] = [];
+  const params: unknown[] = [];
+  const push = (sql: string, value: unknown) => {
+    params.push(value);
+    sets.push(`${sql} = $${params.length}`);
+  };
+  if (patch.name !== undefined) push("name", patch.name);
+  if (patch.description !== undefined) push("description", patch.description);
+  if (patch.icon !== undefined) push("icon", patch.icon || null);
+  if (patch.category !== undefined) push("category", patch.category || null);
+  if (patch.life_context !== undefined) push("life_context", patch.life_context || null);
+  if (patch.rules !== undefined) push("rules", patch.rules);
+  if (patch.cover_url !== undefined) push("cover_url", patch.cover_url);
+  if (patch.is_official !== undefined) push("is_official", patch.is_official === true);
+  if (patch.is_active !== undefined) push("is_active", patch.is_active !== false);
+  if (patch.slug !== undefined) push("slug", patch.slug);
+  if (sets.length === 0) {
+    throw new AppError("Nada para atualizar", "EMPTY_PATCH", 400);
+  }
+  params.push(forumId);
+  try {
+    const { rowCount } = await query(
+      `UPDATE forums SET ${sets.join(", ")} WHERE id = $${params.length}`,
+      params,
+    );
+    if (rowCount === 0) {
+      throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
+    }
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/unique/i.test(msg) && /slug/i.test(msg)) {
+      throw new AppError("Slug já existe", "SLUG_TAKEN", 409);
+    }
+    throw err;
+  }
+  return { forum_id: forumId, updated: true };
+}
+
+// Soft "delete" via is_active=false. Posts ficam intactos (gating no listForums).
+export async function setForumActive(forumId: number, active: boolean) {
+  const { rowCount } = await query(
+    `UPDATE forums SET is_active = $1 WHERE id = $2`,
+    [active, forumId],
+  );
+  if (rowCount === 0) {
+    throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
+  }
+  return { forum_id: forumId, is_active: active };
+}
+
+// Lista pra admin (inclui inativas + criador).
+export async function listAdminForums() {
+  const { rows } = await query(
+    `SELECT f.id, f.name, f.slug, f.description, f.icon, f.category, f.life_context,
+            f.cover_url, f.rules, f.is_official, f.is_active, f.created_by, f.created_at,
+            f.sort_order,
+            u.name AS created_by_name,
+            (SELECT COUNT(*) FROM forum_subscriptions fs WHERE fs.forum_id = f.id) AS member_count,
+            (SELECT COUNT(*) FROM posts p WHERE p.forum_id = f.id AND p.is_hidden = FALSE) AS post_count,
+            (SELECT COUNT(*) FROM forum_moderators fm WHERE fm.forum_id = f.id) AS moderator_count
+       FROM forums f
+       LEFT JOIN users u ON u.id = f.created_by
+       ORDER BY f.is_active DESC, f.sort_order ASC, f.id ASC`,
+  );
+  for (const r of rows) {
+    if (r.cover_url) r.cover_url = await resolveStoredMediaUrl(r.cover_url);
+  }
+  return rows;
+}
+
+export async function addForumModerator(forumId: number, userId: number, addedBy: number) {
+  const { rows: f } = await query(`SELECT id FROM forums WHERE id = $1`, [forumId]);
+  if (f.length === 0) throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
+  const { rows: u } = await query(`SELECT id FROM users WHERE id = $1`, [userId]);
+  if (u.length === 0) throw new AppError("Usuário não encontrado", "USER_NOT_FOUND", 404);
+  await query(
+    `INSERT INTO forum_moderators (forum_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+    [forumId, userId],
+  );
+  trackEvent(addedBy, "forum_moderator_added", { forum_id: forumId, user_id: userId });
+  return { forum_id: forumId, user_id: userId, added: true };
+}
+
+export async function removeForumModerator(forumId: number, userId: number, removedBy: number) {
+  const { rowCount } = await query(
+    `DELETE FROM forum_moderators WHERE forum_id = $1 AND user_id = $2`,
+    [forumId, userId],
+  );
+  trackEvent(removedBy, "forum_moderator_removed", { forum_id: forumId, user_id: userId });
+  return { forum_id: forumId, user_id: userId, removed: (rowCount ?? 0) > 0 };
 }
 
 // ───── Subscriptions / Comunidades ─────

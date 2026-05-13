@@ -13,6 +13,7 @@ import userRoutes from "./features/users/routes.js";
 import gamificationRoutes from "./features/gamification/routes.js";
 import academiaRoutes from "./features/academia/routes.js";
 import communityRoutes from "./features/community/routes.js";
+import communityAdminRoutes from "./features/community/adminRoutes.js";
 import dashboardRoutes from "./features/dashboard/routes.js";
 import homeRoutes from "./features/home/routes.js";
 import searchRoutes from "./features/search/routes.js";
@@ -179,6 +180,7 @@ app.use("/api/lgpd", optionalAuth, rateLimiter(20, 15 * 60 * 1000, { keyByUser: 
 app.use("/api/messages", optionalAuth, rateLimiter(600, 15 * 60 * 1000, { keyByUser: true }), messagesRoutes);
 app.use("/api/notifications", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), notificationsRoutes);
 app.use("/api/admin", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), adminRoutes);
+app.use("/api/admin/community", optionalAuth, rateLimiter(300, 15 * 60 * 1000, { keyByUser: true }), communityAdminRoutes);
 app.use("/api/admin/cms", optionalAuth, rateLimiter(300, 15 * 60 * 1000, { keyByUser: true }), adminCmsRouter);
 app.use("/api/content", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), publicCmsRouter);
 app.use("/api/admin/home-feed", optionalAuth, rateLimiter(300, 15 * 60 * 1000, { keyByUser: true }), adminHomeFeedRouter);

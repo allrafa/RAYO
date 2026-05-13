@@ -38,6 +38,7 @@ import { FavoriteIcon } from "./FavoriteButton";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { ConversasPage } from "./ConversasPage";
 import { CommunityDetailPage } from "./CommunityDetailPage";
+import { CreateCommunityModal } from "./CreateCommunityModal";
 import { DiscussionPage } from "./DiscussionPage";
 import { useTheme } from "./ThemeProvider";
 import { api } from "../lib/api";
@@ -137,6 +138,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     }, { replace: true });
   }, [setSearchParams]);
   const [currentView, setCurrentView] = useState<"feed" | "grupos" | "conversas">("feed");
+  const [showCreateCommunity, setShowCreateCommunity] = useState(false);
   // Task #197 — escopo do feed: "geral" (todos os posts globais) ou
   // "minhas" (só fóruns assinados). URL é fonte da verdade (`?escopo=minhas`),
   // sessionStorage só persiste a preferência entre navegações da sessão.
@@ -570,6 +572,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
         <CommunityDetailPage
           slug={activeCommunitySlug}
           onBack={() => setActiveCommunitySlug(null)}
+          onOpenProfile={(uid) => openProfileById(uid)}
           onOpenPost={(id) => {
             // Task #122 — clicar num post da CommunityDetailPage entra
             // na DiscussionPage. URL é a fonte da verdade: pushState
@@ -840,6 +843,8 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
               loading={forumsLoading}
               error={forumsError}
               onRetry={loadForums}
+              isAuthenticated={!!authUser}
+              onCreateCommunity={() => setShowCreateCommunity(true)}
             />
           )}
 
@@ -862,6 +867,17 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
             highlightCommentId={highlightCommentId}
           />
         )}
+
+        {/* Task #198 — Create Community Modal */}
+        <CreateCommunityModal
+          open={showCreateCommunity}
+          onOpenChange={setShowCreateCommunity}
+          onCreated={(slug) => {
+            void loadForums();
+            // Abre a comunidade recém-criada direto na CommunityDetailPage.
+            openCommunityBySlug(slug);
+          }}
+        />
 
         {/* Create Post Modal */}
         {(showCreatePost || editingPost) && (
@@ -1124,12 +1140,14 @@ interface GruposViewProps {
   loading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  isAuthenticated?: boolean;
+  onCreateCommunity?: () => void;
 }
 
 // Tamanho da página: cresce em múltiplos desse valor a cada "Mostrar mais".
 const EXPLORAR_PAGE_SIZE = 6;
 
-function GruposView({ groups, loading, error, onRetry }: GruposViewProps) {
+function GruposView({ groups, loading, error, onRetry, isAuthenticated, onCreateCommunity }: GruposViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(EXPLORAR_PAGE_SIZE);
 
@@ -1190,16 +1208,23 @@ function GruposView({ groups, loading, error, onRetry }: GruposViewProps) {
             Descubra grupos sobre família, relacionamento, fé e propósito.
           </p>
         </div>
-        <Badge
-          style={{
-            fontSize: '12px',
-            fontWeight: 600,
-            background: 'var(--rayo-terra-100)',
-            color: 'var(--rayo-terra-500)',
-          }}
-        >
-          {filteredGroups.length} {filteredGroups.length === 1 ? 'comunidade' : 'comunidades'}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge
+            style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              background: 'var(--rayo-terra-100)',
+              color: 'var(--rayo-terra-500)',
+            }}
+          >
+            {filteredGroups.length} {filteredGroups.length === 1 ? 'comunidade' : 'comunidades'}
+          </Badge>
+          {isAuthenticated && onCreateCommunity && (
+            <Button size="sm" onClick={onCreateCommunity} className="gap-2">
+              <Plus className="w-4 h-4" /> Criar
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Chips de filtro por categoria */}

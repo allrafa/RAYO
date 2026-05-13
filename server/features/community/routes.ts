@@ -67,6 +67,7 @@ import {
   createPost,
   updatePost,
   deletePost,
+  createForumByUser,
   setPostSaved,
   getUserSavedPosts,
   getPostDetail,
@@ -220,6 +221,22 @@ router.get("/search", searchLimiter, async (req, res, next) => {
 });
 
 // ───── Forums ─────
+
+// Task #198 — usuário cria a própria comunidade. 5/dia keyByUser
+// (anti-spam). Criador vira moderador local + subscriber em transação.
+const forumCreateLimiter = rateLimiter(5, 24 * 60 * 60 * 1000, { keyByUser: true });
+router.post("/forums", requireAuth, forumCreateLimiter, async (req, res, next) => {
+  try {
+    const forum = await createForumByUser(req.user!.id, req.body || {});
+    success(res, { forum }, 201);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
 
 router.get("/forums", async (req, res, next) => {
   try {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { ArrowLeft, Users, UserPlus, UserCheck } from "lucide-react";
+import { ArrowLeft, Users, UserPlus, UserCheck, ShieldCheck, Calendar } from "lucide-react";
 import { api } from "../lib/api";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { enhancedToast } from "./EnhancedToast";
@@ -11,6 +11,17 @@ import { enhancedToast } from "./EnhancedToast";
 // aba Comunidade quando um slug é selecionado via deep-link `/c/<slug>` ou
 // clique em `c/<slug>`. NÃO é página pública: o gate de auth do App.tsx
 // redireciona não autenticados pro /login.
+//
+// Task #198 — header enriquecido (capa, descrição, moderadores per-community)
+// + Sobre completo (regras, criador, data, mods). Cover_url já vem resolvido
+// como URL real do backend (resolveStoredMediaUrl em getForumBySlug).
+
+interface ForumModerator {
+  user_id: number;
+  name: string;
+  avatar_url: string | null;
+  created_at: string;
+}
 
 interface ForumDetail {
   id: number;
@@ -19,9 +30,16 @@ interface ForumDetail {
   description?: string | null;
   icon?: string | null;
   category?: string | null;
+  cover_url?: string | null;
+  rules?: string | null;
+  is_official?: boolean;
+  created_by?: number | null;
+  created_at?: string | null;
   member_count: number;
   is_subscribed: boolean;
+  is_moderator?: boolean;
   post_count?: number | string;
+  moderators?: ForumModerator[];
 }
 
 interface CommunityPost {
@@ -41,6 +59,7 @@ interface CommunityDetailPageProps {
   slug: string;
   onBack: () => void;
   onOpenPost?: (postId: number) => void;
+  onOpenProfile?: (userId: number) => void;
 }
 
 function formatRelative(d: string): string {
@@ -55,7 +74,16 @@ function formatRelative(d: string): string {
   return date.toLocaleDateString("pt-BR");
 }
 
-export function CommunityDetailPage({ slug, onBack, onOpenPost }: CommunityDetailPageProps) {
+function formatDate(d?: string | null): string {
+  if (!d) return "—";
+  try {
+    return new Date(d).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+  } catch {
+    return "—";
+  }
+}
+
+export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }: CommunityDetailPageProps) {
   const [forum, setForum] = useState<ForumDetail | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -142,6 +170,8 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost }: CommunityDetai
     );
   }
 
+  const moderators = forum.moderators || [];
+
   return (
     <div className="max-w-3xl mx-auto pb-12">
       <div className="px-4 pt-2">
@@ -149,6 +179,13 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost }: CommunityDetai
           <ArrowLeft className="w-4 h-4" /> Voltar
         </Button>
       </div>
+
+      {/* Cover banner — só renderiza se a comunidade tiver capa carregada via CMS */}
+      {forum.cover_url && (
+        <div className="mx-4 mb-3 rounded-xl overflow-hidden" style={{ aspectRatio: "16 / 5", background: "var(--rayo-terra-100)" }}>
+          <ImageWithFallback src={forum.cover_url} alt={`Capa ${forum.name}`} className="w-full h-full object-cover" />
+        </div>
+      )}
 
       {/* Header */}
       <div
@@ -163,9 +200,21 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost }: CommunityDetai
             {forum.icon || "💬"}
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold leading-tight" style={{ color: "var(--rayo-forest-900)" }}>
-              {forum.name}
-            </h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl font-bold leading-tight" style={{ color: "var(--rayo-forest-900)" }}>
+                {forum.name}
+              </h1>
+              {forum.is_official && (
+                <Badge style={{ background: "var(--rayo-forest-700)", color: "#fff", fontSize: 10 }}>
+                  Oficial
+                </Badge>
+              )}
+              {forum.is_moderator && (
+                <Badge variant="outline" className="text-[10px] gap-1">
+                  <ShieldCheck className="w-3 h-3" /> Você modera
+                </Badge>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground mt-0.5">c/{forum.slug}</p>
             <div className="flex items-center gap-3 text-xs mt-2 text-muted-foreground flex-wrap">
               <span className="flex items-center gap-1">
@@ -245,26 +294,90 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost }: CommunityDetai
           )}
         </TabsContent>
 
-        <TabsContent value="about" className="mt-4">
-          <div
-            className="rounded-lg p-4 text-sm space-y-2"
+        <TabsContent value="about" className="mt-4 space-y-3">
+          {forum.description && (
+            <section
+              className="rounded-lg p-4"
+              style={{ background: "var(--rayo-sand-50)", border: "1px solid var(--rayo-sand-300)" }}
+            >
+              <h3 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--rayo-ink-500)" }}>
+                Sobre
+              </h3>
+              <p className="text-sm whitespace-pre-line" style={{ color: "var(--rayo-ink-600)" }}>
+                {forum.description}
+              </p>
+            </section>
+          )}
+
+          {forum.rules && (
+            <section
+              className="rounded-lg p-4"
+              style={{ background: "var(--rayo-sand-50)", border: "1px solid var(--rayo-sand-300)" }}
+            >
+              <h3 className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--rayo-ink-500)" }}>
+                Regras
+              </h3>
+              <p className="text-sm whitespace-pre-line" style={{ color: "var(--rayo-ink-600)" }}>
+                {forum.rules}
+              </p>
+            </section>
+          )}
+
+          <section
+            className="rounded-lg p-4"
             style={{ background: "var(--rayo-sand-50)", border: "1px solid var(--rayo-sand-300)" }}
           >
-            <p>
-              <strong>Categoria:</strong> {forum.category || "Geral"}
+            <h3 className="text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2" style={{ color: "var(--rayo-ink-500)" }}>
+              <ShieldCheck className="w-3.5 h-3.5" /> Moderadores
+            </h3>
+            {moderators.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Esta comunidade ainda não tem moderadores específicos.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {moderators.map((m) => (
+                  <li key={m.user_id}>
+                    <button
+                      type="button"
+                      onClick={() => onOpenProfile?.(m.user_id)}
+                      className="w-full flex items-center gap-3 p-1.5 rounded-md hover:bg-[var(--rayo-sand-100)] transition-colors"
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
+                        style={{ background: "var(--rayo-terra-100)" }}
+                      >
+                        {m.avatar_url ? (
+                          <ImageWithFallback src={m.avatar_url} alt={m.name} className="w-full h-full object-cover" />
+                        ) : null}
+                      </div>
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="text-sm font-medium truncate" style={{ color: "var(--rayo-forest-900)" }}>
+                          {m.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground truncate">moderador desde {formatDate(m.created_at)}</p>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section
+            className="rounded-lg p-4 text-xs space-y-1.5 text-muted-foreground"
+            style={{ background: "var(--rayo-sand-50)", border: "1px solid var(--rayo-sand-300)" }}
+          >
+            <p className="flex items-center gap-2">
+              <Calendar className="w-3 h-3" /> Criada em {formatDate(forum.created_at)}
             </p>
-            <p>
-              <strong>Membros:</strong> {forum.member_count}
-            </p>
-            {forum.description && (
-              <p>
-                <strong>Descrição:</strong> {forum.description}
+            <p>{forum.member_count} {forum.member_count === 1 ? "membro" : "membros"} · {forum.post_count ?? 0} posts</p>
+            {!forum.is_official && (
+              <p style={{ color: "var(--rayo-ink-500)" }}>
+                Comunidade criada por um membro da plataforma.
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Para publicar nesta comunidade, use o botão "Criar post" no feed.
-            </p>
-          </div>
+          </section>
         </TabsContent>
       </Tabs>
     </div>
