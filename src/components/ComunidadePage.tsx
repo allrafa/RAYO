@@ -54,6 +54,12 @@ interface Forum {
   post_count: string;
   member_count: string | number;
   is_subscribed: boolean;
+  // Task #202 — campos enriquecidos pra cards de Comunidades.
+  is_moderator?: boolean;
+  is_official?: boolean;
+  cover_url?: string | null;
+  created_by?: number | null;
+  created_at?: string | null;
 }
 
 interface CommentData {
@@ -137,7 +143,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
       return next;
     }, { replace: true });
   }, [setSearchParams]);
-  const [currentView, setCurrentView] = useState<"feed" | "grupos" | "conversas">("feed");
+  const [currentView, setCurrentView] = useState<"feed" | "comunidades" | "conversas">("feed");
   const [showCreateCommunity, setShowCreateCommunity] = useState(false);
   // Task #197 — escopo do feed: "geral" (todos os posts globais) ou
   // "minhas" (só fóruns assinados). URL é fonte da verdade (`?escopo=minhas`),
@@ -543,9 +549,13 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     category: f.category,
     activeNow: 0,
     postsToday: parseInt(String(f.post_count)) || 0,
-    image: "",
+    image: f.cover_url || "",
     description: f.description,
     icon: f.icon,
+    // Task #202 — campos extras pra badges nos cards.
+    is_moderator: !!f.is_moderator,
+    is_official: !!f.is_official,
+    created_at: f.created_at ?? null,
   }));
 
   // Hashtags estáticas exibidas no sidebar do FeedView ("Tópicos em Alta").
@@ -662,24 +672,24 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
               <Button
                 variant="ghost"
                 className="relative px-6 py-3 rounded-none border-b-2 transition-all whitespace-nowrap"
-                onClick={() => setCurrentView("grupos")}
+                onClick={() => setCurrentView("comunidades")}
                 style={{ 
-                  fontWeight: currentView === "grupos" ? 700 : 500,
-                  borderColor: currentView === "grupos" ? 'var(--rayo-terra-500)' : 'transparent',
-                  color: currentView === "grupos" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
+                  fontWeight: currentView === "comunidades" ? 700 : 500,
+                  borderColor: currentView === "comunidades" ? 'var(--rayo-terra-500)' : 'transparent',
+                  color: currentView === "comunidades" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
                 }}
                 onMouseEnter={(e) => {
-                  if (currentView !== "grupos") {
+                  if (currentView !== "comunidades") {
                     e.currentTarget.style.color = 'var(--rayo-forest-900)';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (currentView !== "grupos") {
+                  if (currentView !== "comunidades") {
                     e.currentTarget.style.color = 'var(--rayo-ink-400)';
                   }
                 }}
               >
-                Grupos
+                Comunidades
               </Button>
               <Button
                 variant="ghost"
@@ -833,12 +843,12 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
               onScopeChange={setFeedScope}
               isAuthenticated={!!authUser}
               hasSubscriptions={forums.some(f => f.is_subscribed)}
-              onOpenGrupos={() => setCurrentView("grupos")}
+              onOpenComunidades={() => setCurrentView("comunidades")}
             />
           )}
 
-          {!isSearching && currentView === "grupos" && (
-            <GruposView 
+          {!isSearching && currentView === "comunidades" && (
+            <ComunidadesView 
               groups={groups}
               loading={forumsLoading}
               error={forumsError}
@@ -909,10 +919,10 @@ interface FeedViewProps {
   onScopeChange: (s: "geral" | "minhas") => void;
   isAuthenticated: boolean;
   hasSubscriptions: boolean;
-  onOpenGrupos: () => void;
+  onOpenComunidades: () => void;
 }
 
-function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit, feedScope, onScopeChange, isAuthenticated, hasSubscriptions, onOpenGrupos }: FeedViewProps) {
+function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit, feedScope, onScopeChange, isAuthenticated, hasSubscriptions, onOpenComunidades }: FeedViewProps) {
   // Task #197 — pílulas pra alternar escopo. Só renderiza "Minhas comunidades"
   // pra usuários logados (anônimo não tem assinaturas).
   const scopePillStyle = (active: boolean): React.CSSProperties => ({
@@ -1014,19 +1024,19 @@ function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit
               }}
             >
               {hasSubscriptions
-                ? "As comunidades que você acompanha ainda não têm posts. Que tal puxar uma conversa por lá ou explorar mais grupos?"
+                ? "As comunidades que você acompanha ainda não têm posts. Que tal puxar uma conversa por lá ou explorar mais comunidades?"
                 : "Entre nas comunidades que combinam com você pra ver os posts dos membros aqui."}
             </p>
             <Button
               type="button"
-              onClick={onOpenGrupos}
+              onClick={onOpenComunidades}
               style={{
                 background: 'var(--rayo-terra-500)',
                 color: '#fff',
                 fontWeight: 600,
               }}
             >
-              Explorar grupos
+              Explorar comunidades
             </Button>
           </div>
         ) : (
@@ -1124,7 +1134,7 @@ function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit
               </div>
               <div className="ra-metric" style={{ alignItems: 'center', textAlign: 'center', padding: 12 }}>
                 <div className="ra-metric-value" style={{ fontSize: 20 }}>3</div>
-                <div className="ra-metric-label">Grupos ativos</div>
+                <div className="ra-metric-label">Comunidades ativas</div>
               </div>
             </div>
           </div>
@@ -1134,8 +1144,8 @@ function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit
   );
 }
 
-// GRUPOS VIEW
-interface GruposViewProps {
+// COMUNIDADES VIEW (Task #202 — renomeada de GruposView)
+interface ComunidadesViewProps {
   groups: any[];
   loading?: boolean;
   error?: string | null;
@@ -1146,34 +1156,74 @@ interface GruposViewProps {
 
 // Tamanho da página: cresce em múltiplos desse valor a cada "Mostrar mais".
 const EXPLORAR_PAGE_SIZE = 6;
+type ComunidadesSubTab = "inscritas" | "explorar";
+const COMUNIDADES_TAB_STORAGE = "rayo-community-comunidades-tab";
 
-function GruposView({ groups, loading, error, onRetry, isAuthenticated, onCreateCommunity }: GruposViewProps) {
+function ComunidadesView({ groups, loading, error, onRetry, isAuthenticated, onCreateCommunity }: ComunidadesViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState<number>(EXPLORAR_PAGE_SIZE);
 
-  // Categorias distintas extraídas dos próprios fóruns. Mantém a ordem
-  // de primeira aparição (estável entre renders) e ignora vazias.
+  const subscribedGroups = useMemo(() => groups.filter(g => g.isJoined), [groups]);
+  const exploreGroups = useMemo(() => groups.filter(g => !g.isJoined), [groups]);
+
+  // Sub-tab default: respeita preferência salva na sessão; senão "inscritas"
+  // se o usuário tem ≥1 assinatura, senão "explorar". Como `groups` chega
+  // async, marcamos `subTabUserSet` quando o usuário interage manualmente
+  // pra que a inicialização auto-corrija ao chegar dados sem sobrescrever
+  // escolha explícita.
+  const storedTab = (() => {
+    try {
+      const v = sessionStorage.getItem(COMUNIDADES_TAB_STORAGE);
+      if (v === "inscritas" || v === "explorar") return v as ComunidadesSubTab;
+    } catch { /* noop */ }
+    return null;
+  })();
+  const [subTab, setSubTab] = useState<ComunidadesSubTab>(storedTab ?? "explorar");
+  const [subTabUserSet, setSubTabUserSet] = useState<boolean>(storedTab !== null);
+  // Auto-corrige pra "inscritas" assim que os forums carregarem, se o
+  // usuário não tem preferência salva nem mexeu manualmente.
+  useEffect(() => {
+    if (subTabUserSet) return;
+    if (subscribedGroups.length > 0 && subTab !== "inscritas") {
+      setSubTab("inscritas");
+    }
+  }, [subscribedGroups.length, subTab, subTabUserSet]);
+  useEffect(() => {
+    if (!subTabUserSet) return;
+    try { sessionStorage.setItem(COMUNIDADES_TAB_STORAGE, subTab); } catch { /* noop */ }
+  }, [subTab, subTabUserSet]);
+
+  // Lista-base depende da sub-tab.
+  const baseGroups = subTab === "inscritas" ? subscribedGroups : exploreGroups;
+
+  // Categorias distintas extraídas da lista-base. Mantém ordem de primeira
+  // aparição (estável entre renders) e ignora vazias.
   const categories = useMemo(() => {
     const seen = new Set<string>();
     const ordered: string[] = [];
-    for (const g of groups) {
+    for (const g of baseGroups) {
       const c = (g.category ?? "").trim();
       if (c && !seen.has(c)) { seen.add(c); ordered.push(c); }
     }
     return ordered;
-  }, [groups]);
+  }, [baseGroups]);
 
   const filteredGroups = selectedCategory
-    ? groups.filter(g => g.category === selectedCategory)
-    : groups;
+    ? baseGroups.filter(g => g.category === selectedCategory)
+    : baseGroups;
 
   const visibleGroups = filteredGroups.slice(0, visibleCount);
   const hasMore = visibleCount < filteredGroups.length;
 
-  // Reseta paginação ao trocar de categoria pra evitar mostrar "Mostrar
-  // mais" referente a um filtro anterior.
+  // Reseta paginação ao trocar de categoria/sub-tab.
   const onSelectCategory = useCallback((cat: string | null) => {
     setSelectedCategory(cat);
+    setVisibleCount(EXPLORAR_PAGE_SIZE);
+  }, []);
+  const onChangeSubTab = useCallback((t: ComunidadesSubTab) => {
+    setSubTab(t);
+    setSubTabUserSet(true);
+    setSelectedCategory(null);
     setVisibleCount(EXPLORAR_PAGE_SIZE);
   }, []);
 
@@ -1193,19 +1243,31 @@ function GruposView({ groups, loading, error, onRetry, isAuthenticated, onCreate
     return <EmptyStateNoCommunity />;
   }
 
+  const subPillStyle = (active: boolean): React.CSSProperties => ({
+    padding: "8px 16px",
+    borderRadius: 999,
+    fontWeight: active ? 700 : 500,
+    fontSize: 13,
+    background: active ? "var(--rayo-terra-500)" : "var(--rayo-sand-100)",
+    color: active ? "#fff" : "var(--rayo-ink-600)",
+    border: `1px solid ${active ? "var(--rayo-terra-500)" : "var(--rayo-sand-300)"}`,
+    cursor: "pointer",
+    transition: "all .15s ease",
+  });
+
   return (
-    <div className="space-y-8">
-      {/* Header — Explorar Comunidades */}
+    <div className="space-y-6">
+      {/* Header — Comunidades */}
       <div className="flex items-end justify-between flex-wrap gap-2">
         <div>
           <h2
             className="text-[28px] leading-tight"
             style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
           >
-            Explorar Comunidades
+            Comunidades
           </h2>
           <p className="text-[14px] mt-1" style={{ color: 'var(--rayo-ink-400)' }}>
-            Descubra grupos sobre família, relacionamento, fé e propósito.
+            Descubra comunidades sobre família, relacionamento, fé e propósito.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1227,35 +1289,75 @@ function GruposView({ groups, loading, error, onRetry, isAuthenticated, onCreate
         </div>
       </div>
 
-      {/* Chips de filtro por categoria */}
-      <div className="overflow-x-auto scrollbar-hide -mx-6 px-6" role="tablist" aria-label="Filtrar por categoria">
-        <div className="flex gap-2 pb-2" style={{ width: 'max-content' }}>
-          <CategoryChip
-            label="Todas"
-            active={selectedCategory === null}
-            onClick={() => onSelectCategory(null)}
-          />
-          {categories.map((cat) => (
-            <CategoryChip
-              key={cat}
-              label={cat}
-              active={selectedCategory === cat}
-              onClick={() => onSelectCategory(cat)}
-            />
-          ))}
+      {/* Sub-tabs Inscritas × Explorar */}
+      {isAuthenticated && (
+        <div className="flex gap-2" role="tablist" aria-label="Filtrar comunidades">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === "inscritas"}
+            onClick={() => onChangeSubTab("inscritas")}
+            style={subPillStyle(subTab === "inscritas")}
+          >
+            Inscritas {subscribedGroups.length > 0 && `(${subscribedGroups.length})`}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={subTab === "explorar"}
+            onClick={() => onChangeSubTab("explorar")}
+            style={subPillStyle(subTab === "explorar")}
+          >
+            Explorar {exploreGroups.length > 0 && `(${exploreGroups.length})`}
+          </button>
         </div>
-      </div>
+      )}
+
+      {/* Chips de filtro por categoria — só quando há ≥2 categorias */}
+      {categories.length >= 2 && (
+        <div className="overflow-x-auto scrollbar-hide -mx-6 px-6" role="tablist" aria-label="Filtrar por categoria">
+          <div className="flex gap-2 pb-2" style={{ width: 'max-content' }}>
+            <CategoryChip
+              label="Todas"
+              active={selectedCategory === null}
+              onClick={() => onSelectCategory(null)}
+            />
+            {categories.map((cat) => (
+              <CategoryChip
+                key={cat}
+                label={cat}
+                active={selectedCategory === cat}
+                onClick={() => onSelectCategory(cat)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Grade única (estilo Reddit) */}
       {filteredGroups.length === 0 ? (
-        <p className="py-8 text-center" style={{ color: 'var(--rayo-ink-400)' }}>
-          Nenhuma comunidade nessa categoria por enquanto.
-        </p>
+        <div className="py-12 text-center space-y-3">
+          <p style={{ color: 'var(--rayo-ink-400)' }}>
+            {subTab === "inscritas"
+              ? "Você ainda não entrou em nenhuma comunidade."
+              : "Nenhuma comunidade nessa categoria por enquanto."}
+          </p>
+          {subTab === "inscritas" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onChangeSubTab("explorar")}
+              style={{ fontWeight: 600 }}
+            >
+              Explorar comunidades
+            </Button>
+          )}
+        </div>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleGroups.map((group) => (
-              <GroupCard key={group.id} group={group} />
+              <CommunityCard key={group.id} group={group} />
             ))}
           </div>
 
@@ -1780,12 +1882,12 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit, highligh
   );
 }
 
-// GROUP CARD COMPONENT
-interface GroupCardProps {
+// COMMUNITY CARD COMPONENT (Task #202 — renomeada de GroupCard)
+interface CommunityCardProps {
   group: any;
 }
 
-function GroupCard({ group }: GroupCardProps) {
+function CommunityCard({ group }: CommunityCardProps) {
   const [isJoined, setIsJoined] = useState<boolean>(!!group.isJoined);
   const [members, setMembers] = useState<number>(Number(group.members) || 0);
   const [busy, setBusy] = useState(false);
@@ -1842,8 +1944,8 @@ function GroupCard({ group }: GroupCardProps) {
       setBusy(false);
       if (ok) {
         enhancedToast.success({
-          title: "Você entrou no grupo! 🎉",
-          description: `Bem-vindo ao grupo "${group.name}"`,
+          title: "Você entrou na comunidade! 🎉",
+          description: `Bem-vindo à comunidade "${group.name}"`,
           haptic: true,
         });
       }
@@ -1853,7 +1955,7 @@ function GroupCard({ group }: GroupCardProps) {
       pendingLeaveTokenRef.current += 1;
       const myToken = pendingLeaveTokenRef.current;
       enhancedToast.undo({
-        title: "Você saiu do grupo",
+        title: "Você saiu da comunidade",
         description: `Você não faz mais parte de "${group.name}"`,
         haptic: true,
         onConfirm: () => {
@@ -1886,20 +1988,30 @@ function GroupCard({ group }: GroupCardProps) {
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-        {isJoined && (
-          <Badge 
-            className="absolute top-3 right-3" 
-            style={{ 
-              fontSize: '11px', 
-              fontWeight: 600,
-              background: 'var(--rayo-terra-500)',
-              color: '#FFFFFF',
-            }}
-          >
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Membro
-          </Badge>
-        )}
+        {/* Task #202 — stack de badges no topo: oficial · você modera · nova · membro */}
+        <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+          {group.is_official && (
+            <Badge style={{ fontSize: 10, fontWeight: 700, background: 'var(--rayo-forest-700)', color: '#fff' }}>
+              Oficial
+            </Badge>
+          )}
+          {group.is_moderator && (
+            <Badge style={{ fontSize: 10, fontWeight: 700, background: 'var(--rayo-sand-50)', color: 'var(--rayo-forest-900)', border: '1px solid var(--rayo-sand-300)' }}>
+              Você modera
+            </Badge>
+          )}
+          {group.created_at && (Date.now() - new Date(group.created_at).getTime()) < 14 * 24 * 60 * 60 * 1000 && (
+            <Badge style={{ fontSize: 10, fontWeight: 700, background: 'var(--rayo-sage-500)', color: '#fff' }}>
+              Nova
+            </Badge>
+          )}
+          {isJoined && (
+            <Badge style={{ fontSize: 11, fontWeight: 600, background: 'var(--rayo-terra-500)', color: '#fff' }}>
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Membro
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="p-4">

@@ -2,10 +2,28 @@ import { useCallback, useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-import { ArrowLeft, Users, UserPlus, UserCheck, ShieldCheck, Calendar } from "lucide-react";
+import { ArrowLeft, Users, UserPlus, UserCheck, ShieldCheck, Calendar, Pencil } from "lucide-react";
 import { api } from "../lib/api";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { enhancedToast } from "./EnhancedToast";
+import { useAuth, userHasRole } from "./AuthContext";
+import { CreateCommunityModal } from "./CreateCommunityModal";
+
+// Task #202 — opções de ordenação dos posts da comunidade.
+type PostOrder = "recent" | "trending" | "most_commented";
+const POST_ORDER_LABEL: Record<PostOrder, string> = {
+  recent: "Recentes",
+  trending: "Em alta",
+  most_commented: "Mais comentados",
+};
+
+interface ForumMember {
+  user_id: number;
+  name: string;
+  avatar_url: string | null;
+  joined_at: string;
+  is_moderator: boolean;
+}
 
 // Task #92 — Community detail page (subreddit-style). Renderizada DENTRO da
 // aba Comunidade quando um slug é selecionado via deep-link `/c/<slug>` ou
@@ -94,12 +112,25 @@ function formatDate(d?: string | null): string {
 }
 
 export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }: CommunityDetailPageProps) {
+  const { user } = useAuth();
   const [forum, setForum] = useState<ForumDetail | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [postsOrder, setPostsOrder] = useState<PostOrder>("recent");
+  const [postsLoading, setPostsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [subBusy, setSubBusy] = useState(false);
+  // Task #202 — Edit modal state (só visível pra criador OU admin global).
+  const [editOpen, setEditOpen] = useState(false);
+  // Task #202 — Members tab state (lazy-loaded ao abrir a aba).
+  const [members, setMembers] = useState<ForumMember[]>([]);
+  const [membersPage, setMembersPage] = useState(1);
+  const [membersTotal, setMembersTotal] = useState(0);
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [membersLoaded, setMembersLoaded] = useState(false);
+  const [activeTab, setActiveTab] = useState<"posts" | "members" | "about">("posts");
 
+  // Carrega o forum + primeira página de posts (sempre que slug muda).
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -110,16 +141,71 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
       return;
     }
     setForum(fRes.data.forum);
-    const pRes = await api.get<{ posts: CommunityPost[] }>(
-      `/api/community/forums/${fRes.data.forum.id}/posts?limit=20`,
-    );
-    if (pRes.success && pRes.data) setPosts(pRes.data.posts);
     setLoading(false);
   }, [slug]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Reset COMPLETO ao trocar de comunidade pra evitar mostrar dados da
+  // anterior (Task #202 — fix do code review). Inclui `forum=null` pra
+  // bloquear o fetch de posts com forum.id antigo enquanto o novo carrega.
+  useEffect(() => {
+    setForum(null);
+    setMembers([]);
+    setMembersPage(1);
+    setMembersTotal(0);
+    setMembersLoaded(false);
+    setMembersLoading(false);
+    setActiveTab("posts");
+    setPosts([]);
+    setPostsOrder("recent");
+    setPostsLoading(false);
+  }, [slug]);
+
+  // Carrega posts quando o forum estiver disponível ou a ordenação mudar.
+  // Guarda contra resposta stale: se o slug mudou enquanto o fetch
+  // estava em voo, descarta o resultado.
+  useEffect(() => {
+    if (!forum) return;
+    let cancelled = false;
+    const slugAtFetch = forum.slug;
+    const run = async () => {
+      setPostsLoading(true);
+      const pRes = await api.get<{ posts: CommunityPost[] }>(
+        `/api/community/forums/${forum.id}/posts?limit=20&order=${postsOrder}`,
+      );
+      if (!cancelled && slugAtFetch === slug) {
+        if (pRes.success && pRes.data) setPosts(pRes.data.posts);
+        setPostsLoading(false);
+      }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [forum, postsOrder, slug]);
+
+  // Members loader paginado (lazy: só dispara ao abrir aba).
+  const loadMembersPage = useCallback(async (page: number) => {
+    if (!forum) return;
+    setMembersLoading(true);
+    const res = await api.get<{ members: ForumMember[]; total: number; page: number; totalPages: number }>(
+      `/api/community/forums/${forum.id}/members?page=${page}&limit=30`,
+    );
+    setMembersLoading(false);
+    if (res.success && res.data) {
+      setMembers((prev) => (page === 1 ? res.data!.members : [...prev, ...res.data!.members]));
+      setMembersTotal(res.data.total);
+      setMembersPage(res.data.page);
+      setMembersLoaded(true);
+    }
+  }, [forum]);
+
+  useEffect(() => {
+    if (activeTab === "members" && forum && !membersLoaded && !membersLoading) {
+      void loadMembersPage(1);
+    }
+  }, [activeTab, forum, membersLoaded, membersLoading, loadMembersPage]);
 
   const onToggleSubscribe = async () => {
     if (!forum || subBusy) return;
@@ -181,6 +267,23 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
   }
 
   const moderators = forum.moderators || [];
+  // Edit autorizado pra criador da comunidade OU admin global.
+  const canEdit = !!user && (
+    userHasRole(user, "admin") ||
+    (forum.created_by != null && user.id === forum.created_by)
+  );
+
+  const orderPillStyle = (active: boolean): React.CSSProperties => ({
+    padding: "6px 12px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: active ? 700 : 500,
+    background: active ? "var(--rayo-terra-500)" : "var(--rayo-sand-100)",
+    color: active ? "#fff" : "var(--rayo-ink-600)",
+    border: `1px solid ${active ? "var(--rayo-terra-500)" : "var(--rayo-sand-300)"}`,
+    cursor: "pointer",
+    transition: "all .15s ease",
+  });
 
   return (
     <div className="max-w-3xl mx-auto pb-12">
@@ -238,28 +341,58 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
               <p className="text-sm mt-3" style={{ color: "var(--rayo-ink-600)" }}>{forum.description}</p>
             )}
           </div>
-          <Button
-            size="sm"
-            onClick={onToggleSubscribe}
-            disabled={subBusy}
-            variant={forum.is_subscribed ? "outline" : "default"}
-            className="gap-2 flex-shrink-0"
-          >
-            {forum.is_subscribed ? <UserCheck className="w-3 h-3" /> : <UserPlus className="w-3 h-3" />}
-            {forum.is_subscribed ? "Inscrito" : "Entrar"}
-          </Button>
+          <div className="flex flex-col gap-2 flex-shrink-0">
+            <Button
+              size="sm"
+              onClick={onToggleSubscribe}
+              disabled={subBusy}
+              variant={forum.is_subscribed ? "outline" : "default"}
+              className="gap-2"
+            >
+              {forum.is_subscribed ? <UserCheck className="w-3 h-3" /> : <UserPlus className="w-3 h-3" />}
+              {forum.is_subscribed ? "Inscrito" : "Entrar"}
+            </Button>
+            {canEdit && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setEditOpen(true)}
+                className="gap-2"
+              >
+                <Pencil className="w-3 h-3" /> Editar
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="posts" className="px-4 pt-4">
-        <TabsList className="grid grid-cols-2 w-full max-w-xs">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "posts" | "members" | "about")} className="px-4 pt-4">
+        <TabsList className="grid grid-cols-3 w-full max-w-md">
           <TabsTrigger value="posts">Posts</TabsTrigger>
+          <TabsTrigger value="members">Membros</TabsTrigger>
           <TabsTrigger value="about">Sobre</TabsTrigger>
         </TabsList>
 
         <TabsContent value="posts" className="mt-4 space-y-3">
-          {posts.length === 0 ? (
+          {/* Sort pills */}
+          <div className="flex gap-2 flex-wrap" role="tablist" aria-label="Ordenar posts">
+            {(Object.keys(POST_ORDER_LABEL) as PostOrder[]).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                role="tab"
+                aria-selected={postsOrder === opt}
+                onClick={() => setPostsOrder(opt)}
+                style={orderPillStyle(postsOrder === opt)}
+              >
+                {POST_ORDER_LABEL[opt]}
+              </button>
+            ))}
+          </div>
+          {postsLoading && posts.length === 0 ? (
+            <p className="text-sm text-muted-foreground p-6 text-center">Carregando posts…</p>
+          ) : posts.length === 0 ? (
             <p className="text-sm text-muted-foreground p-6 text-center">
               Nenhum post ainda. Seja o primeiro a publicar.
             </p>
@@ -301,6 +434,68 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
                 </div>
               </button>
             ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="members" className="mt-4 space-y-2">
+          {membersLoading && members.length === 0 ? (
+            <p className="text-sm text-muted-foreground p-6 text-center">Carregando membros…</p>
+          ) : members.length === 0 ? (
+            <p className="text-sm text-muted-foreground p-6 text-center">
+              Nenhum membro inscrito ainda.
+            </p>
+          ) : (
+            <>
+              <p className="text-xs text-muted-foreground px-1">
+                {membersTotal} {membersTotal === 1 ? "membro" : "membros"}
+              </p>
+              <ul className="space-y-1">
+                {members.map((m) => (
+                  <li key={m.user_id}>
+                    <button
+                      type="button"
+                      onClick={() => onOpenProfile?.(m.user_id)}
+                      className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-[var(--rayo-sand-100)] transition-colors text-left"
+                      style={{ background: "var(--rayo-sand-50)", border: "1px solid var(--rayo-sand-300)" }}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
+                        style={{ background: "var(--rayo-terra-100)" }}
+                      >
+                        {m.avatar_url ? (
+                          <ImageWithFallback src={m.avatar_url} alt={m.name} className="w-full h-full object-cover" />
+                        ) : null}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate" style={{ color: "var(--rayo-forest-900)" }}>
+                          {m.name}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          desde {formatDate(m.joined_at)}
+                        </p>
+                      </div>
+                      {m.is_moderator && (
+                        <Badge variant="outline" className="text-[10px] gap-1 flex-shrink-0">
+                          <ShieldCheck className="w-3 h-3" /> Mod
+                        </Badge>
+                      )}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {members.length < membersTotal && (
+                <div className="pt-2 flex justify-center">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={membersLoading}
+                    onClick={() => loadMembersPage(membersPage + 1)}
+                  >
+                    {membersLoading ? "Carregando…" : "Mostrar mais"}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
@@ -414,6 +609,24 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
           </section>
         </TabsContent>
       </Tabs>
+
+      {/* Task #202 — modal de edição reaproveita o CreateCommunityModal em modo edit */}
+      {canEdit && (
+        <CreateCommunityModal
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          editingForum={{
+            id: forum.id,
+            name: forum.name,
+            slug: forum.slug,
+            description: forum.description ?? null,
+            icon: forum.icon ?? null,
+            category: forum.category ?? null,
+            rules: forum.rules ?? null,
+          }}
+          onUpdated={() => { void load(); }}
+        />
+      )}
     </div>
   );
 }

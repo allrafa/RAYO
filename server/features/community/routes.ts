@@ -63,6 +63,7 @@ import {
   getForumIdBySlug,
   getMySubscribedForums,
   getForumPosts,
+  listForumMembers,
   getAllPosts,
   createPost,
   updatePost,
@@ -373,7 +374,32 @@ router.get("/forums/:idOrSlug/posts", async (req, res, next) => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 20, 50));
     const userId = req.user?.id;
-    const result = await getForumPosts(forumId, page, limit, userId);
+    // Task #202 — sort opcional: recent (default) | trending (48h) | most_commented.
+    const orderRaw = String(req.query.order ?? "recent").toLowerCase();
+    const order: "recent" | "trending" | "most_commented" =
+      orderRaw === "trending" || orderRaw === "most_commented"
+        ? (orderRaw as "trending" | "most_commented")
+        : "recent";
+    const result = await getForumPosts(forumId, page, limit, userId, order);
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Task #202 — listar membros de uma comunidade (paginado). Inclui flag
+// `is_moderator` per-row pra UI mostrar badge. Sem auth obrigatória — a
+// página de detalhe já roda dentro do gate de auth do app.
+router.get("/forums/:id/members", async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id) || id < 1) {
+      sendError(res, "ID de fórum inválido", "INVALID_FORUM_ID", 400);
+      return;
+    }
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 30, 100));
+    const result = await listForumMembers(id, page, limit);
     success(res, result);
   } catch (err) {
     next(err);

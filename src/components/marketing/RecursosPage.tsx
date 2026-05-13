@@ -47,7 +47,7 @@ export function RecursosPage() {
           <div className="pillars-grid">
             {[
               { cls: "forest", icon: "A", num: "01 / Conteúdo", name: "Academia", desc: "Cursos, podcasts, shorts e trilhas curadas por especialistas em família, casamento e parentalidade." },
-              { cls: "", icon: "C", num: "02 / Pessoas", name: "Comunidade", desc: "Grupos por fase, tópicos ativos e mentores. Sem julgamento, com conversas que importam." },
+              { cls: "", icon: "C", num: "02 / Pessoas", name: "Comunidade", desc: "Comunidades por fase, tópicos ativos e mentores. Sem julgamento, com conversas que importam." },
               { cls: "terra", icon: "T", num: "03 / Caminho", name: "Trilhas", desc: 'Jornadas guiadas para cada fase: do "como conhecer alguém de verdade" ao "como educar com firmeza e afeto".' },
               { cls: "sage", icon: "M", num: "04 / Prática", name: "Missões", desc: "Pequenas ações diárias e semanais — em casal, em família ou individuais — para sair da teoria." },
               { cls: "", icon: "P", num: "05 / Você", name: "Perfil & Jornada", desc: "Seu mapa pessoal: fase atual, conquistas, missões ativas e o próximo passo recomendado para você." },
@@ -96,9 +96,9 @@ export function RecursosPage() {
             <div className="feature-text">
               <span className="feature-eyebrow">02 · Comunidade</span>
               <h3>Conversas <span className="light">que</span> importam, sem ruído.</h3>
-              <p>Grupos pequenos, moderados e organizados pela sua fase. Aqui ninguém está performando o casamento perfeito — gente real falando do que dá certo e do que não dá.</p>
+              <p>Comunidades pequenas, moderadas e organizadas pela sua fase. Aqui ninguém está performando o casamento perfeito — gente real falando do que dá certo e do que não dá.</p>
               <ul className="feature-list">
-                <li>Grupos por fase de vida e por interesse (finanças, fé, parentalidade)</li>
+                <li>Comunidades por fase de vida e por interesse (finanças, fé, parentalidade)</li>
                 <li>Discussões diárias propostas pela curadoria</li>
                 <li>Mentores convidados respondem ao vivo uma vez por semana</li>
                 <li>Sem feed infinito, sem curtidas, sem comparação</li>
@@ -110,7 +110,7 @@ export function RecursosPage() {
                 <div className="top-bar"></div>
                 <div className="mock-row"><span className="mock-tag">Tópico ativo · 23</span><strong>Como dividimos as finanças?</strong>Conta conjunta, separada ou mista? Casados conta.</div>
                 <div className="mock-row"><span className="mock-tag">Mentora ao vivo</span><strong>Dra. Beatriz Lemos · 19h</strong>Limites na adolescência sem virar inimigo.</div>
-                <div className="mock-row"><span className="mock-tag">Grupo · Noivos</span><strong>Os 90 dias antes do altar</strong>42 casais ativos esta semana.</div>
+                <div className="mock-row"><span className="mock-tag">Comunidade · Noivos</span><strong>Os 90 dias antes do altar</strong>42 casais ativos esta semana.</div>
               </div>
             </div>
           </div>

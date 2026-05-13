@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -9,10 +9,24 @@ import { enhancedToast } from "./EnhancedToast";
 // Task #198 — Modal pra usuário criar a própria comunidade. Slug é
 // derivado do nome no backend (ensureUniqueSlug). Categoria/ícone são
 // opcionais; admin pode editar tudo depois.
+// Task #202 — também suporta modo edição (PATCH /api/community/forums/:id)
+// quando `editingForum` é passado. Apenas criador/admin chega aqui via UI.
+export interface EditableForum {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  icon?: string | null;
+  category?: string | null;
+  rules?: string | null;
+}
+
 interface CreateCommunityModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: (slug: string) => void;
+  editingForum?: EditableForum | null;
+  onUpdated?: () => void;
 }
 
 const ICON_CHOICES = ["💬", "❤️", "🙏", "🌱", "🏠", "👨‍👩‍👧", "💍", "🕊️", "📖", "✨"];
@@ -22,7 +36,8 @@ const CATEGORY_CHOICES = [
   "Família", "Fé", "Finanças", "Saúde emocional", "Outros",
 ];
 
-export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCommunityModalProps) {
+export function CreateCommunityModal({ open, onOpenChange, onCreated, editingForum, onUpdated }: CreateCommunityModalProps) {
+  const isEdit = !!editingForum;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("💬");
@@ -38,6 +53,20 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCo
     setRules("");
   };
 
+  // Pre-fill quando entra em modo edição (ou reseta quando volta a criar).
+  useEffect(() => {
+    if (!open) return;
+    if (editingForum) {
+      setName(editingForum.name || "");
+      setDescription(editingForum.description || "");
+      setIcon(editingForum.icon || "💬");
+      setCategory(editingForum.category || "");
+      setRules(editingForum.rules || "");
+    } else {
+      reset();
+    }
+  }, [open, editingForum]);
+
   const onSubmit = async () => {
     const trimmed = name.trim();
     const cat = category.trim();
@@ -50,6 +79,35 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCo
       return;
     }
     setBusy(true);
+    if (isEdit && editingForum) {
+      const res = await api.patch<{ forum: { slug: string; name: string } }>(
+        `/api/community/forums/${editingForum.id}`,
+        {
+          name: trimmed,
+          description: description.trim() || null,
+          icon,
+          category: cat,
+          rules: rules.trim() || null,
+        },
+      );
+      setBusy(false);
+      if (res.success) {
+        enhancedToast.success({
+          title: "Comunidade atualizada",
+          description: "Mudanças salvas.",
+          haptic: true,
+        });
+        onOpenChange(false);
+        onUpdated?.();
+      } else {
+        enhancedToast.error({
+          title: "Não foi possível salvar",
+          description: res.error?.message || "Tente novamente",
+          haptic: true,
+        });
+      }
+      return;
+    }
     const res = await api.post<{ forum: { slug: string; name: string } }>(
       "/api/community/forums",
       {
@@ -81,12 +139,14 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCo
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o && !isEdit) reset(); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Criar comunidade</DialogTitle>
+          <DialogTitle>{isEdit ? "Editar comunidade" : "Criar comunidade"}</DialogTitle>
           <DialogDescription>
-            Comunidades são espaços abertos pra conversar. Você será o primeiro moderador.
+            {isEdit
+              ? "Atualize nome, descrição, ícone, categoria e regras."
+              : "Comunidades são espaços abertos pra conversar. Você será o primeiro moderador."}
           </DialogDescription>
         </DialogHeader>
 
@@ -186,7 +246,7 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated }: CreateCo
             Cancelar
           </Button>
           <Button onClick={onSubmit} disabled={busy || !name.trim() || !category.trim()}>
-            {busy ? "Criando…" : "Criar comunidade"}
+            {busy ? (isEdit ? "Salvando…" : "Criando…") : (isEdit ? "Salvar" : "Criar comunidade")}
           </Button>
         </div>
       </DialogContent>

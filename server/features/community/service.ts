@@ -141,16 +141,19 @@ async function hydratePostsRows<T extends Record<string, any>>(
 export async function listForums(userId?: number) {
   const params: Array<number> = [];
   let subscribedExpr = "false AS is_subscribed";
+  let isModExpr = "false AS is_moderator";
   if (userId) {
     params.push(userId);
     subscribedExpr = `EXISTS(SELECT 1 FROM forum_subscriptions fs WHERE fs.forum_id = f.id AND fs.user_id = $1) AS is_subscribed`;
+    isModExpr = `EXISTS(SELECT 1 FROM forum_moderators fm WHERE fm.forum_id = f.id AND fm.user_id = $1) AS is_moderator`;
   }
   const { rows } = await query(
     `SELECT f.id, f.name, f.slug, f.description, f.icon, f.life_context, f.category,
-       f.cover_url, f.is_official, f.created_by,
+       f.cover_url, f.is_official, f.created_by, f.created_at,
        (SELECT COUNT(*) FROM posts p WHERE p.forum_id = f.id AND p.is_hidden = FALSE) AS post_count,
        (SELECT COUNT(*) FROM forum_subscriptions fs2 WHERE fs2.forum_id = f.id) AS member_count,
-       ${subscribedExpr}
+       ${subscribedExpr},
+       ${isModExpr}
      FROM forums f
      WHERE f.is_active = true
      ORDER BY f.sort_order`,
@@ -284,20 +287,42 @@ export async function isForumModerator(forumId: number, userId: number): Promise
   return !!rows[0]?.exists;
 }
 
+export type ForumPostOrder = "recent" | "trending" | "most_commented";
+
 export async function getForumPosts(
   forumId: number,
   page: number = 1,
   limit: number = 20,
   userId?: number,
+  order: ForumPostOrder = "recent",
 ) {
   const offset = (page - 1) * limit;
 
   // Task #99 — feed por fórum NUNCA expõe posts de turma (class_id NOT NULL).
+  // Task #202 — `trending` restringe a janela de 48h (engajamento recente).
+  const trendingWindow = order === "trending"
+    ? ` AND p.created_at > NOW() - INTERVAL '48 hours'`
+    : "";
+
   const { rows: countRows } = await query(
-    `SELECT COUNT(*) AS total FROM posts WHERE forum_id = $1 AND is_hidden = FALSE AND class_id IS NULL`,
+    `SELECT COUNT(*) AS total FROM posts p
+       WHERE p.forum_id = $1 AND p.is_hidden = FALSE AND p.class_id IS NULL${trendingWindow}`,
     [forumId],
   );
   const total = parseInt(countRows[0].total);
+
+  // Sort: pin sempre acima; depois critério escolhido.
+  let orderSql: string;
+  switch (order) {
+    case "trending":
+      orderSql = "p.is_pinned DESC, (p.like_count + p.comment_count) DESC, p.created_at DESC";
+      break;
+    case "most_commented":
+      orderSql = "p.is_pinned DESC, p.comment_count DESC, p.created_at DESC";
+      break;
+    default:
+      orderSql = "p.is_pinned DESC, p.created_at DESC";
+  }
 
   const { rows } = await query(
     `SELECT p.id, p.forum_id, p.title, p.content, p.category, p.is_pinned, p.images,
@@ -308,14 +333,63 @@ export async function getForumPosts(
      FROM posts p
      JOIN users u ON u.id = p.user_id
      JOIN forums f ON f.id = p.forum_id
-     WHERE p.forum_id = $1 AND p.is_hidden = FALSE AND p.class_id IS NULL
-     ORDER BY p.is_pinned DESC, p.created_at DESC
+     WHERE p.forum_id = $1 AND p.is_hidden = FALSE AND p.class_id IS NULL${trendingWindow}
+     ORDER BY ${orderSql}
      LIMIT $2 OFFSET $3`,
     userId ? [forumId, limit, offset, userId] : [forumId, limit, offset],
   );
 
   const posts = await hydratePostsRows(rows, userId);
   return { posts, total, page, limit, totalPages: Math.ceil(total / limit) };
+}
+
+// Task #202 — lista paginada de membros de uma comunidade. Inclui flag
+// `is_moderator` per-row (LEFT JOIN forum_moderators) pra UI mostrar badge.
+export async function listForumMembers(
+  forumId: number,
+  page: number = 1,
+  limit: number = 30,
+) {
+  const safeLimit = Math.max(1, Math.min(limit, 100));
+  const offset = (page - 1) * safeLimit;
+
+  const { rows: countRows } = await query<{ total: string }>(
+    `SELECT COUNT(*) AS total FROM forum_subscriptions WHERE forum_id = $1`,
+    [forumId],
+  );
+  const total = parseInt(countRows[0].total, 10) || 0;
+
+  const { rows } = await query<{
+    user_id: number;
+    name: string;
+    avatar_url: string | null;
+    joined_at: string;
+    is_moderator: boolean;
+  }>(
+    `SELECT u.id AS user_id, u.name, u.avatar_url,
+       fs.created_at AS joined_at,
+       (fm.user_id IS NOT NULL) AS is_moderator
+       FROM forum_subscriptions fs
+       JOIN users u ON u.id = fs.user_id
+       LEFT JOIN forum_moderators fm
+         ON fm.forum_id = fs.forum_id AND fm.user_id = fs.user_id
+      WHERE fs.forum_id = $1
+      ORDER BY (fm.user_id IS NOT NULL) DESC, fs.created_at ASC
+      LIMIT $2 OFFSET $3`,
+    [forumId, safeLimit, offset],
+  );
+
+  const members = [];
+  for (const r of rows) {
+    members.push({
+      user_id: r.user_id,
+      name: r.name,
+      avatar_url: await resolveStoredMediaUrl(r.avatar_url),
+      joined_at: r.joined_at,
+      is_moderator: !!r.is_moderator,
+    });
+  }
+  return { members, total, page, limit: safeLimit, totalPages: Math.ceil(total / safeLimit) };
 }
 
 export async function getAllPosts(

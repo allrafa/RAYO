@@ -326,7 +326,7 @@ export function LandingPage({
                 icon: Users,
                 title: 'Comunidade Ativa',
                 description: 'Conecte-se com milhares de pessoas na mesma jornada que você',
-                features: ['Grupos por segmento', 'Eventos e desafios', 'Mentoria entre pares'],
+                features: ['Comunidades por segmento', 'Eventos e desafios', 'Mentoria entre pares'],
                 color: 'var(--rayo-terra-500)'
               },
               {
@@ -477,7 +477,7 @@ export function LandingPage({
                     {[
                       'Todos os cursos e livros',
                       'Conselheiro IA ilimitado',
-                      'Grupos exclusivos da comunidade',
+                      'Comunidades exclusivas',
                       'Gamificação completa',
                       'Certificados profissionais',
                       'Conteúdo sincronizado (áudio + texto)',
