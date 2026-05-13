@@ -62,7 +62,6 @@ import {
   getForumBySlug,
   getForumIdBySlug,
   getMySubscribedForums,
-  getTrendingPosts,
   getForumPosts,
   getAllPosts,
   createPost,
@@ -226,42 +225,6 @@ router.get("/forums", async (req, res, next) => {
   try {
     const forums = await listForums(req.user?.id);
     success(res, { forums });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Task #92 — "Em alta" (trending) calculado em runtime: likes + comments
-// nas últimas 48h. Suporta filtro por comunidade via `?forum_id=`.
-router.get("/posts/trending", requireAuth, async (req, res, next) => {
-  try {
-    const forumIdRaw = String(req.query.forum_id || "").trim();
-    const forumId = forumIdRaw ? parseInt(forumIdRaw, 10) : undefined;
-    if (forumIdRaw && (isNaN(forumId!) || forumId! < 1)) {
-      sendError(res, "forum_id inválido", "INVALID_FORUM_ID", 400);
-      return;
-    }
-    // Task #99/#130 — escopo opcional por turma. Trilha paga ⇒ 402; depois
-    // matrícula ⇒ 404. `gateClassPostsAccess` cobre os dois casos.
-    const classIdRaw = String(req.query.class_id || "").trim();
-    let classId: number | undefined;
-    if (classIdRaw) {
-      const cid = parseInt(classIdRaw, 10);
-      if (isNaN(cid) || cid < 1) {
-        sendError(res, "class_id inválido", "INVALID_CLASS_ID", 400);
-        return;
-      }
-      if (!(await gateClassPostsAccess(req, res, cid))) return;
-      classId = cid;
-    }
-    const limit = parseInt(String(req.query.limit || "20"), 10);
-    const result = await getTrendingPosts({
-      forumId,
-      classId,
-      limit: Number.isFinite(limit) ? limit : 20,
-      userId: req.user?.id,
-    });
-    success(res, result);
   } catch (err) {
     next(err);
   }

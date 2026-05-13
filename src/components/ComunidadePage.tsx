@@ -1,4 +1,4 @@
-import { MessageCircle, Share2, MoreHorizontal, Plus, TrendingUp, Users, Clock, Pin, Send, Search, Sparkles, Trophy, UserPlus, ChevronRight, CheckCircle, Lock, Globe, Mail, Image as ImageIcon, Video, Smile, Bookmark, BookmarkCheck, Pencil, Trash2, X } from "lucide-react";
+import { MessageCircle, Share2, MoreHorizontal, Plus, TrendingUp, Users, Clock, Pin, Send, Search, Sparkles, UserPlus, ChevronRight, CheckCircle, Lock, Globe, Mail, Image as ImageIcon, Video, Smile, Bookmark, BookmarkCheck, Pencil, Trash2, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
 import { useSearchParams } from "react-router-dom";
@@ -53,16 +53,6 @@ interface Forum {
   post_count: string;
   member_count: string | number;
   is_subscribed: boolean;
-}
-
-interface TrendingPost {
-  id: number;
-  title: string;
-  likes: number;
-  comments: number;
-  forum_id: number | null;
-  forum_slug: string | null;
-  forum_name: string | null;
 }
 
 interface CommentData {
@@ -146,7 +136,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
       return next;
     }, { replace: true });
   }, [setSearchParams]);
-  const [currentView, setCurrentView] = useState<"feed" | "grupos" | "trending" | "conversas">("feed");
+  const [currentView, setCurrentView] = useState<"feed" | "grupos" | "conversas">("feed");
   // Task #92 — Community detail page por slug. Quando setado, sobrepõe
   // tudo (header de tabs + composer escondidos) e renderiza CommunityDetailPage.
   // Task #176 — URL é fonte da verdade tanto pra `/c/<slug>` (community
@@ -203,8 +193,6 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   }, [authUser, unreadCommunity, refreshSections]);
   const { theme } = useTheme();
   const [forums, setForums] = useState<Forum[]>([]);
-  const [trendingPosts, setTrendingPosts] = useState<any[]>([]);
-  const [trendingLoading, setTrendingLoading] = useState(false);
   const [forumsLoading, setForumsLoading] = useState(true);
   const [forumsError, setForumsError] = useState<string | null>(null);
   const [postComments, setPostComments] = useState<CommentData[]>([]);
@@ -430,19 +418,6 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   }, [loadForums]);
 
   // Task #92 — "Em alta" puxa do servidor (likes+comments 48h).
-  const loadTrendingPosts = useCallback(async () => {
-    setTrendingLoading(true);
-    try {
-      const res = await api.get<{ posts: any[] }>("/api/community/posts/trending?limit=20");
-      if (res.success) setTrendingPosts(res.data?.posts ?? []);
-    } finally {
-      setTrendingLoading(false);
-    }
-  }, []);
-  useEffect(() => {
-    if (currentView !== "trending") return;
-    void loadTrendingPosts();
-  }, [currentView, loadTrendingPosts]);
 
   const submitComment = useCallback(async (postId: number, content: string) => {
     const res = await api.post<{ comment: Omit<CommentData, "reactions" | "user_reaction"> & { reactions?: ReactionAggregate[]; user_reaction?: string | null } }>(`/api/community/posts/${postId}/comments`, { content });
@@ -507,7 +482,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     icon: f.icon,
   }));
 
-  // Trending topics legados — não exibidos mais (Em alta usa /posts/trending).
+  // Hashtags estáticas exibidas no sidebar do FeedView ("Tópicos em Alta").
   const trendingTopics: Array<{ topic: string; posts: number; trend: string }> = [
   ];
 
@@ -642,29 +617,6 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
               <Button
                 variant="ghost"
                 className="relative px-6 py-3 rounded-none border-b-2 transition-all whitespace-nowrap"
-                onClick={() => setCurrentView("trending")}
-                style={{ 
-                  fontWeight: currentView === "trending" ? 700 : 500,
-                  borderColor: currentView === "trending" ? 'var(--rayo-terra-500)' : 'transparent',
-                  color: currentView === "trending" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
-                }}
-                onMouseEnter={(e) => {
-                  if (currentView !== "trending") {
-                    e.currentTarget.style.color = 'var(--rayo-forest-900)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (currentView !== "trending") {
-                    e.currentTarget.style.color = 'var(--rayo-ink-400)';
-                  }
-                }}
-              >
-                <TrendingUp className="w-4 h-4 mr-2" />
-                Em Alta
-              </Button>
-              <Button
-                variant="ghost"
-                className="relative px-6 py-3 rounded-none border-b-2 transition-all whitespace-nowrap"
                 onClick={() => setCurrentView("conversas")}
                 style={{ 
                   fontWeight: currentView === "conversas" ? 700 : 500,
@@ -790,8 +742,8 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
 
         {/* MAIN CONTENT */}
         <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* Task #193 — quando há busca ativa, esconde o feed/grupos/trending
-              padrão e renderiza o painel tabbed Reddit-style. */}
+          {/* Task #193 — quando há busca ativa, esconde feed/grupos/conversas
+              e renderiza o painel tabbed Reddit-style. */}
           {isSearching && (
             <CommunitySearchResults q={urlQ} tab={urlTab} onTabChange={setSearchTab} />
           )}
@@ -819,24 +771,6 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
               loading={forumsLoading}
               error={forumsError}
               onRetry={loadForums}
-            />
-          )}
-
-          {!isSearching && currentView === "trending" && (
-            <TrendingView 
-              posts={trendingPosts}
-              loading={trendingLoading}
-              onComment={(post) => {
-                setSelectedPost(post);
-                setShowComments(true);
-                loadPostComments(post.id);
-              }}
-              onShare={(post) => {
-                setSelectedPost(post);
-                setShowShare(true);
-              }}
-              onMutated={loadTrendingPosts}
-              onEdit={(p) => setEditingPost(p)}
             />
           )}
 
@@ -1173,68 +1107,6 @@ function CategoryChip({ label, active, onClick }: { label: string; active: boole
     >
       {label}
     </button>
-  );
-}
-
-// TRENDING VIEW — Task #92: posts vêm de /api/community/posts/trending
-// (ranking por likes+comments nas últimas 48h, calculado no servidor).
-interface TrendingViewProps {
-  posts: any[];
-  loading?: boolean;
-  onComment: (post: any) => void;
-  onShare: (post: any) => void;
-  onMutated?: () => void;
-  onEdit?: (post: any) => void;
-}
-
-function TrendingView({ posts, loading, onComment, onShare, onMutated, onEdit }: TrendingViewProps) {
-  return (
-    <div className="space-y-6">
-      <div 
-        className="rounded-2xl p-6 text-white"
-        style={{
-          background: 'linear-gradient(135deg, var(--rayo-terra-500) 0%, var(--rayo-terra-700) 100%)',
-          boxShadow: '0 0 0 3px rgba(200,85,61,0.18)',
-        }}
-      >
-        <div className="flex items-center gap-3 mb-3">
-          <Trophy className="w-8 h-8" />
-          <h2 className="text-[28px]" style={{ fontWeight: 700 }}>
-            Conteúdo em Alta
-          </h2>
-        </div>
-        <p className="text-[16px] text-white/90">
-          Os posts mais curtidos e comentados da comunidade esta semana
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6">
-        <div className="space-y-4">
-          {loading && (
-            <div className="ra-card p-6 text-center" style={{ color: 'var(--rayo-ink-400)' }}>
-              Carregando os posts em alta…
-            </div>
-          )}
-          {!loading && posts.length === 0 && (
-            <div className="ra-card p-6 text-center" style={{ color: 'var(--rayo-ink-400)' }}>
-              Ainda não há posts em alta nas últimas 48h.
-            </div>
-          )}
-          {posts.map((post) => (
-            <PostCard 
-              key={post.id} 
-              post={post}
-              onComment={() => onComment(post)}
-              onShare={() => onShare(post)}
-              onMutated={onMutated}
-              onEdit={onEdit}
-            />
-          ))}
-        </div>
-
-        {/* Sidebar legada de hashtags removida (Task #92). */}
-      </div>
-    </div>
   );
 }
 
