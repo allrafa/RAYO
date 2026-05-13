@@ -405,7 +405,7 @@ export async function backfillOAuthVerifiedEmails(): Promise<number> {
 // pro fluxo de signup). Mesma lógica de cooldown/insert/email.
 export async function resendVerificationCodeForUser(
   userId: number,
-): Promise<{ email: string; cooldownSeconds?: number }> {
+): Promise<{ email: string; alreadyVerified?: boolean; cooldownSeconds?: number }> {
   const u = await query<{ email: string }>(
     "SELECT email FROM users WHERE id = $1",
     [userId],
@@ -427,7 +427,7 @@ export async function resendVerificationCodeForUser(
     [email],
   );
   if (alreadyVerified.rows.length > 0) {
-    return { email };
+    return { email, alreadyVerified: true };
   }
 
   const recent = await query(

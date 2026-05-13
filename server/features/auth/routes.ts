@@ -64,7 +64,11 @@ router.post(
   try {
     const userId = req.user!.id;
     const result = await resendVerificationCodeForUser(userId);
-    success(res, { email: result.email, message: "Código enviado" });
+    success(res, {
+      email: result.email,
+      alreadyVerified: result.alreadyVerified === true,
+      message: result.alreadyVerified ? "E-mail já confirmado" : "Código enviado",
+    });
   } catch (err) {
     next(err);
   }

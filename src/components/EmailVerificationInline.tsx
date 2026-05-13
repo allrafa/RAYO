@@ -48,12 +48,24 @@ export function EmailVerificationInline({ onVerified, onCancel, reason }: Props)
   const sendCode = async () => {
     if (busy || cooldown > 0) return;
     setBusy(true);
-    const res = await api.post<{ email: string }>(
+    const res = await api.post<{ email: string; alreadyVerified?: boolean }>(
       "/api/auth/resend-verification",
       {},
     );
     setBusy(false);
     if (res.success) {
+      // Task #205 — backend pode devolver alreadyVerified=true em race
+      // (outro fluxo verificou enquanto o modal estava aberto). Evita
+      // mostrar input de código vazio e retoma a ação imediatamente.
+      if (res.data?.alreadyVerified) {
+        enhancedToast.success({
+          title: "E-mail já confirmado",
+          description: "Seguindo…",
+          haptic: true,
+        });
+        onVerified();
+        return;
+      }
       enhancedToast.success({
         title: "Código enviado",
         description: `Cheque ${email}`,
