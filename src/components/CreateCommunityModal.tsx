@@ -227,6 +227,7 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
             }}
           />
         ) : (
+        <>
         <div className="space-y-4 py-2">
           <div className="space-y-1">
             <label className="text-xs font-medium" style={{ color: "var(--rayo-ink-600)" }}>
@@ -391,6 +392,7 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
             {busy ? (isEdit ? "Salvando…" : "Criando…") : (isEdit ? "Salvar" : "Criar comunidade")}
           </Button>
         </div>
+        </>
         )}
       </DialogContent>
     </Dialog>
