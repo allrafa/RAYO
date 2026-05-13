@@ -97,6 +97,15 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // Task #203 — INVARIANTE DE AUTH:
+  // `setUser(null)` SÓ pode ser disparado pelo `logout()` explícito abaixo.
+  // Endpoints de feature (comunidade, SSE, notificações etc) que devolvem
+  // 401 NÃO podem desmontar a sessão do React — isso causaria flicker /
+  // "tela branca" sempre que algum endpoint protegido falhasse durante a
+  // hidratação inicial. O boot de sessão (`/api/auth/me`) é o único lugar
+  // que decide o estado inicial: se 200 → setUser(payload); se 401/erro
+  // → user permanece null (estado inicial). Telemetria de 401 vive em
+  // `src/lib/api.ts` (warn só, sem efeito colateral).
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -108,7 +117,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(res.data.user);
           markDeviceAsReturning();
         }
+        // Importante: NUNCA chamar setUser(null) aqui — user já é null
+        // por padrão. Chamar setUser(null) numa branch de erro causaria
+        // re-render desnecessário e poderia cascatear pra unmount de
+        // componentes que dependem de `isLoading=false && user=null`.
       } catch {
+        /* erro de rede no boot — mantém user=null silenciosamente */
       } finally {
         setIsLoading(false);
       }
