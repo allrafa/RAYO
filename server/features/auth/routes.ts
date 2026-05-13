@@ -4,6 +4,7 @@ import { validateRegister, validateLogin } from "./validation.js";
 import { registerUser, loginUser, logoutUser, sendVerificationCode, verifyCode, requestPasswordReset, resetPassword, changePassword, resendVerificationCodeForUser } from "./service.js";
 import { success, created, error } from "../../utils/response.js";
 import { requireAuth } from "../../middleware/auth.js";
+import { rateLimiter } from "../../middleware/security.js";
 import oauthRouter from "./oauth.js";
 
 const router = Router();
@@ -51,11 +52,15 @@ router.post("/send-code", async (req: Request, res: Response, next: NextFunction
 // Task #205 — reenvio de código pra usuário JÁ logado (não exige `email` no
 // body; usa o e-mail da sessão). Serve fluxos inline tipo "Confirme seu
 // e-mail" sem sair do contexto (modal de criar comunidade etc). Cooldown
-// de 60s reaproveitado via `resendVerificationCodeForUser`. Não usa
-// `rateLimiter` extra aqui porque o `/api/auth` global já aplica
-// 20req/15min por IP em POSTs sensíveis e o cooldown de 60s no service
-// já evita abuse específico desse endpoint.
-router.post("/resend-verification", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+// de 60s reaproveitado via `resendVerificationCodeForUser`. Rate limit
+// dedicado: 3 reqs / 15min keyByUser — alinhado ao spec da task #205,
+// muito mais apertado que os 20/IP globais do `/api/auth`. `requireAuth`
+// roda antes pra que `req.user.id` esteja disponível pro `keyByUser`.
+router.post(
+  "/resend-verification",
+  requireAuth,
+  rateLimiter(3, 15 * 60 * 1000, { keyByUser: true }),
+  async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id;
     const result = await resendVerificationCodeForUser(userId);
@@ -63,7 +68,8 @@ router.post("/resend-verification", requireAuth, async (req: Request, res: Respo
   } catch (err) {
     next(err);
   }
-});
+  },
+);
 
 router.post("/verify-code", async (req: Request, res: Response, next: NextFunction) => {
   try {
