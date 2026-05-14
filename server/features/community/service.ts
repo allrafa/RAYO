@@ -1252,8 +1252,12 @@ function slugify(input: string, fallback: string): string {
   return base || fallback;
 }
 
+// Slugs reservados — colidem com sub-rotas técnicas em /api/community/forums.
+// Manter sincronizado com routes.ts (`cover-staging`, `me`, `by-slug`).
+const RESERVED_FORUM_SLUGS = new Set<string>(["cover-staging", "me", "by-slug"]);
+
 async function ensureUniqueSlug(base: string): Promise<string> {
-  let candidate = base;
+  let candidate = RESERVED_FORUM_SLUGS.has(base) ? `${base}-c` : base;
   let suffix = 2;
   // Probe até achar livre. Sem TOCTOU bonito (sem advisory lock), mas o
   // INSERT subsequente cobre via UNIQUE INDEX (try/catch no caller).
@@ -1329,6 +1333,11 @@ function validateForumPatch(patch: ForumInput, isCreate: boolean): void {
       throw new AppError("Capa inválida", "INVALID_COVER", 400);
     }
     patch.cover_url = c || null;
+  }
+  // Capa é obrigatória APENAS na criação (paridade com a UI). Edição
+  // continua podendo remover a capa pra voltar ao fallback gradiente.
+  if (isCreate && !patch.cover_url) {
+    throw new AppError("Capa é obrigatória", "COVER_REQUIRED", 400);
   }
   if (patch.slug !== undefined) {
     const s = String(patch.slug || "").trim().toLowerCase();

@@ -84,7 +84,6 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
   }, [open, editingForum]);
 
   const onPickCover = async (file: File) => {
-    if (!editingForum) return;
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
       enhancedToast.error({ title: "Formato não suportado", description: "Use JPG, PNG ou WebP", haptic: true });
       return;
@@ -96,7 +95,13 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
     setUploadingCover(true);
     const fd = new FormData();
     fd.append("file", file);
-    const res = await fetch(`/api/community/forums/${editingForum.id}/cover`, {
+    // Edição usa o endpoint atrelado ao fórum (mantém ACL legada de
+    // moderador local). Criação usa o staging — a capa é enviada e o
+    // sentinel objstore vem junto no POST /forums.
+    const url = editingForum
+      ? `/api/community/forums/${editingForum.id}/cover`
+      : `/api/community/forums/cover-staging`;
+    const res = await fetch(url, {
       method: "POST",
       body: fd,
       credentials: "include",
@@ -106,7 +111,11 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
     if (json?.success && json?.data?.cover_url) {
       setCoverUrl(json.data.cover_url as string);
       setCoverPreview(URL.createObjectURL(file));
-      enhancedToast.success({ title: "Capa pronta", description: "Salve pra aplicar.", haptic: true });
+      enhancedToast.success({
+        title: "Capa pronta",
+        description: editingForum ? "Salve pra aplicar." : "Já vai junto na criação.",
+        haptic: true,
+      });
     } else {
       enhancedToast.error({
         title: "Não foi possível subir a capa",
@@ -125,6 +134,16 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
     }
     if (!cat) {
       enhancedToast.error({ title: "Categoria obrigatória", description: "Escolha um tema pra comunidade", haptic: true });
+      return;
+    }
+    // Capa obrigatória APENAS na criação. Na edição, remover a capa
+    // (voltar pro fallback gradiente) continua permitido.
+    if (!isEdit && !coverUrl) {
+      enhancedToast.error({
+        title: "Capa obrigatória",
+        description: "Adicione uma imagem de capa pra apresentar a comunidade.",
+        haptic: true,
+      });
       return;
     }
     setBusy(true);
@@ -170,6 +189,10 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
         icon,
         category: cat,
         rules: rules.trim() || null,
+        // Sentinel objstore vindo do staging upload — backend valida e
+        // persiste em forums.cover_url. Sem isso a criação falha na
+        // validação do client (capa obrigatória).
+        cover_url: coverUrl,
       },
     );
     setBusy(false);
@@ -245,10 +268,10 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
             </p>
           </div>
 
-          {isEdit && (
+          {(
             <div className="space-y-1">
               <label className="text-xs font-medium" style={{ color: "var(--rayo-ink-600)" }}>
-                Capa (opcional)
+                Capa {isEdit ? "(opcional)" : <span style={{ color: "var(--rayo-terra-500)" }}>*</span>}
               </label>
               <div
                 className="relative w-full h-32 rounded-lg overflow-hidden flex items-center justify-center"
@@ -388,7 +411,10 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             Cancelar
           </Button>
-          <Button onClick={onSubmit} disabled={busy || !name.trim() || !category.trim()}>
+          <Button
+            onClick={onSubmit}
+            disabled={busy || !name.trim() || !category.trim() || (!isEdit && !coverUrl) || uploadingCover}
+          >
             {busy ? (isEdit ? "Salvando…" : "Criando…") : (isEdit ? "Salvar" : "Criar comunidade")}
           </Button>
         </div>

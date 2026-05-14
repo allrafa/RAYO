@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RAYO — Email Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sand-50:#FAF4E8;--sand-100:#F2E9D5;--sand-200:#E8DBBF;--sand-300:#D9C89E;--sand-400:#BFA87A;
+    --forest-900:#0C3B2E;--forest-700:#144D3C;--forest-500:#1E6A52;
+    --sage-100:#DCE8D2;--sage-300:#A9C396;--sage-500:#6D9773;--sage-700:#4F7253;
+    --terra-100:#F2D6CC;--terra-300:#E08770;--terra-500:#C8553D;--terra-700:#9C3A26;--terra-900:#5E2113;
+    --ochre-300:#E8C77E;--ochre-500:#D4A24C;--ochre-700:#A37A2D;
+    --ink-900:#0E1A14;--ink-700:#1F2A22;--ink-500:#4A5247;--ink-400:#6E7569;--ink-300:#9CA098;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--sand-100);color:var(--ink-900);font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .page{max-width:1280px;margin:0 auto;padding:72px 56px 120px;}
+  .mono{font-family:ui-monospace,'SF Mono',monospace;}
+
+  /* HEADER */
+  .doc-head{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:40px;border-bottom:1px solid var(--sand-300);margin-bottom:64px;}
+  .doc-head h1{font-size:88px;font-weight:700;letter-spacing:-0.05em;line-height:0.92;color:var(--forest-900);}
+  .doc-head h1 .light{font-weight:200;color:var(--terra-500);font-style:italic;}
+  .doc-tag{margin-top:18px;display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border:1px solid var(--forest-900);border-radius:999px;font-size:13px;color:var(--forest-900);}
+  .doc-tag-dot{width:6px;height:6px;border-radius:50%;background:var(--terra-500);}
+  .doc-meta{text-align:right;font-size:13px;color:var(--ink-500);line-height:1.6;max-width:340px;}
+  .doc-meta strong{color:var(--forest-900);font-weight:600;}
+
+  section{margin-bottom:88px;}
+  .sec-head{padding-bottom:14px;border-bottom:1px solid var(--sand-300);margin-bottom:32px;display:flex;justify-content:space-between;align-items:baseline;}
+  .sec-head .num{font-family:ui-monospace,monospace;font-size:12px;color:var(--forest-500);letter-spacing:0.06em;}
+  .sec-head h2{font-size:36px;font-weight:600;letter-spacing:-0.03em;color:var(--forest-900);}
+  .sec-head h2 .light{font-weight:200;color:var(--terra-500);font-style:italic;}
+  .sec-head p{font-size:13px;color:var(--ink-500);max-width:380px;text-align:right;}
+
+  /* INTRO — antes/depois */
+  .ab{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .ab-card{border-radius:24px;padding:32px;min-height:340px;display:flex;flex-direction:column;justify-content:space-between;}
+  .ab-card.de{background:#172435;color:#cdd2dd;border:1px solid #1f2f47;}
+  .ab-card.de .ab-tag{background:rgba(255,193,7,0.18);color:#FFC107;border-color:rgba(255,193,7,0.3);}
+  .ab-card.para{background:var(--sand-50);border:1px solid var(--sand-300);}
+  .ab-tag{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:999px;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-weight:600;border:1px solid var(--terra-500);color:var(--terra-500);align-self:flex-start;}
+  .ab-tag-dot{width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .ab-card h3{font-size:28px;font-weight:600;letter-spacing:-0.025em;line-height:1.15;margin-top:18px;}
+  .ab-card.para h3{color:var(--forest-900);}
+  .ab-card.para h3 .light{font-weight:200;color:var(--terra-500);font-style:italic;}
+  .ab-list{list-style:none;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.5;}
+  .ab-list li::before{content:"× ";color:#FFC107;font-weight:700;}
+  .ab-card.para .ab-list li::before{content:"✓ ";color:var(--sage-700);font-weight:700;}
+
+  /* TOKEN GRID */
+  .tokens{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+  .token{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:18px;padding:24px;}
+  .token-label{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-400);font-weight:600;margin-bottom:14px;}
+  .token-swatches{display:flex;flex-direction:column;gap:8px;}
+  .token-sw{display:flex;align-items:center;gap:12px;padding:8px 12px;border-radius:10px;font-size:13px;background:var(--sand-100);}
+  .token-sw .chip{width:28px;height:28px;border-radius:8px;flex-shrink:0;border:1px solid rgba(14,26,20,0.08);}
+  .token-sw .name{font-weight:600;color:var(--forest-900);min-width:90px;}
+  .token-sw .hex{font-family:ui-monospace,monospace;font-size:11px;color:var(--ink-500);margin-left:auto;}
+  .token-note{font-size:11px;color:var(--ink-400);margin-top:12px;line-height:1.5;}
+
+  /* TYPE TABLE */
+  .type-table{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:18px;padding:32px;}
+  .type-row{display:grid;grid-template-columns:160px 1fr 200px;align-items:baseline;padding:18px 0;border-bottom:1px solid var(--sand-300);gap:24px;}
+  .type-row:last-child{border-bottom:none;}
+  .type-role{font-family:ui-monospace,monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--terra-500);font-weight:600;}
+  .type-sample{color:var(--forest-900);line-height:1;}
+  .type-meta{font-family:ui-monospace,monospace;font-size:11px;color:var(--ink-400);text-align:right;}
+
+  /* SPEC TABLE */
+  .spec{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:18px;padding:32px;}
+  .spec-row{display:grid;grid-template-columns:180px 1fr;gap:32px;padding:14px 0;border-bottom:1px dashed var(--sand-300);}
+  .spec-row:last-child{border-bottom:none;}
+  .spec-key{font-family:ui-monospace,monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-500);font-weight:600;padding-top:4px;}
+  .spec-val{font-size:14px;color:var(--ink-700);line-height:1.55;}
+  .spec-val code{background:var(--sand-200);padding:2px 8px;border-radius:6px;font-family:ui-monospace,monospace;font-size:12px;color:var(--terra-700);}
+
+  /* COMPONENT GALLERY */
+  .gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;}
+  .comp{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:18px;overflow:hidden;}
+  .comp-head{padding:18px 24px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--sand-300);}
+  .comp-name{font-size:14px;font-weight:600;color:var(--forest-900);}
+  .comp-id{font-family:ui-monospace,monospace;font-size:10px;color:var(--ink-400);letter-spacing:0.1em;}
+  .comp-stage{padding:32px;background:var(--sand-100);display:flex;align-items:center;justify-content:center;min-height:140px;}
+
+  /* — Component primitives (inside gallery, used in real emails too) — */
+  .e-brand{display:inline-flex;align-items:center;gap:10px;}
+  .e-brand-mark{width:34px;height:34px;border-radius:10px;background:var(--terra-500);display:grid;place-items:center;}
+  .e-brand-name{font-size:18px;font-weight:700;letter-spacing:-0.04em;color:var(--forest-900);}
+  .e-eyebrow{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--terra-500);font-weight:600;display:inline-flex;align-items:center;gap:10px;}
+  .e-eyebrow::before{content:"";width:24px;height:1px;background:var(--terra-500);}
+  .e-h1{font-size:32px;font-weight:600;letter-spacing:-0.035em;line-height:1;color:var(--forest-900);text-align:center;}
+  .e-h1 .light{font-weight:200;color:var(--terra-500);font-style:italic;}
+  .e-cta{display:inline-flex;align-items:center;gap:10px;background:var(--terra-500);color:var(--sand-50);padding:14px 28px;border-radius:999px;font-size:14px;font-weight:600;text-decoration:none;}
+  .e-cta-secondary{background:transparent;color:var(--forest-900);border:1.5px solid var(--forest-900);padding:12.5px 26.5px;}
+  .e-card{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:14px;padding:18px 20px;font-size:13px;color:var(--ink-700);line-height:1.5;text-align:left;width:100%;}
+  .e-card .e-card-eb{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--terra-500);font-weight:600;margin-bottom:6px;}
+  .e-card .e-card-t{font-size:15px;font-weight:600;color:var(--forest-900);margin-bottom:4px;}
+  .e-quote{padding-left:18px;border-left:2px solid var(--terra-500);font-size:14px;color:var(--ink-700);line-height:1.55;text-align:left;width:100%;}
+  .e-quote em{color:var(--terra-500);font-style:italic;font-weight:500;}
+  .e-divider{height:1px;background:var(--sand-300);width:100%;}
+  .e-bullets{list-style:none;padding:0;margin:0;text-align:left;width:100%;display:flex;flex-direction:column;gap:8px;}
+  .e-bullets li{padding-left:24px;position:relative;font-size:14px;line-height:1.5;color:var(--ink-700);}
+  .e-bullets li::before{content:"";position:absolute;left:0;top:9px;width:14px;height:1.5px;background:var(--terra-500);}
+
+  /* EMAIL PREVIEWS — actual rendered email canvas */
+  .previews{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;}
+  .preview{background:#36302a;border-radius:24px;padding:24px;}
+  .preview-tag{display:flex;justify-content:space-between;font-family:ui-monospace,monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:rgba(250,244,232,0.55);font-weight:600;margin-bottom:18px;padding:0 8px;}
+  .preview-tag .right{color:var(--ochre-300);}
+  .preview-frame{background:var(--sand-100);border-radius:14px;overflow:hidden;}
+  .preview iframe{display:block;width:100%;height:680px;border:0;background:var(--sand-100);}
+
+  /* FOOTER */
+  .doc-foot{margin-top:48px;padding-top:28px;border-top:1px solid var(--sand-300);display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink-400);font-family:ui-monospace,monospace;letter-spacing:0.06em;}
+  .doc-foot strong{color:var(--terra-500);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="doc-head">
+    <div>
+      <h1>Email <span class="light">design system</span></h1>
+      <div class="doc-tag">
+        <span class="doc-tag-dot"></span>
+        v1 · maio 2026 · transacional & marketing
+      </div>
+    </div>
+    <div class="doc-meta">
+      <strong>Para a IA geradora de emails</strong><br>
+      Toda comunicação por email do RAYO deve seguir este sistema. Substitui o template atual (fundo navy + amarelo Material).
+    </div>
+  </header>
+
+  <!-- 01 — ANTES / DEPOIS -->
+  <section>
+    <div class="sec-head">
+      <h2>Diagnóstico <span class="light">antes / depois</span></h2>
+      <span class="num">01 / 07</span>
+    </div>
+    <div class="ab">
+      <div class="ab-card de">
+        <div>
+          <span class="ab-tag" style="border-color:#FFC107;color:#FFC107;"><span class="ab-tag-dot"></span> Antes — o que está errado hoje</span>
+          <h3 style="margin-top:18px;">Fundo navy + CTA amarelo Material genérico.</h3>
+          <p style="margin-top:16px;font-size:13px;color:#a8aebb;line-height:1.55;">Nenhum traço da marca: sem terracota, sem sage, sem forest, sem Outfit. O badge "RAYO" parece um botão de aplicativo Android.</p>
+        </div>
+        <ul class="ab-list">
+          <li>Fundo <code style="background:#0d1828;padding:1px 6px;border-radius:4px;font-family:ui-monospace,monospace;font-size:11px;color:#cdd2dd;">#172435</code> não existe no DS</li>
+          <li>Amarelo <code style="background:#0d1828;padding:1px 6px;border-radius:4px;font-family:ui-monospace,monospace;font-size:11px;color:#cdd2dd;">#FFC107</code> não existe no DS</li>
+          <li>Bullets default sem hierarquia editorial</li>
+          <li>"RAYO" em pill amarelo parece logo de outro produto</li>
+          <li>Nenhuma variação de peso/itálico na tipografia</li>
+        </ul>
+      </div>
+      <div class="ab-card para">
+        <div>
+          <span class="ab-tag"><span class="ab-tag-dot"></span> Depois — sistema RAYO aplicado</span>
+          <h3 style="margin-top:18px;">Canvas areia, marca terracota, voz <span class="light">editorial</span>.</h3>
+          <p style="margin-top:16px;font-size:13px;color:var(--ink-500);line-height:1.55;">Mesma família visual do produto: forest como ink, terracota como CTA, sage como respiro, Outfit em pesos mistos.</p>
+        </div>
+        <ul class="ab-list">
+          <li>Canvas <code style="background:var(--sand-200);padding:1px 6px;border-radius:4px;font-family:ui-monospace,monospace;font-size:11px;color:var(--terra-700);">#FAF4E8</code> / borda <code style="background:var(--sand-200);padding:1px 6px;border-radius:4px;font-family:ui-monospace,monospace;font-size:11px;color:var(--terra-700);">#D9C89E</code></li>
+          <li>CTA terracota <code style="background:var(--sand-200);padding:1px 6px;border-radius:4px;font-family:ui-monospace,monospace;font-size:11px;color:var(--terra-700);">#C8553D</code> · pill</li>
+          <li>Bullets com traço (—) em vez de disc</li>
+          <li>Brand mark do RAYO (símbolo do sol) + wordmark</li>
+          <li>Outfit 600 + 200 italic para ênfases</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 — TOKENS -->
+  <section>
+    <div class="sec-head">
+      <h2>Tokens</h2>
+      <span class="num">02 / 07</span>
+      <p>Use estes valores hexadecimais literais nos inline styles dos emails. Não invente novos.</p>
+    </div>
+    <div class="tokens">
+      <div class="token">
+        <div class="token-label">Surfaces</div>
+        <div class="token-swatches">
+          <div class="token-sw"><span class="chip" style="background:#FAF4E8;"></span><span class="name">canvas</span><span class="hex">#FAF4E8</span></div>
+          <div class="token-sw"><span class="chip" style="background:#F2E9D5;"></span><span class="name">backdrop</span><span class="hex">#F2E9D5</span></div>
+          <div class="token-sw"><span class="chip" style="background:#D9C89E;"></span><span class="name">border</span><span class="hex">#D9C89E</span></div>
+        </div>
+        <p class="token-note">canvas é o fundo de TODO email (corpo da mensagem). backdrop é a "moldura" que aparece atrás em clientes desktop. border separa seções e contorna cards.</p>
+      </div>
+      <div class="token">
+        <div class="token-label">Brand · CTA</div>
+        <div class="token-swatches">
+          <div class="token-sw"><span class="chip" style="background:#C8553D;"></span><span class="name">terra-500</span><span class="hex">#C8553D</span></div>
+          <div class="token-sw"><span class="chip" style="background:#9C3A26;"></span><span class="name">terra-700</span><span class="hex">#9C3A26</span></div>
+          <div class="token-sw"><span class="chip" style="background:#0C3B2E;"></span><span class="name">forest-900</span><span class="hex">#0C3B2E</span></div>
+        </div>
+        <p class="token-note">terra-500 é a cor do botão primário (sempre). forest-900 é a tinta principal de texto. terra-700 é hover/dark variant.</p>
+      </div>
+      <div class="token">
+        <div class="token-label">Accents</div>
+        <div class="token-swatches">
+          <div class="token-sw"><span class="chip" style="background:#6D9773;"></span><span class="name">sage-500</span><span class="hex">#6D9773</span></div>
+          <div class="token-sw"><span class="chip" style="background:#DCE8D2;"></span><span class="name">sage-100</span><span class="hex">#DCE8D2</span></div>
+          <div class="token-sw"><span class="chip" style="background:#D4A24C;"></span><span class="name">ochre-500</span><span class="hex">#D4A24C</span></div>
+        </div>
+        <p class="token-note">sage para confirmações positivas (sucesso, completou trilha). ochre para pequenos highlights e badges premium. Use com parcimônia.</p>
+      </div>
+      <div class="token">
+        <div class="token-label">Ink (texto)</div>
+        <div class="token-swatches">
+          <div class="token-sw"><span class="chip" style="background:#0E1A14;"></span><span class="name">ink-900</span><span class="hex">#0E1A14</span></div>
+          <div class="token-sw"><span class="chip" style="background:#1F2A22;"></span><span class="name">ink-700</span><span class="hex">#1F2A22</span></div>
+          <div class="token-sw"><span class="chip" style="background:#4A5247;"></span><span class="name">ink-500</span><span class="hex">#4A5247</span></div>
+          <div class="token-sw"><span class="chip" style="background:#6E7569;"></span><span class="name">ink-400</span><span class="hex">#6E7569</span></div>
+        </div>
+        <p class="token-note">ink-900 = headlines. ink-700 = corpo. ink-500 = legendas. ink-400 = footer/disclaimers.</p>
+      </div>
+      <div class="token">
+        <div class="token-label">Geometry</div>
+        <div class="token-swatches">
+          <div class="token-sw"><span class="name">radius card</span><span class="hex">14px</span></div>
+          <div class="token-sw"><span class="name">radius CTA</span><span class="hex">999px (pill)</span></div>
+          <div class="token-sw"><span class="name">radius mark</span><span class="hex">10px</span></div>
+          <div class="token-sw"><span class="name">container</span><span class="hex">600px</span></div>
+          <div class="token-sw"><span class="name">padding ext</span><span class="hex">48px / 32px (mob)</span></div>
+        </div>
+        <p class="token-note">600px é o padrão de email — não ultrapassar. Padding externo (48px desktop / 32px mobile) garante respiração.</p>
+      </div>
+      <div class="token">
+        <div class="token-label">Type stack</div>
+        <div class="token-swatches">
+          <div class="token-sw"><span class="name" style="min-width:auto;">Outfit · webfont</span></div>
+          <div class="token-sw"><span class="name" style="min-width:auto;">Helvetica Neue · fallback</span></div>
+          <div class="token-sw"><span class="name" style="min-width:auto;">Arial · final</span></div>
+          <div class="token-sw"><span class="name" style="min-width:auto;">sans-serif · safe</span></div>
+        </div>
+        <p class="token-note">Stack completo: <code style="font-family:ui-monospace,monospace;font-size:11px;background:var(--sand-200);padding:1px 4px;border-radius:4px;">'Outfit','Helvetica Neue',Arial,sans-serif</code>. Importar Outfit pela tag <code style="font-family:ui-monospace,monospace;font-size:11px;background:var(--sand-200);padding:1px 4px;border-radius:4px;">&lt;link&gt;</code> Google Fonts no head.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 — TYPE SCALE -->
+  <section>
+    <div class="sec-head">
+      <h2>Escala <span class="light">tipográfica</span></h2>
+      <span class="num">03 / 07</span>
+      <p>Outfit em pesos mistos. Ênfase por peso + itálico, nunca por mudança de família.</p>
+    </div>
+    <div class="type-table">
+      <div class="type-row">
+        <span class="type-role">Display</span>
+        <span class="type-sample" style="font-size:38px;font-weight:600;letter-spacing:-0.035em;">Olá, <span style="font-weight:200;color:var(--terra-500);font-style:italic;">Danniel.</span></span>
+        <span class="type-meta">38px / 600 + 200 italic / -0.035em / 1.0</span>
+      </div>
+      <div class="type-row">
+        <span class="type-role">H1 (saudação)</span>
+        <span class="type-sample" style="font-size:28px;font-weight:600;letter-spacing:-0.03em;">Que bom te ver de volta.</span>
+        <span class="type-meta">28px / 600 / -0.03em / 1.1</span>
+      </div>
+      <div class="type-row">
+        <span class="type-role">H2 (subseção)</span>
+        <span class="type-sample" style="font-size:20px;font-weight:600;letter-spacing:-0.02em;">Aqui você encontra</span>
+        <span class="type-meta">20px / 600 / -0.02em / 1.2</span>
+      </div>
+      <div class="type-row">
+        <span class="type-role">Body</span>
+        <span class="type-sample" style="font-size:15px;font-weight:400;line-height:1.6;color:var(--ink-700);">Que alegria ter você no <strong style="font-weight:600;color:var(--forest-900);">RAYO</strong>. Sua jornada começa agora.</span>
+        <span class="type-meta">15px / 400 / 1.6</span>
+      </div>
+      <div class="type-row">
+        <span class="type-role">Caption</span>
+        <span class="type-sample" style="font-size:13px;font-weight:400;color:var(--ink-500);">Você pode se descadastrar a qualquer momento.</span>
+        <span class="type-meta">13px / 400 / ink-500</span>
+      </div>
+      <div class="type-row">
+        <span class="type-role">Eyebrow</span>
+        <span class="type-sample mono" style="font-size:11px;font-weight:600;letter-spacing:0.22em;text-transform:uppercase;color:var(--terra-500);">Bem-vindo ao RAYO</span>
+        <span class="type-meta">11px / mono · 600 / +0.22em</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 — LAYOUT / SPEC -->
+  <section>
+    <div class="sec-head">
+      <h2>Especificação <span class="light">técnica</span></h2>
+      <span class="num">04 / 07</span>
+      <p>Regras absolutas que valem para qualquer email — transacional ou marketing.</p>
+    </div>
+    <div class="spec">
+      <div class="spec-row">
+        <span class="spec-key">Largura</span>
+        <span class="spec-val"><code>600px</code> de largura útil. Centralizar na viewport usando <code>&lt;table&gt;</code> outer com <code>width="100%"</code>.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Backdrop</span>
+        <span class="spec-val">Fora do container: <code>#F2E9D5</code> (sand-100). Dentro do container: <code>#FAF4E8</code> (sand-50). Não usar fundos escuros.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Container</span>
+        <span class="spec-val">Card central com <code>border: 1px solid #D9C89E</code> + <code>border-radius: 14px</code> + <code>padding: 48px 40px</code> (32px mobile).</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Header</span>
+        <span class="spec-val">Brand mark (sol terracota 34×34, radius 10) + wordmark "RAYO" (Outfit 700, 18px, -0.04em). Esquerda do container, sem badge/pill em volta.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Eyebrow</span>
+        <span class="spec-val">Sempre presente acima do título. Monospace, 11px, +0.22em letter-spacing, uppercase, cor terracota, com traço de 24×1px antes do texto.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Headline</span>
+        <span class="spec-val">28–38px. Mistura peso 600 (forest-900) + peso 200 italic (terra-500). Quebra de linha intencional. Saudação personalizada quando possível.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">CTA</span>
+        <span class="spec-val">Botão único <code>background:#C8553D</code> + <code>color:#FAF4E8</code> + <code>border-radius:999px</code> + <code>padding:16px 32px</code>. Texto verbo+objeto ("Acessar plataforma", "Continuar trilha"). Nunca múltiplos CTAs primários no mesmo email.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Bullets</span>
+        <span class="spec-val">Lista sem <code>disc</code>. Cada item com traço terracota de 14×1.5px antes (não usar <code>•</code>). Espaçamento <code>gap:10px</code>.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Footer</span>
+        <span class="spec-val">Fora do card (no backdrop). Logo pequeno + endereço + link de descadastro. Cor ink-400. Mono 11px para metadata.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Tabela > div</span>
+        <span class="spec-val">Use <code>&lt;table&gt;</code> com <code>role="presentation"</code> para layout — clientes Outlook não suportam flexbox/grid. Inline styles em <code>style=""</code>, não classes CSS para os blocos críticos.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Imagens</span>
+        <span class="spec-val">Sempre com <code>alt=""</code> descritivo. Bloco-padrão (capa, ilustração): 520×260, radius 10px. Hospedar em CDN, nunca embed base64.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Modo escuro</span>
+        <span class="spec-val">Gmail/Apple Mail invertem cores automaticamente. Não usar meta <code>color-scheme</code> — deixar o cliente decidir. Garantir contraste com forest-900/sand-50 que funcionam em ambos.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 — COMPONENT GALLERY -->
+  <section>
+    <div class="sec-head">
+      <h2>Componentes</h2>
+      <span class="num">05 / 07</span>
+      <p>Blocos base. Combinar para montar qualquer email.</p>
+    </div>
+    <div class="gallery">
+
+      <div class="comp">
+        <div class="comp-head"><span class="comp-name">Brand lockup</span><span class="comp-id">brand</span></div>
+        <div class="comp-stage">
+          <div class="e-brand">
+            <div class="e-brand-mark">
+              <svg width="18" height="18" viewBox="0 0 36 36" fill="none">
+                <circle cx="18" cy="18" r="6" fill="#FAF4E8"/>
+                <g stroke="#FAF4E8" stroke-width="1.8" stroke-linecap="round">
+                  <line x1="18" y1="2" x2="18" y2="7"/><line x1="18" y1="29" x2="18" y2="34"/>
+                  <line x1="2" y1="18" x2="7" y2="18"/><line x1="29" y1="18" x2="34" y2="18"/>
+                  <line x1="6.5" y1="6.5" x2="10" y2="10"/><line x1="26" y1="26" x2="29.5" y2="29.5"/>
+                  <line x1="6.5" y1="29.5" x2="10" y2="26"/><line x1="26" y1="10" x2="29.5" y2="6.5"/>
+                </g>
+              </svg>
+            </div>
+            <span class="e-brand-name">RAYO</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-head"><span class="comp-name">Eyebrow</span><span class="comp-id">eyebrow</span></div>
+        <div class="comp-stage">
+          <span class="e-eyebrow">Bem-vindo ao RAYO</span>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-head"><span class="comp-name">Headline editorial</span><span class="comp-id">h1</span></div>
+        <div class="comp-stage">
+          <h1 class="e-h1">Olá, Danniel.<br><span class="light">Que bom te ver.</span></h1>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-head"><span class="comp-name">CTA primary + secondary</span><span class="comp-id">cta</span></div>
+        <div class="comp-stage" style="gap:10px;flex-wrap:wrap;">
+          <a href="#" class="e-cta">Acessar plataforma <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M3 7h8m-3-3l3 3-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          <a href="#" class="e-cta e-cta-secondary">Ver detalhes</a>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-head"><span class="comp-name">Bullet list</span><span class="comp-id">bullets</span></div>
+        <div class="comp-stage">
+          <ul class="e-bullets">
+            <li>Cursos e livros sobre relacionamento, fé e propósito</li>
+            <li>Comunidade engajada de famílias como a sua</li>
+            <li>Missões diárias para fortalecer hábitos</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-head"><span class="comp-name">Quote block</span><span class="comp-id">quote</span></div>
+        <div class="comp-stage">
+          <blockquote class="e-quote">A jornada é sua e ela <em>te espera</em>. Retome trilhas, missões e conversas no seu tempo.</blockquote>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-head"><span class="comp-name">Info card</span><span class="comp-id">card</span></div>
+        <div class="comp-stage">
+          <div class="e-card">
+            <div class="e-card-eb">Sua trilha</div>
+            <div class="e-card-t">Comunicação no casamento</div>
+            <div style="color:var(--ink-500);font-size:13px;">Módulo 04 · 64% concluído</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-head"><span class="comp-name">Divider</span><span class="comp-id">divider</span></div>
+        <div class="comp-stage">
+          <div class="e-divider"></div>
+        </div>
+      </div>
+
+      <div class="comp">
+        <div class="comp-head"><span class="comp-name">Footer block</span><span class="comp-id">footer</span></div>
+        <div class="comp-stage" style="background:var(--sand-100);">
+          <div style="text-align:center;font-family:'Outfit',sans-serif;font-size:11px;color:var(--ink-400);line-height:1.7;">
+            <div style="font-family:ui-monospace,monospace;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:8px;">RAYO · Ecossistema</div>
+            <div>Rua Exemplo 123 · São Paulo, BR</div>
+            <div style="margin-top:8px;"><a href="#" style="color:var(--terra-500);text-decoration:none;border-bottom:1px solid var(--terra-500);padding-bottom:1px;">Descadastrar</a> · <a href="#" style="color:var(--terra-500);text-decoration:none;border-bottom:1px solid var(--terra-500);padding-bottom:1px;">Preferências</a></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 06 — TEMPLATES IN ACTION -->
+  <section>
+    <div class="sec-head">
+      <h2>Templates <span class="light">aplicados</span></h2>
+      <span class="num">06 / 07</span>
+      <p>4 exemplos reais para a IA usar de base. Clique para abrir em tela cheia.</p>
+    </div>
+    <div class="previews">
+      <div class="preview">
+        <div class="preview-tag"><span>Welcome</span><span class="right">Transacional · onboarding</span></div>
+        <div class="preview-frame"><iframe src="Email - Welcome.html"></iframe></div>
+      </div>
+      <div class="preview">
+        <div class="preview-tag"><span>Carta semanal</span><span class="right">Editorial · semanal</span></div>
+        <div class="preview-frame"><iframe src="Email - Carta.html"></iframe></div>
+      </div>
+      <div class="preview">
+        <div class="preview-tag"><span>Conquista</span><span class="right">Transacional · engajamento</span></div>
+        <div class="preview-frame"><iframe src="Email - Conquista.html"></iframe></div>
+      </div>
+      <div class="preview">
+        <div class="preview-tag"><span>Missão diária</span><span class="right">Notificação · reativação</span></div>
+        <div class="preview-frame"><iframe src="Email - Missao.html"></iframe></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 — VOZ -->
+  <section>
+    <div class="sec-head">
+      <h2>Voz <span class="light">e tom</span></h2>
+      <span class="num">07 / 07</span>
+      <p>Regras curtas que a IA deve seguir ao escrever o copy.</p>
+    </div>
+    <div class="spec">
+      <div class="spec-row">
+        <span class="spec-key">Pessoa</span>
+        <span class="spec-val">Segunda pessoa do singular (você), nunca "Sr./Sra.". Saudar pelo nome sempre que possível.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Postura</span>
+        <span class="spec-val">Acolhedor, sereno, editorial. Não vendedor. Não corporativo. Não emoji-feliz.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Frases</span>
+        <span class="spec-val">Curtas. Verbos no presente. Evitar "transformação", "jornada épica", "revolucionar". Preferir "trilha", "ritmo", "passo", "prática".</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">CTA copy</span>
+        <span class="spec-val">Verbo + objeto. "Acessar plataforma", "Continuar trilha", "Ler carta". Nunca "Clique aqui", "Saiba mais".</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Emoji</span>
+        <span class="spec-val">Não usar.</span>
+      </div>
+      <div class="spec-row">
+        <span class="spec-key">Assunto</span>
+        <span class="spec-val">Máximo 50 caracteres. Concreto e específico. Ex: "Sua trilha de comunicação te espera" — não "Olá! Veja o que preparamos para você 🌟".</span>
+      </div>
+    </div>
+  </section>
+
+  <footer class="doc-foot">
+    <div>RAYO · Email design system v1 · maio 2026</div>
+    <div><strong>Sereno · Terroso · Editorial</strong></div>
+  </footer>
+</div>
+</body>
+</html>

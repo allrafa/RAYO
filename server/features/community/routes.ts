@@ -290,6 +290,49 @@ const forumCoverUpload = multer({
   },
 }).single("file");
 
+// Task — staging upload de capa ANTES da comunidade existir. Usado pelo
+// fluxo de criação (capa agora é obrigatória) — devolve o sentinel
+// objstore://forums/<file> que o cliente envia junto no POST /forums.
+// ACL = só usuário autenticado (mesmo gate da criação). Mesmo bucket
+// `forums/` da capa pós-criação; arquivos órfãos (upload sem POST
+// subsequente) ficam no objstore mas não vazam dados sensíveis.
+router.post(
+  "/forums/cover-staging",
+  requireAuth,
+  rateLimiter(20, 60 * 60 * 1000, { keyByUser: true }),
+  (req, res, next) => forumCoverUpload(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+      sendError(res, "Capa deve ter até 5 MB", "FILE_TOO_LARGE", 413);
+      return;
+    }
+    sendError(res, err instanceof Error ? err.message : "Upload inválido", "INVALID_UPLOAD", 400);
+  }),
+  async (req, res, next) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        sendError(res, "Arquivo é obrigatório", "FILE_REQUIRED", 400);
+        return;
+      }
+      let buffer = file.buffer;
+      let mime = file.mimetype;
+      try {
+        const optimized = await optimizeCmsImage(buffer, mime);
+        buffer = optimized.buffer;
+        mime = optimized.mimetype;
+      } catch { /* segue com original */ }
+      const ext = imageExt(mime) || path.extname(file.originalname) || ".jpg";
+      const safeName = `${Date.now()}-${Math.random().toString(16).slice(2, 10).padEnd(8, "0")}${ext}`;
+      const key = `forums/${safeName}`;
+      await putPublicObject(key, buffer, mime);
+      success(res, { cover_url: `objstore://${key}`, mime, size: buffer.length }, 201);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 router.post(
   "/forums/:idOrSlug/cover",
   requireAuth,
