@@ -58,7 +58,8 @@ interface DashboardData {
   recentPosts: Array<{
     id: number; content: string; category: string;
     likeCount: number; commentCount: number; createdAt: string;
-    authorName: string; forumName: string; forumIcon: string;
+    authorId?: number; authorName: string; authorAvatar?: string | null;
+    forumName: string; forumIcon: string;
     forumSlug: string | null;
   }>;
   missions: Array<{
@@ -480,7 +481,16 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                       }}
                     >
                       <div className={`rh-disc-avatar ${color}`}>
-                        {avatarInitials(post.authorName || "·")}
+                        {post.authorAvatar ? (
+                          <ImageWithFallback
+                            src={post.authorAvatar}
+                            alt=""
+                            loading="lazy"
+                            className="rh-disc-avatar-img"
+                          />
+                        ) : (
+                          avatarInitials(post.authorName || "·")
+                        )}
                       </div>
                       <div className="rh-disc-body">
                         <div className="rh-disc-text">{post.content}</div>

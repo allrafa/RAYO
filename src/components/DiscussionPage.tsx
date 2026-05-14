@@ -8,7 +8,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Loader2, MessageCircle, Send, Share2 } from "lucide-react";
 import { createPortal } from "react-dom";
-import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { openProfileById } from "../lib/cardClickTargets";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { api } from "../lib/api";
@@ -208,18 +209,48 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
       {/* POST completo — mesma anatomia do PostCard, mas inline */}
       <article className="ra-card p-5 sm:p-6 space-y-4">
         <header className="flex items-center gap-3">
-          <Avatar className="w-10 h-10 flex-shrink-0">
-            <AvatarFallback
-              style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-500)", fontWeight: 600 }}
+          {post.author_id ? (
+            <button
+              type="button"
+              onClick={() => openProfileById(post.author_id)}
+              aria-label={`Ver perfil de ${post.author_name || "autor"}`}
+              className="flex-shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)] focus-visible:ring-offset-2"
             >
-              {(post.author_name || "·").charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+              <Avatar className="w-10 h-10">
+                {post.author_avatar && <AvatarImage src={post.author_avatar} alt="" />}
+                <AvatarFallback
+                  style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-500)", fontWeight: 600 }}
+                >
+                  {(post.author_name || "·").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          ) : (
+            <Avatar className="w-10 h-10 flex-shrink-0">
+              <AvatarFallback
+                style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-500)", fontWeight: 600 }}
+              >
+                {(post.author_name || "·").charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[14px]" style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}>
-                {post.author_name}
-              </span>
+              {post.author_id ? (
+                <button
+                  type="button"
+                  onClick={() => openProfileById(post.author_id)}
+                  aria-label={`Ver perfil de ${post.author_name || "autor"}`}
+                  className="text-[14px] text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)] focus-visible:ring-offset-2 hover:underline"
+                  style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}
+                >
+                  {post.author_name}
+                </button>
+              ) : (
+                <span className="text-[14px]" style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}>
+                  {post.author_name}
+                </span>
+              )}
               {post.forum_name && (
                 <span className="text-[12px]" style={{ color: "var(--rayo-ink-400)" }}>
                   em <strong style={{ color: "var(--rayo-terra-500)" }}>{post.forum_name}</strong>
@@ -316,18 +347,48 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
           <ul className="space-y-4">
             {comments.map((c) => (
               <li key={c.id} className="flex gap-3">
-                <Avatar className="w-8 h-8 flex-shrink-0">
-                  <AvatarFallback
-                    style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-500)", fontSize: 12 }}
+                {c.author_id ? (
+                  <button
+                    type="button"
+                    onClick={() => openProfileById(c.author_id)}
+                    aria-label={`Ver perfil de ${c.author_name || "autor"}`}
+                    className="flex-shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)] focus-visible:ring-offset-2"
                   >
-                    {(c.author_name || "·").charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                    <Avatar className="w-8 h-8">
+                      {c.author_avatar && <AvatarImage src={c.author_avatar} alt="" />}
+                      <AvatarFallback
+                        style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-500)", fontSize: 12 }}
+                      >
+                        {(c.author_name || "·").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                ) : (
+                  <Avatar className="w-8 h-8 flex-shrink-0">
+                    <AvatarFallback
+                      style={{ background: "var(--rayo-terra-100)", color: "var(--rayo-terra-500)", fontSize: 12 }}
+                    >
+                      {(c.author_name || "·").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[13px]" style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}>
-                      {c.author_name}
-                    </span>
+                    {c.author_id ? (
+                      <button
+                        type="button"
+                        onClick={() => openProfileById(c.author_id)}
+                        aria-label={`Ver perfil de ${c.author_name || "autor"}`}
+                        className="text-[13px] text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)] focus-visible:ring-offset-2 hover:underline"
+                        style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}
+                      >
+                        {c.author_name}
+                      </button>
+                    ) : (
+                      <span className="text-[13px]" style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}>
+                        {c.author_name}
+                      </span>
+                    )}
                     <span className="text-[11px]" style={{ color: "var(--rayo-ink-400)" }}>
                       {formatTime(c.created_at)}
                     </span>

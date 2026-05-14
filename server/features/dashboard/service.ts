@@ -1,5 +1,6 @@
 import { query } from "../../db/index.js";
 import { XP_LEVELS, getLevelTitle } from "../gamification/service.js";
+import { resolveStoredMediaUrl } from "../../lib/objectStorageBridge.js";
 
 interface UserRow {
   id: number;
@@ -53,7 +54,9 @@ interface PostRow {
   like_count: number;
   comment_count: number;
   created_at: string;
+  author_id: number;
   author_name: string;
+  author_avatar: string | null;
   forum_name: string;
   forum_icon: string;
   forum_slug: string | null;
@@ -279,7 +282,8 @@ export async function getDashboard(userId: number) {
   const forumParams = lifeContextFilter.length > 0 ? [lifeContextFilter] : [];
   const { rows: recentPosts } = await query<PostRow>(
     `SELECT p.id, p.content, p.category, p.like_count, p.comment_count,
-            p.created_at, u.name AS author_name,
+            p.created_at,
+            u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar,
             f.name AS forum_name, f.icon AS forum_icon, f.slug AS forum_slug
      FROM posts p
      JOIN users u ON u.id = p.user_id
@@ -345,18 +349,20 @@ export async function getDashboard(userId: number) {
       instructor: c.instructor,
       isPremium: c.is_premium,
     })),
-    recentPosts: recentPosts.map((p) => ({
+    recentPosts: await Promise.all(recentPosts.map(async (p) => ({
       id: p.id,
       content: p.content.length > 150 ? p.content.substring(0, 150) + "..." : p.content,
       category: p.category,
       likeCount: p.like_count,
       commentCount: p.comment_count,
       createdAt: p.created_at,
+      authorId: p.author_id,
       authorName: p.author_name,
+      authorAvatar: await resolveStoredMediaUrl(p.author_avatar),
       forumName: p.forum_name,
       forumIcon: p.forum_icon,
       forumSlug: p.forum_slug,
-    })),
+    }))),
     missions: missionRows.map((m) => ({
       id: m.id,
       title: m.title,

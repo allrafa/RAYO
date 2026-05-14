@@ -293,6 +293,10 @@
   display: grid; place-items: center;
   font-size: 11px; font-weight: 600;
   background: var(--rayo-sage-300); color: var(--rayo-forest-900);
+  overflow: hidden;
+}
+.rh-disc-avatar-img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
 }
 .rh-disc-avatar.terra { background: var(--rayo-terra-300); color: var(--rayo-terra-900); }
 .rh-disc-avatar.forest { background: var(--rayo-forest-900); color: var(--rayo-sand-100); }
