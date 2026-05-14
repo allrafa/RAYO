@@ -658,3 +658,372 @@ export async function sendContatoEmail(p: ContatoPayload): Promise<SendResult> {
   const text = `Nova mensagem em /contato\n\nNome: ${p.nome}\nE-mail: ${p.email}\nAssunto: ${p.assunto}\n\n${p.mensagem}\n`;
   return sendEmail({ to: CONTATO_TO_EMAIL, subject, html, text });
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Helpers específicos das referências de Carta / Conquista / Missão.
+// Mantidos privados aqui porque hoje só são usados pelos 3 templates abaixo
+// — quando outra feature pedir o mesmo bloco, promove-se ao DS principal.
+// ─────────────────────────────────────────────────────────────────────────
+
+// Banda editorial verde da Carta semanal — retângulo forest com listras
+// diagonais sutis, label de tempo de leitura à esq-baixo e edição à
+// dir-topo. Uso de `position:absolute` é seguro num bloco fixo como esse
+// porque o pai tem altura definida; clientes que não suportam (Outlook
+// antigo) ainda enxergam o gradiente sólido + textos empilhados.
+function editorialCoverBand(opts: {
+  edition: number;
+  readingMinutes: number;
+}): string {
+  const ed = String(opts.edition).padStart(3, "0");
+  const reading = `Carta · ${opts.readingMinutes} min de leitura`;
+  return `
+  <tr><td class="ra-pad" style="padding:32px 40px 0;">
+    <div style="width:100%;height:200px;border-radius:10px;background:${T.forest500};background-image:linear-gradient(135deg,${T.forest500} 0%,${T.forest900} 60%,${T.ink900} 100%);position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;bottom:0;background-image:repeating-linear-gradient(135deg,transparent 0,transparent 14px,rgba(255,255,255,0.04) 14px,rgba(255,255,255,0.04) 15px);"></div>
+      <div style="position:absolute;left:24px;bottom:20px;color:${T.ochre300};font-family:${MONO};font-size:10px;letter-spacing:0.22em;text-transform:uppercase;font-weight:600;">${escapeHtml(reading)}</div>
+      <div style="position:absolute;right:24px;top:20px;color:rgba(250,244,232,0.6);font-family:${MONO};font-size:10px;letter-spacing:0.18em;">N° ${ed}</div>
+    </div>
+  </td></tr>`;
+}
+
+// Linha divisória bege usada entre o corpo da carta e o card "Para
+// continuar lendo".
+function dividerRow(padding = "24px 40px 0"): string {
+  return `
+  <tr><td class="ra-pad" style="padding:${padding};">
+    <div style="height:1px;background:${T.sand300};font-size:0;line-height:0;">&nbsp;</div>
+  </td></tr>`;
+}
+
+// Card de "trilha relacionada" — usado no rodapé da Carta semanal.
+function relatedTrailRow(opts: {
+  label: string;
+  title: string;
+  meta: string;
+  href: string;
+  ctaLabel?: string;
+}): string {
+  const safeHref = safeUrl(opts.href);
+  const cta = opts.ctaLabel || "Ver trilha";
+  return `
+  <tr><td class="ra-pad" style="padding:24px 40px 32px;">
+    <div style="font-family:${MONO};font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:${T.ink400};font-weight:600;margin-bottom:14px;">${escapeHtml(opts.label)}</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="border:1px solid ${T.sand300};border-radius:12px;padding:18px 20px;background:${T.sand50};">
+          <div style="font-family:${FONT};font-size:15px;font-weight:600;color:${T.forest900};letter-spacing:-0.01em;">${escapeHtml(opts.title)}</div>
+          <div style="font-family:${FONT};font-size:13px;color:${T.ink500};margin-top:4px;">${escapeHtml(opts.meta)}</div>
+          <div style="margin-top:12px;">
+            <a href="${safeHref}" style="font-family:${FONT};font-size:13px;color:${T.terra500};text-decoration:none;font-weight:600;">${escapeHtml(cta)} →</a>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </td></tr>`;
+}
+
+// Eyebrow centralizado (com traço terracota dos dois lados) usado no
+// e-mail de Conquista. Variante do `eyebrowRow` padrão.
+function eyebrowCenteredRow(text: string, padding = "36px 40px 0"): string {
+  return `
+  <tr><td class="ra-pad" align="center" style="padding:${padding};text-align:center;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr>
+      <td style="vertical-align:middle;padding-right:10px;line-height:0;">
+        <div style="width:24px;height:1px;background:${T.terra500};font-size:0;line-height:0;">&nbsp;</div>
+      </td>
+      <td style="font-family:${MONO};font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:${T.terra500};font-weight:600;">${escapeHtml(text)}</td>
+      <td style="vertical-align:middle;padding-left:10px;line-height:0;">
+        <div style="width:24px;height:1px;background:${T.terra500};font-size:0;line-height:0;">&nbsp;</div>
+      </td>
+    </tr></table>
+  </td></tr>`;
+}
+
+// Headline centralizada (variante do `headlineRow`) — também usada na
+// Conquista, onde o nome do usuário aparece em itálico terracota como
+// segunda linha.
+function headlineCenteredRow(line1: string, line2Italic?: string, size = 40): string {
+  const second = line2Italic
+    ? `<br><span style="font-weight:200;color:${T.terra500};font-style:italic;">${escapeHtml(line2Italic)}</span>`
+    : "";
+  return `
+  <tr><td class="ra-pad" align="center" style="padding:20px 40px 0;text-align:center;">
+    <h1 style="margin:0;font-family:${FONT};font-weight:600;font-size:${size}px;letter-spacing:-0.04em;line-height:1;color:${T.forest900};">${escapeHtml(line1)}${second}</h1>
+  </td></tr>`;
+}
+
+// Parágrafo centralizado, com largura natural reduzida — usado na
+// Conquista logo abaixo do headline.
+function paragraphCenteredRow(html: string, padding = "24px 56px 0"): string {
+  return `
+  <tr><td class="ra-pad" align="center" style="padding:${padding};text-align:center;">
+    <p style="margin:0 auto;font-family:${FONT};font-size:16px;line-height:1.55;color:${T.ink700};max-width:420px;">${html}</p>
+  </td></tr>`;
+}
+
+// Card escuro de conquista (forest) com badge de XP terracota à direita.
+function achievementCardRow(opts: {
+  index: number;
+  total: number;
+  title: string;
+  meta: string;
+  xp: number;
+}): string {
+  return `
+  <tr><td class="ra-pad" align="center" style="padding:32px 40px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${T.forest900};border-radius:14px;">
+      <tr><td style="padding:28px 32px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="vertical-align:middle;">
+              <div style="font-family:${MONO};font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:${T.ochre300};font-weight:600;margin-bottom:8px;">Conquista ${String(opts.index).padStart(2, "0")} / ${String(opts.total).padStart(2, "0")}</div>
+              <div style="font-family:${FONT};font-size:22px;font-weight:600;color:${T.sand50};letter-spacing:-0.02em;line-height:1.15;">${escapeHtml(opts.title)}</div>
+              <div style="font-family:${FONT};font-size:13px;color:${T.sand300};margin-top:4px;">${escapeHtml(opts.meta)}</div>
+            </td>
+            <td align="right" style="vertical-align:middle;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="background:${T.terra500};border-radius:14px;">
+                <tr><td style="padding:14px 18px;font-family:${FONT};font-size:14px;font-weight:700;color:${T.sand50};letter-spacing:0.02em;">+${opts.xp} XP</td></tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>`;
+}
+
+// Card sage da missão — ícone de relógio à esq, título + XP no meio,
+// checkbox à direita. Visual leve, complementar ao card forest da
+// Conquista (mesmo idioma, peso oposto).
+function missionCardRow(opts: { title: string; xp: number }): string {
+  return `
+  <tr><td class="ra-pad" style="padding:24px 40px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${T.sage100};border:1px solid ${T.sage300};border-radius:12px;">
+      <tr><td style="padding:20px 22px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td style="vertical-align:middle;width:44px;padding-right:14px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:44px;height:44px;background:${T.sand50};border-radius:12px;">
+              <tr><td align="center" valign="middle" style="line-height:0;">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="11" cy="11" r="7" stroke="${T.sage700}" stroke-width="1.6"/>
+                  <path d="M11 6v5l3 2" stroke="${T.sage700}" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+              </td></tr>
+            </table>
+          </td>
+          <td style="vertical-align:middle;">
+            <div style="font-family:${MONO};font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${T.sage700};font-weight:600;margin-bottom:4px;">Hoje · +${opts.xp} XP</div>
+            <div style="font-family:${FONT};font-size:15px;font-weight:600;color:${T.forest900};letter-spacing:-0.01em;">${escapeHtml(opts.title)}</div>
+          </td>
+          <td align="right" style="vertical-align:middle;font-family:${MONO};font-size:12px;color:${T.sage700};font-weight:600;letter-spacing:0.04em;">☐</td>
+        </tr></table>
+      </td></tr>
+    </table>
+  </td></tr>`;
+}
+
+// Barra de streak — label "Sequência atual" à esq, "X dias → X+1" à dir,
+// barra de progresso terracota sobre fundo bege. `streakDays` é o valor
+// atual; o "próximo" é apenas `streakDays + 1`.
+function streakProgressRow(opts: { streakDays: number; targetDays?: number }): string {
+  const next = opts.streakDays + 1;
+  // Progresso até o próximo "milestone" (default 15d). Limita 5..95% pra
+  // sempre ter algo visível e nunca encostar nas bordas arredondadas.
+  const target = opts.targetDays ?? Math.max(next + 2, 15);
+  const ratio = Math.max(5, Math.min(95, Math.round((next / target) * 100)));
+  return `
+  <tr><td class="ra-pad" style="padding:24px 40px 0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="vertical-align:middle;font-family:${FONT};font-size:13px;color:${T.ink500};">Sequência atual</td>
+        <td align="right" style="vertical-align:middle;font-family:${FONT};font-size:18px;font-weight:600;color:${T.forest900};letter-spacing:-0.02em;">${opts.streakDays} dias <span style="color:${T.terra500};font-weight:500;">→</span> ${next}</td>
+      </tr>
+      <tr><td colspan="2" style="padding-top:8px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${T.sand200};border-radius:999px;">
+          <tr><td style="line-height:0;font-size:0;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:${ratio}%;background:${T.terra500};border-radius:999px;">
+              <tr><td style="height:6px;line-height:0;font-size:0;">&nbsp;</td></tr>
+            </table>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Templates: Carta semanal · Conquista de trilha · Missão do dia
+// Backends correspondentes ainda não existem (cron semanal, hook de
+// completion de trilha, scheduler diário de missão); os templates são
+// publicados aqui pra ficarem prontos quando esses gatilhos surgirem.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface CartaSemanalOptions {
+  /** Endereço do destinatário. */
+  email: string;
+  /** Número da edição (ex: 42). Aparece como `N° 042` no banner e na preheader. */
+  edition: number;
+  /** Data de envio em formato curto editorial (ex: "Terça · 13 maio"). */
+  dateLabel: string;
+  /** Tempo estimado de leitura (em minutos) — exibido no banner. */
+  readingMinutes: number;
+  /** Nome do autor (aparece como "Editorial · {author}"). */
+  author: string;
+  /** Primeira linha da headline (peso 600 forest). */
+  headline: string;
+  /** Segunda linha em itálico terracota (opcional). */
+  headlineItalic?: string;
+  /** Parágrafos do "lead" da carta. Renderizados como HTML; o chamador
+   *  controla ênfase e quebras. Cada item vira um `<p>` separado. */
+  paragraphs: string[];
+  /** URL do post completo. */
+  ctaUrl: string;
+  /** Trilha relacionada exibida no rodapé (opcional). */
+  related?: { title: string; meta: string; href: string };
+  /** Texto fallback opcional. Se omitido, é montado a partir das
+   *  paragraphs (HTML stripped). */
+  textFallback?: string;
+}
+
+export async function sendCartaSemanalEmail(opts: CartaSemanalOptions): Promise<SendResult> {
+  const ed = String(opts.edition).padStart(3, "0");
+  const subject = `Carta RAYO · N° ${ed} — ${opts.headline}`;
+  const paragraphsHtml = opts.paragraphs
+    .map((html, i) =>
+      paragraphRow(html, i === 0 ? "24px 40px 0" : "16px 40px 0"),
+    )
+    .join("");
+  const cardBody = [
+    editorialCoverBand({ edition: opts.edition, readingMinutes: opts.readingMinutes }),
+    eyebrowRow(`Editorial · ${opts.author}`),
+    headlineRow(opts.headline, opts.headlineItalic),
+    paragraphsHtml,
+    ctaRow("Ler carta completa", opts.ctaUrl, "32px 40px 8px"),
+    ...(opts.related
+      ? [dividerRow("24px 40px 0"), relatedTrailRow({ label: "Para continuar lendo", ...opts.related })]
+      : [`<tr><td style="padding:0 0 24px 0;"></td></tr>`]),
+  ].join("");
+  const html = editorialLayout({
+    title: `RAYO — Carta · N° ${ed}`,
+    preheaderHidden: opts.headlineItalic
+      ? `${opts.headline} ${opts.headlineItalic}`
+      : opts.headline,
+    preheaderLeft: `Carta · ed. ${ed}`,
+    preheaderRight: opts.dateLabel,
+    cardBody,
+  });
+  const stripHtml = (s: string) => s.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  const text =
+    opts.textFallback ??
+    `RAYO · Carta N° ${ed} (${opts.dateLabel})\n\n${opts.headline}${opts.headlineItalic ? ` ${opts.headlineItalic}` : ""}\nEditorial · ${opts.author} · ${opts.readingMinutes} min de leitura\n\n${opts.paragraphs.map(stripHtml).join("\n\n")}\n\nLer carta completa: ${opts.ctaUrl}${opts.related ? `\n\nPara continuar lendo:\n— ${opts.related.title} (${opts.related.meta}) — ${opts.related.href}` : ""}`;
+  return sendEmail({ to: opts.email, subject, html, text });
+}
+
+export interface TrilhaConcluidaOptions {
+  /** Endereço do destinatário. */
+  email: string;
+  /** Primeiro nome do usuário — aparece em itálico terracota no headline. */
+  recipientName: string;
+  /** Nome da trilha que acabou de ser concluída. */
+  trilhaName: string;
+  /** Posição da conquista no catálogo (ex: 7 de 17). */
+  achievementIndex: number;
+  /** Total de conquistas disponíveis no catálogo. */
+  achievementTotal: number;
+  /** Nome curto da conquista — exibido no card forest. */
+  achievementTitle: string;
+  /** Descritor da trilha sob o título (ex: "4 itens · 2h 40min · Dra. Ana Costa"). */
+  achievementMeta: string;
+  /** XP ganho — aparece tanto no preheader quanto no badge. */
+  xp: number;
+  /** Nome da próxima trilha sugerida (opcional, renderizada na quote). */
+  nextTrilhaName?: string;
+  /** URL para iniciar a próxima trilha (ou voltar à academia). */
+  ctaUrl: string;
+  /** URL pra compartilhar a conquista — opcional. */
+  shareUrl?: string;
+}
+
+export async function sendTrilhaConcluidaEmail(opts: TrilhaConcluidaOptions): Promise<SendResult> {
+  const subject = `Você concluiu "${opts.trilhaName}" — +${opts.xp} XP`;
+  const quoteHtml = opts.nextTrilhaName
+    ? `A próxima parada é <em style="color:${T.terra500};font-style:italic;font-weight:500;">${escapeHtml(opts.nextTrilhaName)}</em>. Você não precisa começar hoje — mas ela já está te esperando.`
+    : `Respira fundo. <em style="color:${T.terra500};font-style:italic;font-weight:500;">Esse passo é seu</em> — quando estiver pronto, a próxima trilha estará aqui.`;
+  const cardBody = [
+    eyebrowCenteredRow("Trilha concluída"),
+    headlineCenteredRow("Você chegou,", `${opts.recipientName}.`),
+    paragraphCenteredRow(
+      `Você acaba de concluir a trilha <strong style="color:${T.forest900};font-weight:600;">${escapeHtml(opts.trilhaName)}</strong>.`,
+    ),
+    achievementCardRow({
+      index: opts.achievementIndex,
+      total: opts.achievementTotal,
+      title: opts.achievementTitle,
+      meta: opts.achievementMeta,
+      xp: opts.xp,
+    }),
+    quoteRow(quoteHtml, "32px 40px 0"),
+    ctaRow(opts.nextTrilhaName ? "Iniciar próxima trilha" : "Voltar à academia", opts.ctaUrl, "32px 40px 8px"),
+    ...(opts.shareUrl ? [secondaryLinkRow("Compartilhar com seu par", opts.shareUrl, "0 40px 36px")] : [`<tr><td style="padding:0 0 24px;"></td></tr>`]),
+  ].join("");
+  const html = editorialLayout({
+    title: "RAYO — Trilha concluída",
+    preheaderHidden: `Você concluiu "${opts.trilhaName}" e desbloqueou ${opts.achievementTitle} (+${opts.xp} XP).`,
+    preheaderLeft: "Conquista desbloqueada",
+    preheaderRight: `+${opts.xp} XP`,
+    cardBody,
+  });
+  const text = `Você chegou, ${opts.recipientName}.\n\nVocê acaba de concluir a trilha "${opts.trilhaName}".\n\nConquista ${String(opts.achievementIndex).padStart(2, "0")} / ${String(opts.achievementTotal).padStart(2, "0")} — ${opts.achievementTitle} (+${opts.xp} XP)\n${opts.achievementMeta}\n\n${opts.nextTrilhaName ? `Próxima parada: ${opts.nextTrilhaName}\n\n` : ""}${opts.nextTrilhaName ? "Iniciar próxima trilha" : "Voltar à academia"}: ${opts.ctaUrl}${opts.shareUrl ? `\nCompartilhar com seu par: ${opts.shareUrl}` : ""}`;
+  return sendEmail({ to: opts.email, subject, html, text });
+}
+
+export interface MissaoDoDiaOptions {
+  /** Endereço do destinatário. */
+  email: string;
+  /** Label da data + horário no eyebrow (ex: "Terça · 13 maio · 19h"). */
+  dateLabel: string;
+  /** Primeira linha do headline (peso 600 forest). */
+  headline: string;
+  /** Segunda linha em itálico terracota. */
+  headlineItalic?: string;
+  /** Descrição/contexto da missão — HTML controlado pelo chamador. */
+  description: string;
+  /** Título curto da missão dentro do card sage. */
+  missionTitle: string;
+  /** XP que será ganho ao concluir a missão. */
+  missionXp: number;
+  /** Sequência atual em dias (antes desta missão). */
+  currentStreak: number;
+  /** Meta de dias até o próximo milestone (opcional, default 15). */
+  streakTarget?: number;
+  /** URL para marcar a missão como concluída. */
+  ctaUrl: string;
+  /** URL opcional pra trocar a missão do dia. */
+  swapUrl?: string;
+}
+
+export async function sendMissaoDoDiaEmail(opts: MissaoDoDiaOptions): Promise<SendResult> {
+  const subject = `Sua missão de hoje · ${opts.missionTitle}`;
+  const cardBody = [
+    eyebrowRow(opts.dateLabel),
+    headlineRow(opts.headline, opts.headlineItalic),
+    paragraphRow(opts.description),
+    missionCardRow({ title: opts.missionTitle, xp: opts.missionXp }),
+    streakProgressRow({ streakDays: opts.currentStreak, targetDays: opts.streakTarget }),
+    ctaRow("Marcar como feito", opts.ctaUrl, "36px 40px 0"),
+    ...(opts.swapUrl
+      ? [secondaryLinkRow("Trocar missão de hoje", opts.swapUrl, "14px 40px 36px")]
+      : [`<tr><td style="padding:0 0 24px;"></td></tr>`]),
+  ].join("");
+  const html = editorialLayout({
+    title: "RAYO — Missão do dia",
+    preheaderHidden: `${opts.missionTitle} · +${opts.missionXp} XP · sequência ${opts.currentStreak} dias`,
+    preheaderLeft: "Missão do dia",
+    preheaderRight: `Sequência · ${opts.currentStreak} dias`,
+    cardBody,
+    unsubscribeLabel: "Pausar notificações diárias",
+  });
+  const stripHtml = (s: string) => s.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+  const text = `RAYO · Missão do dia (${opts.dateLabel})\n\n${opts.headline}${opts.headlineItalic ? ` ${opts.headlineItalic}` : ""}\n\n${stripHtml(opts.description)}\n\nMissão: ${opts.missionTitle} (+${opts.missionXp} XP)\nSequência atual: ${opts.currentStreak} dias → ${opts.currentStreak + 1}\n\nMarcar como feito: ${opts.ctaUrl}${opts.swapUrl ? `\nTrocar missão de hoje: ${opts.swapUrl}` : ""}`;
+  return sendEmail({ to: opts.email, subject, html, text });
+}
