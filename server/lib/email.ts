@@ -207,13 +207,6 @@ function quoteRow(html: string, padding = "20px 40px 0"): string {
   </td></tr>`;
 }
 
-function dividerRow(padding = "24px 40px 0"): string {
-  return `
-  <tr><td class="ra-pad" style="padding:${padding};">
-    <div style="height:1px;background:${T.sand300};font-size:0;line-height:0;">&nbsp;</div>
-  </td></tr>`;
-}
-
 // Bullet list editorial — traço terracota antes de cada item, sem disc.
 // Usa table-based layout para sobreviver no Outlook.
 function bulletsRow(items: string[], padding = "24px 40px 8px"): string {
@@ -231,30 +224,6 @@ function bulletsRow(items: string[], padding = "24px 40px 8px"): string {
   return `
   <tr><td class="ra-pad" style="padding:${padding};">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${rows}</table>
-  </td></tr>`;
-}
-
-// Card neutro (eyebrow + título + meta opcional + link). Borda sand-300.
-function infoCardRow(opts: {
-  eyebrow?: string;
-  title: string;
-  meta?: string;
-  linkLabel?: string;
-  linkHref?: string;
-  padding?: string;
-}): string {
-  const { eyebrow, title, meta, linkLabel, linkHref, padding = "24px 40px 0" } = opts;
-  const safeLinkHref = linkHref ? safeUrl(linkHref) : "";
-  return `
-  <tr><td class="ra-pad" style="padding:${padding};">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-      <tr><td style="border:1px solid ${T.sand300};border-radius:12px;padding:18px 20px;background:${T.sand50};">
-        ${eyebrow ? `<div style="font-family:${MONO};font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:${T.terra500};font-weight:600;margin-bottom:6px;">${escapeHtml(eyebrow)}</div>` : ""}
-        <div style="font-family:${FONT};font-size:15px;font-weight:600;color:${T.forest900};letter-spacing:-0.01em;">${escapeHtml(title)}</div>
-        ${meta ? `<div style="font-family:${FONT};font-size:13px;color:${T.ink500};margin-top:4px;">${escapeHtml(meta)}</div>` : ""}
-        ${linkLabel && safeLinkHref ? `<div style="margin-top:12px;"><a href="${safeLinkHref}" style="font-family:${FONT};font-size:13px;color:${T.terra500};text-decoration:none;font-weight:600;">${escapeHtml(linkLabel)} →</a></div>` : ""}
-      </td></tr>
-    </table>
   </td></tr>`;
 }
 
@@ -376,7 +345,6 @@ export async function sendVerificationCodeEmail(
 
 export async function sendWelcomeEmail(email: string, name: string): Promise<SendResult> {
   const subject = "Bem-vindo(a) à RAYO";
-  const safeName = escapeHtml(name);
   const cardBody = [
     eyebrowRow("Bem-vindo ao RAYO", "36px 40px 0"),
     headlineRow(`Olá, ${name}.`, "Que bom te ver."),
@@ -404,7 +372,6 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<Sen
     cardBody,
   });
   const text = `Olá, ${name}.\n\nQue bom te ver na RAYO. Sua jornada começa no seu ritmo.\n\nAqui você encontra:\n— Cursos, livros e áudios sobre relacionamento, fé e propósito\n— Uma comunidade engajada de famílias como a sua\n— Missões diárias para sustentar hábitos com leveza\n— Conselheiro IA para te apoiar nos momentos difíceis\n\nAcesse: ${APP_URL}`;
-  void safeName;
   return sendEmail({ to: email, subject, html, text });
 }
 
@@ -487,9 +454,10 @@ export async function sendDataExportEmail(email: string, name: string): Promise<
       "O arquivo JSON com todos os seus dados foi disponibilizado para download diretamente no aplicativo no momento da solicitação.",
       "16px 40px 0",
     ),
+    ctaRow("Abrir minha conta", `${APP_URL}/?tab=privacy`, "32px 40px 8px"),
     paragraphRow(
       `<span style="font-size:14px;color:${T.ink500};">Se você não fez essa solicitação, fale com nosso DPO em <a href="mailto:dpo@rayo.app.br" style="color:${T.terra500};text-decoration:none;border-bottom:1px solid ${T.terra500};">dpo@rayo.app.br</a>.</span>`,
-      "24px 40px 36px",
+      "20px 40px 36px",
     ),
   ].join("");
   const html = editorialLayout({
@@ -519,9 +487,10 @@ export async function sendAccountDeletionEmail(email: string, name: string): Pro
     quoteRow(
       `Sentiremos sua falta. <em style="color:${T.terra500};font-style:italic;font-weight:500;">Se mudar de ideia</em>, será sempre bem-vindo(a) de volta.`,
     ),
+    ctaRow("Criar nova conta", `${APP_URL}/?tab=register`, "32px 40px 8px"),
     paragraphRow(
       `<span style="font-size:14px;color:${T.ink500};">Se você não solicitou esta exclusão, fale com nosso DPO em <a href="mailto:dpo@rayo.app.br" style="color:${T.terra500};text-decoration:none;border-bottom:1px solid ${T.terra500};">dpo@rayo.app.br</a> imediatamente.</span>`,
-      "24px 40px 36px",
+      "20px 40px 36px",
     ),
   ].join("");
   const html = editorialLayout({
@@ -672,9 +641,10 @@ export async function sendContatoEmail(p: ContatoPayload): Promise<SendResult> {
       </table>
     </td></tr>`,
     quoteRow(safeMsg, "20px 40px 0"),
+    ctaRow("Responder agora", `mailto:${p.email}?subject=${encodeURIComponent("Re: " + p.assunto)}`, "32px 40px 8px"),
     paragraphRow(
-      `<span style="font-size:14px;color:${T.ink500};">Responda diretamente a este e-mail para falar com a pessoa.</span>`,
-      "24px 40px 36px",
+      `<span style="font-size:14px;color:${T.ink500};">Você também pode responder diretamente a este e-mail.</span>`,
+      "20px 40px 36px",
     ),
   ].join("");
   const html = editorialLayout({
