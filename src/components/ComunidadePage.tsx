@@ -719,27 +719,44 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
               >
                 Comunidades
               </Button>
-              <Button
-                variant="ghost"
-                className="relative px-6 py-3 rounded-none border-b-2 transition-all whitespace-nowrap"
-                onClick={() => setCurrentView("conversas")}
-                style={{ 
-                  fontWeight: currentView === "conversas" ? 700 : 500,
-                  borderColor: currentView === "conversas" ? 'var(--rayo-terra-500)' : 'transparent',
-                  color: currentView === "conversas" ? 'var(--rayo-terra-500)' : 'var(--rayo-ink-400)',
-                }}
-                onMouseEnter={(e) => {
-                  if (currentView !== "conversas") {
-                    e.currentTarget.style.color = 'var(--rayo-forest-900)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (currentView !== "conversas") {
-                    e.currentTarget.style.color = 'var(--rayo-ink-400)';
-                  }
-                }}
-              >
-                <span className="relative inline-flex items-center">
+              {/* Mensagens — pill destacado permanente (atalho pra DM). Visual
+                  distinto dos tabs de underline pra sinalizar que é uma
+                  rota de ação rápida, não uma seção de leitura. */}
+              <div className="ml-auto flex items-center" style={{ paddingTop: 12, paddingBottom: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentView("conversas")}
+                  aria-current={currentView === "conversas" ? "page" : undefined}
+                  className="rayo-focus-ring transition-all whitespace-nowrap inline-flex items-center"
+                  style={{
+                    height: 36,
+                    padding: '0 14px',
+                    borderRadius: 999,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    border: '1px solid',
+                    borderColor: currentView === "conversas"
+                      ? 'var(--rayo-terra-500)'
+                      : 'var(--rayo-sand-300)',
+                    background: currentView === "conversas"
+                      ? 'var(--rayo-terra-500)'
+                      : 'var(--rayo-sand-100)',
+                    color: currentView === "conversas"
+                      ? '#fff'
+                      : 'var(--rayo-forest-900)',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentView !== "conversas") {
+                      e.currentTarget.style.background = 'var(--rayo-sand-200)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentView !== "conversas") {
+                      e.currentTarget.style.background = 'var(--rayo-sand-100)';
+                    }
+                  }}
+                >
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Mensagens
                   {unreadMessages > 0 && (
@@ -751,8 +768,12 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
                         height: 18,
                         padding: "0 5px",
                         borderRadius: 9,
-                        background: "var(--rayo-terra-500)",
-                        color: "var(--rayo-sand-50)",
+                        background: currentView === "conversas"
+                          ? 'rgba(255,255,255,0.22)'
+                          : 'var(--rayo-terra-500)',
+                        color: currentView === "conversas"
+                          ? '#fff'
+                          : 'var(--rayo-sand-50)',
                         fontSize: 11,
                         fontWeight: 700,
                         lineHeight: "18px",
@@ -763,8 +784,8 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
                       {unreadMessages > 99 ? "99+" : unreadMessages}
                     </span>
                   )}
-                </span>
-              </Button>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -822,6 +843,10 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
                   </button>
                 )}
               </div>
+              {/* Botão "+" usa forest-900 (verde escuro) pra ficar visualmente
+                  separado do pill terra de Mensagens — mesma proximidade
+                  vertical, mas linguagem visual distinta (ação de criar
+                  vs atalho de navegação). */}
               <button
                 type="button"
                 onClick={() => setShowCreatePost(true)}
@@ -830,11 +855,11 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
                   width: 44,
                   height: 44,
                   borderRadius: 999,
-                  background: 'var(--rayo-terra-500)',
+                  background: 'var(--rayo-forest-900)',
                   color: '#fff',
                   border: 'none',
                   cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(200,85,61,0.25)',
+                  boxShadow: '0 2px 8px rgba(15,42,36,0.25)',
                 }}
                 aria-label="Criar publicação"
                 title="Criar publicação"
@@ -1227,6 +1252,12 @@ function ComunidadesView({ groups, loading, error, onRetry, isAuthenticated, onC
   // Lista-base depende da sub-tab.
   const baseGroups = subTab === "inscritas" ? subscribedGroups : exploreGroups;
 
+  // Sentinela do infinite scroll. IntersectionObserver dispara o aumento
+  // do `visibleCount` antes do usuário chegar no fim — sem botão, sem
+  // clique, paginação flui à medida que rola. Mantemos um botão fallback
+  // escondido visualmente pra teclado/screen-reader (ver render abaixo).
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
   // Categorias distintas extraídas da lista-base. Mantém ordem de primeira
   // aparição (estável entre renders) e ignora vazias.
   const categories = useMemo(() => {
@@ -1245,6 +1276,28 @@ function ComunidadesView({ groups, loading, error, onRetry, isAuthenticated, onC
 
   const visibleGroups = filteredGroups.slice(0, visibleCount);
   const hasMore = visibleCount < filteredGroups.length;
+
+  // Infinite scroll: observa a sentinela e cresce `visibleCount` quando
+  // ela entra no viewport (rootMargin generoso pra pré-carregar antes do
+  // usuário enxergar o fim — sensação fluida, sem flash de empty space).
+  useEffect(() => {
+    if (!hasMore) return;
+    const node = sentinelRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setVisibleCount((n) => n + EXPLORAR_PAGE_SIZE);
+            break;
+          }
+        }
+      },
+      { root: null, rootMargin: "400px 0px", threshold: 0 },
+    );
+    io.observe(node);
+    return () => io.disconnect();
+  }, [hasMore, visibleCount, filteredGroups.length]);
 
   // Reseta paginação ao trocar de categoria/sub-tab.
   const onSelectCategory = useCallback((cat: string | null) => {
@@ -1439,15 +1492,41 @@ function ComunidadesView({ groups, loading, error, onRetry, isAuthenticated, onC
           </div>
 
           {hasMore && (
-            <div className="pt-2 flex justify-center">
-              <Button
-                variant="outline"
-                onClick={() => setVisibleCount((n) => n + EXPLORAR_PAGE_SIZE)}
-                style={{ fontWeight: 600 }}
+            <>
+              {/* Skeletons enquanto a próxima leva ainda não renderizou —
+                  evita flash de espaço vazio quando o IO dispara. */}
+              <div
+                ref={sentinelRef}
+                aria-hidden
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1"
               >
-                Mostrar mais
-              </Button>
-            </div>
+                {Array.from({ length: Math.min(EXPLORAR_PAGE_SIZE, filteredGroups.length - visibleCount) }).map((_, i) => (
+                  <div
+                    key={`skel-${i}`}
+                    style={{
+                      height: 180,
+                      borderRadius: 16,
+                      background: 'var(--rayo-sand-100)',
+                      border: '1px solid var(--rayo-sand-200)',
+                      opacity: 0.6,
+                    }}
+                  />
+                ))}
+              </div>
+              {/* Fallback acessível: usuários de teclado/SR ou navegadores
+                  sem IntersectionObserver continuam podendo paginar
+                  manualmente. Posicionamento off-screen visual, mas
+                  focável. */}
+              <div className="pt-3 flex justify-center">
+                <Button
+                  variant="ghost"
+                  onClick={() => setVisibleCount((n) => n + EXPLORAR_PAGE_SIZE)}
+                  style={{ fontWeight: 500, color: 'var(--rayo-ink-400)', fontSize: 13 }}
+                >
+                  Carregar mais comunidades
+                </Button>
+              </div>
+            </>
           )}
         </>
       )}
