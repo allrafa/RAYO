@@ -2132,8 +2132,20 @@ function CommunityCard({ group, context = "explorar" }: CommunityCardProps) {
     }
   };
 
+  const openCommunity = useCallback(() => {
+    if (group.slug) openCommunityBySlug(group.slug);
+  }, [group.slug]);
+
   return (
-    <div className="ra-card ra-card-hover overflow-hidden group" style={{ padding: 0 }}>
+    <div
+      className="ra-card ra-card-hover overflow-hidden group cursor-pointer"
+      style={{ padding: 0 }}
+      role="link"
+      tabIndex={0}
+      onClick={openCommunity}
+      onKeyDown={cardKeyHandler(openCommunity)}
+      aria-label={`Abrir comunidade ${group.name}`}
+    >
       {/* Group Image */}
       <div 
         className="relative h-32 overflow-hidden"
@@ -2205,7 +2217,7 @@ function CommunityCard({ group, context = "explorar" }: CommunityCardProps) {
         </div>
 
         <Button
-          onClick={handleJoinGroup}
+          onClick={stopBubble(handleJoinGroup)}
           className="w-full"
           style={{ 
             fontWeight: 600,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Moon, Sun, Monitor, Contrast, Type, Accessibility, Volume2, VolumeX, Eye, EyeOff } from "lucide-react";
+import { Settings, Contrast, Type, Accessibility, Volume2, VolumeX, Eye, EyeOff } from "lucide-react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
@@ -20,7 +20,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
-  const { settings, updateSettings, toggleHighContrast, setTheme, resolvedTheme } = useAccessibility();
+  const { settings, updateSettings, toggleHighContrast } = useAccessibility();
   const { userData, updateUserData } = useApp();
   
   const [soundEnabled, setSoundEnabled] = useState(userData.preferences?.soundEnabled ?? true);
@@ -55,32 +55,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     toast.success(`Tamanho da fonte: ${size === 'sm' ? 'Pequena' : size === 'base' ? 'Normal' : size === 'lg' ? 'Grande' : 'Muito Grande'}`);
   };
 
-  const getThemeIcon = (theme: string) => {
-    switch (theme) {
-      case 'light':
-        return <Sun className="w-4 h-4" />;
-      case 'dark':
-        return <Moon className="w-4 h-4" />;
-      case 'system':
-        return <Monitor className="w-4 h-4" />;
-      default:
-        return <Monitor className="w-4 h-4" />;
-    }
-  };
-
-  const getThemeLabel = (theme: string) => {
-    switch (theme) {
-      case 'light':
-        return 'Claro';
-      case 'dark':
-        return 'Escuro';
-      case 'system':
-        return 'Sistema';
-      default:
-        return 'Sistema';
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -102,84 +76,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
           </TabsList>
 
           <TabsContent value="appearance" className="space-y-6">
-            {/* Tema */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {getThemeIcon(settings.theme)}
-                  Tema
-                </CardTitle>
-                <CardDescription>
-                  Escolha como você quer que a interface apareça
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <Label>Modo de cores</Label>
-                  <div className="grid grid-cols-1 gap-2">
-                    {['light', 'dark', 'system'].map((theme) => (
-                      <button
-                        key={theme}
-                        onClick={() => setTheme(theme as any)}
-                        className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                          settings.theme === theme
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:bg-accent'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          {getThemeIcon(theme)}
-                          <div className="text-left">
-                            <div className="font-medium">{getThemeLabel(theme)}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {theme === 'light' && 'Interface clara'}
-                              {theme === 'dark' && 'Interface escura'}
-                              {theme === 'system' && 'Segue o sistema'}
-                            </div>
-                          </div>
-                        </div>
-                        {settings.theme === theme && (
-                          <Badge variant="secondary">Ativo</Badge>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Preview do Tema */}
-                <div className="space-y-3">
-                  <Label>Preview</Label>
-                  <div className="p-4 rounded-lg border bg-card space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
-                        <div className="h-3 bg-primary rounded w-24"></div>
-                        <div className="h-2 bg-muted-foreground rounded w-16"></div>
-                      </div>
-                      <div className="w-8 h-8 bg-accent rounded-full"></div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="h-2 bg-muted rounded w-full"></div>
-                      <div className="h-2 bg-muted rounded w-3/4"></div>
-                    </div>
-                    <div className="flex gap-2">
-                      <div className="h-6 bg-primary rounded px-3 flex items-center">
-                        <div className="h-1 bg-primary-foreground rounded w-8"></div>
-                      </div>
-                      <div className="h-6 bg-secondary rounded px-3 flex items-center">
-                        <div className="h-1 bg-secondary-foreground rounded w-6"></div>
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Tema atual: {getThemeLabel(settings.theme)} 
-                    {settings.theme === 'system' && ` (${resolvedTheme === 'dark' ? 'escuro' : 'claro'})`}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Tamanho da Fonte */}
             <Card>
               <CardHeader>
