@@ -71,6 +71,7 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
     // Revoga blob anterior antes de zerar o preview pra evitar leak.
     setCoverPreview((prev) => {
       if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      coverPreviewRef.current = null;
       return null;
     });
     setNeedsEmailVerify(false);
@@ -110,40 +111,58 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
 
   const uploadCover = async (file: File) => {
     setUploadingCover(true);
-    const fd = new FormData();
-    fd.append("file", file);
-    // Edição usa o endpoint atrelado ao fórum (mantém ACL legada de
-    // moderador local). Criação usa o staging — a capa é enviada e o
-    // sentinel objstore vem junto no POST /forums.
-    const url = editingForum
-      ? `/api/community/forums/${editingForum.id}/cover`
-      : `/api/community/forums/cover-staging`;
-    const res = await fetch(url, {
-      method: "POST",
-      body: fd,
-      credentials: "include",
-    });
-    setUploadingCover(false);
-    const json = await res.json().catch(() => ({}));
-    if (json?.success && json?.data?.cover_url) {
-      setCoverUrl(json.data.cover_url as string);
-      // Preview local mostra o blob recortado — é exatamente o que vai
-      // aparecer no banner 16:5 da comunidade (sem cortes extras).
-      setCoverPreview((prev) => {
-        if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
-        return URL.createObjectURL(file);
-      });
-      enhancedToast.success({
-        title: "Capa pronta",
-        description: editingForum ? "Salve pra aplicar." : "Já vai junto na criação.",
-        haptic: true,
-      });
-    } else {
-      enhancedToast.error({
-        title: "Não foi possível subir a capa",
-        description: json?.error?.message || "Tente novamente",
-        haptic: true,
-      });
+    // try/finally garante que o spinner não fica preso quando o fetch
+    // explode (offline, abort, etc) — sem isso o botão "Trocar capa"
+    // ficaria desabilitado até reabrir o modal.
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      // Edição usa o endpoint atrelado ao fórum (mantém ACL legada de
+      // moderador local). Criação usa o staging — a capa é enviada e o
+      // sentinel objstore vem junto no POST /forums.
+      const url = editingForum
+        ? `/api/community/forums/${editingForum.id}/cover`
+        : `/api/community/forums/cover-staging`;
+      let json: any = {};
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          body: fd,
+          credentials: "include",
+        });
+        json = await res.json().catch(() => ({}));
+      } catch (err) {
+        enhancedToast.error({
+          title: "Falha de conexão",
+          description: err instanceof Error ? err.message : "Verifique sua internet e tente novamente.",
+          haptic: true,
+        });
+        return;
+      }
+      if (json?.success && json?.data?.cover_url) {
+        setCoverUrl(json.data.cover_url as string);
+        // Preview local mostra o blob recortado — é exatamente o que vai
+        // aparecer no banner 16:5 da comunidade (sem cortes extras).
+        setCoverPreview((prev) => {
+          if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+          const next = URL.createObjectURL(file);
+          coverPreviewRef.current = next;
+          return next;
+        });
+        enhancedToast.success({
+          title: "Capa pronta",
+          description: editingForum ? "Salve pra aplicar." : "Já vai junto na criação.",
+          haptic: true,
+        });
+      } else {
+        enhancedToast.error({
+          title: "Não foi possível subir a capa",
+          description: json?.error?.message || "Tente novamente",
+          haptic: true,
+        });
+      }
+    } finally {
+      setUploadingCover(false);
     }
   };
 
@@ -165,19 +184,23 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
   const onCropCancel = () => setPendingCoverFile(null);
 
   // Task #219 — Revoga objectURL local de preview ao remover capa, ao
-  // resetar/fechar o modal e ao desmontar. Sem isso o blob fica preso
-  // em memória até o GC do navegador (vazamento real em fluxos com
-  // várias trocas de capa).
+  // resetar/fechar o modal e ao desmontar. `coverPreviewRef` espelha o
+  // último URL pra cleanup no unmount funcionar mesmo após múltiplas
+  // trocas (effect cleanup com array vazio só veria o valor inicial).
+  const coverPreviewRef = useRef<string | null>(null);
   const clearCoverPreview = useCallback(() => {
     setCoverPreview((prev) => {
       if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      coverPreviewRef.current = null;
       return null;
     });
   }, []);
-  useEffect(() => () => {
-    // Cleanup no unmount.
-    if (coverPreview && coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    return () => {
+      const last = coverPreviewRef.current;
+      if (last && last.startsWith("blob:")) URL.revokeObjectURL(last);
+      coverPreviewRef.current = null;
+    };
   }, []);
 
   const onSubmit = async () => {
