@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ImagePlus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Button } from "./ui/button";
@@ -7,6 +7,7 @@ import { Textarea } from "./ui/textarea";
 import { api } from "../lib/api";
 import { enhancedToast } from "./EnhancedToast";
 import { EmailVerificationInline } from "./EmailVerificationInline";
+import { CoverCropper } from "./CoverCropper";
 
 // Task #198 — Modal pra usuário criar a própria comunidade. Slug é
 // derivado do nome no backend (ensureUniqueSlug). Categoria/ícone são
@@ -55,6 +56,10 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
   // Task #205 — quando o backend devolve EMAIL_NOT_VERIFIED, trocamos
   // o conteúdo do modal pelo painel inline (sem perder os campos).
   const [needsEmailVerify, setNeedsEmailVerify] = useState(false);
+  // Task #219 — quando o usuário escolhe um arquivo, abrimos o editor
+  // de recorte 16:5 antes de subir. A capa só vai pro backend depois
+  // que o usuário confirma o enquadramento.
+  const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null);
 
   const reset = () => {
     setName("");
@@ -63,8 +68,13 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
     setCategory("");
     setRules("");
     setCoverUrl(null);
-    setCoverPreview(null);
+    // Revoga blob anterior antes de zerar o preview pra evitar leak.
+    setCoverPreview((prev) => {
+      if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
     setNeedsEmailVerify(false);
+    setPendingCoverFile(null);
   };
 
   // Pre-fill quando entra em modo edição (ou reseta quando volta a criar).
@@ -83,7 +93,10 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
     }
   }, [open, editingForum]);
 
-  const onPickCover = async (file: File) => {
+  // Task #219 — Validação de arquivo + abertura do editor de recorte.
+  // O upload real só acontece após o `onCropConfirm` devolver o blob
+  // recortado. Mantém a validação de mime/size aqui pra rejeitar cedo.
+  const onPickFile = (file: File) => {
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
       enhancedToast.error({ title: "Formato não suportado", description: "Use JPG, PNG ou WebP", haptic: true });
       return;
@@ -92,6 +105,10 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
       enhancedToast.error({ title: "Arquivo grande demais", description: "Limite de 5 MB", haptic: true });
       return;
     }
+    setPendingCoverFile(file);
+  };
+
+  const uploadCover = async (file: File) => {
     setUploadingCover(true);
     const fd = new FormData();
     fd.append("file", file);
@@ -110,7 +127,12 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
     const json = await res.json().catch(() => ({}));
     if (json?.success && json?.data?.cover_url) {
       setCoverUrl(json.data.cover_url as string);
-      setCoverPreview(URL.createObjectURL(file));
+      // Preview local mostra o blob recortado — é exatamente o que vai
+      // aparecer no banner 16:5 da comunidade (sem cortes extras).
+      setCoverPreview((prev) => {
+        if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(file);
+      });
       enhancedToast.success({
         title: "Capa pronta",
         description: editingForum ? "Salve pra aplicar." : "Já vai junto na criação.",
@@ -124,6 +146,39 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
       });
     }
   };
+
+  // Task #219 — confirma o crop → faz o upload do blob recortado e
+  // fecha o editor. Cancelar volta sem alterar a capa atual. Erros raros
+  // do canvas/encoder (ex: imagem corrompida) viram toast pro usuário.
+  const onCropConfirm = async (cropped: File) => {
+    setPendingCoverFile(null);
+    try {
+      await uploadCover(cropped);
+    } catch (err) {
+      enhancedToast.error({
+        title: "Não foi possível processar a capa",
+        description: err instanceof Error ? err.message : "Tente novamente",
+        haptic: true,
+      });
+    }
+  };
+  const onCropCancel = () => setPendingCoverFile(null);
+
+  // Task #219 — Revoga objectURL local de preview ao remover capa, ao
+  // resetar/fechar o modal e ao desmontar. Sem isso o blob fica preso
+  // em memória até o GC do navegador (vazamento real em fluxos com
+  // várias trocas de capa).
+  const clearCoverPreview = useCallback(() => {
+    setCoverPreview((prev) => {
+      if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }, []);
+  useEffect(() => () => {
+    // Cleanup no unmount.
+    if (coverPreview && coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onSubmit = async () => {
     const trimmed = name.trim();
@@ -285,7 +340,7 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
                     <img src={coverPreview} alt="Capa" className="w-full h-full object-cover" />
                     <button
                       type="button"
-                      onClick={() => { setCoverUrl(null); setCoverPreview(null); }}
+                      onClick={() => { setCoverUrl(null); clearCoverPreview(); }}
                       className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center"
                       style={{ background: "rgba(0,0,0,0.55)", color: "white" }}
                       aria-label="Remover capa"
@@ -325,11 +380,23 @@ export function CreateCommunityModal({ open, onOpenChange, onCreated, editingFor
                 hidden
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) void onPickCover(f);
+                  if (f) onPickFile(f);
                   e.target.value = "";
                 }}
               />
               <p className="text-[11px] text-muted-foreground">JPG, PNG ou WebP até 5 MB.</p>
+              {pendingCoverFile && (
+                <div
+                  className="mt-3 rounded-xl p-3"
+                  style={{ background: "var(--rayo-sand-50)", border: "1px solid var(--rayo-sand-300)" }}
+                >
+                  <CoverCropper
+                    file={pendingCoverFile}
+                    onConfirm={onCropConfirm}
+                    onCancel={onCropCancel}
+                  />
+                </div>
+              )}
             </div>
           )}
 
