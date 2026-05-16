@@ -13,15 +13,17 @@ export function errorHandler(
 ) {
   const statusCode = err.statusCode || 500;
   const code = err.code || "INTERNAL_ERROR";
-  const where = `${req.method} ${req.originalUrl}`;
+  // Log em key=value (consistente com `dm_email_gate` do #230) pra
+  // parser de ingestão extrair campos sem regex frágil.
+  const fields = `status=${statusCode} code=${code} method=${req.method} path=${req.originalUrl}`;
 
   // 4xx é política/validação (esperado) — log em `warn` numa linha,
   // sem stack. 5xx é bug real — mantém `error` + stack pra debug.
   if (statusCode >= 500) {
-    console.error(`[ERROR] ${statusCode} ${code} ${where}:`, err.message);
+    console.error(`[ERROR] ${fields} message="${err.message}"`);
     console.error(err.stack);
   } else {
-    console.warn(`[WARN] ${statusCode} ${code} ${where}: ${err.message}`);
+    console.warn(`[WARN] ${fields} message="${err.message}"`);
   }
 
   res.status(statusCode).json({
