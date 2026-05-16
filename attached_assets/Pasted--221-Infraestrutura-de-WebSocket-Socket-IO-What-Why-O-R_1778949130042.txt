@@ -1,0 +1,45 @@
+#221 - Infraestrutura de WebSocket (Socket.IO)
+
+What & Why
+
+O RAYO usa SSE pra DM, notificações e comunidade — funciona bem pra eventos do servidor pro cliente. Mas estamos planejando recursos novos com alta frequência de mensagens cliente→servidor (salas ao vivo, presença em tempo real, chat com muitos eventos por segundo) onde SSE não cabe, porque o cliente teria que mandar um POST por evento. Esta task instala Socket.IO como infra-base no servidor Express existente, em paralelo ao SSE (sem migrar nada que já funciona), com handshake autenticado, salas (rooms), namespaces, hook do lado React e tudo pronto pra escalar quando precisar.
+
+Decisão arquitetural: manter SSE no que existe, adicionar Socket.IO só pros recursos novos. Reduz risco, evita refator desnecessário, e Socket.IO + SSE convivem no mesmo Express sem conflito.
+
+Done looks like
+
+O servidor Express continua respondendo HTTP/SSE como hoje (DM, notificações, comunidade não param).
+Em paralelo, há um servidor Socket.IO atachado ao mesmo http.Server, escutando em /socket.io (padrão).
+Conectar exige autenticação: o handshake lê o mesmo cookie de sessão que a API REST usa; conexões anônimas são recusadas (a menos que o namespace seja marcado como público).
+Existe um helper de servidor (server/realtime/io.ts) que expõe io, getUserRoom(userId), joinUserRoom(socket), e utilitários pra emitir pra usuário/sala.
+Existe um hook React (src/lib/useSocket.ts) que: conecta automaticamente quando autenticado, reconecta sozinho, emite eventos com ack tipado, e desmonta limpo. Funciona dentro do iframe da preview do Replit (withCredentials: true, transports ["websocket", "polling"]).
+Existem dois endpoints de exemplo já cobrindo o caso de uso futuro (sem virar feature de produto ainda):
+ping (cliente → servidor → ack) — prova que o pipe funciona.
+presence (cliente entra/sai de uma sala, servidor faz broadcast) — prova rooms.
+Rate limit por socket: limite configurável de eventos/segundo por conexão (default 30/s) — evita abuso/loop infinito do cliente.
+Tudo documentado em docs/contracts/realtime.md (criar): visão geral, contrato de eventos, regras de auth, gotchas Replit.
+Variável de ambiente SOCKET_IO_PATH (default /socket.io) e SOCKET_IO_ENABLED (default true) — desligar via env não derruba o resto.
+Out of scope
+
+Recurso de produto concreto em cima do Socket.IO (chat ao vivo, sala de voz, presença visível no UI). Cada recurso vira sua própria task que monta em cima desta infra.
+Multi-instância / Redis adapter. Hoje rodamos uma instância só — o adaptador in-memory padrão do Socket.IO basta. A task "Fazer as mensagens em tempo real funcionarem com múltiplos servidores" (já existente no projeto) cobrirá Redis quando escalarmos. Esta task deixa o ponto de extensão pronto (uma função attachAdapter(io) que hoje é no-op).
+Migrar DM/notificações/comunidade do SSE pro Socket.IO. Decisão consciente: SSE funciona, sem incidente, sem ganho pro usuário em migrar.
+WebRTC pra vídeo/voz — Socket.IO seria só a sinalização; WebRTC em si é outra história.
+Steps
+
+Instalar Socket.IO no servidor e atachar ao mesmo HTTP server: trocar app.listen() por http.createServer(app) + httpServer.listen(), e atachar new Server(httpServer, { path, cors, transports }). SSE/HTTP continuam intocados no mesmo processo. CORS espelha o do Express (credentials: true, mesmo allowlist de origens).
+Handshake autenticado reaproveitando o cookie de sessão: middleware io.use((socket, next) => …) que lê o cookie do socket.handshake.headers.cookie, valida com a mesma função que optionalAuth/requireAuth usam, e injeta socket.data.user. Conexão sem usuário → next(new Error("UNAUTHORIZED")). Documentar fallback pra namespace público quando criar um.
+Helpers do servidor (rooms, emit por usuário, ack tipado): criar server/realtime/io.ts exportando io, getUserRoom, joinUserRoom, emitToUser, emitToRoom, e tipo RayoSocket = Socket<ClientToServerEvents, ServerToClientEvents>. Definir interfaces base em server/realtime/events.ts (vazias agora, populadas por features depois).
+Rate limit por socket: middleware in-memory por socket.id — N eventos por janela. Reaproveitar o padrão de server/middleware/security.ts mas adaptado pra eventos (não requests). Default 30/s, configurável via env.
+Hook React useSocket + provider: src/lib/useSocket.ts com SocketProvider no nível raiz (depois de AuthContext, antes do Router). Conecta com auth: { withCredentials: true }, retransmite estado (connecting | connected | disconnected | error), expõe socket.emit(event, payload, ack?) tipado, e useSocketEvent(event, handler) pra escutar. Desconecta no logout.
+Dois eventos de smoke test: ping (cliente → servidor → pong com timestamp via ack) e presence:join/presence:leave (sala arbitrária, broadcast pra sala). Botão escondido em rota só-admin pra clicar e ver no console — não vira UI de produto.
+Configuração de ambiente e Replit: testar dentro do iframe da preview, garantir que transports: ["websocket", "polling"] cai pra polling se o WS falhar no proxy, e que withCredentials carrega o cookie. Documentar a porta única (Express + Socket.IO compartilham o mesmo PORT).
+Documentação docs/contracts/realtime.md: criar o contrato — visão geral, mapa de eventos, regras de auth, padrão de namespaces/rooms, gotchas (Replit proxy, single-instance, ponto de extensão pro Redis adapter, coexistência com SSE).
+Relevant files
+
+server/index.ts:660-684
+server/middleware/auth.ts
+server/middleware/security.ts
+src/App.tsx
+src/components/AuthContext.tsx
+package.json

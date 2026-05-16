@@ -1,0 +1,31 @@
+Task #221 — já está implementada (e além)
+Veredito: OBSOLETA — feita por #222/#223/#229
+A premissa da #221 era "SSE coexiste com Socket.IO, sem migrar nada". Isso virou de cabeça pra baixo nas tasks seguintes: #222 migrou DM, #223 trouxe Comunidade, e #229 (acabada de fechar) removeu SSE por completo. Hoje Socket.IO é o transporte único — exatamente o oposto da convivência que a #221 propunha, mas o resultado é mais limpo.
+
+Checklist "Done looks like" da #221
+Item	Status
+HTTP server criado com http.createServer(app) + Socket.IO atachado	✅ server/index.ts:680-682
+Servidor Express continua respondendo HTTP	✅ Mesmo processo, mesma porta
+Handshake autenticado via cookie de sessão	✅ server/realtime/io.ts
+Helper server/realtime/io.ts (io, salas, emitToUser, etc)	✅ Existe + tem isUserOnline, emitToConversation
+Hook React conecta auto, reconecta, desmonta limpo	✅ src/lib/realtime/socket.ts + communitySocket.ts (singletons lazy)
+Rate limit por socket (default 30/s)	⚠️ Existe, mas é 120/min por (user, kind) — não 30/s por socket.id
+Eventos de smoke test ping e presence:join/leave	❌ Não existem — não foram implementados
+SOCKET_IO_ENABLED (default true)	✅ Funciona
+SOCKET_IO_PATH (default /socket.io)	❌ Não é configurável — path fixo /socket.io/
+attachAdapter(io) no-op pra futuro Redis	❌ Não existe — extensão futura ainda manual
+Doc docs/contracts/realtime.md	✅ Reescrito recentemente
+O que ainda falta da #221 (se você quiser fechar 100%)
+SOCKET_IO_PATH configurável — trivial, 3 linhas em io.ts. Baixa utilidade prática (o path padrão funciona em todo lugar), mas é o que a spec pediu.
+Hook ponto attachAdapter(io) no-op — útil quando escalar pra múltiplas instâncias (Redis adapter). Hoje a função não existe, dá pra criar como NOOP e documentar como ponto de extensão.
+Smoke endpoints ping + presence:* — discutível. Foram especificados pra "provar o pipe", mas hoje DM/Comunidade/Notificações já provam isso em produção. Adicionar ping ainda tem valor pra health-check/admin debug.
+Rate limit por socket.id (30/s) — o que existe hoje é por (user, kind) com janela de minuto, o que é até mais restritivo na prática que 30/s. Não vejo motivo pra refatorar.
+Minha recomendação
+Não criar task nova pra #221. O espírito dela foi entregue com folga pelas tasks #222/#223/#229, e os 4 gaps acima são opcionais ou de baixo valor.
+
+Se você quiser muito fechar formalmente, sugeria uma micro-task cobrindo só:
+
+SOCKET_IO_PATH configurável
+attachAdapter(io) no-op exportado de server/realtime/io.ts
+Endpoint admin ping pra debug
+Se quiser, te ajudo a planejar essa micro-task ou simplesmente arquivar a #221 como "superseded by #229".

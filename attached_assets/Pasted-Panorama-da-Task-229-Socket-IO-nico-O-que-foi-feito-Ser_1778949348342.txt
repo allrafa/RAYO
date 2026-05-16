@@ -1,0 +1,42 @@
+Panorama da Task #229 — Socket.IO único
+O que foi feito
+Servidor
+
+Rota SSE GET /api/messages/stream apagada.
+events.ts virou fachada fina sobre emitToUser — sem listeners locais, sem fan-out paralelo.
+isUserOnline(userId) substituiu a contagem de assinantes SSE no gate de e-mail.
+/api/auth/me|login|register deixaram de devolver flags de transporte.
+Fallback REST de typing renomeado pra message:typing (era typing legado).
+Cliente
+
+useUnreadMessages reescrito: zero EventSource, escuta DM + notificações + conversation:sync direto no socket /dm.
+AuthContext perdeu os tipos e o state de dmTransport/communityTransport.
+CommunityDetailPage e DiscussionPage usam useCommunitySocket(true) fixo.
+vite.config.ts ganhou optimizeDeps.include: ['socket.io-client'].
+Docs
+
+docs/contracts/realtime.md reescrito do zero (Socket.IO único, dois namespaces, kill-switch único).
+dm.md e comunidade.md atualizados.
+replit.md reflete novo desenho na entrada de Realtime e na linha de produto Notificações.
+Limpeza
+
+Comentários stale mencionando SSE varridos em NotificationBell, useUnreadBySection, ConversasPage, ComunidadePage, TurmaCommunityTab, AuthContext.
+Validação
+Workflow reinicia limpo: Socket.IO server attached (namespace=/dm) + community namespace attached, sem erros novos.
+Architect review final: APPROVED_WITH_COMMENTS (resolvidos).
+Task #229 marcada como MERGED, checkpoint criado.
+Pontos fortes
+Kill-switch único e claro: SOCKET_IO_ENABLED=false → poll lento de 60s.
+Notificações no mesmo canal de DM (sala user:<id>) — menos conexões por aba.
+Gap-fill por feature: conversation:sync pra DM, /since pra Comunidade.
+Riscos / atenção pra depois
+Não há buffer no servidor — multi-instância no futuro vai precisar de Redis adapter.
+E2E de notificação via socket ainda não tem cobertura específica (só smoke manual).
+O parâmetro enabled em useCommunitySocket virou vestigial (sempre true em prod) — pode simplificar quando alguém passar por ali.
+Score
+94/100
+
+−3: ausência de teste de regressão pro novo contrato de notificação no /dm.
+−2: API useCommunitySocket(enabled) mantém parâmetro que ninguém usa de fato em prod.
+−1: poderia ter aproveitado pra adicionar um log estruturado no isUserOnline pra observability do gate de e-mail.
+O resto está limpo, consistente entre servidor + cliente + docs, sem código morto e sem flags duplicadas. O objetivo da task — "Socket.IO como transporte único, SSE fora" — foi entregue de ponta a ponta.
