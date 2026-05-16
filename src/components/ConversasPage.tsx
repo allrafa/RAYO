@@ -518,11 +518,18 @@ export function ConversasPage() {
   }, [currentUserId]);
 
   const markRead = useCallback(async (conversationId: number) => {
-    const res = await api.post<{ marked: number }>(`/api/messages/conversations/${conversationId}/read`);
-    if (res.success && res.data && res.data.marked > 0) {
-      setConversations((prev) =>
-        prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c))
-      );
+    // Task #222 — Socket-first com fallback REST. O servidor (handler
+    // `message:read` em server/realtime/io.ts) delega pra
+    // markConversationRead, que dispara `message:read` + `unread:changed`
+    // pelos transportes ativos — UI converge via broadcast. Otimismo
+    // local: zera badge da conversa imediatamente.
+    setConversations((prev) =>
+      prev.map((c) => (c.id === conversationId ? { ...c, unread_count: 0 } : c))
+    );
+    const ok = await emitWithAck("message:read", { conversation_id: conversationId });
+    if (!ok) {
+      // Fallback REST: socket desligado, sem ack ou DM_REALTIME=sse.
+      await api.post<{ marked: number }>(`/api/messages/conversations/${conversationId}/read`);
     }
   }, []);
 
