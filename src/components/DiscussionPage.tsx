@@ -17,6 +17,7 @@ import { enhancedToast } from "./EnhancedToast";
 import { useAuth } from "./AuthContext";
 import { EmojiReactionPicker, ReactionsSummary, type ReactionAggregate } from "./EmojiReactionPicker";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { useCommunitySocket } from "../lib/community/useCommunitySocket";
 
 interface PostDetailData {
   id: number;
@@ -78,7 +79,7 @@ function formatTime(dateStr: string): string {
 }
 
 export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
-  const { user: viewer } = useAuth();
+  const { user: viewer, communityTransport } = useAuth();
   const [loading, setLoading] = useState(true);
   const [post, setPost] = useState<PostDetailData | null>(null);
   const [comments, setComments] = useState<CommentRow[]>([]);
@@ -86,6 +87,103 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
   const [submitting, setSubmitting] = useState(false);
   const [confirmDiscardOpen, setConfirmDiscardOpen] = useState(false);
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  // Task #223 fix — set de comment.id já contabilizados em
+  // `post.comment_count`. Tanto o POST local quanto o echo via
+  // socket `comment:new` consultam este ref antes de incrementar,
+  // garantindo que cada comentário só conte UMA vez (independente
+  // da ordem REST ↔ socket).
+  const countedCommentIds = useRef<Set<number>>(new Set());
+
+  // Task #223 — Socket.IO `/community` na sala `post:<id>`. Quando o
+  // servidor responde `community_transport === "sse"` (kill-switch),
+  // o hook vira NOOP e a página continua funcionando via refetch/local.
+  const realtimeEnabled = communityTransport === "socket";
+  const community = useCommunitySocket(realtimeEnabled);
+
+  // Entra na sala assim que o post existe + escuta eventos relevantes.
+  useEffect(() => {
+    if (!realtimeEnabled || !post) return;
+    community.joinPost(post.id);
+    community.reportView(post.id);
+
+    const offNew = community.on("comment:new", (payload: CommentRow & { post_id: number }) => {
+      if (payload.post_id !== post.id) return;
+      setComments((prev) => {
+        if (prev.some((c) => c.id === payload.id)) return prev; // dedup
+        return [
+          ...prev,
+          {
+            ...payload,
+            reactions: Array.isArray((payload as any).reactions) ? (payload as any).reactions : [],
+            user_liked: false,
+            user_reaction: null,
+          },
+        ];
+      });
+      // Conta o comentário só na primeira vez que o vemos —
+      // evita double-count quando POST local + echo via socket
+      // chegam para o mesmo `id`.
+      if (!countedCommentIds.current.has(payload.id)) {
+        countedCommentIds.current.add(payload.id);
+        setPost((p) => (p ? { ...p, comment_count: p.comment_count + 1 } : p));
+      }
+    });
+
+    const offCommentUpdated = community.on(
+      "comment:updated",
+      (payload: { comment_id: number; post_id: number; is_hidden?: boolean }) => {
+        if (payload.post_id !== post.id) return;
+        if (payload.is_hidden) {
+          setComments((prev) => prev.filter((c) => c.id !== payload.comment_id));
+        }
+      },
+    );
+
+    const offCommentReaction = community.on(
+      "comment:reaction",
+      (payload: { comment_id: number; post_id: number; reactions: ReactionAggregate[] }) => {
+        if (payload.post_id !== post.id) return;
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === payload.comment_id ? { ...c, reactions: payload.reactions } : c,
+          ),
+        );
+      },
+    );
+
+    const offPostReaction = community.on(
+      "post:reaction",
+      (payload: { post_id: number; reactions: ReactionAggregate[]; like_count: number }) => {
+        if (payload.post_id !== post.id) return;
+        setPost((p) =>
+          p ? { ...p, reactions: payload.reactions, like_count: payload.like_count } : p,
+        );
+      },
+    );
+
+    const offPostUpdated = community.on(
+      "post:updated",
+      (payload: { post_id: number; is_hidden?: boolean; deleted?: boolean }) => {
+        if (payload.post_id !== post.id) return;
+        if (payload.is_hidden || payload.deleted) {
+          enhancedToast.info({
+            title: "Discussão removida",
+            description: "Este post foi removido pela moderação.",
+            haptic: true,
+          });
+          onBack();
+        }
+      },
+    );
+
+    return () => {
+      offNew();
+      offCommentUpdated();
+      offCommentReaction();
+      offPostReaction();
+      offPostUpdated();
+    };
+  }, [realtimeEnabled, post?.id, community, onBack]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let active = true;
@@ -140,16 +238,22 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
     );
     if (res.success && res.data) {
       const c = res.data.comment;
-      setComments((prev) => [
-        ...prev,
-        {
-          ...c,
-          reactions: Array.isArray(c.reactions) ? c.reactions : [],
-          user_reaction: c.user_reaction ?? null,
-        },
-      ]);
+      setComments((prev) => {
+        if (prev.some((x) => x.id === c.id)) return prev; // dedup vs echo socket
+        return [
+          ...prev,
+          {
+            ...c,
+            reactions: Array.isArray(c.reactions) ? c.reactions : [],
+            user_reaction: c.user_reaction ?? null,
+          },
+        ];
+      });
       setComposer("");
-      if (post) setPost({ ...post, comment_count: post.comment_count + 1 });
+      if (post && !countedCommentIds.current.has(c.id)) {
+        countedCommentIds.current.add(c.id);
+        setPost({ ...post, comment_count: post.comment_count + 1 });
+      }
     } else {
       enhancedToast.error({
         title: "Falha ao comentar",
@@ -429,7 +533,11 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
               <Textarea
                 ref={composerRef}
                 value={composer}
-                onChange={(e) => setComposer(e.target.value)}
+                onChange={(e) => {
+                  setComposer(e.target.value);
+                  // Task #223 — broadcast leve de "está digitando" pra sala do post.
+                  if (realtimeEnabled && post) community.emitCommentTyping(post.id);
+                }}
                 placeholder="Escreva um comentário…"
                 rows={1}
                 className="resize-none min-h-[40px] max-h-32"

@@ -1,6 +1,6 @@
-# Realtime — Socket.IO (DM) + SSE (notificações)
+# Realtime — Socket.IO (DM + Comunidade) + SSE (notificações)
 
-> Status: ativo. Task #222 substituiu SSE de DM por Socket.IO. Server faz **dual-write** em ambos os transportes; cliente lê **um só**, decidido pelo servidor via `DM_REALTIME`.
+> Status: ativo. Task #222 substituiu SSE de DM por Socket.IO. Task #223 adicionou o namespace `/community` (eventos de feed e discussão). Server faz **dual-write** em ambos os transportes (DM); a Comunidade só tem Socket.IO (sem canal SSE legado a substituir). Cliente lê o transporte que o servidor indicar via flags em `/api/auth/me`.
 
 ## Decisão de transporte
 
@@ -100,3 +100,144 @@ A rota `/since` é idempotente e respeita o corte `cleared_at` (lado-a-lado) —
 - **`/me` retorna a flag uma única vez** (no boot). Trocar `DM_REALTIME` requer reload do cliente — aceitável porque é env-var server-side.
 - **`conversation:join` é necessário** quando o cliente cria uma nova conversa nesta sessão. Ela ainda não existe no `joinUserConversations` inicial — o socket precisa pedir explicitamente pra entrar na sala antes de ouvir eventos dela.
 - **Não há buffer no servidor**. Reconnect → `conversation:sync` → REST `/since` é o único caminho de catch-up. Buffer interno seria inseguro com múltiplas instâncias.
+
+---
+
+## Comunidade — namespace `/community` (Task #223)
+
+Posts e comentários da Comunidade migraram pra Socket.IO. NÃO há SSE
+legado equivalente — antes da #223, o feed só atualizava via refetch
+local após cada mutation (POST/PATCH/DELETE). Hoje os mesmos call
+sites no `community/service.ts` fazem fan-out por sala depois do
+INSERT/UPDATE no banco.
+
+### Decisão de transporte
+
+- Servidor lê `process.env.COMMUNITY_REALTIME` no boot.
+  - `"socket"` → cliente entra em salas e ouve eventos.
+  - `"sse"` → cliente NÃO conecta no `/community`. Helpers do hook
+    viram NOOP; UI continua só com estado local e refetch sob demanda.
+  - **Default**: `socket` em dev, `sse` em produção.
+- `SOCKET_IO_ENABLED=false` força `community_transport === "sse"` no
+  `/me` (kill-switch absoluto compartilhado com o `/dm`).
+- Servidor SEMPRE emite via socket — a flag só desliga a leitura.
+- Cliente recebe a flag em `realtime.community_transport` no payload
+  de `GET /api/auth/me`, `POST /login` e `POST /register`.
+
+### Topologia
+
+- **Namespace**: `/community` (path `/socket.io/`, conexão multiplexada
+  com `/dm` no mesmo engine.io subjacente).
+- **Auth**: mesma handshake do `/dm` — cookie httpOnly `session_token`
+  + `validateSession`. Sem cookie → handshake rejeitado.
+- **Salas**:
+  - `forum:<slug>` — fan-out de eventos do feed de uma comunidade.
+  - `post:<id>` — fan-out de eventos dentro de uma discussão.
+  - `user:<id>` — sala automática no `connection` (reservada).
+
+### Eventos servidor → cliente
+
+| Evento             | Sala            | Payload                                                                        |
+| ------------------ | --------------- | ------------------------------------------------------------------------------ |
+| `post:new`         | `forum:<slug>`  | `{ id, forum_id, forum_slug, forum_name, author_id, author_name, title, content, created_at, class_id }` |
+| `post:updated`     | `forum:<slug>` + `post:<id>` | `{ post_id, forum_slug, ...patch }` — patch contém só campos mexidos (`is_hidden`, `deleted`, `content`, `images`, `comment_count`, `updated_at`). |
+| `post:reaction`    | `forum:<slug>` + `post:<id>` | `{ post_id, forum_slug, user_id, reactions: [{emoji,count}], like_count }` |
+| `comment:new`      | `post:<id>`     | `{ id, post_id, parent_id, content, author_id, author_name, author_avatar, created_at, like_count }` |
+| `comment:updated`  | `post:<id>`     | `{ comment_id, post_id, ...patch }` (atualmente só `is_hidden`).               |
+| `comment:reaction` | `post:<id>`     | `{ comment_id, post_id, user_id, reactions }`                                  |
+| `comment:typing`   | `post:<id>`     | `{ post_id, user_id }` (re-broadcast do evento client→server).                  |
+
+### Eventos cliente → servidor
+
+Todos aceitam ack opcional `(ok: boolean) => void` (`emitCommunityWithAck`).
+
+| Evento             | Payload              | Validações                                                                    |
+| ------------------ | -------------------- | ----------------------------------------------------------------------------- |
+| `forum:join`       | `{ slug }`           | slug `[a-z0-9-]{2,60}` + forum existe + `is_active=true`. Idempotente.        |
+| `forum:leave`      | `{ slug }`           | sai da sala (sem checagem).                                                   |
+| `post:join`        | `{ post_id }`        | post existe + não `hidden` + (se `class_id`, role `moderator+` OU matriculado). |
+| `post:leave`       | `{ post_id }`        | sai da sala.                                                                  |
+| `post:view`        | `{ post_id }`        | placeholder de view-count (não persistido); idempotente por sessão de socket. |
+| `comment:typing`   | `{ post_id }`        | socket precisa estar na sala `post:<id>`; fan-out broadcast pra mesma sala.   |
+
+### Fan-out — onde mora
+
+`server/features/community/realtime.ts` é a camada fina que centraliza
+o shape dos eventos. Os call sites no `service.ts` chamam:
+
+| Função no service           | Helper emitido                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------- |
+| `createPost`                | `emitPostNew`                                                                               |
+| `updatePost`                | `emitPostUpdated` (patch dos campos mexidos)                                                |
+| `deletePost`                | `emitPostUpdated({ is_hidden:true, deleted:true })`                                          |
+| `togglePostReaction`        | `emitPostReaction` (com `like_count` re-lido)                                                |
+| `setPostHiddenWithAuth`     | `emitPostUpdated({ is_hidden })`                                                            |
+| `addComment`                | `emitCommentNew` + `emitPostUpdated({ comment_count })` na sala do fórum                    |
+| `toggleCommentReaction`     | `emitCommentReaction`                                                                       |
+| `setCommentHiddenWithAuth`  | `emitCommentUpdated({ is_hidden })`                                                         |
+
+Todos os emits estão envoltos em `try/catch` best-effort — falha no
+socket NÃO reverte a mutation.
+
+### Gap-fill `/since`
+
+`GET /api/community/forums/:slug/since?cursor=<lastPostId>` devolve até
+50 posts visíveis em ordem crescente com `id > cursor` (sem
+`class_id`, sem `is_hidden`). Usado pelo cliente após `reconnect`
+do socket pra reconciliar `post:new` perdido. Eventos efêmeros
+(`post:reaction`, `comment:*`) NÃO são reconciliados aqui — quando o
+usuário entra numa discussão, o `GET /api/community/posts/:id` traz
+o estado atual.
+
+### Cliente — hook único `useCommunitySocket(enabled)`
+
+Vive em `src/lib/community/useCommunitySocket.ts`. API mínima:
+
+```ts
+const { joinForum, joinPost, on, reportView, emitCommentTyping } =
+  useCommunitySocket(communityTransport === "socket");
+```
+
+- `enabled=false` → todos os métodos viram NOOP. Componente continua
+  funcionando como antes da #223 (refetch + estado local).
+- `on(event, handler)` retorna função pra remover o listener — limpa
+  no unmount do componente automaticamente (mantém set interno).
+- Reconnect automático: ao receber `connect` no socket, re-entra nas
+  salas declaradas pelo componente (`joinForum`/`joinPost` viram
+  refs). Componente não precisa rejoinar manualmente.
+
+`CommunityDetailPage` entra em `forum:<slug>` e escuta `post:new`,
+`post:updated`, `post:reaction`. `DiscussionPage` entra em
+`post:<id>` e escuta `comment:new`, `comment:updated`,
+`comment:reaction`, `post:reaction`, `post:updated` (pra fechar a
+discussão se o post for removido).
+
+### Kill-switches
+
+| Variável                    | Efeito                                                  |
+| --------------------------- | ------------------------------------------------------- |
+| `SOCKET_IO_ENABLED=false`   | Desliga Socket.IO inteiro. `community_transport=sse` no `/me`. Hook vira NOOP. |
+| `COMMUNITY_REALTIME=sse`    | Servidor segue emitindo (cheap when no listeners), mas cliente ignora — vira "sem realtime". Rollback rápido sem redeploy do cliente. |
+| `COMMUNITY_REALTIME=socket` | Modo novo (default em dev).                             |
+
+### Rate limits (in-memory, por instância)
+
+- `forum:join` / `post:join`: 60/min por usuário.
+- `comment:typing`: 120/min por usuário.
+- `post:view`: 60/min por usuário (e idempotente por (socket, post)).
+
+### Gotchas
+
+- **Sender recebe seu próprio evento** (todas as abas dele entram na
+  mesma sala). UI dedup por `id` (`comment.id`/`post.id`) ao receber
+  `comment:new`/`post:new`.
+- **Class-scoped posts não viram no feed da `CommunityDetailPage`**: o
+  cliente filtra `payload.class_id` antes de adicionar à lista
+  (consistente com o GET `/forums/:id/posts` que esconde class posts).
+- **Forum events não checam trail gate**: `forum:join` só valida que
+  o fórum existe e está ativo. Se o fórum requer trilha paga, a
+  REST `/posts` já protege o conteúdo — o socket só transmite
+  metadados que o usuário poderia ver de qualquer forma.
+- **Cleanup é por hook, não global**: dois componentes usando
+  `useCommunitySocket` na mesma página mantêm listeners isolados;
+  desmontar um não derruba o outro.

@@ -8,6 +8,7 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { enhancedToast } from "./EnhancedToast";
 import { useAuth, userHasRole } from "./AuthContext";
 import { CreateCommunityModal } from "./CreateCommunityModal";
+import { useCommunitySocket } from "../lib/community/useCommunitySocket";
 
 // Task #202 — opções de ordenação dos posts da comunidade.
 type PostOrder = "recent" | "trending" | "most_commented";
@@ -112,7 +113,11 @@ function formatDate(d?: string | null): string {
 }
 
 export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }: CommunityDetailPageProps) {
-  const { user } = useAuth();
+  const { user, communityTransport } = useAuth();
+  // Task #223 — Socket.IO na sala `forum:<slug>` pra fan-out de post:new
+  // / post:updated / post:reaction. NOOP quando o transporte é "sse".
+  const realtimeEnabled = communityTransport === "socket";
+  const community = useCommunitySocket(realtimeEnabled);
   const [forum, setForum] = useState<ForumDetail | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [postsOrder, setPostsOrder] = useState<PostOrder>("recent");
@@ -210,6 +215,75 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
       void loadMembersPage(1);
     }
   }, [activeTab, forum, membersLoaded, membersLoading, loadMembersPage]);
+
+  // Task #223 — entra na sala do fórum e patcha o feed em tempo real.
+  // Eventos efêmeros (reactions, comment_count) atualizam in-place; new
+  // posts viram no topo da lista (dedup por id). Soft-delete remove o
+  // card do feed sem refetch.
+  useEffect(() => {
+    if (!realtimeEnabled || !forum) return;
+    community.joinForum(forum.slug);
+
+    const offNew = community.on("post:new", (payload: any) => {
+      if (payload.forum_slug !== forum.slug) return;
+      // Class-scoped posts só são exibidos pra membros — o feed da
+      // CommunityDetailPage só lista posts sem class_id (não-turma).
+      if (payload.class_id) return;
+      setPosts((prev) => {
+        if (prev.some((p) => p.id === payload.id)) return prev;
+        return [
+          {
+            id: payload.id,
+            title: payload.title,
+            content: payload.content,
+            like_count: 0,
+            comment_count: 0,
+            created_at: payload.created_at,
+            author_name: payload.author_name,
+            author_avatar: null,
+            images: [],
+          },
+          ...prev,
+        ];
+      });
+    });
+
+    const offUpdated = community.on(
+      "post:updated",
+      (payload: { post_id: number; is_hidden?: boolean; deleted?: boolean; comment_count?: number; content?: string }) => {
+        if (payload.is_hidden || payload.deleted) {
+          setPosts((prev) => prev.filter((p) => p.id !== payload.post_id));
+          return;
+        }
+        setPosts((prev) =>
+          prev.map((p) =>
+            p.id === payload.post_id
+              ? {
+                  ...p,
+                  ...(payload.content !== undefined ? { content: payload.content } : {}),
+                  ...(payload.comment_count !== undefined ? { comment_count: payload.comment_count } : {}),
+                }
+              : p,
+          ),
+        );
+      },
+    );
+
+    const offReaction = community.on(
+      "post:reaction",
+      (payload: { post_id: number; like_count: number }) => {
+        setPosts((prev) =>
+          prev.map((p) => (p.id === payload.post_id ? { ...p, like_count: payload.like_count } : p)),
+        );
+      },
+    );
+
+    return () => {
+      offNew();
+      offUpdated();
+      offReaction();
+    };
+  }, [realtimeEnabled, forum?.slug, community]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onToggleSubscribe = async () => {
     if (!forum || subBusy) return;

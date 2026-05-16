@@ -149,7 +149,14 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
     const { user, token } = await registerUser(validation.data);
     setSessionCookie(res, token);
     const { getDmTransport } = await import("../../realtime/io.js");
-    created(res, { user, realtime: { dm_transport: getDmTransport() } });
+    const { getCommunityTransport } = await import("../../realtime/community.js");
+    created(res, {
+      user,
+      realtime: {
+        dm_transport: getDmTransport(),
+        community_transport: getCommunityTransport(),
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -215,7 +222,14 @@ router.post("/login", async (req: Request, res: Response, next: NextFunction) =>
     );
     setSessionCookie(res, token);
     const { getDmTransport } = await import("../../realtime/io.js");
-    success(res, { user, realtime: { dm_transport: getDmTransport() } });
+    const { getCommunityTransport } = await import("../../realtime/community.js");
+    success(res, {
+      user,
+      realtime: {
+        dm_transport: getDmTransport(),
+        community_transport: getCommunityTransport(),
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -235,13 +249,17 @@ router.post("/logout", requireAuth, async (req: Request, res: Response, next: Ne
 });
 
 router.get("/me", requireAuth, async (req: Request, res: Response) => {
-  // Task #222 — expõe a flag de transporte de DM pro cliente. Servidor
-  // sempre faz dual-write; o cliente usa esta flag pra escolher se
-  // ouve SSE ou Socket.IO.
+  // Task #222/#223 — expõe as flags de transporte (DM + Comunidade) pro
+  // cliente. Servidor sempre emite via socket; o cliente usa as flags
+  // pra escolher se ouve SSE/local-only ou Socket.IO.
   const { getDmTransport } = await import("../../realtime/io.js");
+  const { getCommunityTransport } = await import("../../realtime/community.js");
   success(res, {
     user: req.user,
-    realtime: { dm_transport: getDmTransport() },
+    realtime: {
+      dm_transport: getDmTransport(),
+      community_transport: getCommunityTransport(),
+    },
   });
 });
 

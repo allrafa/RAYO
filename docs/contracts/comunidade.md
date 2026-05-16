@@ -70,3 +70,29 @@ Posts/Comentários/Salvos no `UserProfilePage` viraram `role="button"` que dispa
 `CommentsPanel` é renderizado via `createPortal(jsx, document.body)`. Sem isso, o `transform: translateY(...)` do `PullToRefresh` cria **containing block** que **quebra `position: fixed` em descendentes** — o painel some no mobile. Body-scroll-lock + Esc/backdrop fechando.
 
 **Regra geral**: qualquer overlay/modal dentro de `PullToRefresh` precisa ir pro portal (ou usar shadcn `Sheet` / `Dialog`).
+
+### Realtime via Socket.IO (Task #223)
+
+Eventos de feed e discussão fluem pelo namespace `/community` (ver
+`docs/contracts/realtime.md` — seção "Comunidade"). Resumo:
+
+- **Servidor**: `community/service.ts` faz fan-out via
+  `community/realtime.ts` depois de cada mutation (`createPost`,
+  `updatePost`, `deletePost`, `togglePostReaction`,
+  `addComment`, `toggleCommentReaction`, `setPostHiddenWithAuth`,
+  `setCommentHiddenWithAuth`). Emits são best-effort em `try/catch` —
+  falha no socket NÃO reverte a operação no banco.
+- **Cliente**: `useCommunitySocket(enabled)` em
+  `src/lib/community/useCommunitySocket.ts` é o ponto único de
+  integração. `CommunityDetailPage` patcha o feed in-place; a
+  `DiscussionPage` patcha a lista de comentários e os chips de
+  reação sem refetch.
+- **Flag**: `COMMUNITY_REALTIME` (`socket`|`sse`, default `socket` em
+  dev / `sse` em prod). Quando `sse`, o hook vira NOOP e a página
+  volta ao comportamento pré-#223 (estado local + refetch). O
+  servidor segue emitindo mesmo em modo `sse` — a flag só desliga
+  a leitura.
+- **Notificações** (`notification:new` / `notification:unread`)
+  continuam saindo via SSE em `messages/events.ts` por
+  `publishToUser` — canal pessoal separado do `/community`,
+  não migra nesta task.

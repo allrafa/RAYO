@@ -449,6 +449,50 @@ router.get("/forums/by-slug/:slug", async (req, res, next) => {
   }
 });
 
+// Task #223 — gap-fill REST após reconnect do Socket.IO. Cliente passa
+// `cursor` = maior post.id recebido até agora; servidor devolve posts
+// criados depois (id > cursor), limitado a 50, ordenado por id ASC.
+// Eventos transientes (post:reaction, comment:*) NÃO são reconciliados
+// aqui — o usuário pode refrescar a discussão se precisar do estado
+// exato. Posts soft-deleted/hidden NÃO aparecem (consistente com o feed).
+router.get("/forums/:slug/since", async (req, res, next) => {
+  try {
+    const slug = String(req.params.slug || "").trim().toLowerCase();
+    if (!/^[a-z0-9-]{2,60}$/.test(slug)) {
+      sendError(res, "Slug inválido", "INVALID_SLUG", 400);
+      return;
+    }
+    const cursor = Math.max(0, parseInt(req.query.cursor as string) || 0);
+    let forumId: number;
+    try {
+      forumId = await getForumIdBySlug(slug);
+    } catch {
+      sendError(res, "Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
+      return;
+    }
+    const { query } = await import("../../db/index.js");
+    const { rows } = await query<{
+      id: number; title: string | null; content: string;
+      like_count: number; comment_count: number; created_at: string;
+      author_id: number; author_name: string; author_avatar: string | null;
+      class_id: number | null;
+    }>(
+      `SELECT p.id, p.title, p.content, p.like_count, p.comment_count,
+              p.created_at, p.class_id,
+              u.id AS author_id, u.name AS author_name, u.avatar_url AS author_avatar
+         FROM posts p JOIN users u ON u.id = p.user_id
+        WHERE p.forum_id = $1 AND p.is_hidden = FALSE AND p.id > $2
+          AND p.class_id IS NULL
+        ORDER BY p.id ASC
+        LIMIT 50`,
+      [forumId, cursor],
+    );
+    success(res, { posts: rows, cursor: rows.length ? rows[rows.length - 1].id : cursor });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Task #92 — `:idOrSlug` aceita ID numérico OU slug (ex `c/casados`).
 router.get("/forums/:idOrSlug/posts", async (req, res, next) => {
   try {

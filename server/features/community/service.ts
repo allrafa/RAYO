@@ -3,6 +3,18 @@ import { AppError } from "../academia/service.js";
 import { trackEvent } from "../analytics/service.js";
 import { resolveStoredMediaUrl } from "../../lib/objectStorageBridge.js";
 import { createNotification } from "../notifications/service.js";
+// Task #223 — fan-out de eventos de feed (post:new, post:updated,
+// post:reaction, comment:*) via Socket.IO no namespace `/community`.
+// Notificações pessoais continuam saindo via `publishToUser` em
+// `messages/events.ts` — canal separado, não migra nesta task.
+import {
+  emitPostNew,
+  emitPostUpdated,
+  emitPostReaction,
+  emitCommentNew,
+  emitCommentUpdated,
+  emitCommentReaction,
+} from "./realtime.js";
 
 const POST_IMAGE_PREFIX = "objstore://posts/";
 const POST_MAX_IMAGES = 4;
@@ -249,6 +261,18 @@ export async function setPostHiddenWithAuth(
      VALUES ($1, 'post', $2, $3, NULL)`,
     [userId, postId, hidden ? "post_hidden" : "post_restored"],
   );
+
+  // Task #223 — fan-out via Socket.IO. Cards no feed somem (hidden=true)
+  // ou reaparecem (hidden=false) sem precisar refetch.
+  try {
+    const { rows: slugRows } = await query<{ slug: string; class_id: number | null }>(
+      `SELECT f.slug, p.class_id FROM forums f JOIN posts p ON p.forum_id = f.id WHERE p.id = $1`,
+      [postId],
+    );
+    if (slugRows[0]?.slug) {
+      emitPostUpdated(slugRows[0].slug, postId, { is_hidden: hidden }, slugRows[0].class_id);
+    }
+  } catch { /* best-effort */ }
 }
 
 export async function setCommentHiddenWithAuth(
@@ -275,6 +299,17 @@ export async function setCommentHiddenWithAuth(
      VALUES ($1, 'comment', $2, $3, NULL)`,
     [userId, commentId, hidden ? "comment_hidden" : "comment_restored"],
   );
+
+  // Task #223 — fan-out na sala do post pra DiscussionPage remover/
+  // restaurar o comentário sem refetch.
+  try {
+    const { rows: pidRows } = await query<{ post_id: number }>(
+      `SELECT post_id FROM comments WHERE id = $1`,
+      [commentId],
+    );
+    const postId = pidRows[0]?.post_id;
+    if (postId) emitCommentUpdated(postId, commentId, { is_hidden: hidden });
+  } catch { /* best-effort */ }
 }
 
 // Task #198 — true se user é moderador específico desta comunidade.
@@ -572,6 +607,23 @@ export async function createPost(
 
   trackEvent(userId, "post_created", { post_id: post.id, forum_id: forumId, image_count: imageList.length });
 
+  // Task #223 — fan-out via Socket.IO pra sala `forum:<slug>`. Best-effort:
+  // se o socket estiver desligado (kill-switch), helper vira no-op.
+  try {
+    emitPostNew(post.forum_slug, {
+      id: post.id,
+      forum_id: forumId,
+      forum_slug: post.forum_slug,
+      forum_name: post.forum_name,
+      author_id: userId,
+      author_name: post.author_name,
+      title: post.title,
+      content: post.content,
+      created_at: post.created_at,
+      class_id: resolvedClassId,
+    });
+  } catch { /* best-effort */ }
+
   // Task #102 — fan-out de notificação para membros matriculados quando o
   // post é escopado em uma turma (class_id). Best-effort: falhas no sino
   // NÃO devem reverter a criação do post.
@@ -859,6 +911,27 @@ export async function updatePost(
   params.push(postId);
   await query(`UPDATE posts SET ${sets.join(", ")} WHERE id = $${params.length}`, params);
   trackEvent(userId, "post_edited", { post_id: postId });
+
+  // Task #223 — fan-out via Socket.IO. Cliente patch local sem refetch.
+  try {
+    const { rows: slugRows } = await query<{ slug: string; class_id: number | null }>(
+      `SELECT f.slug, p.class_id FROM forums f JOIN posts p ON p.forum_id = f.id WHERE p.id = $1`,
+      [postId],
+    );
+    const slug = slugRows[0]?.slug;
+    if (slug) {
+      // Patch enxuto: só campos efetivamente mexidos. Cliente faz merge
+      // local sem refetch. `updated_at` sempre acompanha pra UI marcar
+      // "(editado)" se quiser.
+      const evt: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (nextContentTrimmed !== null) evt.content = nextContentTrimmed;
+      if (patch.category !== undefined) evt.category = patch.category || null;
+      if (patch.title !== undefined) evt.title = patch.title || null;
+      if (imageList !== null) evt.images = imageList;
+      emitPostUpdated(slug, postId, evt, slugRows[0].class_id);
+    }
+  } catch { /* best-effort */ }
+
   return { post_id: postId, updated: true };
 }
 
@@ -869,7 +942,7 @@ export async function deletePost(
   reason?: string | null,
 ) {
   const { rows: existing } = await query(
-    `SELECT p.id, p.user_id, p.title, p.content, p.forum_id,
+    `SELECT p.id, p.user_id, p.title, p.content, p.forum_id, p.class_id,
             f.slug AS forum_slug, f.name AS forum_name
      FROM posts p
      JOIN forums f ON f.id = p.forum_id
@@ -946,6 +1019,21 @@ export async function deletePost(
   }
 
   trackEvent(userId, "post_deleted", { post_id: postId, by_moderator: !isAuthor });
+
+  // Task #223 — sinaliza pros clientes na sala do fórum + do post que
+  // o post sumiu. UI remove o card no feed e fecha a discussão se aberta.
+  try {
+    if (post.forum_slug) {
+      // `post.class_id` foi carregado no SELECT inicial junto com forum_slug.
+      emitPostUpdated(
+        post.forum_slug,
+        postId,
+        { is_hidden: true, deleted: true },
+        (post as { class_id?: number | null }).class_id ?? null,
+      );
+    }
+  } catch { /* best-effort */ }
+
   return { post_id: postId, deleted: true };
 }
 
@@ -1105,9 +1193,31 @@ export async function togglePostReaction(
   }
 
   const reactionsMap = await aggregateReactions("post_reactions", "post_id", [postId]);
+  const reactions = reactionsMap.get(postId) || [];
+
+  // Task #223 — fan-out de reação. Cliente atualiza chips de emoji em
+  // tempo real sem refetch. like_count é re-lido pra refletir o total
+  // pós-toggle (preserva trending/karma).
+  try {
+    const { rows: ctx } = await query<{ slug: string; like_count: number; class_id: number | null }>(
+      `SELECT f.slug, p.like_count, p.class_id
+         FROM posts p JOIN forums f ON f.id = p.forum_id
+        WHERE p.id = $1`,
+      [postId],
+    );
+    if (ctx[0]?.slug) {
+      emitPostReaction(
+        ctx[0].slug,
+        postId,
+        { user_id: userId, reactions, like_count: ctx[0].like_count },
+        ctx[0].class_id,
+      );
+    }
+  } catch { /* best-effort */ }
+
   return {
     user_reaction: userReaction,
-    reactions: reactionsMap.get(postId) || [],
+    reactions,
   };
 }
 
@@ -1163,9 +1273,18 @@ export async function toggleCommentReaction(
   }
 
   const reactionsMap = await aggregateReactions("comment_reactions", "comment_id", [commentId]);
+  const reactions = reactionsMap.get(commentId) || [];
+
+  // Task #223 — fan-out na sala do post (`post:<id>`). DiscussionPage
+  // patcha o chip do comentário sem refetch.
+  try {
+    const postId = commentCheck[0].post_id;
+    emitCommentReaction(postId, commentId, { user_id: userId, reactions });
+  } catch { /* best-effort */ }
+
   return {
     user_reaction: userReaction,
-    reactions: reactionsMap.get(commentId) || [],
+    reactions,
   };
 }
 
@@ -1225,6 +1344,37 @@ export async function addComment(postId: number, userId: number, content: string
   comment.user_liked = false;
 
   trackEvent(userId, "comment_created", { post_id: postId, comment_id: comment.id });
+
+  // Task #223 — fan-out na sala do post (DiscussionPage). Também sinaliza
+  // pra sala do fórum que o comment_count subiu (cards do feed
+  // patcham o contador sem refetch).
+  try {
+    emitCommentNew(postId, {
+      id: comment.id,
+      post_id: postId,
+      parent_id: comment.parent_id,
+      content: comment.content,
+      author_id: userId,
+      author_name: comment.author_name,
+      author_avatar: comment.author_avatar ?? null,
+      created_at: comment.created_at,
+      like_count: comment.like_count,
+    });
+    const { rows: slugRows } = await query<{ slug: string; comment_count: number; class_id: number | null }>(
+      `SELECT f.slug, p.comment_count, p.class_id
+         FROM posts p JOIN forums f ON f.id = p.forum_id
+        WHERE p.id = $1`,
+      [postId],
+    );
+    if (slugRows[0]?.slug) {
+      emitPostUpdated(
+        slugRows[0].slug,
+        postId,
+        { comment_count: slugRows[0].comment_count },
+        slugRows[0].class_id,
+      );
+    }
+  } catch { /* best-effort */ }
 
   return comment;
 }

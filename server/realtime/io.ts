@@ -106,6 +106,14 @@ export function initRealtime(httpServer: HttpServer): IOServer | null {
 
   dmNs = io.of("/dm");
 
+  // Task #223 — anexa o namespace de Comunidade no mesmo http.Server.
+  // Compartilha kill-switch (SOCKET_IO_ENABLED) e cookie de sessão.
+  void import("./community.js").then(({ attachCommunityNamespace }) => {
+    attachCommunityNamespace(io!);
+  }).catch((err) => {
+    logger.warn("Realtime", `community namespace attach failed: ${(err as Error).message}`);
+  });
+
   // Auth middleware: valida cookie `session_token`. Sem sessão → reject.
   dmNs.use(async (socket, next) => {
     try {
