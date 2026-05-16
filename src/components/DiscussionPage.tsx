@@ -107,6 +107,51 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
   const realtimeEnabled = communityTransport === "socket";
   const community = useCommunitySocket(realtimeEnabled);
 
+  // Carrega post + comentários do servidor (idempotente). Reusado pelo
+  // boot inicial e pelo gap-fill em reconnect — `silent=true` evita
+  // mostrar spinner durante reconciliação após disconnect. Declarado
+  // antes dos effects pra evitar temporal dead zone (effect realtime
+  // referencia `loadDiscussion`).
+  const loadDiscussion = useCallback(
+    async (silent = false): Promise<boolean> => {
+      if (!silent) setLoading(true);
+      const res = await api.get<{ post: PostDetailData & { comments: CommentRow[] } }>(
+        `/api/community/posts/${postId}`,
+      );
+      if (res.success && res.data) {
+        const { comments: cs, ...rest } = res.data.post;
+        setPost({
+          ...rest,
+          reactions: Array.isArray(rest.reactions) ? rest.reactions : [],
+          user_reaction: rest.user_reaction ?? null,
+        });
+        setComments(
+          (cs || []).map((c) => ({
+            ...c,
+            reactions: Array.isArray(c.reactions) ? c.reactions : [],
+            user_reaction: c.user_reaction ?? null,
+          })),
+        );
+        // Reconciliação: registra ids já contabilizados pra evitar
+        // double-count com eventos socket subsequentes.
+        countedCommentIds.current = new Set((cs || []).map((c) => c.id));
+        if (!silent) setLoading(false);
+        return true;
+      }
+      if (!silent) {
+        enhancedToast.error({
+          title: "Discussão não encontrada",
+          description: res.error?.message || "O post pode ter sido removido.",
+          haptic: true,
+        });
+        onBack();
+        setLoading(false);
+      }
+      return false;
+    },
+    [postId, onBack],
+  );
+
   // Entra na sala assim que o post existe + escuta eventos relevantes.
   useEffect(() => {
     if (!realtimeEnabled || !post) return;
@@ -222,49 +267,6 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
       community.leavePost(currentPostId);
     };
   }, [realtimeEnabled, post?.id, community, onBack, loadDiscussion]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Carrega post + comentários do servidor (idempotente). Reusado pelo
-  // boot inicial e pelo gap-fill em reconnect — `silent=true` evita
-  // mostrar spinner durante reconciliação após disconnect.
-  const loadDiscussion = useCallback(
-    async (silent = false): Promise<boolean> => {
-      if (!silent) setLoading(true);
-      const res = await api.get<{ post: PostDetailData & { comments: CommentRow[] } }>(
-        `/api/community/posts/${postId}`,
-      );
-      if (res.success && res.data) {
-        const { comments: cs, ...rest } = res.data.post;
-        setPost({
-          ...rest,
-          reactions: Array.isArray(rest.reactions) ? rest.reactions : [],
-          user_reaction: rest.user_reaction ?? null,
-        });
-        setComments(
-          (cs || []).map((c) => ({
-            ...c,
-            reactions: Array.isArray(c.reactions) ? c.reactions : [],
-            user_reaction: c.user_reaction ?? null,
-          })),
-        );
-        // Reconciliação: registra ids já contabilizados pra evitar
-        // double-count com eventos socket subsequentes.
-        countedCommentIds.current = new Set((cs || []).map((c) => c.id));
-        if (!silent) setLoading(false);
-        return true;
-      }
-      if (!silent) {
-        enhancedToast.error({
-          title: "Discussão não encontrada",
-          description: res.error?.message || "O post pode ter sido removido.",
-          haptic: true,
-        });
-        onBack();
-        setLoading(false);
-      }
-      return false;
-    },
-    [postId, onBack],
-  );
 
   useEffect(() => {
     let active = true;
