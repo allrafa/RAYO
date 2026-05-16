@@ -7,16 +7,21 @@ export interface AppError extends Error {
 
 export function errorHandler(
   err: AppError,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ) {
   const statusCode = err.statusCode || 500;
   const code = err.code || "INTERNAL_ERROR";
+  const where = `${req.method} ${req.originalUrl}`;
 
-  console.error(`[ERROR] ${statusCode} ${code}:`, err.message);
-  if (statusCode === 500) {
+  // 4xx é política/validação (esperado) — log em `warn` numa linha,
+  // sem stack. 5xx é bug real — mantém `error` + stack pra debug.
+  if (statusCode >= 500) {
+    console.error(`[ERROR] ${statusCode} ${code} ${where}:`, err.message);
     console.error(err.stack);
+  } else {
+    console.warn(`[WARN] ${statusCode} ${code} ${where}: ${err.message}`);
   }
 
   res.status(statusCode).json({
@@ -25,7 +30,7 @@ export function errorHandler(
     error: {
       code,
       message:
-        statusCode === 500
+        statusCode >= 500
           ? "An internal error occurred. Please try again later."
           : err.message,
     },

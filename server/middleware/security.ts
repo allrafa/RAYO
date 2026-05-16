@@ -1,6 +1,7 @@
 import helmet from "helmet";
 import cors from "cors";
 import type { Request, Response, NextFunction } from "express";
+import { createError } from "./errorHandler.js";
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -58,7 +59,10 @@ export const corsMiddleware = cors({
       return;
     }
 
-    callback(new Error("Not allowed by CORS"));
+    // Bloqueio é política de cliente — 403 + code estável (não 500).
+    // Mensagem inclui o origin pra ops decidirem rápido se é scanner
+    // externo (ignorar) ou caller legítimo (adicionar à allowlist).
+    callback(createError(`Origin ${origin} is not allowed`, 403, "CORS_NOT_ALLOWED"));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
