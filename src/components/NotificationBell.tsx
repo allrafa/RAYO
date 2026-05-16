@@ -68,7 +68,7 @@ export function NotificationBell({ onTabChange }: NotificationBellProps) {
     setLoading(false);
   }, []);
 
-  // Initial unread fetch + slow fallback poll for when SSE is down.
+  // Initial unread fetch + slow fallback poll for when the socket is down.
   useEffect(() => {
     void refreshCount();
     const interval = window.setInterval(() => {
@@ -79,7 +79,7 @@ export function NotificationBell({ onTabChange }: NotificationBellProps) {
     return () => window.clearInterval(interval);
   }, [refreshCount]);
 
-  // Real-time wiring via the shared SSE channel.
+  // Real-time wiring via the shared Socket.IO `/dm` broadcast.
   useEffect(() => {
     return subscribe((event: MessageStreamEvent) => {
       if (event.type === "notification:new") {

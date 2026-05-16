@@ -99,7 +99,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Task #203 — INVARIANTE DE AUTH:
   // `setUser(null)` SÓ pode ser disparado pelo `logout()` explícito abaixo.
-  // Endpoints de feature (comunidade, SSE, notificações etc) que devolvem
+  // Endpoints de feature (comunidade, notificações etc) que devolvem
   // 401 NÃO podem desmontar a sessão do React — isso causaria flicker /
   // "tela branca" sempre que algum endpoint protegido falhasse durante a
   // hidratação inicial. O boot de sessão (`/api/auth/me`) é o único lugar

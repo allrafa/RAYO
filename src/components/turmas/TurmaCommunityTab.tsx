@@ -86,7 +86,7 @@ export function TurmaCommunityTab({ classId }: { classId: number }) {
       if (Number.isFinite(detail.postId) && detail.postId > 0) {
         setHighlightId(detail.postId);
         // Recarrega a lista para garantir que posts criados depois
-        // do último load() apareçam (ex.: notificação chegou via SSE).
+        // do último load() apareçam (ex.: notificação chegou via Socket.IO).
         void load();
       }
     };

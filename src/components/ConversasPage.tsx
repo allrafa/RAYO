@@ -716,7 +716,7 @@ export function ConversasPage() {
         if (activeIdRef.current !== conversation_id) return;
         setMessages((prev) => prev.map((m) => {
           if (m.id !== message_id) return m;
-          // O payload SSE é compartilhado entre os dois lados — só carrega o
+          // O payload do socket é compartilhado entre os dois lados — só carrega o
           // agregado, não o `user_reaction` per-tab. Reconciliamos local:
           // se o emoji que eu reagi não está mais no agregado (outra aba minha
           // removeu / autor moderou), limpa minha reação. Caso contrário,
@@ -782,10 +782,10 @@ export function ConversasPage() {
     return () => window.clearTimeout(handle);
   }, [userSearchQuery, showNewConvDialog]);
 
-  // Task #222 — typing/listening agora preferem Socket.IO (latência
-  // significativamente menor que POST + SSE round-trip). Se o socket
-  // não estiver conectado ou o servidor não acknowledgear, cai pro
-  // POST tradicional — mantém compat enquanto o transporte estabiliza.
+  // Task #229 — typing/listening trafegam por Socket.IO (latência
+  // bem menor que POST round-trip). Se o socket não estiver conectado
+  // ou o servidor não der ack, cai pro POST tradicional como fallback
+  // defensivo (SOCKET_IO_ENABLED=false etc).
   const sendTypingPing = useCallback((conversationId: number) => {
     const now = Date.now();
     if (now - lastTypingSentAtRef.current < 2000) return;

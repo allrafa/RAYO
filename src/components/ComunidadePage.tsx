@@ -257,7 +257,7 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   // Task #129 — badge de DMs na pílula "Mensagens" + decremento on-view
   // do badge de Comunidade na nav inferior. O endpoint
   // `/api/notifications/read-section/community` marca os kinds de
-  // comunidade/turmas como lidos e dispara `notification:unread` via SSE,
+  // comunidade/turmas como lidos e dispara `notification:unread` via Socket.IO `/dm`,
   // que o `useUnreadBySection` já escuta pra ressincronizar.
   const { count: unreadMessages } = useUnreadMessages();
   const { community: unreadCommunity, refresh: refreshSections } = useUnreadBySection();

@@ -26,10 +26,10 @@ const UnreadBySectionContext = createContext<UnreadBySectionContextValue | null>
 export function UnreadBySectionProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   // `useUnreadMessages` é a fonte ÚNICA de verdade do contador de DMs:
-  // ele já escuta `unread:changed` via SSE e devolve o número
-  // autoritativo. Aqui só mantemos `community` localmente — o badge da
-  // nav usa `messagesFromHook` direto. Evita a race em que um refresh()
-  // antigo respondia e sobrescrevia um valor mais novo do SSE.
+  // ele já escuta `unread:changed` via Socket.IO `/dm` e devolve o
+  // número autoritativo. Aqui só mantemos `community` localmente — o
+  // badge da nav usa `messagesFromHook` direto. Evita a race em que um
+  // refresh() antigo respondia e sobrescrevia um valor mais novo do socket.
   const { subscribe, count: messagesFromHook } = useUnreadMessages();
   const [community, setCommunity] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -57,7 +57,7 @@ export function UnreadBySectionProvider({ children }: { children: ReactNode }) {
     const unsub = subscribe((event: MessageStreamEvent) => {
       if (!mountedRef.current) return;
       if (event.type === "connected") {
-        // Force resync no (re)connect — eventos perdidos enquanto o SSE
+        // Force resync no (re)connect — eventos perdidos enquanto o socket
         // estava caído não são repostos pelo servidor.
         void refresh();
         return;
