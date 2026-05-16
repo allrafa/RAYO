@@ -1,7 +1,7 @@
 import { query } from "../../db/index.js";
 import { AppError } from "../academia/service.js";
 import { trackEvent } from "../analytics/service.js";
-import { publishToUser, getActiveSubscriberCount } from "./events.js";
+import { publishToUser, publishToConversation, getActiveSubscriberCount } from "./events.js";
 import { createNotification } from "../notifications/service.js";
 import { sendNewMessageEmail } from "../../lib/email.js";
 import { logger } from "../../utils/logger.js";
@@ -304,6 +304,49 @@ export async function getOrCreateConversation(
   };
 }
 
+// Task #222 — Gap-fill: cliente pede mensagens com id > cursor depois
+// de reconectar (perdeu evento `message:new` enquanto offline).
+// Idempotente: cliente dedup por message.id. Respeita o corte
+// `cleared_at` igual ao getMessages padrão.
+export async function getMessagesSince(
+  conversationId: number,
+  userId: number,
+  cursor: number,
+  limit: number = 100,
+): Promise<{ messages: MessageItem[]; last_event_id: number }> {
+  await assertConversationMember(conversationId, userId);
+  const { rows: stateRows } = await query<{ cleared_at: string | null }>(
+    `SELECT cleared_at FROM conversation_user_state
+      WHERE conversation_id = $1 AND user_id = $2`,
+    [conversationId, userId],
+  );
+  const clearedAt = stateRows[0]?.cleared_at ?? null;
+  const cappedLimit = Math.max(1, Math.min(limit, 200));
+  const { rows } = await query<MessageRowDb>(
+    `SELECT m.id, m.conversation_id, m.sender_id, u.name AS sender_name,
+            m.kind, m.content, m.attachment_url, m.attachment_meta,
+            m.read_at, m.created_at
+       FROM messages m
+       JOIN users u ON u.id = m.sender_id
+      WHERE m.conversation_id = $1
+        AND m.id > $2
+        AND ($4::timestamp IS NULL OR m.created_at > $4)
+      ORDER BY m.id ASC
+      LIMIT $3`,
+    [conversationId, cursor, cappedLimit, clearedAt],
+  );
+  const ids = rows.map((r) => r.id);
+  const reactionsMap = await aggregateMessageReactions(ids);
+  const userReactionMap = await userMessageReactionsFor(ids, userId);
+  const resolved = await Promise.all(
+    rows.map((r) =>
+      resolveMessageRow(r, reactionsMap.get(r.id) || [], userReactionMap.get(r.id) || null),
+    ),
+  );
+  const lastEventId = resolved.length > 0 ? resolved[resolved.length - 1].id : cursor;
+  return { messages: resolved, last_event_id: lastEventId };
+}
+
 export async function getMessages(
   conversationId: number,
   userId: number,
@@ -475,9 +518,15 @@ export async function sendMessage(
   });
 
   const eventPayload = { conversation_id: conversationId, message };
-  publishToUser(userId, "message:new", eventPayload);
+  // Task #222 — conversation-scoped: socket emite 1x pra sala, SSE
+  // emite por user. Sender também recebe (todas as abas dele).
+  publishToConversation(
+    conversationId,
+    recipientId !== userId ? [userId, recipientId] : [userId],
+    "message:new",
+    eventPayload,
+  );
   if (recipientId !== userId) {
-    publishToUser(recipientId, "message:new", eventPayload);
     void getUnreadConversationCount(recipientId)
       .then((count) => publishToUser(recipientId, "unread:changed", { count }))
       .catch(() => {});
@@ -593,7 +642,7 @@ export async function markConversationRead(conversationId: number, userId: numbe
     if (otherUserId !== userId) {
       const readAt = updated[0]?.read_at ?? new Date().toISOString();
       const messageIds = updated.map((r) => r.id);
-      publishToUser(otherUserId, "message:read", {
+      publishToConversation(conversationId, [userId, otherUserId], "message:read", {
         conversation_id: conversationId,
         reader_id: userId,
         message_ids: messageIds,
@@ -750,8 +799,12 @@ function publishReactionUpdate(
     message_id: messageId,
     reactions,
   };
-  publishToUser(selfId, "message:reaction", payload);
-  if (otherId !== selfId) publishToUser(otherId, "message:reaction", payload);
+  publishToConversation(
+    conversationId,
+    otherId !== selfId ? [selfId, otherId] : [selfId],
+    "message:reaction",
+    payload,
+  );
 }
 
 // POST: aplica/troca/remove (toggle) a reação do usuário na mensagem.

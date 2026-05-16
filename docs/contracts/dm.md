@@ -15,7 +15,17 @@ DM v2 introduziu:
 - Mensagens com `kind` (`text|image|audio`) + `attachment_url` (`objstore://...`) + `attachment_meta` (mime/size/duration).
 - Excluir marca `cleared_at` para esconder histórico anterior do lado de quem excluiu — se a outra pessoa enviar nova mensagem, a conversa reabre só com o que vier depois do corte.
 
-E-mails de notificação (rate-limit 1/h por conversa) só disparam quando o destinatário não tem SSE ativo e está idle há >10min.
+E-mails de notificação (rate-limit 1/h por conversa) só disparam quando o destinatário não tem transporte realtime ativo (SSE ou Socket.IO) e está idle há >10min.
+
+### Transporte realtime (Task #222)
+
+DM migrou de SSE para Socket.IO. O contrato completo (namespace, salas, eventos, gap-fill, kill-switches) vive em [`realtime.md`](./realtime.md). Resumo:
+
+- Server faz **dual-write** em SSE + Socket.IO; cliente lê **um só**, decidido por `DM_REALTIME` (`socket` default em dev, `sse` default em prod).
+- Cliente recebe a flag em `GET /api/auth/me` → `realtime.dm_transport`.
+- Eventos `message:*`, `unread:changed`, `typing`, `listening` vêm pelo transporte ativo.
+- Reconnect → `conversation:sync` → REST `GET /api/messages/conversations/:id/since?cursor=<id>` faz gap-fill.
+- Kill-switches: `SOCKET_IO_ENABLED=false` (desliga server) ou `DM_REALTIME=sse` (cliente lê SSE).
 
 ## Gotchas
 

@@ -66,9 +66,13 @@ interface RegisterOptions {
   interests?: string[];
 }
 
+export type DmTransport = "socket" | "sse";
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  /** Task #222 — transporte de DM escolhido pelo servidor. Default "socket". */
+  dmTransport: DmTransport;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, name: string, options?: RegisterOptions) => Promise<{ success: boolean; error?: string }>;
   sendVerificationCode: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -108,13 +112,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // `src/lib/api.ts` (warn só, sem efeito colateral).
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [dmTransport, setDmTransport] = useState<DmTransport>("socket");
 
   useEffect(() => {
     async function checkSession() {
       try {
-        const res = await api.get<{ user: User }>("/api/auth/me");
+        const res = await api.get<{ user: User; realtime?: { dm_transport?: DmTransport } }>("/api/auth/me");
         if (res.success && res.data) {
           setUser(res.data.user);
+          const t = res.data.realtime?.dm_transport;
+          if (t === "socket" || t === "sse") setDmTransport(t);
           markDeviceAsReturning();
         }
         // Importante: NUNCA chamar setUser(null) aqui — user já é null
@@ -248,7 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, sendVerificationCode, verifyEmailCode, requestPasswordReset, resetPassword, updateProfile, updatePreferences, uploadAvatar, changePassword, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, dmTransport, login, register, sendVerificationCode, verifyEmailCode, requestPasswordReset, resetPassword, updateProfile, updatePreferences, uploadAvatar, changePassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

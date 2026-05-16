@@ -783,7 +783,9 @@ export function ConversasPage() {
     const now = Date.now();
     if (now - lastTypingSentAtRef.current < 3000) return;
     lastTypingSentAtRef.current = now;
-    void emitWithAck("dm:typing", { conversation_id: conversationId }).then((ok) => {
+    // Task #222 — evento renomeado pra `message:typing` no Socket.IO.
+    // Fallback POST permanece com a rota legada `/typing`.
+    void emitWithAck("message:typing", { conversation_id: conversationId }).then((ok) => {
       if (!ok) void api.post(`/api/messages/conversations/${conversationId}/typing`);
     });
   }, []);
@@ -974,6 +976,13 @@ export function ConversasPage() {
       setUserSearchResults([]);
       await loadConversations();
       setActiveId(id);
+      // Task #222 — Conversa nova: a sala `conversation:<id>` ainda
+      // não existe no socket deste cliente (auto-join roda só no
+      // connect). Pede join explícito pro servidor pra que eventos
+      // de typing/listening cheguem nesta conversa imediatamente.
+      // Mensagens (`message:new`) já vão pela `user:<id>` então não
+      // dependem desse join.
+      void emitWithAck("conversation:join", { conversation_id: id });
     } else if (res.error) {
       toast.error(res.error.message);
     }

@@ -95,31 +95,31 @@ interface UnreadMessagesContextValue {
   refresh: () => Promise<void>;
   /** Subscribe to raw stream events. Returns an unsubscribe function. */
   subscribe: (handler: StreamHandler) => () => void;
-  /** True when the realtime SSE channel is currently open. */
+  /** True when the realtime channel (active transport) is currently open. */
   streamConnected: boolean;
 }
 
 const UnreadMessagesContext = createContext<UnreadMessagesContextValue | null>(null);
 
+// Task #222 — Cursor por conversa pra gap-fill após reconectar.
+// Atualizado em todo `message:new` recebido. Quando o servidor manda
+// `conversation:sync`, comparamos `last_event_id` com o que temos e,
+// se houver gap, fazemos GET /api/messages/conversations/:id/since.
+const conversationCursors = new Map<number, number>();
+
+function bumpConversationCursor(conversationId: number, id: number): void {
+  const prev = conversationCursors.get(conversationId) ?? 0;
+  if (id > prev) conversationCursors.set(conversationId, id);
+}
+
 export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, dmTransport } = useAuth();
   const [count, setCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [streamConnected, setStreamConnected] = useState(false);
   const mountedRef = useRef(true);
   const subscribersRef = useRef<Set<StreamHandler>>(new Set());
   const streamConnectedRef = useRef(false);
-  // Task #222 — Rastreamos os dois transportes separadamente para
-  // recomputar `streamConnected = sse || socket`. Sem isso, se o
-  // socket cai e o SSE NÃO estiver vivo, ficaríamos com flag
-  // "conectado" antigo e o fallback poll não dispararia.
-  const sseConnectedRef = useRef(false);
-  const socketConnectedRef = useRef(false);
-  const recomputeConnected = useCallback(() => {
-    const next = sseConnectedRef.current || socketConnectedRef.current;
-    streamConnectedRef.current = next;
-    if (mountedRef.current) setStreamConnected(next);
-  }, []);
 
   const refresh = useCallback(async () => {
     const res = await api.get<UnreadCountResponse>("/api/messages/unread-count");
@@ -138,6 +138,9 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const broadcast = useCallback((event: MessageStreamEvent) => {
+    if (event.type === "message:new") {
+      bumpConversationCursor(event.payload.conversation_id, event.payload.message.id);
+    }
     for (const h of Array.from(subscribersRef.current)) {
       try {
         h(event);
@@ -146,6 +149,28 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
       }
     }
   }, []);
+
+  // Gap-fill: cliente pede mensagens com id > cursor local. Idempotente,
+  // dedup downstream por message.id.
+  const fillGap = useCallback(
+    async (conversationId: number, serverLastId: number) => {
+      const localCursor = conversationCursors.get(conversationId) ?? 0;
+      if (serverLastId <= localCursor) return;
+      try {
+        const res = await api.get<{
+          messages: Array<MessageNewPayload["message"]>;
+          last_event_id: number;
+        }>(`/api/messages/conversations/${conversationId}/since?cursor=${localCursor}`);
+        if (!res.success || !res.data) return;
+        for (const m of res.data.messages) {
+          broadcast({ type: "message:new", payload: { conversation_id: conversationId, message: m } });
+        }
+      } catch {
+        /* gap-fill é best-effort; pode tentar de novo no próximo connect */
+      }
+    },
+    [broadcast],
+  );
 
   useEffect(() => {
     mountedRef.current = true;
@@ -160,11 +185,11 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
     // Initial unread fetch so the badge has a value before the first event arrives.
     void refresh();
 
-    // Task #222 — Compartilhado entre SSE e Socket.IO. Se um já fez o
-    // "force resync" no último ~2s, o outro vira no-op pra evitar duplo
-    // GET /unread-count + duplo refetch nos consumers do `connected`.
+    // Task #222 — Single-transport policy: o servidor decide via
+    // env DM_REALTIME e o cliente respeita. `notification:*` continua
+    // vindo por SSE em ambos os casos — escopo separado (Task #224).
+    const useSocket = dmTransport === "socket";
     let lastConnectedFireAt = 0;
-
     let es: EventSource | null = null;
     try {
       // Same-origin: cookies (session_token) are sent automatically.
@@ -176,86 +201,24 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
     if (es) {
       const handleConnected = () => {
         if (!mountedRef.current) return;
-        sseConnectedRef.current = true;
-        recomputeConnected();
+        if (!useSocket) {
+          streamConnectedRef.current = true;
+          setStreamConnected(true);
+        }
         const now = Date.now();
         if (now - lastConnectedFireAt < 2_000) return;
         lastConnectedFireAt = now;
         // On (re)connect we MUST resync authoritative state, because any
-        // events that fired while the SSE channel was down were lost
-        // (the server does not buffer / replay). Refresh the unread total
-        // here and let subscribers (e.g. ConversasPage) refetch their own
-        // state via the broadcast below. Subscribers should treat 'connected'
-        // as a "force resync" signal — it fires on the first open AND on
-        // every successful reconnect after an EventSource error.
+        // events that fired while the channel was down were lost.
         void refresh();
         broadcast({ type: "connected", payload: {} });
       };
-      const handleMessageNew = (e: MessageEvent) => {
-        if (!mountedRef.current) return;
-        try {
-          const data = JSON.parse(e.data) as MessageNewPayload;
-          broadcast({ type: "message:new", payload: data });
-        } catch {
-          /* ignore malformed payload */
-        }
-      };
-      const handleMessageRead = (e: MessageEvent) => {
-        if (!mountedRef.current) return;
-        try {
-          const data = JSON.parse(e.data) as MessageReadPayload;
-          broadcast({ type: "message:read", payload: data });
-        } catch {
-          /* ignore malformed payload */
-        }
-      };
-      const handleUnreadChanged = (e: MessageEvent) => {
-        if (!mountedRef.current) return;
-        try {
-          const data = JSON.parse(e.data) as UnreadChangedPayload;
-          if (typeof data.count === "number") {
-            setCount(data.count);
-            setLoaded(true);
-          }
-          broadcast({ type: "unread:changed", payload: data });
-        } catch {
-          /* ignore */
-        }
-      };
-      const handleTyping = (e: MessageEvent) => {
-        if (!mountedRef.current) return;
-        try {
-          const data = JSON.parse(e.data) as TypingPayload;
-          broadcast({ type: "typing", payload: data });
-        } catch {
-          /* ignore */
-        }
-      };
-      const handleListening = (e: MessageEvent) => {
-        if (!mountedRef.current) return;
-        try {
-          const data = JSON.parse(e.data) as ListeningPayload;
-          broadcast({ type: "listening", payload: data });
-        } catch {
-          /* ignore */
-        }
-      };
-      const handleMessageReaction = (e: MessageEvent) => {
-        if (!mountedRef.current) return;
-        try {
-          const data = JSON.parse(e.data) as MessageReactionPayload;
-          broadcast({ type: "message:reaction", payload: data });
-        } catch {
-          /* ignore */
-        }
-      };
       const handleError = () => {
-        // EventSource will auto-reconnect with built-in backoff. We just
-        // flip the flag so the fallback poll kicks in until we recover.
-        sseConnectedRef.current = false;
-        recomputeConnected();
+        if (!useSocket) {
+          streamConnectedRef.current = false;
+          setStreamConnected(false);
+        }
       };
-
       const handleNotificationNew = (e: MessageEvent) => {
         if (!mountedRef.current) return;
         try {
@@ -276,67 +239,136 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
       };
 
       es.addEventListener("connected", handleConnected);
-      es.addEventListener("message:new", handleMessageNew);
-      es.addEventListener("message:read", handleMessageRead);
-      es.addEventListener("unread:changed", handleUnreadChanged);
-      es.addEventListener("typing", handleTyping);
-      es.addEventListener("listening", handleListening);
-      es.addEventListener("message:reaction", handleMessageReaction);
+      es.addEventListener("error", handleError);
+      // Notifications são SEMPRE via SSE (não migram nesta task).
       es.addEventListener("notification:new", handleNotificationNew);
       es.addEventListener("notification:unread", handleNotificationUnread);
-      es.addEventListener("error", handleError);
+
+      // DM via SSE só quando dmTransport === "sse".
+      if (!useSocket) {
+        const handleMessageNew = (e: MessageEvent) => {
+          if (!mountedRef.current) return;
+          try {
+            const data = JSON.parse(e.data) as MessageNewPayload;
+            broadcast({ type: "message:new", payload: data });
+          } catch {
+            /* ignore */
+          }
+        };
+        const handleMessageRead = (e: MessageEvent) => {
+          if (!mountedRef.current) return;
+          try {
+            const data = JSON.parse(e.data) as MessageReadPayload;
+            broadcast({ type: "message:read", payload: data });
+          } catch {
+            /* ignore */
+          }
+        };
+        const handleUnreadChanged = (e: MessageEvent) => {
+          if (!mountedRef.current) return;
+          try {
+            const data = JSON.parse(e.data) as UnreadChangedPayload;
+            if (typeof data.count === "number") {
+              setCount(data.count);
+              setLoaded(true);
+            }
+            broadcast({ type: "unread:changed", payload: data });
+          } catch {
+            /* ignore */
+          }
+        };
+        const handleTyping = (e: MessageEvent) => {
+          if (!mountedRef.current) return;
+          try {
+            const data = JSON.parse(e.data) as TypingPayload;
+            broadcast({ type: "typing", payload: data });
+          } catch {
+            /* ignore */
+          }
+        };
+        const handleListening = (e: MessageEvent) => {
+          if (!mountedRef.current) return;
+          try {
+            const data = JSON.parse(e.data) as ListeningPayload;
+            broadcast({ type: "listening", payload: data });
+          } catch {
+            /* ignore */
+          }
+        };
+        const handleMessageReaction = (e: MessageEvent) => {
+          if (!mountedRef.current) return;
+          try {
+            const data = JSON.parse(e.data) as MessageReactionPayload;
+            broadcast({ type: "message:reaction", payload: data });
+          } catch {
+            /* ignore */
+          }
+        };
+
+        es.addEventListener("message:new", handleMessageNew);
+        es.addEventListener("message:read", handleMessageRead);
+        es.addEventListener("unread:changed", handleUnreadChanged);
+        es.addEventListener("typing", handleTyping);
+        es.addEventListener("listening", handleListening);
+        es.addEventListener("message:reaction", handleMessageReaction);
+      }
     }
 
-    // Task #222 — Socket.IO em paralelo ao SSE. Mesmos nomes de evento,
-    // mesmo payload. Dedup acontece downstream: ConversasPage já checa
-    // `prev.some((m) => m.id === message.id)` antes de adicionar. Quando
-    // ambos transportes estão saudáveis, o socket geralmente chega
-    // primeiro (UDP-like) e o SSE vira no-op. Se o socket cair, SSE
-    // mantém a entrega.
-    const socket = getSocket();
-    const onSocketConnect = () => {
-      if (!mountedRef.current) return;
-      socketConnectedRef.current = true;
-      recomputeConnected();
-      const now = Date.now();
-      if (now - lastConnectedFireAt < 2_000) return;
-      lastConnectedFireAt = now;
-      void refresh();
-      broadcast({ type: "connected", payload: {} });
-    };
-    const onSocketDisconnect = () => {
-      socketConnectedRef.current = false;
-      recomputeConnected();
-    };
-    const onSocketMessageNew = (payload: MessageNewPayload) =>
-      broadcast({ type: "message:new", payload });
-    const onSocketMessageRead = (payload: MessageReadPayload) =>
-      broadcast({ type: "message:read", payload });
-    const onSocketUnreadChanged = (payload: UnreadChangedPayload) => {
-      if (typeof payload?.count === "number") {
-        setCount(payload.count);
-        setLoaded(true);
-      }
-      broadcast({ type: "unread:changed", payload });
-    };
-    const onSocketTyping = (payload: TypingPayload) =>
-      broadcast({ type: "typing", payload });
-    const onSocketListening = (payload: ListeningPayload) =>
-      broadcast({ type: "listening", payload });
-    const onSocketReaction = (payload: MessageReactionPayload) =>
-      broadcast({ type: "message:reaction", payload });
+    // Task #222 — Socket.IO só quando dmTransport === "socket". Quando
+    // SSE é o ativo, nem conectamos pra não desperdiçar handshake.
+    let socket: ReturnType<typeof getSocket> | null = null;
+    if (useSocket) {
+      socket = getSocket();
+      const onSocketConnect = () => {
+        if (!mountedRef.current) return;
+        streamConnectedRef.current = true;
+        setStreamConnected(true);
+        const now = Date.now();
+        if (now - lastConnectedFireAt < 2_000) return;
+        lastConnectedFireAt = now;
+        void refresh();
+        broadcast({ type: "connected", payload: {} });
+      };
+      const onSocketDisconnect = () => {
+        streamConnectedRef.current = false;
+        setStreamConnected(false);
+      };
+      const onSocketMessageNew = (payload: MessageNewPayload) =>
+        broadcast({ type: "message:new", payload });
+      const onSocketMessageRead = (payload: MessageReadPayload) =>
+        broadcast({ type: "message:read", payload });
+      const onSocketUnreadChanged = (payload: UnreadChangedPayload) => {
+        if (typeof payload?.count === "number") {
+          setCount(payload.count);
+          setLoaded(true);
+        }
+        broadcast({ type: "unread:changed", payload });
+      };
+      const onSocketTyping = (payload: TypingPayload) =>
+        broadcast({ type: "typing", payload });
+      const onSocketListening = (payload: ListeningPayload) =>
+        broadcast({ type: "listening", payload });
+      const onSocketReaction = (payload: MessageReactionPayload) =>
+        broadcast({ type: "message:reaction", payload });
+      const onConversationSync = (payload: { conversation_id: number; last_event_id: number }) => {
+        if (!mountedRef.current) return;
+        void fillGap(payload.conversation_id, payload.last_event_id);
+      };
 
-    socket.on("connect", onSocketConnect);
-    socket.on("disconnect", onSocketDisconnect);
-    socket.on("message:new", onSocketMessageNew);
-    socket.on("message:read", onSocketMessageRead);
-    socket.on("unread:changed", onSocketUnreadChanged);
-    socket.on("typing", onSocketTyping);
-    socket.on("listening", onSocketListening);
-    socket.on("message:reaction", onSocketReaction);
-    if (socket.connected) onSocketConnect();
+      socket.on("connect", onSocketConnect);
+      socket.on("disconnect", onSocketDisconnect);
+      socket.on("message:new", onSocketMessageNew);
+      socket.on("message:read", onSocketMessageRead);
+      socket.on("unread:changed", onSocketUnreadChanged);
+      // Servidor emite `message:typing` no socket (era `typing` no SSE).
+      socket.on("message:typing", onSocketTyping);
+      socket.on("listening", onSocketListening);
+      socket.on("message:reaction", onSocketReaction);
+      socket.on("conversation:sync", onConversationSync);
+      if (socket.connected) onSocketConnect();
+    }
 
-    // Fallback poll: only fires when the realtime channel is down.
+    // Fallback poll: only fires when the active transport is down.
     const fallbackInterval = window.setInterval(() => {
       if (streamConnectedRef.current) return;
       if (document.visibilityState !== "visible") return;
@@ -355,13 +387,11 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
       window.clearInterval(fallbackInterval);
       document.removeEventListener("visibilitychange", onVisibility);
       if (es) es.close();
-      // Desconecta o socket no logout/desmontagem do provider. Logado
-      // de novo, getSocket() cria nova instância.
-      disconnectSocket();
+      if (socket) disconnectSocket();
       streamConnectedRef.current = false;
       setStreamConnected(false);
     };
-  }, [user, refresh, broadcast]);
+  }, [user, dmTransport, refresh, broadcast, fillGap]);
 
   return createElement(
     UnreadMessagesContext.Provider,

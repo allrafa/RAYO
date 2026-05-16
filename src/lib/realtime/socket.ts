@@ -1,15 +1,17 @@
-// Singleton Socket.IO client (Task #222).
+// Singleton Socket.IO client — DM namespace (Task #222).
 //
-// Same-origin: o browser envia o cookie httpOnly `session_token`
-// automaticamente — não precisamos passar token manualmente.
-// Reconnect/backoff: tudo gerido pelo socket.io-client. A reconexão
-// emite `connect` de novo, então quem usa `subscribe(...)` recebe um
-// evento sintético "connected" pra forçar resync (igual SSE).
+// Conecta no namespace dedicado `/dm` do servidor. Same-origin: o
+// browser envia o cookie httpOnly `session_token` automaticamente.
+// Reconexão é gerida pelo socket.io-client; cada reconnect emite
+// `connect` de novo, e o servidor reentra automaticamente nas salas
+// das conversas do usuário e re-emite `conversation:sync`.
 //
-// Eventos servidor→cliente são os mesmos do SSE legado:
-// `message:new`, `message:read`, `unread:changed`, `message:reaction`,
-// `typing`, `listening`. Quando o usuário desloga, chamamos
-// `disconnectSocket()` pra fechar.
+// Eventos servidor→cliente: message:new, message:read, message:reaction,
+// message:typing, listening, unread:changed, conversation:sync,
+// conversation:updated.
+//
+// Eventos cliente→servidor: message:typing, message:read,
+// dm:listening, conversation:join (ack opcional pra todos).
 
 import { io as ioClient, type Socket } from "socket.io-client";
 
@@ -17,8 +19,7 @@ let socket: Socket | null = null;
 
 export function getSocket(): Socket {
   if (socket) return socket;
-  socket = ioClient({
-    // Same-origin: socket.io-client infere a URL do `window.location`.
+  socket = ioClient("/dm", {
     path: "/socket.io/",
     withCredentials: true,
     // Polling primeiro garante handshake mesmo se proxy bloquear WS

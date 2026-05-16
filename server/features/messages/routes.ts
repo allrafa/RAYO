@@ -8,6 +8,7 @@ import {
   listConversations,
   getOrCreateConversation,
   getMessages,
+  getMessagesSince,
   sendMessage,
   markConversationRead,
   getUnreadConversationCount,
@@ -109,6 +110,33 @@ router.get("/conversations/:id/messages", requireAuth, async (req, res, next) =>
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 50, 100));
     const result = await getMessages(conversationId, req.user!.id, page, limit);
+    success(res, result);
+  } catch (err) {
+    if (err instanceof AppError) {
+      sendError(res, err.message, err.code, err.statusCode);
+      return;
+    }
+    next(err);
+  }
+});
+
+// Task #222 — Gap-fill após reconectar: cliente passa `cursor` (last
+// event id que tem em cache) e recebe tudo com id maior. Idempotente.
+router.get("/conversations/:id/since", requireAuth, async (req, res, next) => {
+  try {
+    const conversationId = parseInt(req.params.id, 10);
+    if (isNaN(conversationId) || conversationId < 1) {
+      sendError(res, "ID de conversa inválido", "INVALID_CONVERSATION_ID", 400);
+      return;
+    }
+    const cursorRaw = req.query.cursor;
+    const cursor = typeof cursorRaw === "string" ? parseInt(cursorRaw, 10) : 0;
+    if (!Number.isFinite(cursor) || cursor < 0) {
+      sendError(res, "Cursor inválido", "INVALID_CURSOR", 400);
+      return;
+    }
+    const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 100, 200));
+    const result = await getMessagesSince(conversationId, req.user!.id, cursor, limit);
     success(res, result);
   } catch (err) {
     if (err instanceof AppError) {

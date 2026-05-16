@@ -233,7 +233,14 @@ router.post("/logout", requireAuth, async (req: Request, res: Response, next: Ne
 });
 
 router.get("/me", requireAuth, async (req: Request, res: Response) => {
-  success(res, { user: req.user });
+  // Task #222 — expõe a flag de transporte de DM pro cliente. Servidor
+  // sempre faz dual-write; o cliente usa esta flag pra escolher se
+  // ouve SSE ou Socket.IO.
+  const { getDmTransport } = await import("../../realtime/io.js");
+  success(res, {
+    user: req.user,
+    realtime: { dm_transport: getDmTransport() },
+  });
 });
 
 // Task #45 — troca de senha do usuário logado.
