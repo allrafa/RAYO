@@ -156,11 +156,30 @@ Cliente em `useUnreadMessages.ts` ouve `notification:new` e `notification:unread
 
 ## Kill-switch
 
-| Variável                    | Efeito                                                  |
-| --------------------------- | ------------------------------------------------------- |
-| `SOCKET_IO_ENABLED=false`   | Desliga Socket.IO no servidor. Cliente nunca conecta e cai em poll lento (60s) + REST. Use só como circuit-breaker absoluto. |
+| Variável                    | Default        | Efeito                                                  |
+| --------------------------- | -------------- | ------------------------------------------------------- |
+| `SOCKET_IO_ENABLED=false`   | `true`         | Desliga Socket.IO no servidor. Cliente nunca conecta e cai em poll lento (60s) + REST. Use só como circuit-breaker absoluto. |
+| `SOCKET_IO_PATH`            | `/socket.io`   | Customiza o `path` do engine.io (mesmo valor servidor↔cliente). Normalizado pra terminar em `/`. Cliente lê `VITE_SOCKET_IO_PATH`. |
 
 > Task #229 removeu `DM_REALTIME` e `COMMUNITY_REALTIME`. Não há mais decisão de transporte por env — Socket.IO é o caminho único.
+
+## Operações (Task #230)
+
+- **`attachAdapter(io)`** em `server/realtime/io.ts` é um ponto de extensão no-op chamado logo após `new IOServer(...)` e antes dos namespaces. Quando precisarmos rodar múltiplas instâncias (Redis adapter), basta plugar aqui sem mexer no resto.
+- **Smoke endpoint admin-only**: `GET /api/admin/realtime/ping` retorna
+  ```json
+  {
+    "ok": true,
+    "enabled": true,
+    "path": "/socket.io/",
+    "uptime_seconds": 1234,
+    "namespace_dm_sockets": 0,
+    "namespace_community_sockets": 0,
+    "namespaces": { "/dm": 0, "/community": 0 }
+  }
+  ```
+  Schema é estável mesmo se `SOCKET_IO_ENABLED=false` (counts viram 0, `uptime_seconds` reflete o processo). Útil pra ops verificarem o transporte sem abrir um WS na mão.
+- **Logs do gate de e-mail offline**: cada decisão de `notifyRecipient` (DM) loga `dm_email_gate user_id=… conversation_id=… online=… [offline_min=…] decision=send|skip reason=…` em `Messages`. Reasons: `online`, `user_not_found`, `below_threshold`, `cooldown`, ou `send` (sem reason).
 
 ## Gotchas
 

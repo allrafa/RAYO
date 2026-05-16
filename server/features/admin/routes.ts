@@ -46,18 +46,22 @@ function parseStatus(value: unknown): "all" | "visible" | "hidden" | null {
 router.get("/realtime/ping", requireRole("admin"), (_req, res) => {
   const io = getIO();
   const enabled = isSocketEnabled();
-  // Schema estável: `namespaces` sempre tem as duas chaves conhecidas
-  // (`/dm` e `/community`), com count 0 quando o IO está desligado.
-  // Mantém a lista explícita pra não depender de `_nsps` (internal).
-  const namespaces: Record<string, number> = {
-    "/dm": io ? io.of("/dm").sockets.size : 0,
-    "/community": io ? io.of("/community").sockets.size : 0,
-  };
+  // Schema estável: chaves flat por namespace + uptime, sempre presentes
+  // (count 0 e uptime do processo mesmo quando IO desligado). Mantém também
+  // o objeto `namespaces` agregado pra consumidores que preferem map.
+  const dmSockets = io ? io.of("/dm").sockets.size : 0;
+  const communitySockets = io ? io.of("/community").sockets.size : 0;
   success(res, {
     ok: true,
     enabled,
     path: SOCKET_IO_PATH,
-    namespaces,
+    uptime_seconds: Math.floor(process.uptime()),
+    namespace_dm_sockets: dmSockets,
+    namespace_community_sockets: communitySockets,
+    namespaces: {
+      "/dm": dmSockets,
+      "/community": communitySockets,
+    },
   });
 });
 

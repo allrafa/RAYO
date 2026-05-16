@@ -580,8 +580,16 @@ async function notifyRecipient(args: NotifyRecipientArgs): Promise<void> {
     payload: { conversation_id: conversationId, message_id: messageId, sender_name: senderName },
   });
 
-  // Task #229 — Recipient online em qualquer socket /dm = não manda e-mail.
-  if (isUserOnline(recipientId)) return;
+  // Task #229/#230 — Gate de e-mail offline. Cada branch loga a decisão
+  // (`decision=send|skip` + reason) pra ops conseguirem auditar via logs
+  // por que um e-mail saiu ou não, sem precisar adivinhar.
+  if (isUserOnline(recipientId)) {
+    logger.info(
+      "Messages",
+      `dm_email_gate user_id=${recipientId} conversation_id=${conversationId} online=true decision=skip reason=online`,
+    );
+    return;
+  }
   const { rows } = await query<{ email: string; name: string; offline_min: string | null }>(
     `SELECT email, name,
             EXTRACT(EPOCH FROM (NOW() - COALESCE(last_active_at, created_at)))::numeric / 60 AS offline_min
@@ -589,9 +597,21 @@ async function notifyRecipient(args: NotifyRecipientArgs): Promise<void> {
     [recipientId],
   );
   const row = rows[0];
-  if (!row) return;
+  if (!row) {
+    logger.info(
+      "Messages",
+      `dm_email_gate user_id=${recipientId} conversation_id=${conversationId} online=false decision=skip reason=user_not_found`,
+    );
+    return;
+  }
   const offlineMin = row.offline_min == null ? Number.POSITIVE_INFINITY : parseFloat(row.offline_min);
-  if (offlineMin < OFFLINE_THRESHOLD_MIN) return;
+  if (offlineMin < OFFLINE_THRESHOLD_MIN) {
+    logger.info(
+      "Messages",
+      `dm_email_gate user_id=${recipientId} conversation_id=${conversationId} online=false offline_min=${offlineMin.toFixed(1)} decision=skip reason=below_threshold`,
+    );
+    return;
+  }
 
   const { rowCount } = await query(
     `INSERT INTO dm_email_sent (conversation_id, recipient_id, last_sent_at)
@@ -602,12 +622,18 @@ async function notifyRecipient(args: NotifyRecipientArgs): Promise<void> {
     [conversationId, recipientId],
   );
   if (!rowCount) {
-    logger.info("Messages", `email cooldown active for conversation ${conversationId}; skip email`);
+    logger.info(
+      "Messages",
+      `dm_email_gate user_id=${recipientId} conversation_id=${conversationId} online=false offline_min=${offlineMin.toFixed(1)} decision=skip reason=cooldown`,
+    );
     return;
   }
 
   const conversationLink = `${APP_URL.replace(/\/+$/, "")}${link}`;
-  logger.info("Messages", `queued email notification for offline recipient ${recipientId} (conv ${conversationId})`);
+  logger.info(
+    "Messages",
+    `dm_email_gate user_id=${recipientId} conversation_id=${conversationId} online=false offline_min=${offlineMin.toFixed(1)} decision=send`,
+  );
   void sendNewMessageEmail(row.email, row.name, senderName, preview, conversationLink).catch(() => {});
 }
 
