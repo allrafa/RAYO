@@ -5,7 +5,7 @@
 // `onBack` (controlado pela ComunidadePage) chama `history.back()` ou
 // faz fallback pra Home quando é deep-link puro.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Loader2, MessageCircle, Send, Share2 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -200,27 +200,38 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
       },
     );
 
+    // Gap-fill ao reconectar — durante a queda, eventos `comment:new`,
+    // `comment:reaction` e `comment:updated` podem ter sido perdidos.
+    // Reconciliamos com um refetch silencioso de /posts/:id (que já
+    // traz comentários atualizados + estado do post). `countedCommentIds`
+    // é resetado dentro de loadDiscussion pra manter o contador honesto.
+    const offReconnect = community.onReconnect(() => {
+      void loadDiscussion(true);
+    });
+
     return () => {
       offNew();
       offCommentUpdated();
       offCommentReaction();
       offPostReaction();
       offPostUpdated();
+      offReconnect();
       // Sai da sala antiga ao trocar de post (ou desmontar). Idempotente
       // — o hook também limpa salas pendentes no unmount, mas chamar
       // aqui evita ficar inscrito em salas órfãs durante a sessão.
       community.leavePost(currentPostId);
     };
-  }, [realtimeEnabled, post?.id, community, onBack]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [realtimeEnabled, post?.id, community, onBack, loadDiscussion]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    void (async () => {
+  // Carrega post + comentários do servidor (idempotente). Reusado pelo
+  // boot inicial e pelo gap-fill em reconnect — `silent=true` evita
+  // mostrar spinner durante reconciliação após disconnect.
+  const loadDiscussion = useCallback(
+    async (silent = false): Promise<boolean> => {
+      if (!silent) setLoading(true);
       const res = await api.get<{ post: PostDetailData & { comments: CommentRow[] } }>(
         `/api/community/posts/${postId}`,
       );
-      if (!active) return;
       if (res.success && res.data) {
         const { comments: cs, ...rest } = res.data.post;
         setPost({
@@ -235,18 +246,33 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
             user_reaction: c.user_reaction ?? null,
           })),
         );
-      } else {
+        // Reconciliação: registra ids já contabilizados pra evitar
+        // double-count com eventos socket subsequentes.
+        countedCommentIds.current = new Set((cs || []).map((c) => c.id));
+        if (!silent) setLoading(false);
+        return true;
+      }
+      if (!silent) {
         enhancedToast.error({
           title: "Discussão não encontrada",
           description: res.error?.message || "O post pode ter sido removido.",
           haptic: true,
         });
         onBack();
+        setLoading(false);
       }
-      setLoading(false);
-    })();
+      return false;
+    },
+    [postId, onBack],
+  );
+
+  useEffect(() => {
+    let active = true;
+    void loadDiscussion().then(() => {
+      if (!active) return;
+    });
     return () => { active = false; };
-  }, [postId, onBack]);
+  }, [loadDiscussion]);
 
   const handleBack = () => {
     if (composer.trim().length > 0) {

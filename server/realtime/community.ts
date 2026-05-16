@@ -160,18 +160,27 @@ export function attachCommunityNamespace(io: IOServer): void {
       ack?.(true);
     });
 
-    // post:view — idempotente por (socket, post). Sem persistência hoje,
-    // mas contrato fica firme pra quando view_count entrar no schema.
+    // post:view — incrementa `posts.view_count` (coluna já existe no
+    // schema). Idempotente por (socket, post) — primeira chamada por
+    // socket gera UPDATE; chamadas subsequentes são no-op silencioso.
+    // Throttled via bucket `view` (60/min/user) como guarda extra
+    // contra clientes maliciosos abrindo+fechando sockets em loop.
     const seenViews = new Set<number>();
     socket.on(
       "post:view",
-      (payload: { post_id?: number }, ack?: (ok: boolean) => void) => {
+      async (payload: { post_id?: number }, ack?: (ok: boolean) => void) => {
         try {
           const postId = Number(payload?.post_id);
           if (!Number.isFinite(postId) || postId < 1) return ack?.(false);
           if (seenViews.has(postId)) return ack?.(true); // idempotente por socket
           if (!takeToken(userId, "view")) return ack?.(false);
           seenViews.add(postId);
+          const { query } = await import("../db/index.js");
+          await query(
+            `UPDATE posts SET view_count = COALESCE(view_count, 0) + 1
+              WHERE id = $1 AND is_hidden = FALSE`,
+            [postId],
+          );
           ack?.(true);
         } catch {
           ack?.(false);

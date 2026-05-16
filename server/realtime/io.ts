@@ -35,6 +35,7 @@ import { Server as IOServer } from "socket.io";
 import cookie from "cookie";
 import { validateSession } from "../features/auth/service.js";
 import { logger } from "../utils/logger.js";
+import { attachCommunityNamespace } from "./community.js";
 
 type AuthedSocket = Socket & { data: { userId: number; conversationIds: Set<number> } };
 
@@ -106,13 +107,12 @@ export function initRealtime(httpServer: HttpServer): IOServer | null {
 
   dmNs = io.of("/dm");
 
-  // Task #223 — anexa o namespace de Comunidade no mesmo http.Server.
-  // Compartilha kill-switch (SOCKET_IO_ENABLED) e cookie de sessão.
-  void import("./community.js").then(({ attachCommunityNamespace }) => {
-    attachCommunityNamespace(io!);
-  }).catch((err) => {
-    logger.warn("Realtime", `community namespace attach failed: ${(err as Error).message}`);
-  });
+  // Task #223 — anexa o namespace de Comunidade no mesmo http.Server,
+  // SINCRONAMENTE. Era async via `import().then(...)` mas isso criava
+  // janela onde `getCommunityTransport()` retornava "sse" pra clientes
+  // que faziam handshake / `GET /me` no exato boot. Como o módulo já
+  // está carregado estaticamente no topo, attach é determinístico.
+  attachCommunityNamespace(io);
 
   // Auth middleware: valida cookie `session_token`. Sem sessão → reject.
   dmNs.use(async (socket, next) => {
