@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -125,6 +125,15 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
   const community = useCommunitySocket(realtimeEnabled);
   const [forum, setForum] = useState<ForumDetail | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
+  // Ref espelhando o maior `post.id` visto até agora — usado no
+  // gap-fill de reconnect. Closure do `onReconnect` capturaria o
+  // `posts` do render em que o effect foi montado (tipicamente vazio),
+  // então mantemos esta ref como fonte canônica do cursor.
+  const latestPostIdRef = useRef<number>(0);
+  useEffect(() => {
+    const max = posts.reduce((m, p) => (p.id > m ? p.id : m), 0);
+    if (max > latestPostIdRef.current) latestPostIdRef.current = max;
+  }, [posts]);
   const [postsOrder, setPostsOrder] = useState<PostOrder>("recent");
   const [postsLoading, setPostsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -286,7 +295,7 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
     // durante a queda. A rota /since devolve posts não-turma com id
     // maior que o último que temos.
     const offReconnect = community.onReconnect(() => {
-      const lastId = posts.reduce((max, p) => (p.id > max ? p.id : max), 0);
+      const lastId = latestPostIdRef.current;
       void api
         .get<{ posts: Array<PostNewEvent & { like_count?: number; comment_count?: number }> }>(
           `/api/community/forums/${slugSnap}/since?cursor=${lastId}`,
