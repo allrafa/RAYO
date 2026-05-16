@@ -112,20 +112,31 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
     if (!realtimeEnabled || !post) return;
     const currentPostId = post.id;
     community.joinPost(currentPostId);
+    // Sinaliza view (idempotente por sessão de socket).
+    community.reportView(currentPostId);
 
     const offNew = community.on("comment:new", (payload: CommentNewEvent) => {
       if (payload.post_id !== currentPostId) return;
       setComments((prev) => {
         if (prev.some((c) => c.id === payload.id)) return prev; // dedup
-        return [
-          ...prev,
-          {
-            ...(payload as unknown as CommentRow),
-            reactions: Array.isArray(payload.reactions) ? payload.reactions : [],
-            user_liked: false,
-            user_reaction: null,
-          },
-        ];
+        // Constrói o CommentRow explicitamente — evita cast pra silenciar
+        // mismatch de shape. `parent_content` não vem no fan-out porque
+        // depende de JOIN no servidor; UI tolera ausência (replies já
+        // mostram o nome do autor pai).
+        const row: CommentRow = {
+          id: payload.id,
+          parent_id: payload.parent_id,
+          content: payload.content,
+          author_id: payload.author_id,
+          author_name: payload.author_name,
+          author_avatar: payload.author_avatar,
+          created_at: payload.created_at,
+          like_count: payload.like_count,
+          reactions: Array.isArray(payload.reactions) ? payload.reactions : [],
+          user_liked: false,
+          user_reaction: null,
+        };
+        return [...prev, row];
       });
       // Conta o comentário só na primeira vez que o vemos —
       // evita double-count quando POST local + echo via socket

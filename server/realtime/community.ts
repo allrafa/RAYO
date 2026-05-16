@@ -18,7 +18,15 @@
 // Eventos cliente→servidor:
 //   - `forum:join` / `forum:leave`  — gate por forum existir + active.
 //   - `post:join`  / `post:leave`   — gate por post existir + não hidden.
+//   - `post:view`                    — idempotente por (socket, post),
+//     throttled. Sem persistência nesta iteração (view_count não vive
+//     em schema), mas mantém contrato pro futuro view-count.
 //   - `comment:typing`               — broadcast na sala do post.
+//
+// Eventos servidor→sala (presence):
+//   - `post:presence` — total de viewers únicos na sala `post:<id>`,
+//     re-emitido após join/leave/disconnect, throttled a 1 emit/3s
+//     por post pra evitar avalanche.
 //
 // Kill-switch: `COMMUNITY_REALTIME=sse` força o cliente a ignorar este
 // transporte (servidor segue emitindo, é só switch de leitura).
@@ -131,6 +139,8 @@ export function attachCommunityNamespace(io: IOServer): void {
           if (!access) return ack?.(false);
           authed.data.postIds.add(postId);
           await socket.join(`post:${postId}`);
+          trackPresence(postId, userId, 1);
+          schedulePresenceEmit(postId);
           ack?.(true);
         } catch {
           ack?.(false);
@@ -141,9 +151,41 @@ export function attachCommunityNamespace(io: IOServer): void {
     socket.on("post:leave", async (payload: { post_id?: number }, ack?: (ok: boolean) => void) => {
       const postId = Number(payload?.post_id);
       if (!Number.isFinite(postId)) return ack?.(false);
-      authed.data.postIds.delete(postId);
+      if (authed.data.postIds.has(postId)) {
+        authed.data.postIds.delete(postId);
+        trackPresence(postId, userId, -1);
+        schedulePresenceEmit(postId);
+      }
       await socket.leave(`post:${postId}`);
       ack?.(true);
+    });
+
+    // post:view — idempotente por (socket, post). Sem persistência hoje,
+    // mas contrato fica firme pra quando view_count entrar no schema.
+    const seenViews = new Set<number>();
+    socket.on(
+      "post:view",
+      (payload: { post_id?: number }, ack?: (ok: boolean) => void) => {
+        try {
+          const postId = Number(payload?.post_id);
+          if (!Number.isFinite(postId) || postId < 1) return ack?.(false);
+          if (seenViews.has(postId)) return ack?.(true); // idempotente por socket
+          if (!takeToken(userId, "view")) return ack?.(false);
+          seenViews.add(postId);
+          ack?.(true);
+        } catch {
+          ack?.(false);
+        }
+      },
+    );
+
+    socket.on("disconnect", () => {
+      // Limpa contadores de presence pra cada post em que estava.
+      authed.data.postIds.forEach((postId) => {
+        trackPresence(postId, userId, -1);
+        schedulePresenceEmit(postId);
+      });
+      authed.data.postIds.clear();
     });
 
     socket.on(
@@ -235,9 +277,10 @@ const RATE_WINDOW_MS = 60_000;
 const RATE_MAX: Record<string, number> = {
   join: 60,
   typing: 120,
+  view: 60,
 };
 const buckets = new Map<string, { count: number; resetAt: number }>();
-function takeToken(userId: number, kind: "join" | "typing"): boolean {
+function takeToken(userId: number, kind: "join" | "typing" | "view"): boolean {
   const key = `${userId}:${kind}`;
   const now = Date.now();
   const max = RATE_MAX[kind] ?? 60;
@@ -249,4 +292,47 @@ function takeToken(userId: number, kind: "join" | "typing"): boolean {
   if (bucket.count >= max) return false;
   bucket.count++;
   return true;
+}
+
+// ─────────── Presence ───────────
+// Conta viewers únicos por post. Multi-tab/abas do mesmo user contam
+// 1 enquanto pelo menos uma estiver conectada (refcount por sessão).
+// Emit é throttled a 1/3s por post — evita avalanche em posts populares.
+const PRESENCE_THROTTLE_MS = 3_000;
+const presenceCounts = new Map<number, Map<number, number>>(); // post → user → refcount
+const presenceTimers = new Map<number, NodeJS.Timeout>();
+const presencePending = new Set<number>();
+
+function trackPresence(postId: number, userId: number, delta: 1 | -1): void {
+  let users = presenceCounts.get(postId);
+  if (!users) {
+    if (delta < 0) return;
+    users = new Map();
+    presenceCounts.set(postId, users);
+  }
+  const next = (users.get(userId) ?? 0) + delta;
+  if (next <= 0) {
+    users.delete(userId);
+    if (users.size === 0) presenceCounts.delete(postId);
+  } else {
+    users.set(userId, next);
+  }
+}
+
+function schedulePresenceEmit(postId: number): void {
+  if (presenceTimers.has(postId)) {
+    presencePending.add(postId);
+    return;
+  }
+  emitPresenceNow(postId);
+  const timer = setTimeout(() => {
+    presenceTimers.delete(postId);
+    if (presencePending.delete(postId)) emitPresenceNow(postId);
+  }, PRESENCE_THROTTLE_MS);
+  presenceTimers.set(postId, timer);
+}
+
+function emitPresenceNow(postId: number): void {
+  const count = presenceCounts.get(postId)?.size ?? 0;
+  emitToPostRoom(postId, "post:presence", { post_id: postId, viewers: count });
 }

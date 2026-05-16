@@ -157,7 +157,14 @@ Todos aceitam ack opcional `(ok: boolean) => void` (`emitCommunityWithAck`).
 | `forum:leave`      | `{ slug }`           | sai da sala (sem checagem).                                                   |
 | `post:join`        | `{ post_id }`        | post existe + não `hidden` + (se `class_id`, role `moderator+` OU matriculado + trail gate `userHasActiveTrailAccess`). |
 | `post:leave`       | `{ post_id }`        | sai da sala.                                                                  |
+| `post:view`        | `{ post_id }`        | idempotente por (socket, post); rate-limit `view` 60/min. Sem persistência hoje (view_count não vive em schema), mas contrato firme pro futuro. |
 | `comment:typing`   | `{ post_id }`        | socket precisa estar na sala `post:<id>`; fan-out broadcast pra mesma sala.   |
+
+Eventos servidor→sala (presence):
+
+| Evento           | Payload                          | Quando |
+| ---------------- | -------------------------------- | ------ |
+| `post:presence`  | `{ post_id, viewers }`           | re-emitido após join/leave/disconnect, throttled a 1 emit/3s por post. Counta viewers únicos (multi-tab = 1 por user). |
 
 ### Fan-out — onde mora
 
@@ -223,6 +230,7 @@ discussão se o post for removido).
 
 - `forum:join` / `post:join`: 60/min por usuário.
 - `comment:typing`: 120/min por usuário.
+- `post:view`: 60/min por usuário (e idempotente por (socket, post)).
 
 ### Reconnect — gap-fill via `/since`
 

@@ -15,7 +15,7 @@
 // callback registrado por `onReconnect` (usado pelo cliente pra
 // chamar a rota REST `/since` e reconciliar posts perdidos).
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { getCommunitySocket, emitCommunityWithAck } from "../realtime/communitySocket";
 
 // Payloads tipados — espelham `server/features/community/realtime.ts`.
@@ -84,10 +84,16 @@ export interface CommentTypingEvent {
   user_id: number;
 }
 
+export interface PostPresenceEvent {
+  post_id: number;
+  viewers: number;
+}
+
 export type CommunityEventMap = {
   "post:new": PostNewEvent;
   "post:updated": PostUpdatedEvent;
   "post:reaction": PostReactionEvent;
+  "post:presence": PostPresenceEvent;
   "comment:new": CommentNewEvent;
   "comment:updated": CommentUpdatedEvent;
   "comment:reaction": CommentReactionEvent;
@@ -112,6 +118,8 @@ export interface UseCommunitySocket {
   onReconnect: (cb: () => void) => () => void;
   /** Emite "está digitando comentário" — broadcast na sala do post. */
   emitCommentTyping: (postId: number) => void;
+  /** Sinaliza visualização do post (idempotente por sessão de socket, throttled). */
+  reportView: (postId: number) => void;
 }
 
 const NOOP: UseCommunitySocket = {
@@ -122,6 +130,7 @@ const NOOP: UseCommunitySocket = {
   on: () => () => {},
   onReconnect: () => () => {},
   emitCommentTyping: () => {},
+  reportView: () => {},
 };
 
 export function useCommunitySocket(enabled: boolean): UseCommunitySocket {
@@ -176,54 +185,65 @@ export function useCommunitySocket(enabled: boolean): UseCommunitySocket {
     };
   }, [enabled]);
 
-  if (!enabled) return NOOP;
+  // CRÍTICO — identidade estável do objeto retornado. Sem `useMemo`,
+  // cada render produz um novo objeto, fazendo effects que dependem
+  // de `community` re-executarem e thrashar leave/join (passando do
+  // rate limit no servidor e perdendo eventos).
+  const api = useMemo<UseCommunitySocket>(() => {
+    if (!enabled) return NOOP;
+    return {
+      joinForum: (slug: string) => {
+        const norm = slug.trim().toLowerCase();
+        if (!norm || forumsRef.current.has(norm)) return;
+        forumsRef.current.add(norm);
+        void emitCommunityWithAck("forum:join", { slug: norm });
+      },
+      leaveForum: (slug: string) => {
+        const norm = slug.trim().toLowerCase();
+        if (!norm || !forumsRef.current.has(norm)) return;
+        forumsRef.current.delete(norm);
+        void emitCommunityWithAck("forum:leave", { slug: norm });
+      },
+      joinPost: (postId: number) => {
+        if (!Number.isFinite(postId) || postsRef.current.has(postId)) return;
+        postsRef.current.add(postId);
+        void emitCommunityWithAck("post:join", { post_id: postId });
+      },
+      leavePost: (postId: number) => {
+        if (!Number.isFinite(postId) || !postsRef.current.has(postId)) return;
+        postsRef.current.delete(postId);
+        void emitCommunityWithAck("post:leave", { post_id: postId });
+      },
+      on: <E extends keyof CommunityEventMap>(event: E, handler: EventHandler<E>) => {
+        const s = getCommunitySocket();
+        const wrapped = handler as unknown as AnyHandler;
+        s.on(event, wrapped);
+        let set = handlersRef.current.get(event);
+        if (!set) {
+          set = new Set();
+          handlersRef.current.set(event, set);
+        }
+        set.add(wrapped);
+        return () => {
+          s.off(event, wrapped);
+          handlersRef.current.get(event)?.delete(wrapped);
+        };
+      },
+      onReconnect: (cb: () => void) => {
+        reconnectCbsRef.current.add(cb);
+        return () => {
+          reconnectCbsRef.current.delete(cb);
+        };
+      },
+      emitCommentTyping: (postId: number) => {
+        void emitCommunityWithAck("comment:typing", { post_id: postId });
+      },
+      reportView: (postId: number) => {
+        if (!Number.isFinite(postId)) return;
+        void emitCommunityWithAck("post:view", { post_id: postId });
+      },
+    };
+  }, [enabled]);
 
-  return {
-    joinForum: (slug: string) => {
-      const norm = slug.trim().toLowerCase();
-      if (!norm || forumsRef.current.has(norm)) return;
-      forumsRef.current.add(norm);
-      void emitCommunityWithAck("forum:join", { slug: norm });
-    },
-    leaveForum: (slug: string) => {
-      const norm = slug.trim().toLowerCase();
-      if (!norm || !forumsRef.current.has(norm)) return;
-      forumsRef.current.delete(norm);
-      void emitCommunityWithAck("forum:leave", { slug: norm });
-    },
-    joinPost: (postId: number) => {
-      if (!Number.isFinite(postId) || postsRef.current.has(postId)) return;
-      postsRef.current.add(postId);
-      void emitCommunityWithAck("post:join", { post_id: postId });
-    },
-    leavePost: (postId: number) => {
-      if (!Number.isFinite(postId) || !postsRef.current.has(postId)) return;
-      postsRef.current.delete(postId);
-      void emitCommunityWithAck("post:leave", { post_id: postId });
-    },
-    on: <E extends keyof CommunityEventMap>(event: E, handler: EventHandler<E>) => {
-      const s = getCommunitySocket();
-      const wrapped = handler as unknown as AnyHandler;
-      s.on(event, wrapped);
-      let set = handlersRef.current.get(event);
-      if (!set) {
-        set = new Set();
-        handlersRef.current.set(event, set);
-      }
-      set.add(wrapped);
-      return () => {
-        s.off(event, wrapped);
-        handlersRef.current.get(event)?.delete(wrapped);
-      };
-    },
-    onReconnect: (cb: () => void) => {
-      reconnectCbsRef.current.add(cb);
-      return () => {
-        reconnectCbsRef.current.delete(cb);
-      };
-    },
-    emitCommentTyping: (postId: number) => {
-      void emitCommunityWithAck("comment:typing", { post_id: postId });
-    },
-  };
+  return api;
 }
