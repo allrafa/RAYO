@@ -18,8 +18,6 @@
 // Eventos cliente→servidor:
 //   - `forum:join` / `forum:leave`  — gate por forum existir + active.
 //   - `post:join`  / `post:leave`   — gate por post existir + não hidden.
-//   - `post:view`                    — throttled, sem persistência (place-
-//     holder pra view-count em features futuras).
 //   - `comment:typing`               — broadcast na sala do post.
 //
 // Kill-switch: `COMMUNITY_REALTIME=sse` força o cliente a ignorar este
@@ -148,24 +146,6 @@ export function attachCommunityNamespace(io: IOServer): void {
       ack?.(true);
     });
 
-    // post:view — sem persistência nesta iteração (view_count não vive
-    // em schema). Throttled por (user, post) e idempotente por sessão:
-    // não emite nada, só serve de placeholder pra feature de view-count
-    // futura. Retornar ack=true mantém o contrato.
-    const seenViews = new Set<number>();
-    socket.on("post:view", (payload: { post_id?: number }, ack?: (ok: boolean) => void) => {
-      try {
-        const postId = Number(payload?.post_id);
-        if (!Number.isFinite(postId) || postId < 1) return ack?.(false);
-        if (seenViews.has(postId)) return ack?.(true); // idempotente por socket
-        if (!takeToken(userId, "view")) return ack?.(false);
-        seenViews.add(postId);
-        ack?.(true);
-      } catch {
-        ack?.(false);
-      }
-    });
-
     socket.on(
       "comment:typing",
       (payload: { post_id?: number }, ack?: (ok: boolean) => void) => {
@@ -255,10 +235,9 @@ const RATE_WINDOW_MS = 60_000;
 const RATE_MAX: Record<string, number> = {
   join: 60,
   typing: 120,
-  view: 60,
 };
 const buckets = new Map<string, { count: number; resetAt: number }>();
-function takeToken(userId: number, kind: "join" | "typing" | "view"): boolean {
+function takeToken(userId: number, kind: "join" | "typing"): boolean {
   const key = `${userId}:${kind}`;
   const now = Date.now();
   const max = RATE_MAX[kind] ?? 60;

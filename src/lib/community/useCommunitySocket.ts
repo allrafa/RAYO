@@ -1,7 +1,8 @@
 // Hook genérico de subscrição ao Socket.IO da Comunidade (Task #223).
 //
 // API mínima:
-//   const { joinForum, joinPost, on } = useCommunitySocket(enabled);
+//   const { joinForum, leaveForum, joinPost, leavePost, on, onReconnect,
+//           emitCommentTyping } = useCommunitySocket(enabled);
 //
 // `enabled` é o gate de transporte (`communityTransport === "socket"`).
 // Quando `false`, o hook não monta listeners nem entra em salas. O
@@ -10,60 +11,155 @@
 //
 // O hook lida com reconnect automaticamente: ao receber `connect` do
 // socket, re-entra nas salas que o componente declarou via `joinForum`
-// / `joinPost` (mantemos refs do conjunto ativo).
+// / `joinPost` (mantemos refs do conjunto ativo), e dispara qualquer
+// callback registrado por `onReconnect` (usado pelo cliente pra
+// chamar a rota REST `/since` e reconciliar posts perdidos).
 
 import { useEffect, useRef } from "react";
 import { getCommunitySocket, emitCommunityWithAck } from "../realtime/communitySocket";
 
-type EventHandler = (payload: any) => void;
+// Payloads tipados — espelham `server/features/community/realtime.ts`.
+export interface PostNewEvent {
+  id: number;
+  forum_id: number;
+  forum_slug: string;
+  forum_name?: string;
+  author_id: number;
+  author_name: string;
+  title: string | null;
+  content: string;
+  created_at: string;
+  class_id: number | null;
+}
+
+export interface PostUpdatedEvent {
+  post_id: number;
+  forum_slug: string;
+  updated_at?: string;
+  content?: string;
+  title?: string | null;
+  category?: string | null;
+  images?: unknown;
+  is_hidden?: boolean;
+  deleted?: boolean;
+  comment_count?: number;
+}
+
+export interface PostReactionEvent {
+  post_id: number;
+  forum_slug: string;
+  user_id: number;
+  reactions: Array<{ emoji: string; count: number }>;
+  like_count: number;
+}
+
+export interface CommentNewEvent {
+  id: number;
+  post_id: number;
+  parent_id: number | null;
+  content: string;
+  author_id: number;
+  author_name: string;
+  author_avatar: string | null;
+  created_at: string;
+  like_count: number;
+  reactions?: Array<{ emoji: string; count: number }>;
+}
+
+export interface CommentUpdatedEvent {
+  comment_id: number;
+  post_id: number;
+  is_hidden?: boolean;
+}
+
+export interface CommentReactionEvent {
+  comment_id: number;
+  post_id: number;
+  user_id: number;
+  reactions: Array<{ emoji: string; count: number }>;
+}
+
+export interface CommentTypingEvent {
+  post_id: number;
+  user_id: number;
+}
+
+export type CommunityEventMap = {
+  "post:new": PostNewEvent;
+  "post:updated": PostUpdatedEvent;
+  "post:reaction": PostReactionEvent;
+  "comment:new": CommentNewEvent;
+  "comment:updated": CommentUpdatedEvent;
+  "comment:reaction": CommentReactionEvent;
+  "comment:typing": CommentTypingEvent;
+};
+
+type EventHandler<E extends keyof CommunityEventMap> = (payload: CommunityEventMap[E]) => void;
+type AnyHandler = (payload: unknown) => void;
 
 export interface UseCommunitySocket {
-  /** Entra na sala de um fórum (idempotente). Sai automaticamente ao desmontar. */
+  /** Entra na sala de um fórum (idempotente). Use `leaveForum` ao desmontar/trocar. */
   joinForum: (slug: string) => void;
-  /** Entra na sala de um post (idempotente). Sai automaticamente ao desmontar. */
+  /** Sai da sala do fórum. Idempotente. */
+  leaveForum: (slug: string) => void;
+  /** Entra na sala de um post (idempotente). Use `leavePost` ao desmontar/trocar. */
   joinPost: (postId: number) => void;
-  /** Adiciona listener; retorna função pra remover. */
-  on: (event: string, handler: EventHandler) => () => void;
-  /** Avisa o servidor que entrou no post (placeholder de view-count). */
-  reportView: (postId: number) => void;
+  /** Sai da sala do post. Idempotente. */
+  leavePost: (postId: number) => void;
+  /** Adiciona listener tipado; retorna função pra remover. */
+  on: <E extends keyof CommunityEventMap>(event: E, handler: EventHandler<E>) => () => void;
+  /** Callback disparado após reconnect (não no primeiro connect). Retorna cleanup. */
+  onReconnect: (cb: () => void) => () => void;
   /** Emite "está digitando comentário" — broadcast na sala do post. */
   emitCommentTyping: (postId: number) => void;
 }
 
 const NOOP: UseCommunitySocket = {
   joinForum: () => {},
+  leaveForum: () => {},
   joinPost: () => {},
+  leavePost: () => {},
   on: () => () => {},
-  reportView: () => {},
+  onReconnect: () => () => {},
   emitCommentTyping: () => {},
 };
 
 export function useCommunitySocket(enabled: boolean): UseCommunitySocket {
   const forumsRef = useRef<Set<string>>(new Set());
   const postsRef = useRef<Set<number>>(new Set());
-  // Mantém handlers por evento pra (a) re-attachar no reconnect e
-  // (b) garantir cleanup deterministico no unmount.
-  const handlersRef = useRef<Map<string, Set<EventHandler>>>(new Map());
+  // Handlers ativos por evento — pra cleanup determinístico no unmount.
+  const handlersRef = useRef<Map<string, Set<AnyHandler>>>(new Map());
+  const reconnectCbsRef = useRef<Set<() => void>>(new Set());
+  // `true` depois do primeiro `connect` recebido — usado pra distinguir
+  // connect inicial de reconnect real (só dispara onReconnect no segundo+).
+  const hasConnectedRef = useRef(false);
 
   useEffect(() => {
     if (!enabled) return;
     const s = getCommunitySocket();
 
     const onConnect = () => {
-      // Re-join salas após reconnect.
+      // Re-join salas (idempotente no servidor).
       forumsRef.current.forEach((slug) => {
         void emitCommunityWithAck("forum:join", { slug });
       });
       postsRef.current.forEach((postId) => {
         void emitCommunityWithAck("post:join", { post_id: postId });
       });
+      // Dispara reconnect callbacks só nos `connect` subsequentes.
+      if (hasConnectedRef.current) {
+        reconnectCbsRef.current.forEach((cb) => {
+          try { cb(); } catch { /* swallow */ }
+        });
+      } else {
+        hasConnectedRef.current = true;
+      }
     };
 
     if (s.connected) onConnect();
     s.on("connect", onConnect);
     return () => {
       s.off("connect", onConnect);
-      // Sai de todas as salas declaradas por este hook.
       forumsRef.current.forEach((slug) => {
         void emitCommunityWithAck("forum:leave", { slug });
       });
@@ -72,11 +168,11 @@ export function useCommunitySocket(enabled: boolean): UseCommunitySocket {
       });
       forumsRef.current.clear();
       postsRef.current.clear();
-      // Remove listeners residuais.
       handlersRef.current.forEach((set, event) => {
         set.forEach((h) => s.off(event, h));
       });
       handlersRef.current.clear();
+      reconnectCbsRef.current.clear();
     };
   }, [enabled]);
 
@@ -89,27 +185,42 @@ export function useCommunitySocket(enabled: boolean): UseCommunitySocket {
       forumsRef.current.add(norm);
       void emitCommunityWithAck("forum:join", { slug: norm });
     },
+    leaveForum: (slug: string) => {
+      const norm = slug.trim().toLowerCase();
+      if (!norm || !forumsRef.current.has(norm)) return;
+      forumsRef.current.delete(norm);
+      void emitCommunityWithAck("forum:leave", { slug: norm });
+    },
     joinPost: (postId: number) => {
       if (!Number.isFinite(postId) || postsRef.current.has(postId)) return;
       postsRef.current.add(postId);
       void emitCommunityWithAck("post:join", { post_id: postId });
     },
-    on: (event: string, handler: EventHandler) => {
+    leavePost: (postId: number) => {
+      if (!Number.isFinite(postId) || !postsRef.current.has(postId)) return;
+      postsRef.current.delete(postId);
+      void emitCommunityWithAck("post:leave", { post_id: postId });
+    },
+    on: <E extends keyof CommunityEventMap>(event: E, handler: EventHandler<E>) => {
       const s = getCommunitySocket();
-      s.on(event, handler);
+      const wrapped = handler as unknown as AnyHandler;
+      s.on(event, wrapped);
       let set = handlersRef.current.get(event);
       if (!set) {
         set = new Set();
         handlersRef.current.set(event, set);
       }
-      set.add(handler);
+      set.add(wrapped);
       return () => {
-        s.off(event, handler);
-        handlersRef.current.get(event)?.delete(handler);
+        s.off(event, wrapped);
+        handlersRef.current.get(event)?.delete(wrapped);
       };
     },
-    reportView: (postId: number) => {
-      void emitCommunityWithAck("post:view", { post_id: postId });
+    onReconnect: (cb: () => void) => {
+      reconnectCbsRef.current.add(cb);
+      return () => {
+        reconnectCbsRef.current.delete(cb);
+      };
     },
     emitCommentTyping: (postId: number) => {
       void emitCommunityWithAck("comment:typing", { post_id: postId });

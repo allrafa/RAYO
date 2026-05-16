@@ -17,7 +17,14 @@ import { enhancedToast } from "./EnhancedToast";
 import { useAuth } from "./AuthContext";
 import { EmojiReactionPicker, ReactionsSummary, type ReactionAggregate } from "./EmojiReactionPicker";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { useCommunitySocket } from "../lib/community/useCommunitySocket";
+import {
+  useCommunitySocket,
+  type CommentNewEvent,
+  type CommentUpdatedEvent,
+  type CommentReactionEvent,
+  type PostReactionEvent,
+  type PostUpdatedEvent,
+} from "../lib/community/useCommunitySocket";
 
 interface PostDetailData {
   id: number;
@@ -103,18 +110,18 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
   // Entra na sala assim que o post existe + escuta eventos relevantes.
   useEffect(() => {
     if (!realtimeEnabled || !post) return;
-    community.joinPost(post.id);
-    community.reportView(post.id);
+    const currentPostId = post.id;
+    community.joinPost(currentPostId);
 
-    const offNew = community.on("comment:new", (payload: CommentRow & { post_id: number }) => {
-      if (payload.post_id !== post.id) return;
+    const offNew = community.on("comment:new", (payload: CommentNewEvent) => {
+      if (payload.post_id !== currentPostId) return;
       setComments((prev) => {
         if (prev.some((c) => c.id === payload.id)) return prev; // dedup
         return [
           ...prev,
           {
-            ...payload,
-            reactions: Array.isArray((payload as any).reactions) ? (payload as any).reactions : [],
+            ...(payload as unknown as CommentRow),
+            reactions: Array.isArray(payload.reactions) ? payload.reactions : [],
             user_liked: false,
             user_reaction: null,
           },
@@ -131,8 +138,8 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
 
     const offCommentUpdated = community.on(
       "comment:updated",
-      (payload: { comment_id: number; post_id: number; is_hidden?: boolean }) => {
-        if (payload.post_id !== post.id) return;
+      (payload: CommentUpdatedEvent) => {
+        if (payload.post_id !== currentPostId) return;
         if (payload.is_hidden) {
           setComments((prev) => prev.filter((c) => c.id !== payload.comment_id));
         }
@@ -141,8 +148,8 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
 
     const offCommentReaction = community.on(
       "comment:reaction",
-      (payload: { comment_id: number; post_id: number; reactions: ReactionAggregate[] }) => {
-        if (payload.post_id !== post.id) return;
+      (payload: CommentReactionEvent) => {
+        if (payload.post_id !== currentPostId) return;
         setComments((prev) =>
           prev.map((c) =>
             c.id === payload.comment_id ? { ...c, reactions: payload.reactions } : c,
@@ -153,18 +160,24 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
 
     const offPostReaction = community.on(
       "post:reaction",
-      (payload: { post_id: number; reactions: ReactionAggregate[]; like_count: number }) => {
-        if (payload.post_id !== post.id) return;
+      (payload: PostReactionEvent) => {
+        if (payload.post_id !== currentPostId) return;
         setPost((p) =>
-          p ? { ...p, reactions: payload.reactions, like_count: payload.like_count } : p,
+          p
+            ? {
+                ...p,
+                reactions: payload.reactions as ReactionAggregate[],
+                like_count: payload.like_count,
+              }
+            : p,
         );
       },
     );
 
     const offPostUpdated = community.on(
       "post:updated",
-      (payload: { post_id: number; is_hidden?: boolean; deleted?: boolean }) => {
-        if (payload.post_id !== post.id) return;
+      (payload: PostUpdatedEvent) => {
+        if (payload.post_id !== currentPostId) return;
         if (payload.is_hidden || payload.deleted) {
           enhancedToast.info({
             title: "Discussão removida",
@@ -182,6 +195,10 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
       offCommentReaction();
       offPostReaction();
       offPostUpdated();
+      // Sai da sala antiga ao trocar de post (ou desmontar). Idempotente
+      // — o hook também limpa salas pendentes no unmount, mas chamar
+      // aqui evita ficar inscrito em salas órfãs durante a sessão.
+      community.leavePost(currentPostId);
     };
   }, [realtimeEnabled, post?.id, community, onBack]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -8,7 +8,12 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { enhancedToast } from "./EnhancedToast";
 import { useAuth, userHasRole } from "./AuthContext";
 import { CreateCommunityModal } from "./CreateCommunityModal";
-import { useCommunitySocket } from "../lib/community/useCommunitySocket";
+import {
+  useCommunitySocket,
+  type PostNewEvent,
+  type PostUpdatedEvent,
+  type PostReactionEvent,
+} from "../lib/community/useCommunitySocket";
 
 // Task #202 — opções de ordenação dos posts da comunidade.
 type PostOrder = "recent" | "trending" | "most_commented";
@@ -222,12 +227,13 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
   // card do feed sem refetch.
   useEffect(() => {
     if (!realtimeEnabled || !forum) return;
-    community.joinForum(forum.slug);
+    const slugSnap = forum.slug;
+    community.joinForum(slugSnap);
 
-    const offNew = community.on("post:new", (payload: any) => {
-      if (payload.forum_slug !== forum.slug) return;
-      // Class-scoped posts só são exibidos pra membros — o feed da
-      // CommunityDetailPage só lista posts sem class_id (não-turma).
+    const offNew = community.on("post:new", (payload: PostNewEvent) => {
+      if (payload.forum_slug !== slugSnap) return;
+      // Class-scoped posts não chegam mais por aqui (servidor filtra),
+      // mas guard-rail extra no cliente também não custa.
       if (payload.class_id) return;
       setPosts((prev) => {
         if (prev.some((p) => p.id === payload.id)) return prev;
@@ -248,40 +254,75 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
       });
     });
 
-    const offUpdated = community.on(
-      "post:updated",
-      (payload: { post_id: number; is_hidden?: boolean; deleted?: boolean; comment_count?: number; content?: string }) => {
-        if (payload.is_hidden || payload.deleted) {
-          setPosts((prev) => prev.filter((p) => p.id !== payload.post_id));
-          return;
-        }
-        setPosts((prev) =>
-          prev.map((p) =>
-            p.id === payload.post_id
-              ? {
-                  ...p,
-                  ...(payload.content !== undefined ? { content: payload.content } : {}),
-                  ...(payload.comment_count !== undefined ? { comment_count: payload.comment_count } : {}),
-                }
-              : p,
-          ),
-        );
-      },
-    );
+    const offUpdated = community.on("post:updated", (payload: PostUpdatedEvent) => {
+      if (payload.is_hidden || payload.deleted) {
+        setPosts((prev) => prev.filter((p) => p.id !== payload.post_id));
+        return;
+      }
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === payload.post_id
+            ? {
+                ...p,
+                ...(payload.content !== undefined ? { content: payload.content } : {}),
+                ...(payload.comment_count !== undefined
+                  ? { comment_count: payload.comment_count }
+                  : {}),
+              }
+            : p,
+        ),
+      );
+    });
 
-    const offReaction = community.on(
-      "post:reaction",
-      (payload: { post_id: number; like_count: number }) => {
-        setPosts((prev) =>
-          prev.map((p) => (p.id === payload.post_id ? { ...p, like_count: payload.like_count } : p)),
-        );
-      },
-    );
+    const offReaction = community.on("post:reaction", (payload: PostReactionEvent) => {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === payload.post_id ? { ...p, like_count: payload.like_count } : p,
+        ),
+      );
+    });
+
+    // Gap-fill ao reconectar — o socket pode ter perdido `post:new`
+    // durante a queda. A rota /since devolve posts não-turma com id
+    // maior que o último que temos.
+    const offReconnect = community.onReconnect(() => {
+      const lastId = posts.reduce((max, p) => (p.id > max ? p.id : max), 0);
+      void api
+        .get<{ posts: Array<PostNewEvent & { like_count?: number; comment_count?: number }> }>(
+          `/api/community/forums/${slugSnap}/since?cursor=${lastId}`,
+        )
+        .then((res) => {
+          if (!res.success || !res.data) return;
+          const fresh = res.data.posts;
+          if (!fresh.length) return;
+          setPosts((prev) => {
+            const known = new Set(prev.map((p) => p.id));
+            const additions = fresh
+              .filter((p) => !known.has(p.id))
+              .map((p) => ({
+                id: p.id,
+                title: p.title,
+                content: p.content,
+                like_count: p.like_count ?? 0,
+                comment_count: p.comment_count ?? 0,
+                created_at: p.created_at,
+                author_name: p.author_name,
+                author_avatar: null,
+                images: [],
+              }));
+            if (!additions.length) return prev;
+            return [...additions.reverse(), ...prev];
+          });
+        });
+    });
 
     return () => {
       offNew();
       offUpdated();
       offReaction();
+      offReconnect();
+      // Sai da sala antiga ao trocar de fórum (ou desmontar).
+      community.leaveForum(slugSnap);
     };
   }, [realtimeEnabled, forum?.slug, community]); // eslint-disable-line react-hooks/exhaustive-deps
 

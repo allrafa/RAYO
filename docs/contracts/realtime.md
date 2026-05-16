@@ -155,9 +155,8 @@ Todos aceitam ack opcional `(ok: boolean) => void` (`emitCommunityWithAck`).
 | ------------------ | -------------------- | ----------------------------------------------------------------------------- |
 | `forum:join`       | `{ slug }`           | slug `[a-z0-9-]{2,60}` + forum existe + `is_active=true`. Idempotente.        |
 | `forum:leave`      | `{ slug }`           | sai da sala (sem checagem).                                                   |
-| `post:join`        | `{ post_id }`        | post existe + não `hidden` + (se `class_id`, role `moderator+` OU matriculado). |
+| `post:join`        | `{ post_id }`        | post existe + não `hidden` + (se `class_id`, role `moderator+` OU matriculado + trail gate `userHasActiveTrailAccess`). |
 | `post:leave`       | `{ post_id }`        | sai da sala.                                                                  |
-| `post:view`        | `{ post_id }`        | placeholder de view-count (não persistido); idempotente por sessão de socket. |
 | `comment:typing`   | `{ post_id }`        | socket precisa estar na sala `post:<id>`; fan-out broadcast pra mesma sala.   |
 
 ### Fan-out — onde mora
@@ -194,8 +193,8 @@ o estado atual.
 Vive em `src/lib/community/useCommunitySocket.ts`. API mínima:
 
 ```ts
-const { joinForum, joinPost, on, reportView, emitCommentTyping } =
-  useCommunitySocket(communityTransport === "socket");
+const { joinForum, leaveForum, joinPost, leavePost, on, onReconnect,
+        emitCommentTyping } = useCommunitySocket(communityTransport === "socket");
 ```
 
 - `enabled=false` → todos os métodos viram NOOP. Componente continua
@@ -224,7 +223,16 @@ discussão se o post for removido).
 
 - `forum:join` / `post:join`: 60/min por usuário.
 - `comment:typing`: 120/min por usuário.
-- `post:view`: 60/min por usuário (e idempotente por (socket, post)).
+
+### Reconnect — gap-fill via `/since`
+
+`useCommunitySocket` expõe `onReconnect(cb)`. `CommunityDetailPage`
+registra um callback que, no segundo `connect` em diante (não no
+inicial), chama `GET /forums/:slug/since?cursor=<lastId>` e mergeia
+os posts retornados no topo do feed (dedup por id). Eventos
+transientes (`post:reaction`, `comment:*`) NÃO são reconciliados —
+quando o usuário entra numa discussão, o `GET /posts/:id` já traz
+o estado atual.
 
 ### Gotchas
 
