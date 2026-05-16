@@ -66,19 +66,9 @@ interface RegisterOptions {
   interests?: string[];
 }
 
-export type DmTransport = "socket" | "sse";
-/** Task #223 — transporte de eventos de Comunidade (`/community` namespace
- *  do Socket.IO). `sse` aqui significa "ignore socket, use só estado local
- *  + refetch sob demanda" — a Comunidade não tem canal SSE dedicado. */
-export type CommunityTransport = "socket" | "sse";
-
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  /** Task #222 — transporte de DM escolhido pelo servidor. Default "socket". */
-  dmTransport: DmTransport;
-  /** Task #223 — transporte de Comunidade escolhido pelo servidor. */
-  communityTransport: CommunityTransport;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, name: string, options?: RegisterOptions) => Promise<{ success: boolean; error?: string }>;
   sendVerificationCode: (email: string) => Promise<{ success: boolean; error?: string }>;
@@ -118,22 +108,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // `src/lib/api.ts` (warn só, sem efeito colateral).
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [dmTransport, setDmTransport] = useState<DmTransport>("socket");
-  const [communityTransport, setCommunityTransport] = useState<CommunityTransport>("socket");
 
   useEffect(() => {
     async function checkSession() {
       try {
-        const res = await api.get<{
-          user: User;
-          realtime?: { dm_transport?: DmTransport; community_transport?: CommunityTransport };
-        }>("/api/auth/me");
+        const res = await api.get<{ user: User }>("/api/auth/me");
         if (res.success && res.data) {
           setUser(res.data.user);
-          const t = res.data.realtime?.dm_transport;
-          if (t === "socket" || t === "sse") setDmTransport(t);
-          const ct = res.data.realtime?.community_transport;
-          if (ct === "socket" || ct === "sse") setCommunityTransport(ct);
           markDeviceAsReturning();
         }
         // Importante: NUNCA chamar setUser(null) aqui — user já é null
@@ -150,19 +131,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post<{
-      user: User;
-      realtime?: { dm_transport?: DmTransport; community_transport?: CommunityTransport };
-    }>(
-      "/api/auth/login",
-      { email, password },
-    );
+    const res = await api.post<{ user: User }>("/api/auth/login", { email, password });
     if (res.success && res.data) {
       setUser(res.data.user);
-      const t = res.data.realtime?.dm_transport;
-      if (t === "socket" || t === "sse") setDmTransport(t);
-      const ct = res.data.realtime?.community_transport;
-      if (ct === "socket" || ct === "sse") setCommunityTransport(ct);
       markDeviceAsReturning();
       return { success: true };
     }
@@ -186,10 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(async (email: string, password: string, name: string, options?: RegisterOptions) => {
-    const res = await api.post<{
-      user: User;
-      realtime?: { dm_transport?: DmTransport; community_transport?: CommunityTransport };
-    }>(
+    const res = await api.post<{ user: User }>(
       "/api/auth/register",
       {
         email,
@@ -201,10 +169,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
     if (res.success && res.data) {
       setUser(res.data.user);
-      const t = res.data.realtime?.dm_transport;
-      if (t === "socket" || t === "sse") setDmTransport(t);
-      const ct = res.data.realtime?.community_transport;
-      if (ct === "socket" || ct === "sse") setCommunityTransport(ct);
       markDeviceAsReturning();
       return { success: true };
     }
@@ -287,7 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, dmTransport, communityTransport, login, register, sendVerificationCode, verifyEmailCode, requestPasswordReset, resetPassword, updateProfile, updatePreferences, uploadAvatar, changePassword, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, sendVerificationCode, verifyEmailCode, requestPasswordReset, resetPassword, updateProfile, updatePreferences, uploadAvatar, changePassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

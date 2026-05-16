@@ -61,4 +61,7 @@
       host: '0.0.0.0',
       allowedHosts: true,
     },
+    optimizeDeps: {
+      include: ['socket.io-client'],
+    },
   });

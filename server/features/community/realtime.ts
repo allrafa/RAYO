@@ -5,11 +5,13 @@
 // updatePost, deletePost, addComment, togglePostReaction,
 // toggleCommentReaction, setPostHiddenWithAuth, setCommentHiddenWithAuth).
 //
-// Princípio: o servidor SEMPRE emite via socket. A flag
-// `COMMUNITY_REALTIME` no `/me` só diz pro cliente "ouça ou não".
+// Princípio (Task #229): Socket.IO é o transporte único — não há mais
+// flag `COMMUNITY_REALTIME`. Kill-switch absoluto é `SOCKET_IO_ENABLED`
+// no servidor (compartilhado com `/dm`).
 // Notificações pessoais (`notification:new`, `notification:unread`)
-// continuam saindo via `publishToUser` em `messages/events.ts` —
-// canal separado, não migra nesta task.
+// trafegam pelo `/dm` via `publishToUser → emitToUser` em
+// `messages/events.ts`. Sala dedicada `user:<id>`, canal separado das
+// salas `forum:<slug>` / `post:<id>` deste namespace.
 
 import { emitToForumRoom, emitToPostRoom } from "../../realtime/community.js";
 

@@ -86,7 +86,7 @@ function formatTime(dateStr: string): string {
 }
 
 export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
-  const { user: viewer, communityTransport } = useAuth();
+  const { user: viewer } = useAuth();
   const [loading, setLoading] = useState(true);
   const [post, setPost] = useState<PostDetailData | null>(null);
   const [comments, setComments] = useState<CommentRow[]>([]);
@@ -101,11 +101,10 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
   // da ordem REST ↔ socket).
   const countedCommentIds = useRef<Set<number>>(new Set());
 
-  // Task #223 — Socket.IO `/community` na sala `post:<id>`. Quando o
-  // servidor responde `community_transport === "sse"` (kill-switch),
-  // o hook vira NOOP e a página continua funcionando via refetch/local.
-  const realtimeEnabled = communityTransport === "socket";
-  const community = useCommunitySocket(realtimeEnabled);
+  // Task #229 — Socket.IO `/community` é o transporte único. Sem flag
+  // de transporte; hook sempre ativo (vira NOOP só se SOCKET_IO_ENABLED
+  // estiver desligado no servidor).
+  const community = useCommunitySocket(true);
 
   // Carrega post + comentários do servidor (idempotente). Reusado pelo
   // boot inicial e pelo gap-fill em reconnect — `silent=true` evita

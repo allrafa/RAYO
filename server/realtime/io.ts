@@ -23,11 +23,13 @@
 //     - `conversation:join` → cliente acabou de criar/entrar numa nova
 //       conversa e pede pro socket entrar na sala dela.
 //
-// Kill-switches:
-//  • `SOCKET_IO_ENABLED=false` desliga o Socket.IO inteiro.
-//  • `DM_REALTIME=sse`         mantém o servidor com dual-write, mas
-//    o cliente vai ignorar o Socket.IO. Server expõe a flag em
-//    `GET /api/auth/me` pra o cliente saber qual transporte ouvir.
+// Kill-switch:
+//  • `SOCKET_IO_ENABLED=false` desliga o Socket.IO inteiro (DM +
+//    Comunidade + Notificações ficam sem realtime — fallback é polling).
+//
+// Task #229: SSE foi removido. Socket.IO é o transporte ÚNICO; não há
+// mais `DM_REALTIME` ou `COMMUNITY_REALTIME` — o servidor sempre emite
+// pelo socket e o cliente sempre ouve.
 
 import type { Server as HttpServer } from "node:http";
 import type { Namespace, Socket } from "socket.io";
@@ -44,26 +46,8 @@ let dmNs: Namespace | null = null;
 
 const ENABLED = (process.env.SOCKET_IO_ENABLED ?? "true").toLowerCase() !== "false";
 
-// Flag de transporte do cliente. Server faz dual-write sempre; isto
-// só diz pro cliente "ouça SSE" ou "ouça Socket.IO".
-const DM_TRANSPORT: "socket" | "sse" = (() => {
-  const v = (process.env.DM_REALTIME ?? "").toLowerCase();
-  if (v === "sse") return "sse";
-  if (v === "socket") return "socket";
-  // Default: socket em dev, sse em prod (até estabilizar).
-  return process.env.NODE_ENV === "production" ? "sse" : "socket";
-})();
-
 export function isSocketEnabled(): boolean {
   return ENABLED && io !== null;
-}
-
-export function getDmTransport(): "socket" | "sse" {
-  // Kill-switch coerência: se Socket.IO está desligado, força "sse"
-  // mesmo que DM_REALTIME=socket — senão o cliente entraria em modo
-  // socket sem servidor escutando e ficaria sem realtime DM.
-  if (!ENABLED) return "sse";
-  return DM_TRANSPORT;
 }
 
 export function getIO(): IOServer | null {
@@ -74,6 +58,16 @@ export function getIO(): IOServer | null {
 export function emitToUser(userId: number, event: string, payload: unknown): void {
   if (!dmNs) return;
   dmNs.to(`user:${userId}`).emit(event, payload);
+}
+
+// Task #229 — Substitui `getActiveSubscriberCount` do SSE: o cliente
+// está "online" se tem pelo menos um socket conectado na sala
+// `user:<id>` do namespace `/dm`. Usado pra decidir se mandamos
+// e-mail de notificação de DM offline.
+export function isUserOnline(userId: number): boolean {
+  if (!dmNs) return false;
+  const room = dmNs.adapter.rooms.get(`user:${userId}`);
+  return (room?.size ?? 0) > 0;
 }
 
 // Helper: fan-out pra todos os participantes ativos de uma conversa
@@ -228,7 +222,7 @@ export function initRealtime(httpServer: HttpServer): IOServer | null {
     );
   });
 
-  logger.info("Realtime", `Socket.IO server attached (namespace=/dm, dm_transport=${DM_TRANSPORT})`);
+  logger.info("Realtime", "Socket.IO server attached (namespace=/dm)");
   return io;
 }
 

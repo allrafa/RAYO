@@ -28,10 +28,9 @@
 //     re-emitido após join/leave/disconnect, throttled a 1 emit/3s
 //     por post pra evitar avalanche.
 //
-// Kill-switch: `COMMUNITY_REALTIME=sse` força o cliente a ignorar este
-// transporte (servidor segue emitindo, é só switch de leitura).
-// `SOCKET_IO_ENABLED=false` desliga o Socket.IO inteiro (kill-switch
-// absoluto compartilhado com o /dm).
+// Kill-switch: `SOCKET_IO_ENABLED=false` desliga o Socket.IO inteiro
+// (compartilhado com o /dm). Task #229: `COMMUNITY_REALTIME` foi
+// removido — Socket.IO é o transporte único, o cliente sempre ouve.
 
 import type { Server as IOServer, Namespace, Socket } from "socket.io";
 import cookie from "cookie";
@@ -43,22 +42,6 @@ type AuthedSocket = Socket & {
 };
 
 let communityNs: Namespace | null = null;
-
-const COMMUNITY_TRANSPORT: "socket" | "sse" = (() => {
-  const v = (process.env.COMMUNITY_REALTIME ?? "").toLowerCase();
-  if (v === "sse") return "sse";
-  if (v === "socket") return "socket";
-  // Default: socket em dev, sse em prod (até estabilizar — mesma
-  // política do DM transport).
-  return process.env.NODE_ENV === "production" ? "sse" : "socket";
-})();
-
-export function getCommunityTransport(): "socket" | "sse" {
-  // Coerência com o kill-switch absoluto: se Socket.IO não está
-  // ligado, força "sse" mesmo que a env diga "socket".
-  if (!communityNs) return "sse";
-  return COMMUNITY_TRANSPORT;
-}
 
 // Helpers de fan-out — usados pelo `community/realtime.ts` depois do
 // INSERT/UPDATE no service. Quando o namespace não está montado (kill
@@ -217,10 +200,7 @@ export function attachCommunityNamespace(io: IOServer): void {
     );
   });
 
-  logger.info(
-    "Realtime",
-    `Socket.IO community namespace attached (community_transport=${COMMUNITY_TRANSPORT})`,
-  );
+  logger.info("Realtime", "Socket.IO community namespace attached");
 }
 
 // ─────────── Helpers internos ───────────

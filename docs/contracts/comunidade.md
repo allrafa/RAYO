@@ -87,12 +87,11 @@ Eventos de feed e discussão fluem pelo namespace `/community` (ver
   integração. `CommunityDetailPage` patcha o feed in-place; a
   `DiscussionPage` patcha a lista de comentários e os chips de
   reação sem refetch.
-- **Flag**: `COMMUNITY_REALTIME` (`socket`|`sse`, default `socket` em
-  dev / `sse` em prod). Quando `sse`, o hook vira NOOP e a página
-  volta ao comportamento pré-#223 (estado local + refetch). O
-  servidor segue emitindo mesmo em modo `sse` — a flag só desliga
-  a leitura.
+- **Transporte único (Task #229)**: Socket.IO é o canal exclusivo —
+  não há mais flag `COMMUNITY_REALTIME` nem fallback. Kill-switch
+  absoluto é só `SOCKET_IO_ENABLED=false`, que desliga o socket
+  inteiro (DM + Comunidade) e degrada a UI pra refetch sob demanda.
 - **Notificações** (`notification:new` / `notification:unread`)
-  continuam saindo via SSE em `messages/events.ts` por
-  `publishToUser` — canal pessoal separado do `/community`,
-  não migra nesta task.
+  trafegam pelo mesmo Socket.IO, namespace `/dm`, sala `user:<id>`
+  — `publishToUser` em `messages/events.ts` é fachada fina sobre
+  `emitToUser`. Canal pessoal separado das salas do `/community`.

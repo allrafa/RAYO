@@ -19,7 +19,7 @@ import {
   removeMessageReaction,
   type MessageKind,
 } from "./service.js";
-import { subscribeUser, publishToUser } from "./events.js";
+import { publishToUser } from "./events.js";
 import { query } from "../../db/index.js";
 import { AppError } from "../academia/service.js";
 import { putPublicObject } from "../../lib/objectStorageBridge.js";
@@ -28,44 +28,8 @@ import { logger } from "../../utils/logger.js";
 
 const router = Router();
 
-router.get("/stream", requireAuth, (req, res) => {
-  const userId = req.user!.id;
-
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.flushHeaders?.();
-
-  res.write(`event: connected\ndata: {}\n\n`);
-
-  const send = (event: string, payload: unknown) => {
-    try {
-      res.write(`event: ${event}\n`);
-      res.write(`data: ${JSON.stringify(payload)}\n\n`);
-    } catch {
-      /* socket gone */
-    }
-  };
-
-  const unsubscribe = subscribeUser(userId, send);
-
-  const heartbeat = setInterval(() => {
-    try {
-      res.write(`: keepalive\n\n`);
-    } catch {
-      /* */
-    }
-  }, 25_000);
-
-  const cleanup = () => {
-    clearInterval(heartbeat);
-    unsubscribe();
-  };
-
-  req.on("close", cleanup);
-  res.on("close", cleanup);
-});
+// Task #229 — Rota legada `GET /stream` (SSE) removida. Realtime de DM
+// e notificações trafega exclusivamente pelo Socket.IO `/dm`.
 
 router.get("/conversations", requireAuth, async (req, res, next) => {
   try {
@@ -420,7 +384,9 @@ router.post("/conversations/:id/typing", requireAuth, async (req, res, next) => 
       return;
     }
     const recipientId = conv.user_a_id === userId ? conv.user_b_id : conv.user_a_id;
-    publishToUser(recipientId, "typing", {
+    // Task #229 — emite `message:typing` (nome do contrato Socket.IO).
+    // Era `typing` na era SSE; o cliente unificado só escuta `message:typing`.
+    publishToUser(recipientId, "message:typing", {
       conversation_id: conversationId,
       user_id: userId,
     });

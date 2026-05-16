@@ -7,8 +7,7 @@ RAYO é uma plataforma digital para fortalecer famílias através de conteúdo t
 - **Bunny Stream**: `BUNNY_STREAM_LIBRARY_ID/API_KEY/CDN_HOSTNAME/WEBHOOK_SECRET` — ver `docs/contracts/bunny-stream.md`.
 - **OAuth Google/Facebook** (só prod `https://rayo.app.br`): `GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI`, `FACEBOOK_CLIENT_ID/SECRET/REDIRECT_URI`. Sem `*_REDIRECT_URI` exato → botão "Em breve" — ver `docs/contracts/auth.md`.
 - **Stripe (Trilhas pagas)**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (gerado/managed pelo `stripe-replit-sync` no boot, opcional). Webhook `POST /api/stripe/webhook`. Checkout hosted (sem chave pública no client) — ver `docs/contracts/billing.md`.
-- **Realtime (Task #222 — DM via Socket.IO)**: `SOCKET_IO_ENABLED` (default `true`, kill-switch). Servidor anexa `socket.io` ao mesmo http.Server do Express (path `/socket.io/`). Auth pelo mesmo cookie `session_token`. Em transição: SSE legado (`/api/messages/stream`) e Socket.IO rodam em **dual-write** — cliente dedup por `message.id`. Ver `server/realtime/io.ts` + `src/lib/realtime/socket.ts`.
-- **Realtime (Task #223 — Comunidade via Socket.IO)**: `COMMUNITY_REALTIME` (`socket`|`sse`, default `socket` em dev / `sse` em prod). Namespace dedicado `/community` no mesmo socket.io (auth pelo mesmo cookie). Eventos: `post:new`, `post:updated`, `post:reaction`, `comment:new`, `comment:updated`, `comment:reaction`, `comment:typing`. Salas `forum:<slug>` e `post:<id>`. Servidor SEMPRE emite (best-effort); a flag só decide se o cliente ouve ou cai pra refetch. Gap-fill via `GET /api/community/forums/:slug/since?cursor=`. Ver `server/realtime/community.ts` + `src/lib/community/useCommunitySocket.ts` + `docs/contracts/realtime.md` (seção Comunidade).
+- **Realtime (Task #229 — Socket.IO único)**: `SOCKET_IO_ENABLED` (default `true`, kill-switch absoluto). Socket.IO é o **transporte único** de DM, Comunidade e Notificações — SSE foi removido. Servidor anexa `socket.io` ao mesmo http.Server do Express (path `/socket.io/`), com dois namespaces: `/dm` (salas `user:<id>` e `conversation:<id>`) e `/community` (salas `forum:<slug>` e `post:<id>`). Auth pelo mesmo cookie `session_token`. Notificações (`notification:new`/`notification:unread`) trafegam pelo `/dm` via `publishToUser → emitToUser`. Gap-fill: DM via `conversation:sync` + `GET /api/messages/conversations/:id/since?cursor=`; Comunidade via `GET /api/community/forums/:slug/since?cursor=`. Ver `server/realtime/io.ts`, `server/realtime/community.ts`, `src/lib/realtime/socket.ts`, `src/lib/community/useCommunitySocket.ts` e o contrato completo em `docs/contracts/realtime.md`.
 
 ## Stack
 - **Frontend**: React 18, TypeScript, Tailwind v4, Vite. Fonte única **Outfit** (200–700).
@@ -24,7 +23,7 @@ RAYO é uma plataforma digital para fortalecer famílias através de conteúdo t
 - **Idempotent Migrations/Seeds**: migrações de boot são idempotentes.
 - **RBAC**: hierarquia numérica (`client` < `producer` < `moderator` < `admin`).
 - **Soft Deletes**: conteúdo é `hidden`, não deletado.
-- **SSE para DM e notificações**: real-time via Server-Sent Events.
+- **Socket.IO único para realtime**: DM, Comunidade e Notificações via Socket.IO (sem SSE) — ver `docs/contracts/realtime.md`.
 - **Dynamic Home Feed**: `recommendedSectionOrder` por segmentos; "Hoje no RAYO" usa rotação determinística diária.
 - **Static Assets em Object Storage**: sentinels `objstore://<key>` resolvidos via signed URL em leitura. Imagens passam por `sharp`.
 - **Vídeo via Bunny Stream**: sentinel `bunny://<libraryId>/<guid>` — ver `docs/contracts/bunny-stream.md`.
@@ -35,7 +34,7 @@ RAYO é uma plataforma digital para fortalecer famílias através de conteúdo t
 - **Gamification**: XP, badges, missões, streaks. **Personalized Dashboard** agrega tudo + comunidade.
 - **Community Forums**: subreddit-style, criação por usuários, mod local — ver `docs/contracts/comunidade.md`.
 - **Direct Messaging**: per-side state + attachments + swipe + áudio — ver `docs/contracts/dm.md`.
-- **Notificações**: tabela `notifications`, `NotificationBell` no header, SSE, endpoints `/api/notifications`.
+- **Notificações**: tabela `notifications`, `NotificationBell` no header, transporte via Socket.IO `/dm` (sala `user:<id>`), endpoints `/api/notifications`. Ver `docs/contracts/realtime.md`.
 - **LGPD**: export e deleção de conta em `/api/lgpd`.
 - **Admin & Moderation**: gestão de usuários, moderação, métricas.
 - **Turmas (mini-Skool)**: ver `docs/contracts/turmas.md`.

@@ -118,11 +118,9 @@ function formatDate(d?: string | null): string {
 }
 
 export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }: CommunityDetailPageProps) {
-  const { user, communityTransport } = useAuth();
-  // Task #223 — Socket.IO na sala `forum:<slug>` pra fan-out de post:new
-  // / post:updated / post:reaction. NOOP quando o transporte é "sse".
-  const realtimeEnabled = communityTransport === "socket";
-  const community = useCommunitySocket(realtimeEnabled);
+  const { user } = useAuth();
+  // Task #229 — Socket.IO é o transporte único da Comunidade. Sem flag.
+  const community = useCommunitySocket(true);
   const [forum, setForum] = useState<ForumDetail | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   // Ref espelhando o maior `post.id` visto até agora — usado no

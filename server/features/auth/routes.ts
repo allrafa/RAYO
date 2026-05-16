@@ -148,15 +148,7 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
 
     const { user, token } = await registerUser(validation.data);
     setSessionCookie(res, token);
-    const { getDmTransport } = await import("../../realtime/io.js");
-    const { getCommunityTransport } = await import("../../realtime/community.js");
-    created(res, {
-      user,
-      realtime: {
-        dm_transport: getDmTransport(),
-        community_transport: getCommunityTransport(),
-      },
-    });
+    created(res, { user });
   } catch (err) {
     next(err);
   }
@@ -221,15 +213,7 @@ router.post("/login", async (req: Request, res: Response, next: NextFunction) =>
       req.headers["user-agent"]
     );
     setSessionCookie(res, token);
-    const { getDmTransport } = await import("../../realtime/io.js");
-    const { getCommunityTransport } = await import("../../realtime/community.js");
-    success(res, {
-      user,
-      realtime: {
-        dm_transport: getDmTransport(),
-        community_transport: getCommunityTransport(),
-      },
-    });
+    success(res, { user });
   } catch (err) {
     next(err);
   }
@@ -249,18 +233,9 @@ router.post("/logout", requireAuth, async (req: Request, res: Response, next: Ne
 });
 
 router.get("/me", requireAuth, async (req: Request, res: Response) => {
-  // Task #222/#223 — expõe as flags de transporte (DM + Comunidade) pro
-  // cliente. Servidor sempre emite via socket; o cliente usa as flags
-  // pra escolher se ouve SSE/local-only ou Socket.IO.
-  const { getDmTransport } = await import("../../realtime/io.js");
-  const { getCommunityTransport } = await import("../../realtime/community.js");
-  success(res, {
-    user: req.user,
-    realtime: {
-      dm_transport: getDmTransport(),
-      community_transport: getCommunityTransport(),
-    },
-  });
+  // Task #229 — Flags de transporte removidas: Socket.IO é o único
+  // canal de realtime (DM, Comunidade e Notificações).
+  success(res, { user: req.user });
 });
 
 // Task #45 — troca de senha do usuário logado.

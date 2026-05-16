@@ -1,7 +1,8 @@
 import { query } from "../../db/index.js";
 import { AppError } from "../academia/service.js";
 import { trackEvent } from "../analytics/service.js";
-import { publishToUser, publishToConversation, getActiveSubscriberCount } from "./events.js";
+import { publishToUser, publishToConversation } from "./events.js";
+import { isUserOnline } from "../../realtime/io.js";
 import { createNotification } from "../notifications/service.js";
 import { sendNewMessageEmail } from "../../lib/email.js";
 import { logger } from "../../utils/logger.js";
@@ -579,7 +580,8 @@ async function notifyRecipient(args: NotifyRecipientArgs): Promise<void> {
     payload: { conversation_id: conversationId, message_id: messageId, sender_name: senderName },
   });
 
-  if (getActiveSubscriberCount(recipientId) > 0) return;
+  // Task #229 — Recipient online em qualquer socket /dm = não manda e-mail.
+  if (isUserOnline(recipientId)) return;
   const { rows } = await query<{ email: string; name: string; offline_min: string | null }>(
     `SELECT email, name,
             EXTRACT(EPOCH FROM (NOW() - COALESCE(last_active_at, created_at)))::numeric / 60 AS offline_min

@@ -528,7 +528,7 @@ export function ConversasPage() {
     );
     const ok = await emitWithAck("message:read", { conversation_id: conversationId });
     if (!ok) {
-      // Fallback REST: socket desligado, sem ack ou DM_REALTIME=sse.
+      // Fallback REST: socket desligado (SOCKET_IO_ENABLED=false) ou sem ack em 2s.
       await api.post<{ marked: number }>(`/api/messages/conversations/${conversationId}/read`);
     }
   }, []);

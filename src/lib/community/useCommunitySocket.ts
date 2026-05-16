@@ -4,10 +4,10 @@
 //   const { joinForum, leaveForum, joinPost, leavePost, on, onReconnect,
 //           emitCommentTyping } = useCommunitySocket(enabled);
 //
-// `enabled` é o gate de transporte (`communityTransport === "socket"`).
-// Quando `false`, o hook não monta listeners nem entra em salas. O
-// componente continua usando estado local e refetch — comportamento
-// idêntico ao pré-task #223.
+// `enabled` é um gate local (testes, kill-switch UX). Em produção
+// (Task #229) é sempre `true` — Socket.IO é o transporte único da
+// Comunidade. Quando `false`, o hook não monta listeners nem entra em
+// salas; o componente continua via estado local + refetch.
 //
 // O hook lida com reconnect automaticamente: ao receber `connect` do
 // socket, re-entra nas salas que o componente declarou via `joinForum`

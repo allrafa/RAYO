@@ -15,17 +15,17 @@ DM v2 introduziu:
 - Mensagens com `kind` (`text|image|audio`) + `attachment_url` (`objstore://...`) + `attachment_meta` (mime/size/duration).
 - Excluir marca `cleared_at` para esconder histórico anterior do lado de quem excluiu — se a outra pessoa enviar nova mensagem, a conversa reabre só com o que vier depois do corte.
 
-E-mails de notificação (rate-limit 1/h por conversa) só disparam quando o destinatário não tem transporte realtime ativo (SSE ou Socket.IO) e está idle há >10min.
+E-mails de notificação (rate-limit 1/h por conversa) só disparam quando o destinatário não tem socket ativo (`isUserOnline(userId)` em `server/realtime/io.ts` retorna `false`) e está idle há >10min.
 
-### Transporte realtime (Task #222)
+### Transporte realtime (Task #229)
 
-DM migrou de SSE para Socket.IO. O contrato completo (namespace, salas, eventos, gap-fill, kill-switches) vive em [`realtime.md`](./realtime.md). Resumo:
+DM trafega **exclusivamente** por Socket.IO (namespace `/dm`). O contrato completo (salas, eventos, gap-fill, kill-switch) vive em [`realtime.md`](./realtime.md). Resumo:
 
-- Server faz **dual-write** em SSE + Socket.IO; cliente lê **um só**, decidido por `DM_REALTIME` (`socket` default em dev, `sse` default em prod).
-- Cliente recebe a flag em `GET /api/auth/me` → `realtime.dm_transport`.
-- Eventos `message:*`, `unread:changed`, `typing`, `listening` vêm pelo transporte ativo.
+- Namespace único `/dm` com salas `user:<id>` (eventos user-scoped) e `conversation:<id>` (typing/listening).
+- Eventos `message:*`, `unread:changed`, `notification:*`, `listening` vêm todos pelo socket.
 - Reconnect → `conversation:sync` → REST `GET /api/messages/conversations/:id/since?cursor=<id>` faz gap-fill.
-- Kill-switches: `SOCKET_IO_ENABLED=false` (desliga server) ou `DM_REALTIME=sse` (cliente lê SSE).
+- Kill-switch único: `SOCKET_IO_ENABLED=false` desliga o socket; UI degrada pra poll lento (60s) + REST.
+- Task #229 removeu o SSE legado (`GET /api/messages/stream`), o dual-write em `events.ts` e as flags `DM_REALTIME`/`dm_transport`.
 
 ## Gotchas
 
