@@ -138,9 +138,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post<{ user: User }>("/api/auth/login", { email, password });
+    const res = await api.post<{ user: User; realtime?: { dm_transport?: DmTransport } }>(
+      "/api/auth/login",
+      { email, password },
+    );
     if (res.success && res.data) {
       setUser(res.data.user);
+      const t = res.data.realtime?.dm_transport;
+      if (t === "socket" || t === "sse") setDmTransport(t);
       markDeviceAsReturning();
       return { success: true };
     }
@@ -164,15 +169,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(async (email: string, password: string, name: string, options?: RegisterOptions) => {
-    const res = await api.post<{ user: User }>("/api/auth/register", {
-      email,
-      password,
-      name,
-      segments: options?.segments,
-      interests: options?.interests,
-    });
+    const res = await api.post<{ user: User; realtime?: { dm_transport?: DmTransport } }>(
+      "/api/auth/register",
+      {
+        email,
+        password,
+        name,
+        segments: options?.segments,
+        interests: options?.interests,
+      },
+    );
     if (res.success && res.data) {
       setUser(res.data.user);
+      const t = res.data.realtime?.dm_transport;
+      if (t === "socket" || t === "sse") setDmTransport(t);
       markDeviceAsReturning();
       return { success: true };
     }

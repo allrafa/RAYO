@@ -148,7 +148,8 @@ router.post("/register", async (req: Request, res: Response, next: NextFunction)
 
     const { user, token } = await registerUser(validation.data);
     setSessionCookie(res, token);
-    created(res, { user });
+    const { getDmTransport } = await import("../../realtime/io.js");
+    created(res, { user, realtime: { dm_transport: getDmTransport() } });
   } catch (err) {
     next(err);
   }
@@ -213,7 +214,8 @@ router.post("/login", async (req: Request, res: Response, next: NextFunction) =>
       req.headers["user-agent"]
     );
     setSessionCookie(res, token);
-    success(res, { user });
+    const { getDmTransport } = await import("../../realtime/io.js");
+    success(res, { user, realtime: { dm_transport: getDmTransport() } });
   } catch (err) {
     next(err);
   }

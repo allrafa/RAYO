@@ -58,6 +58,10 @@ export function isSocketEnabled(): boolean {
 }
 
 export function getDmTransport(): "socket" | "sse" {
+  // Kill-switch coerência: se Socket.IO está desligado, força "sse"
+  // mesmo que DM_REALTIME=socket — senão o cliente entraria em modo
+  // socket sem servidor escutando e ficaria sem realtime DM.
+  if (!ENABLED) return "sse";
   return DM_TRANSPORT;
 }
 
