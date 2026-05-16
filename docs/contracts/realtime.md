@@ -12,6 +12,20 @@
 - Cliente recebe a flag em `GET /api/auth/me` → `realtime.dm_transport`.
 - `SOCKET_IO_ENABLED=false` desliga o servidor Socket.IO inteiro (kill-switch absoluto).
 
+## Orquestração no cliente
+
+A escolha de transporte e o multiplexing SSE/Socket.IO vivem em
+`src/components/hooks/useUnreadMessages.ts` — provider global montado
+em `App.tsx`. `ConversasPage` é um **consumidor** do broadcast desse
+provider, não orquestra transporte. O singleton de socket vive em
+`src/lib/realtime/socket.ts` (lazy `getSocket()` + `emitWithAck()`),
+compartilhado pelo provider e pelos call-sites de emit (typing,
+listening, read).
+
+Nota: o evento `conversation:updated` está reservado no contrato mas
+ainda não tem emit points ativos no servidor — será usado em features
+futuras (rename de conversa, archive sync entre abas, etc.).
+
 ## Topologia Socket.IO
 
 - **Namespace**: `/dm` (path padrão `/socket.io/`).
