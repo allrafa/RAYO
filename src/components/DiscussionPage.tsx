@@ -104,7 +104,8 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
   // Task #229 — Socket.IO `/community` é o transporte único. Sem flag
   // de transporte; hook sempre ativo (vira NOOP só se SOCKET_IO_ENABLED
   // estiver desligado no servidor).
-  const community = useCommunitySocket(true);
+  // Task #230 — API simplificada; o hook não aceita mais `enabled`.
+  const community = useCommunitySocket();
 
   // Carrega post + comentários do servidor (idempotente). Reusado pelo
   // boot inicial e pelo gap-fill em reconnect — `silent=true` evita
@@ -153,7 +154,7 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
 
   // Entra na sala assim que o post existe + escuta eventos relevantes.
   useEffect(() => {
-    if (!realtimeEnabled || !post) return;
+    if (!post) return;
     const currentPostId = post.id;
     community.joinPost(currentPostId);
     // Sinaliza view (idempotente por sessão de socket).
@@ -265,7 +266,7 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
       // aqui evita ficar inscrito em salas órfãs durante a sessão.
       community.leavePost(currentPostId);
     };
-  }, [realtimeEnabled, post?.id, community, onBack, loadDiscussion]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [post?.id, community, onBack, loadDiscussion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let active = true;
@@ -591,7 +592,7 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
                 onChange={(e) => {
                   setComposer(e.target.value);
                   // Task #223 — broadcast leve de "está digitando" pra sala do post.
-                  if (realtimeEnabled && post) community.emitCommentTyping(post.id);
+                  if (post) community.emitCommentTyping(post.id);
                 }}
                 placeholder="Escreva um comentário…"
                 rows={1}

@@ -24,6 +24,11 @@ interface ImportMetaEnv {
   
   // YouTube API (opcional)
   readonly VITE_YOUTUBE_API_KEY?: string;
+
+  // Task #230 — path do Socket.IO (opcional). Espelha `SOCKET_IO_PATH`
+  // do servidor. Default `/socket.io/`. Só altere em caso de colisão
+  // de rota com outro middleware.
+  readonly VITE_SOCKET_IO_PATH?: string;
   
   // API URLs
   readonly VITE_API_BASE_URL: string;

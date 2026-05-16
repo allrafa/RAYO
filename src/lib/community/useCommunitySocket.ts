@@ -2,12 +2,13 @@
 //
 // API mínima:
 //   const { joinForum, leaveForum, joinPost, leavePost, on, onReconnect,
-//           emitCommentTyping } = useCommunitySocket(enabled);
+//           emitCommentTyping } = useCommunitySocket();
 //
-// `enabled` é um gate local (testes, kill-switch UX). Em produção
-// (Task #229) é sempre `true` — Socket.IO é o transporte único da
-// Comunidade. Quando `false`, o hook não monta listeners nem entra em
-// salas; o componente continua via estado local + refetch.
+// Task #230 — o parâmetro `enabled` foi removido. Socket.IO é o
+// transporte único da Comunidade desde a Task #229, então o gate
+// local não tinha razão de existir. Se for preciso desligar tudo,
+// o kill-switch é `SOCKET_IO_ENABLED=false` no servidor — aí o
+// socket nunca conecta e o hook degrada pra refetch via REST.
 //
 // O hook lida com reconnect automaticamente: ao receber `connect` do
 // socket, re-entra nas salas que o componente declarou via `joinForum`
@@ -122,18 +123,7 @@ export interface UseCommunitySocket {
   reportView: (postId: number) => void;
 }
 
-const NOOP: UseCommunitySocket = {
-  joinForum: () => {},
-  leaveForum: () => {},
-  joinPost: () => {},
-  leavePost: () => {},
-  on: () => () => {},
-  onReconnect: () => () => {},
-  emitCommentTyping: () => {},
-  reportView: () => {},
-};
-
-export function useCommunitySocket(enabled: boolean): UseCommunitySocket {
+export function useCommunitySocket(): UseCommunitySocket {
   const forumsRef = useRef<Set<string>>(new Set());
   const postsRef = useRef<Set<number>>(new Set());
   // Handlers ativos por evento — pra cleanup determinístico no unmount.
@@ -144,7 +134,6 @@ export function useCommunitySocket(enabled: boolean): UseCommunitySocket {
   const hasConnectedRef = useRef(false);
 
   useEffect(() => {
-    if (!enabled) return;
     const s = getCommunitySocket();
 
     const onConnect = () => {
@@ -183,14 +172,13 @@ export function useCommunitySocket(enabled: boolean): UseCommunitySocket {
       handlersRef.current.clear();
       reconnectCbsRef.current.clear();
     };
-  }, [enabled]);
+  }, []);
 
   // CRÍTICO — identidade estável do objeto retornado. Sem `useMemo`,
   // cada render produz um novo objeto, fazendo effects que dependem
   // de `community` re-executarem e thrashar leave/join (passando do
   // rate limit no servidor e perdendo eventos).
   const api = useMemo<UseCommunitySocket>(() => {
-    if (!enabled) return NOOP;
     return {
       joinForum: (slug: string) => {
         const norm = slug.trim().toLowerCase();
@@ -243,7 +231,7 @@ export function useCommunitySocket(enabled: boolean): UseCommunitySocket {
         void emitCommunityWithAck("post:view", { post_id: postId });
       },
     };
-  }, [enabled]);
+  }, []);
 
   return api;
 }

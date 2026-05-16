@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { requireRole } from "../../middleware/auth.js";
 import { success, error as sendError } from "../../utils/response.js";
+import { getIO, isSocketEnabled, SOCKET_IO_PATH } from "../../realtime/io.js";
 import {
   getOverviewStats,
   listUsers,
@@ -37,6 +38,28 @@ function parseStatus(value: unknown): "all" | "visible" | "hidden" | null {
   if (value === "all" || value === "visible" || value === "hidden") return value;
   return null;
 }
+
+// Task #230 — smoke endpoint pro realtime. Retorna estado do IO server
+// (habilitado/desabilitado, path, contagem de sockets por namespace).
+// Útil pra ops verificarem rapidamente se o transporte está vivo sem
+// precisar abrir um WS na mão. Admin-only porque expõe contagem global.
+router.get("/realtime/ping", requireRole("admin"), (_req, res) => {
+  const io = getIO();
+  const enabled = isSocketEnabled();
+  // Schema estável: `namespaces` sempre tem as duas chaves conhecidas
+  // (`/dm` e `/community`), com count 0 quando o IO está desligado.
+  // Mantém a lista explícita pra não depender de `_nsps` (internal).
+  const namespaces: Record<string, number> = {
+    "/dm": io ? io.of("/dm").sockets.size : 0,
+    "/community": io ? io.of("/community").sockets.size : 0,
+  };
+  success(res, {
+    ok: true,
+    enabled,
+    path: SOCKET_IO_PATH,
+    namespaces,
+  });
+});
 
 router.get("/overview", async (_req, res, next) => {
   try {

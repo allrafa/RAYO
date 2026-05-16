@@ -27,6 +27,11 @@
 //  • `SOCKET_IO_ENABLED=false` desliga o Socket.IO inteiro (DM +
 //    Comunidade + Notificações ficam sem realtime — fallback é polling).
 //
+// Path configurável (Task #230):
+//  • `SOCKET_IO_PATH` (default `/socket.io`) — só altere se houver
+//    colisão com outra rota. Cliente precisa do mesmo valor via
+//    `VITE_SOCKET_IO_PATH` (com barra final).
+//
 // Task #229: SSE foi removido. Socket.IO é o transporte ÚNICO; não há
 // mais `DM_REALTIME` ou `COMMUNITY_REALTIME` — o servidor sempre emite
 // pelo socket e o cliente sempre ouve.
@@ -46,12 +51,34 @@ let dmNs: Namespace | null = null;
 
 const ENABLED = (process.env.SOCKET_IO_ENABLED ?? "true").toLowerCase() !== "false";
 
+// Task #230 — path configurável. Normalizado pra terminar em `/` (o
+// engine.io espera o trailing slash quando bate com o cliente).
+function normalizeSocketPath(raw: string | undefined): string {
+  const fallback = "/socket.io";
+  const value = (raw ?? fallback).trim() || fallback;
+  const withLeadingSlash = value.startsWith("/") ? value : `/${value}`;
+  const stripped = withLeadingSlash.replace(/\/+$/, "");
+  return `${stripped}/`;
+}
+
+export const SOCKET_IO_PATH = normalizeSocketPath(process.env.SOCKET_IO_PATH);
+
 export function isSocketEnabled(): boolean {
   return ENABLED && io !== null;
 }
 
 export function getIO(): IOServer | null {
   return io;
+}
+
+// Task #230 — ponto de extensão pra adapter externo (ex: Redis pra
+// múltiplas instâncias). Hoje é no-op silencioso: vivemos com adapter
+// in-memory padrão do socket.io. Quando precisar escalar horizontal,
+// trocar este helper por algo como `io.adapter(createAdapter(redis))`
+// — o resto do código não muda.
+export function attachAdapter(_io: IOServer): void {
+  // intentional no-op (single-instance). Single source of truth do
+  // ponto onde futuros adapters serão plugados.
 }
 
 // Helper: fan-out pra todas as conexões de um user (todas as abas).
@@ -64,10 +91,19 @@ export function emitToUser(userId: number, event: string, payload: unknown): voi
 // está "online" se tem pelo menos um socket conectado na sala
 // `user:<id>` do namespace `/dm`. Usado pra decidir se mandamos
 // e-mail de notificação de DM offline.
+//
+// Task #230 — log estruturado em debug pra rastrear decisões de gate
+// quando algum recipient reclama de "não recebi e-mail" ou vice-versa.
 export function isUserOnline(userId: number): boolean {
-  if (!dmNs) return false;
+  if (!dmNs) {
+    logger.debug("Realtime", `isUserOnline user=${userId} → false (namespace not attached)`);
+    return false;
+  }
   const room = dmNs.adapter.rooms.get(`user:${userId}`);
-  return (room?.size ?? 0) > 0;
+  const sockets = room?.size ?? 0;
+  const online = sockets > 0;
+  logger.debug("Realtime", `isUserOnline user=${userId} sockets=${sockets} online=${online}`);
+  return online;
 }
 
 // Helper: fan-out pra todos os participantes ativos de uma conversa
@@ -93,11 +129,15 @@ export function initRealtime(httpServer: HttpServer): IOServer | null {
   if (io) return io;
 
   io = new IOServer(httpServer, {
+    path: SOCKET_IO_PATH,
     cors: { origin: false },
     serveClient: false,
     pingInterval: 20_000,
     pingTimeout: 25_000,
   });
+
+  // Task #230 — ponto de extensão pra adapter externo (no-op hoje).
+  attachAdapter(io);
 
   dmNs = io.of("/dm");
 

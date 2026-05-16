@@ -12,12 +12,23 @@
 
 import { io as ioClient, type Socket } from "socket.io-client";
 
+// Task #230 — path configurável (espelha `SOCKET_IO_PATH` do servidor).
+// Default `/socket.io/` — sempre com trailing slash (engine.io exige).
+function resolveSocketPath(): string {
+  const raw = (import.meta.env.VITE_SOCKET_IO_PATH as string | undefined)?.trim();
+  if (!raw) return "/socket.io/";
+  const withLeadingSlash = raw.startsWith("/") ? raw : `/${raw}`;
+  return withLeadingSlash.endsWith("/") ? withLeadingSlash : `${withLeadingSlash}/`;
+}
+
+const SOCKET_IO_PATH = resolveSocketPath();
+
 let socket: Socket | null = null;
 
 export function getCommunitySocket(): Socket {
   if (socket) return socket;
   socket = ioClient("/community", {
-    path: "/socket.io/",
+    path: SOCKET_IO_PATH,
     withCredentials: true,
     transports: ["polling", "websocket"],
     autoConnect: true,

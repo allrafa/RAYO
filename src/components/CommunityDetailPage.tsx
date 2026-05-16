@@ -120,7 +120,8 @@ function formatDate(d?: string | null): string {
 export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }: CommunityDetailPageProps) {
   const { user } = useAuth();
   // Task #229 — Socket.IO é o transporte único da Comunidade. Sem flag.
-  const community = useCommunitySocket(true);
+  // Task #230 — API simplificada; o hook não aceita mais `enabled`.
+  const community = useCommunitySocket();
   const [forum, setForum] = useState<ForumDetail | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   // Ref espelhando o maior `post.id` visto até agora — usado no
@@ -233,7 +234,7 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
   // posts viram no topo da lista (dedup por id). Soft-delete remove o
   // card do feed sem refetch.
   useEffect(() => {
-    if (!realtimeEnabled || !forum) return;
+    if (!forum) return;
     const slugSnap = forum.slug;
     community.joinForum(slugSnap);
 
@@ -331,7 +332,7 @@ export function CommunityDetailPage({ slug, onBack, onOpenPost, onOpenProfile }:
       // Sai da sala antiga ao trocar de fórum (ou desmontar).
       community.leaveForum(slugSnap);
     };
-  }, [realtimeEnabled, forum?.slug, community]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [forum?.slug, community]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const onToggleSubscribe = async () => {
     if (!forum || subBusy) return;
