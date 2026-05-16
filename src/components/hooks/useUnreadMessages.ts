@@ -179,6 +179,9 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
       setLoaded(false);
       setStreamConnected(false);
       streamConnectedRef.current = false;
+      // Limpa cursors de DM no logout / troca de conta, pra que a próxima
+      // sessão não tente gap-fill com cursor de outro usuário.
+      conversationCursors.clear();
       return;
     }
 

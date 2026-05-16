@@ -69,8 +69,8 @@ A rota `/since` é idempotente e respeita o corte `cleared_at` (lado-a-lado) —
 
 ## Fallback POST
 
-- Endpoints REST `/typing` e `/listening` continuam ativos. O cliente prefere socket, mas se `emitWithAck` retornar `false` (sem conexão / sem ack em 2s), cai pro POST.
-- `/read` continua só via REST — não há ganho de latência percebida.
+- Endpoints REST `/typing`, `/listening` e `/read` continuam ativos. O cliente prefere socket, mas se `emitWithAck` retornar `false` (sem conexão / sem ack em 2s), cai pro POST.
+- `markRead` no cliente também é socket-first: `emitWithAck("message:read", { conversation_id })` → fallback `POST /conversations/:id/read`.
 
 ## Kill-switches
 

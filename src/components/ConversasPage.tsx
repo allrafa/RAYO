@@ -788,7 +788,7 @@ export function ConversasPage() {
   // POST tradicional — mantém compat enquanto o transporte estabiliza.
   const sendTypingPing = useCallback((conversationId: number) => {
     const now = Date.now();
-    if (now - lastTypingSentAtRef.current < 3000) return;
+    if (now - lastTypingSentAtRef.current < 2000) return;
     lastTypingSentAtRef.current = now;
     // Task #222 — evento renomeado pra `message:typing` no Socket.IO.
     // Fallback POST permanece com a rota legada `/typing`.
