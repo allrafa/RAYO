@@ -29,6 +29,7 @@ import { useUnreadMessages, type MessageStreamEvent } from "./hooks/useUnreadMes
 import { onScrollTop } from "../lib/scrollTop";
 import { useAutofocusOnDesktop } from "../lib/useAutofocusOnDesktop";
 import { annotateMessages, isOnlyEmoji } from "../lib/messageGrouping";
+import { emitWithAck } from "../lib/realtime/socket";
 
 type MessageKind = "text" | "image" | "audio";
 
@@ -774,11 +775,17 @@ export function ConversasPage() {
     return () => window.clearTimeout(handle);
   }, [userSearchQuery, showNewConvDialog]);
 
+  // Task #222 — typing/listening agora preferem Socket.IO (latência
+  // significativamente menor que POST + SSE round-trip). Se o socket
+  // não estiver conectado ou o servidor não acknowledgear, cai pro
+  // POST tradicional — mantém compat enquanto o transporte estabiliza.
   const sendTypingPing = useCallback((conversationId: number) => {
     const now = Date.now();
     if (now - lastTypingSentAtRef.current < 3000) return;
     lastTypingSentAtRef.current = now;
-    void api.post(`/api/messages/conversations/${conversationId}/typing`);
+    void emitWithAck("dm:typing", { conversation_id: conversationId }).then((ok) => {
+      if (!ok) void api.post(`/api/messages/conversations/${conversationId}/typing`);
+    });
   }, []);
 
   const sendListeningPing = useCallback((conversationId: number, messageId: number) => {
@@ -786,7 +793,9 @@ export function ConversasPage() {
     const last = lastListeningSentAtRef.current.get(messageId) ?? 0;
     if (now - last < 5000) return;
     lastListeningSentAtRef.current.set(messageId, now);
-    void api.post(`/api/messages/conversations/${conversationId}/listening`, { message_id: messageId });
+    void emitWithAck("dm:listening", { conversation_id: conversationId, message_id: messageId }).then((ok) => {
+      if (!ok) void api.post(`/api/messages/conversations/${conversationId}/listening`, { message_id: messageId });
+    });
   }, []);
 
   // ─────────── Anexos ───────────

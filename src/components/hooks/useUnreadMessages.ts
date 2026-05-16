@@ -1,6 +1,7 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../../lib/api";
 import { useAuth } from "../AuthContext";
+import { getSocket, disconnectSocket } from "../../lib/realtime/socket";
 
 // Slow safety-net poll used only when the realtime stream is NOT connected
 // (e.g. proxy stripped SSE, browser blocked it, or transient network drop).
@@ -108,6 +109,17 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
   const mountedRef = useRef(true);
   const subscribersRef = useRef<Set<StreamHandler>>(new Set());
   const streamConnectedRef = useRef(false);
+  // Task #222 — Rastreamos os dois transportes separadamente para
+  // recomputar `streamConnected = sse || socket`. Sem isso, se o
+  // socket cai e o SSE NÃO estiver vivo, ficaríamos com flag
+  // "conectado" antigo e o fallback poll não dispararia.
+  const sseConnectedRef = useRef(false);
+  const socketConnectedRef = useRef(false);
+  const recomputeConnected = useCallback(() => {
+    const next = sseConnectedRef.current || socketConnectedRef.current;
+    streamConnectedRef.current = next;
+    if (mountedRef.current) setStreamConnected(next);
+  }, []);
 
   const refresh = useCallback(async () => {
     const res = await api.get<UnreadCountResponse>("/api/messages/unread-count");
@@ -148,6 +160,11 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
     // Initial unread fetch so the badge has a value before the first event arrives.
     void refresh();
 
+    // Task #222 — Compartilhado entre SSE e Socket.IO. Se um já fez o
+    // "force resync" no último ~2s, o outro vira no-op pra evitar duplo
+    // GET /unread-count + duplo refetch nos consumers do `connected`.
+    let lastConnectedFireAt = 0;
+
     let es: EventSource | null = null;
     try {
       // Same-origin: cookies (session_token) are sent automatically.
@@ -159,8 +176,11 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
     if (es) {
       const handleConnected = () => {
         if (!mountedRef.current) return;
-        streamConnectedRef.current = true;
-        setStreamConnected(true);
+        sseConnectedRef.current = true;
+        recomputeConnected();
+        const now = Date.now();
+        if (now - lastConnectedFireAt < 2_000) return;
+        lastConnectedFireAt = now;
         // On (re)connect we MUST resync authoritative state, because any
         // events that fired while the SSE channel was down were lost
         // (the server does not buffer / replay). Refresh the unread total
@@ -232,8 +252,8 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
       const handleError = () => {
         // EventSource will auto-reconnect with built-in backoff. We just
         // flip the flag so the fallback poll kicks in until we recover.
-        streamConnectedRef.current = false;
-        if (mountedRef.current) setStreamConnected(false);
+        sseConnectedRef.current = false;
+        recomputeConnected();
       };
 
       const handleNotificationNew = (e: MessageEvent) => {
@@ -267,6 +287,55 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
       es.addEventListener("error", handleError);
     }
 
+    // Task #222 — Socket.IO em paralelo ao SSE. Mesmos nomes de evento,
+    // mesmo payload. Dedup acontece downstream: ConversasPage já checa
+    // `prev.some((m) => m.id === message.id)` antes de adicionar. Quando
+    // ambos transportes estão saudáveis, o socket geralmente chega
+    // primeiro (UDP-like) e o SSE vira no-op. Se o socket cair, SSE
+    // mantém a entrega.
+    const socket = getSocket();
+    const onSocketConnect = () => {
+      if (!mountedRef.current) return;
+      socketConnectedRef.current = true;
+      recomputeConnected();
+      const now = Date.now();
+      if (now - lastConnectedFireAt < 2_000) return;
+      lastConnectedFireAt = now;
+      void refresh();
+      broadcast({ type: "connected", payload: {} });
+    };
+    const onSocketDisconnect = () => {
+      socketConnectedRef.current = false;
+      recomputeConnected();
+    };
+    const onSocketMessageNew = (payload: MessageNewPayload) =>
+      broadcast({ type: "message:new", payload });
+    const onSocketMessageRead = (payload: MessageReadPayload) =>
+      broadcast({ type: "message:read", payload });
+    const onSocketUnreadChanged = (payload: UnreadChangedPayload) => {
+      if (typeof payload?.count === "number") {
+        setCount(payload.count);
+        setLoaded(true);
+      }
+      broadcast({ type: "unread:changed", payload });
+    };
+    const onSocketTyping = (payload: TypingPayload) =>
+      broadcast({ type: "typing", payload });
+    const onSocketListening = (payload: ListeningPayload) =>
+      broadcast({ type: "listening", payload });
+    const onSocketReaction = (payload: MessageReactionPayload) =>
+      broadcast({ type: "message:reaction", payload });
+
+    socket.on("connect", onSocketConnect);
+    socket.on("disconnect", onSocketDisconnect);
+    socket.on("message:new", onSocketMessageNew);
+    socket.on("message:read", onSocketMessageRead);
+    socket.on("unread:changed", onSocketUnreadChanged);
+    socket.on("typing", onSocketTyping);
+    socket.on("listening", onSocketListening);
+    socket.on("message:reaction", onSocketReaction);
+    if (socket.connected) onSocketConnect();
+
     // Fallback poll: only fires when the realtime channel is down.
     const fallbackInterval = window.setInterval(() => {
       if (streamConnectedRef.current) return;
@@ -286,6 +355,9 @@ export function UnreadMessagesProvider({ children }: { children: ReactNode }) {
       window.clearInterval(fallbackInterval);
       document.removeEventListener("visibilitychange", onVisibility);
       if (es) es.close();
+      // Desconecta o socket no logout/desmontagem do provider. Logado
+      // de novo, getSocket() cria nova instância.
+      disconnectSocket();
       streamConnectedRef.current = false;
       setStreamConnected(false);
     };

@@ -7,6 +7,7 @@ RAYO é uma plataforma digital para fortalecer famílias através de conteúdo t
 - **Bunny Stream**: `BUNNY_STREAM_LIBRARY_ID/API_KEY/CDN_HOSTNAME/WEBHOOK_SECRET` — ver `docs/contracts/bunny-stream.md`.
 - **OAuth Google/Facebook** (só prod `https://rayo.app.br`): `GOOGLE_CLIENT_ID/SECRET/REDIRECT_URI`, `FACEBOOK_CLIENT_ID/SECRET/REDIRECT_URI`. Sem `*_REDIRECT_URI` exato → botão "Em breve" — ver `docs/contracts/auth.md`.
 - **Stripe (Trilhas pagas)**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (gerado/managed pelo `stripe-replit-sync` no boot, opcional). Webhook `POST /api/stripe/webhook`. Checkout hosted (sem chave pública no client) — ver `docs/contracts/billing.md`.
+- **Realtime (Task #222 — DM via Socket.IO)**: `SOCKET_IO_ENABLED` (default `true`, kill-switch). Servidor anexa `socket.io` ao mesmo http.Server do Express (path `/socket.io/`). Auth pelo mesmo cookie `session_token`. Em transição: SSE legado (`/api/messages/stream`) e Socket.IO rodam em **dual-write** — cliente dedup por `message.id`. Ver `server/realtime/io.ts` + `src/lib/realtime/socket.ts`.
 
 ## Stack
 - **Frontend**: React 18, TypeScript, Tailwind v4, Vite. Fonte única **Outfit** (200–700).

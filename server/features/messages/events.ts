@@ -1,3 +1,5 @@
+import { emitToUser } from "../../realtime/io.js";
+
 type Listener = (event: string, payload: unknown) => void;
 
 const listeners = new Map<number, Set<Listener>>();
@@ -17,7 +19,12 @@ export function subscribeUser(userId: number, listener: Listener): () => void {
   };
 }
 
+// Task #222 — Dual-write: SSE legado (`listeners`) + Socket.IO. Cliente
+// dedup por `message.id` quando assinar os dois transportes. Quando a
+// migração completar, removemos a branch SSE. emitToUser é no-op se o
+// Socket.IO estiver desabilitado por env (SOCKET_IO_ENABLED=false).
 export function publishToUser(userId: number, event: string, payload: unknown): void {
+  emitToUser(userId, event, payload);
   const set = listeners.get(userId);
   if (!set) return;
   for (const l of Array.from(set)) {

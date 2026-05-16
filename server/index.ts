@@ -37,6 +37,8 @@ import path from "path";
 import fs from "fs/promises";
 import { fileURLToPath } from "url";
 import { applyPublicMeta, resolvePublicMeta } from "./features/seo/publicMeta.js";
+import http from "http";
+import { initRealtime } from "./realtime/io.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -671,7 +673,13 @@ async function start() {
 
     app.use(errorHandler);
 
-    app.listen(PORT, "0.0.0.0", () => {
+    // Task #222 — criamos o http.Server explicitamente para anexar o
+    // Socket.IO (não dá pra plugar no objeto retornado por app.listen
+    // depois — ele já começa a aceitar conexões). Socket.IO escuta no
+    // mesmo PORT/host do Express (path padrão `/socket.io/`).
+    const httpServer = http.createServer(app);
+    initRealtime(httpServer);
+    httpServer.listen(PORT, "0.0.0.0", () => {
       logger.info("Server", `RAYO server running on port ${PORT}`);
     });
   } catch (err) {
