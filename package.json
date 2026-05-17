@@ -101,6 +101,6 @@
     "build": "vite build",
     "start": "NODE_ENV=production tsx server/index.ts",
     "test:unit": "tsx --test tests/unit/*.test.ts",
-    "test:integration": "find tests/integration -name '*.test.ts' -print0 | xargs -0 tsx --test"
+    "test:integration": "tsx --test tests/integration/*.test.ts"
   }
 }
