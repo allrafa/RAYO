@@ -9,7 +9,6 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
 import { fileURLToPath } from "url";
-import { applyPublicMeta, resolvePublicMeta } from "./features/seo/publicMeta.js";
 import {
   mountPublicSitemapAndRobots,
   mountPublicSeoHtml,

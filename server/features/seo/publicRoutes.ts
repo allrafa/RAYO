@@ -3,11 +3,8 @@
 //
 // Em prod, `server/index.ts:start()` monta `mountPublicSitemapAndRobots`
 // + `mountPublicSeoHtml` ANTES do middleware do Vite/SPA. Em testes,
-// o helper de app monta os mesmos com um getIndexHtml stub minimal
-// (sem precisar do Vite/build).
-//
-// Exporta também `buildSitemapXml`/`buildRobotsTxt` puros pra testes
-// unitários (não usados aqui, mas úteis no futuro).
+// `tests/integration/helpers/app.ts:createTestAppWithPublicSeo()` monta
+// os mesmos helpers com um getIndexHtml stub minimal (sem Vite/build).
 import type { Express, Request, Response, NextFunction } from "express";
 import path from "node:path";
 import fs from "node:fs/promises";
