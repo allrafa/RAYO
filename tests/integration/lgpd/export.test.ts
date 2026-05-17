@@ -71,6 +71,63 @@ describe("LGPD data export (Task #235)", () => {
     assert.equal(rows[0].status, "completed");
   });
 
+  it("export inclui progresso de curso/lição quando o user tem completions", async () => {
+    // Garante que completions registradas via user_course_progress e
+    // user_lesson_progress aparecem no payload do export.
+    const user = await makeUser();
+    const pool = getPool();
+    // Seed mínimo: 1 curso + 1 módulo + 1 lição.
+    const { rows: cRows } = await pool.query<{ id: number }>(
+      `INSERT INTO courses (title, description)
+       VALUES ('Curso LGPD', 'desc') RETURNING id`,
+    );
+    const courseId = cRows[0].id;
+    const { rows: mRows } = await pool.query<{ id: number }>(
+      `INSERT INTO course_modules (course_id, title, sort_order)
+       VALUES ($1, 'Módulo 1', 1) RETURNING id`,
+      [courseId],
+    );
+    const moduleId = mRows[0].id;
+    const { rows: lRows } = await pool.query<{ id: number }>(
+      `INSERT INTO course_lessons (module_id, title, sort_order, content_type)
+       VALUES ($1, 'Lição 1', 1, 'video') RETURNING id`,
+      [moduleId],
+    );
+    const lessonId = lRows[0].id;
+    await pool.query(
+      `INSERT INTO user_course_progress (user_id, course_id, progress_percentage,
+         completed_lessons, total_lessons, enrolled_at)
+       VALUES ($1, $2, 100, 1, 1, NOW())`,
+      [user.id, courseId],
+    );
+    await pool.query(
+      `INSERT INTO user_lesson_progress (user_id, lesson_id, status,
+         progress_seconds, completed_at, started_at)
+       VALUES ($1, $2, 'completed', 120, NOW(), NOW())`,
+      [user.id, lessonId],
+    );
+
+    const app = createTestApp();
+    await withServer(app, async (base) => {
+      const r = await request<{
+        data: {
+          export: {
+            courseProgress: Array<{ course_title?: string; progress_percentage?: number }>;
+            lessonProgress: Array<{ lesson_title?: string; status?: string }>;
+          };
+        };
+      }>(base, {
+        method: "POST", path: "/api/lgpd/data-export", cookie: user.sessionCookie,
+      });
+      assert.equal(r.status, 200);
+      assert.equal(r.body.data.export.courseProgress.length, 1);
+      assert.equal(r.body.data.export.courseProgress[0].course_title, "Curso LGPD");
+      assert.equal(Number(r.body.data.export.courseProgress[0].progress_percentage), 100);
+      assert.equal(r.body.data.export.lessonProgress.length, 1);
+      assert.equal(r.body.data.export.lessonProgress[0].status, "completed");
+    });
+  });
+
   it("export do user A não traz nada do user B (isolamento por user_id)", async () => {
     const a = await makeUser({ name: "Alice" });
     const b = await makeUser({ name: "Bob" });

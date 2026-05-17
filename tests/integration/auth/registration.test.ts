@@ -76,8 +76,10 @@ describe("Auth registration (Task #235)", () => {
     });
   });
 
-  it("magic link (GET /verify-email?token=) marca verified e redireciona com ok", async () => {
-    // Insere uma linha de verificação direto no DB com token conhecido.
+  it("fluxo completo magic-link → register → login", async () => {
+    // Cobre a outra metade do fluxo de cadastro: usuário recebe o
+    // magic link, confirma o email via GET /verify-email, completa o
+    // registro com POST /register e em seguida consegue fazer login.
     const email = `magic-${crypto.randomBytes(3).toString("hex")}@rayo.test`;
     const rawToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -89,27 +91,36 @@ describe("Auth registration (Task #235)", () => {
 
     const app = createTestApp();
     await withServer(app, async (base) => {
-      const r = await fetch(`${base}/api/auth/verify-email?token=${rawToken}`, {
+      // 1. Magic link marca verified.
+      const verify = await fetch(`${base}/api/auth/verify-email?token=${rawToken}`, {
         redirect: "manual",
       });
-      assert.equal(r.status, 302);
-      const loc = r.headers.get("location") ?? "";
-      assert.match(loc, /\/\?email_verified=ok/);
+      assert.equal(verify.status, 302);
+      assert.match(verify.headers.get("location") ?? "", /email_verified=ok/);
 
-      // Re-click é idempotente: vira "already".
-      const r2 = await fetch(`${base}/api/auth/verify-email?token=${rawToken}`, {
+      // Re-click é idempotente.
+      const verify2 = await fetch(`${base}/api/auth/verify-email?token=${rawToken}`, {
         redirect: "manual",
       });
-      assert.equal(r2.status, 302);
-      assert.match(r2.headers.get("location") ?? "", /email_verified=already/);
+      assert.match(verify2.headers.get("location") ?? "", /email_verified=already/);
+
+      // 2. Registro passa no gate EMAIL_NOT_VERIFIED.
+      const password = "Magica!Forte2026";
+      const reg = await request<{ data: { user: { id: number; email: string } } }>(base, {
+        method: "POST", path: "/api/auth/register",
+        body: { email, password, name: "Magic Tester" },
+      });
+      assert.equal(reg.status, 201);
+      assert.equal(reg.body.data.user.email, email);
+
+      // 3. Login com as credenciais recém criadas funciona.
+      const login = await request<{ data: { user: { id: number } } }>(base, {
+        method: "POST", path: "/api/auth/login",
+        body: { email, password },
+      });
+      assert.equal(login.status, 200);
+      assert.equal(login.body.data.user.id, reg.body.data.user.id);
     });
-
-    // Confirma no DB.
-    const { rows } = await getPool().query<{ verified: boolean }>(
-      `SELECT verified FROM email_verification_codes WHERE email = $1`,
-      [email],
-    );
-    assert.equal(rows[0].verified, true);
   });
 
   it("magic link com token inválido → 302 com email_verified=invalid", async () => {

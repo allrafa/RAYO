@@ -12,9 +12,27 @@
 
 import { after, afterEach, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import { createTestApp } from "../helpers/app.js";
 import { withServer, request } from "../helpers/http.js";
 import { closeDbPool, ensureSchema, truncateAll } from "../helpers/db.js";
+
+function withEnv<T extends string>(
+  vars: Record<T, string>,
+  fn: () => Promise<void>,
+): Promise<void> {
+  const previous: Partial<Record<T, string | undefined>> = {};
+  for (const k of Object.keys(vars) as T[]) {
+    previous[k] = process.env[k as string];
+    process.env[k as string] = vars[k];
+  }
+  return fn().finally(() => {
+    for (const k of Object.keys(vars) as T[]) {
+      if (previous[k] === undefined) delete process.env[k as string];
+      else process.env[k as string] = previous[k];
+    }
+  });
+}
 
 before(async () => { await ensureSchema(); });
 afterEach(async () => { await truncateAll(); });
@@ -67,6 +85,53 @@ describe("Auth OAuth gates (Task #235)", () => {
       assert.equal(r.status, 302);
       assert.match(r.headers.get("location") ?? "", /oauth_error=not_configured/);
     });
+  });
+
+  it("callback com state inválido (provider configurado) → 302 google_state_mismatch", async () => {
+    // O check de state roda ANTES do passport, então credenciais fake
+    // não disparam I/O. Setamos as 3 envs pra fingir provider configurado;
+    // restauramos no finally.
+    await withEnv(
+      {
+        GOOGLE_CLIENT_ID: "fake-client-id",
+        GOOGLE_CLIENT_SECRET: "fake-client-secret",
+        GOOGLE_REDIRECT_URI: "https://rayo.app.br/api/auth/google/callback",
+      },
+      async () => {
+        const app = createTestApp();
+        await withServer(app, async (base) => {
+          // Sem state cookie + state na query → mismatch.
+          const r = await fetch(
+            `${base}/api/auth/google/callback?code=fake&state=intruso`,
+            { redirect: "manual" },
+          );
+          assert.equal(r.status, 302);
+          assert.match(
+            r.headers.get("location") ?? "",
+            /oauth_error=google_state_mismatch/,
+          );
+        });
+      },
+    );
+  });
+
+  it("OAuth user fica auto-verified (bypass do fluxo de código)", async () => {
+    // findOrCreateOAuthUser chama markEmailVerifiedFromTrustedProvider
+    // pra todo provider — espelha o trust do provider no nosso flag de
+    // verified, sem precisar do POST /verify-code. Sem isso, OAuth users
+    // ficariam travados em gates downstream (criar comunidade etc).
+    const svc = await import("../../../server/features/auth/service.js");
+    const email = `oauth-${crypto.randomBytes(3).toString("hex")}@rayo.test`;
+    const providerId = `g-${crypto.randomBytes(8).toString("hex")}`;
+    const user = await svc.findOrCreateOAuthUser({
+      provider: "google",
+      providerId,
+      email,
+      name: "OAuth Tester",
+    });
+    assert.equal(typeof user.id, "number");
+    const verified = await svc.isEmailVerifiedForUser(user.id);
+    assert.equal(verified, true, "OAuth-created user precisa estar verified");
   });
 
   it("GET /api/auth/facebook/callback sem state cookie → 302 oauth_error=…", async () => {

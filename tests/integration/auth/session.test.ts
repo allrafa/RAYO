@@ -29,6 +29,13 @@ describe("Auth session (Task #235)", () => {
       const setCookie = r.headers.get("set-cookie") ?? "";
       assert.match(setCookie, /HttpOnly/i);
       assert.match(setCookie, /SameSite=Lax/i);
+      // Contrato: cookie é `Secure` em produção e `não-Secure` em dev
+      // (sameSite/strict em prod, lax em dev — vide routes.ts:setSessionCookie).
+      // NODE_ENV nas integrações é "development", então NÃO deve ter Secure.
+      // Esta asserção documenta o invariante; testar prod requer reload do
+      // módulo (isDev é capturado uma vez via const top-level).
+      assert.equal(process.env.NODE_ENV !== "production", true);
+      assert.doesNotMatch(setCookie, /;\s*Secure(\s*;|\s*$)/i, "Secure não deve aparecer em dev");
       // 30 dias = 2592000s; alguns runtimes serializam em ms — checamos
       // Max-Age >= 24h pra cobrir as duas convenções.
       const maxAgeMatch = setCookie.match(/Max-Age=(\d+)/i);
