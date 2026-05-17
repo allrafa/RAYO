@@ -35,4 +35,15 @@ export async function testConnection(): Promise<boolean> {
   }
 }
 
+/**
+ * Task #234 — Fecha o pool global. Usado por integration tests no
+ * `after()` pra liberar conexões idle imediatamente (sem isso o
+ * processo trava por ~30s aguardando `idleTimeoutMillis`). Em
+ * produção esta função NÃO é chamada — o processo só termina via
+ * SIGTERM e o pool é finalizado pelo runtime.
+ */
+export async function closeDb(): Promise<void> {
+  await pool.end().catch(() => {});
+}
+
 export default pool;
