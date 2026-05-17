@@ -35,6 +35,57 @@ describe("LGPD data deletion (Task #235)", () => {
     });
   });
 
+  it("anonimiza posts e comments do user, preserva linhas (FK integrity)", async () => {
+    const user = await makeUser({ name: "Autor a Deletar" });
+    const pool = getPool();
+    // truncateAll esvazia forums entre specs — criamos inline.
+    const { rows: fRows } = await pool.query<{ id: number }>(
+      `INSERT INTO forums (name, description, life_context, category)
+       VALUES ('LGPD Test Forum', 'desc', 'solteiro', 'geral') RETURNING id`,
+    );
+    const forumId = fRows[0].id;
+    // 1 post + 1 comentário do user.
+    const { rows: pRows } = await pool.query<{ id: number }>(
+      `INSERT INTO posts (forum_id, user_id, title, content)
+       VALUES ($1, $2, 'Título original', 'Conteúdo original do post')
+       RETURNING id`,
+      [forumId, user.id],
+    );
+    const postId = pRows[0].id;
+    const { rows: cRows } = await pool.query<{ id: number }>(
+      `INSERT INTO comments (post_id, user_id, content)
+       VALUES ($1, $2, 'Comentário original') RETURNING id`,
+      [postId, user.id],
+    );
+    const commentId = cRows[0].id;
+
+    const app = createTestApp();
+    await withServer(app, async (base) => {
+      const del = await request<{ success: boolean }>(base, {
+        method: "POST", path: "/api/lgpd/data-deletion", cookie: user.sessionCookie,
+      });
+      assert.equal(del.status, 200);
+    });
+
+    // Post: linha sobrevive (FK preservada), título e content anonimizados.
+    const { rows: postAfter } = await pool.query<{
+      id: number; user_id: number; title: string; content: string;
+    }>(`SELECT id, user_id, title, content FROM posts WHERE id = $1`, [postId]);
+    assert.equal(postAfter.length, 1, "post não foi deletado (preserva FK)");
+    assert.equal(postAfter[0].title, "[removido]");
+    assert.match(postAfter[0].content, /\[conteúdo removido por solicitação LGPD\]/);
+    // user_id continua apontando pro user anonimizado (não vira NULL).
+    assert.equal(postAfter[0].user_id, user.id);
+
+    // Comment idem.
+    const { rows: commentAfter } = await pool.query<{
+      id: number; user_id: number; content: string;
+    }>(`SELECT id, user_id, content FROM comments WHERE id = $1`, [commentId]);
+    assert.equal(commentAfter.length, 1, "comment não foi deletado (preserva FK)");
+    assert.match(commentAfter[0].content, /\[conteúdo removido por solicitação LGPD\]/);
+    assert.equal(commentAfter[0].user_id, user.id);
+  });
+
   it("autenticado: anonimiza user, derruba sessão, preserva FKs", async () => {
     const user = await makeUser({ name: "Para Deletar" });
     const pool = getPool();

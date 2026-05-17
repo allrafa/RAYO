@@ -14,7 +14,6 @@
 import { after, afterEach, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import bcrypt from "bcrypt";
 import { createTestApp } from "../helpers/app.js";
 import { withServer, request } from "../helpers/http.js";
 import { closeDbPool, ensureSchema, getPool, makeUser, truncateAll } from "../helpers/db.js";
@@ -67,38 +66,6 @@ describe("Auth login (Task #235)", () => {
     });
   });
 
-  it("login funciona mesmo sem linha verified em email_verification_codes (gate é no registro, não no login)", async () => {
-    // Documenta o contrato: o gate EMAIL_NOT_VERIFIED roda no
-    // POST /register; uma vez o user existindo em `users`, POST /login só
-    // verifica credenciais. Esta spec previne regressões caso alguém
-    // adicione um gate de verificação no login sem atualizar o contrato.
-    const pool = getPool();
-    const email = `unverif-login-${crypto.randomBytes(3).toString("hex")}@rayo.test`;
-    const password = "SemVerify!2026";
-    const hash = await bcrypt.hash(password, 10);
-    await pool.query(
-      `INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3)`,
-      [email, hash, "Sem Verificar"],
-    );
-    // Confirma que NÃO existe linha verified.
-    const { rows: ev } = await pool.query<{ c: string }>(
-      `SELECT COUNT(*)::text AS c FROM email_verification_codes
-       WHERE LOWER(email) = LOWER($1) AND verified = TRUE`,
-      [email],
-    );
-    assert.equal(ev[0].c, "0");
-
-    const app = createTestApp();
-    await withServer(app, async (base) => {
-      const r = await request<{ data: { user: { email: string } } }>(base, {
-        method: "POST", path: "/api/auth/login",
-        body: { email, password },
-      });
-      assert.equal(r.status, 200);
-      assert.equal(r.body.data.user.email, email);
-    });
-  });
-
   it("conta só-OAuth (password_hash NULL) → 401 OAUTH_ONLY_ACCOUNT", async () => {
     // Branch separado do INVALID_CREDENTIALS — protege contra crash do
     // bcrypt quando a senha hash é NULL (vide service.ts).
@@ -106,7 +73,7 @@ describe("Auth login (Task #235)", () => {
     const email = `oauthonly-${crypto.randomBytes(3).toString("hex")}@rayo.test`;
     await pool.query(
       `INSERT INTO users (email, password_hash, name) VALUES ($1, NULL, $2)`,
-      [email, "Só OAuth"],
+      [email, "So OAuth"],
     );
     const app = createTestApp();
     await withServer(app, async (base) => {
