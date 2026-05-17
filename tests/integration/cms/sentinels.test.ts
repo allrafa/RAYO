@@ -98,6 +98,40 @@ describe("Public CMS detail — resolução de sentinels (Task #236)", () => {
     });
   });
 
+  it("objstore:// em media_url NÃO vaza o sentinel cru pra resposta", async () => {
+    // Object Storage está disponível no Replit (integration instalado).
+    // O resolver chama `signPublicObjectUrl` que devolve uma URL HTTPS
+    // assinada pelo sidecar. Mesmo se a chave não existir fisicamente,
+    // o sidecar costuma assinar — só a leitura da URL é que 404'a.
+    // O contrato testado aqui é: o cliente NUNCA vê `objstore://...`
+    // cru no JSON de resposta.
+    const owner = await makeUser({ role: "producer" });
+    const id = await insertPublishedContent(owner.id, {
+      kind: "audio",
+      title: "Áudio Object Storage",
+      media_url: "objstore://test-audio/track.mp3",
+    });
+    await withServer(createTestApp(), async (base) => {
+      const r = await request<PublicContentResponse>(base, {
+        method: "GET",
+        path: `/api/content/${id}`,
+      });
+      assert.equal(r.status, 200);
+      const item = r.body.data.item;
+      const mediaUrl = item.media_url;
+      // Aceitamos string resolvida (signed URL) OU null (se a assinatura
+      // falhou em ambiente de teste), mas NUNCA o sentinel cru.
+      if (typeof mediaUrl === "string") {
+        assert.ok(
+          !mediaUrl.startsWith("objstore://"),
+          `media_url vazou sentinel cru: ${mediaUrl}`,
+        );
+      } else {
+        assert.equal(mediaUrl, null);
+      }
+    });
+  });
+
   it("URL absoluta em media_url passa direto (pass-through)", async () => {
     const owner = await makeUser({ role: "producer" });
     const absUrl = "https://cdn.example.com/audio/track.mp3";

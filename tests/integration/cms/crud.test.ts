@@ -169,6 +169,41 @@ describe("CMS ownership matrix (Task #236)", () => {
     assert.equal(result.id, item.id);
   });
 
+  it("unauth (user=null) em updateContent → 401 UNAUTHORIZED", async () => {
+    const owner = await makeUser({ role: "producer" });
+    const { item } = await createContent(asSafeUser(owner, "producer"), {
+      kind: "audio",
+      title: "Sem dono pode mexer?",
+    });
+    await assert.rejects(
+      // @ts-expect-error — null user simula chamada sem sessão.
+      () => updateContent(null, item.id, { title: "x" }),
+      (err: unknown) => {
+        assert.ok(err instanceof CmsError);
+        assert.equal((err as CmsError).code, "UNAUTHORIZED");
+        assert.equal((err as CmsError).statusCode, 401);
+        return true;
+      },
+    );
+  });
+
+  it("unauth (user=null) em setContentStatus → 401 UNAUTHORIZED", async () => {
+    const owner = await makeUser({ role: "producer" });
+    const { item } = await createContent(asSafeUser(owner, "producer"), {
+      kind: "audio",
+      title: "Estado sem dono",
+    });
+    await assert.rejects(
+      // @ts-expect-error — null user simula chamada sem sessão.
+      () => setContentStatus(null, item.id, "published"),
+      (err: unknown) => {
+        assert.ok(err instanceof CmsError);
+        assert.equal((err as CmsError).code, "UNAUTHORIZED");
+        return true;
+      },
+    );
+  });
+
   it("updateContent em ID inexistente devolve CONTENT_NOT_FOUND (404)", async () => {
     const u = await makeUser({ role: "moderator" });
     await assert.rejects(

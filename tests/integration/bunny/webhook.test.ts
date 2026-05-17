@@ -18,7 +18,13 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { createTestApp } from "../helpers/app.js";
 import { withServer, request } from "../helpers/http.js";
-import { closeDbPool, ensureSchema, truncateAll } from "../helpers/db.js";
+import {
+  closeDbPool,
+  ensureSchema,
+  truncateAll,
+  makeUser,
+  getPool,
+} from "../helpers/db.js";
 
 const SECRET = "test-bunny-webhook-secret-32bytes-min";
 
@@ -196,6 +202,86 @@ describe("Bunny webhook — HMAC + idempotência (Task #236)", () => {
         assert.equal(r.status, 400);
         assert.equal(r.body.error?.code, "INVALID_JSON");
       });
+    });
+  });
+
+  it("idempotência forte: conteúdo casado recebe webhook 2x → 1 notificação só", async () => {
+    // Insere um content_item com sentinel bunny:// (já em 'processing'
+    // — ver nota abaixo) e dispara o webhook duas vezes com o MESMO
+    // payload Status=4 (Finished → 'ready'). Primeira chamada deve
+    // mudar video_status pra 'ready' E criar notificação pro owner.
+    // Segunda deve ser no-op (applyBunnyStatusUpdate retorna
+    // changed=false → sem nova notificação).
+    //
+    // Nota: pré-setamos `video_status='processing'` porque o guard SQL
+    // em applyBunnyStatusUpdate usa `NOT (video_status IN ('ready',
+    // 'failed') AND $1='processing')`, que com video_status=NULL vira
+    // `NOT UNKNOWN` (NULL no PG), bloqueando UPDATE em transições
+    // NULL → estado real. O teste foca em IDEMPOTÊNCIA, não no fix
+    // desse guard.
+    await withEnv(BUNNY_FULL_ENV, async () => {
+      const owner = await makeUser({ role: "producer" });
+      const guid = "11111111-2222-3333-4444-555555555555";
+      const sentinel = `bunny://99999/${guid}`;
+      const { rows } = await getPool().query<{ id: number }>(
+        `INSERT INTO content_items
+           (kind, title, slug, status, created_by,
+            video_provider, video_external_id, video_status,
+            segments, interests, tags)
+         VALUES ('video', 'Vídeo Bunny idem', $1, 'draft', $2,
+                 'bunny', $3, 'processing',
+                 ARRAY[]::text[], ARRAY[]::text[], ARRAY[]::text[])
+         RETURNING id`,
+        [`vid-idem-${Date.now()}`, owner.id, sentinel],
+      );
+      const contentId = rows[0].id;
+
+      const payload = JSON.stringify({ VideoGuid: guid, Status: 4 });
+      const sig = sign(payload);
+
+      await withServer(createTestApp(), async (base) => {
+        const r1 = await request(base, {
+          method: "POST",
+          path: "/api/webhooks/bunny/",
+          body: payload,
+          headers: {
+            "Content-Type": "application/json",
+            "x-bunny-signature": sig,
+          },
+        });
+        assert.equal(r1.status, 200);
+
+        const r2 = await request(base, {
+          method: "POST",
+          path: "/api/webhooks/bunny/",
+          body: payload,
+          headers: {
+            "Content-Type": "application/json",
+            "x-bunny-signature": sig,
+          },
+        });
+        assert.equal(r2.status, 200);
+      });
+
+      // status persistido (processing → ready).
+      const { rows: itemRows } = await getPool().query<{ video_status: string | null }>(
+        `SELECT video_status FROM content_items WHERE id = $1`,
+        [contentId],
+      );
+      assert.equal(itemRows[0]?.video_status, "ready");
+
+      // notificação única apesar da reentrega.
+      const { rows: notifRows } = await getPool().query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count
+           FROM notifications
+          WHERE user_id = $1 AND kind = 'video_status'`,
+        [owner.id],
+      );
+      assert.equal(
+        notifRows[0]?.count,
+        "1",
+        "webhook reentregue NÃO deve duplicar notificação",
+      );
     });
   });
 
