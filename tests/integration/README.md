@@ -94,3 +94,13 @@ describe("Minha feature", () => {
 - **Logs verbosos**: `createTestApp()` desliga `validateAuthEnv` e
   `logBunnyStatus`. Outros módulos que loguem no boot (Stripe sync) ainda
   podem aparecer — não bloqueia, mas se incomodar, gate com env.
+- **Object Storage sidecar (Task #236)**: `cms/sentinels.test.ts` valida
+  resolução do sentinel `objstore://` chamando o sidecar real do Replit
+  (`http://127.0.0.1:1106/object-storage/signed-object-url`). Funciona
+  porque o integration `javascript_object_storage` está INSTALLED no
+  workspace. Se rodar fora do Replit, esse teste falha — mockar o
+  sidecar ou pular o spec via env é caminho de hardening futuro.
+- **`createTestAppWithPublicSeo()` (Task #236)**: variante async que
+  monta `mountPublicSitemapAndRobots` + `mountPublicSeoHtml` com um
+  shell HTML stub. Usar em specs que testam sitemap/robots/HTML public
+  SEO. `createTestApp()` sync continua sem essas rotas.
