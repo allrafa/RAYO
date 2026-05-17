@@ -68,7 +68,7 @@ describe("Auth registration (Task #235)", () => {
         body: {
           email: `unverif-${crypto.randomBytes(3).toString("hex")}@rayo.test`,
           password: VALID_PASSWORD,
-          name: "X",
+          name: "Sem Verificar",
         },
       });
       assert.equal(r.status, 403);

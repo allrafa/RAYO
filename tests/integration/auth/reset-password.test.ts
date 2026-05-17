@@ -107,6 +107,27 @@ describe("Auth reset password (Task #235)", () => {
     });
   });
 
+  it("reset com token já usado → 400 RESET_TOKEN_USED (replay-protection)", async () => {
+    const user = await makeUser();
+    const token = await mintResetToken(user.id);
+    const app = createTestApp();
+    await withServer(app, async (base) => {
+      // Primeiro uso: ok.
+      const ok = await request(base, {
+        method: "POST", path: "/api/auth/reset-password",
+        body: { token, password: "Primeira!2026" },
+      });
+      assert.equal(ok.status, 200);
+      // Replay com o MESMO token: rejeitado com code dedicado.
+      const replay = await request<{ error: { code: string } }>(base, {
+        method: "POST", path: "/api/auth/reset-password",
+        body: { token, password: "Segunda!2026" },
+      });
+      assert.equal(replay.status, 400);
+      assert.equal(replay.body.error.code, "RESET_TOKEN_USED");
+    });
+  });
+
   it("reset com token inválido → 400 INVALID_RESET_TOKEN", async () => {
     const app = createTestApp();
     await withServer(app, async (base) => {
