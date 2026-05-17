@@ -10,6 +10,10 @@ import path from "path";
 import fs from "fs/promises";
 import { fileURLToPath } from "url";
 import { applyPublicMeta, resolvePublicMeta } from "./features/seo/publicMeta.js";
+import {
+  mountPublicSitemapAndRobots,
+  mountPublicSeoHtml,
+} from "./features/seo/publicRoutes.js";
 import http from "http";
 import { initRealtime } from "./realtime/io.js";
 import { createApp } from "./app.js";
@@ -73,105 +77,10 @@ async function start() {
 
     // SEO público: sitemap.xml e robots.txt. Precisam vir ANTES do
     // middleware do Vite/SPA pra não cair no fallback de index.html.
-    // Domínio canônico configurável via env (default: rayo.app.br).
+    // Task #236 — extraído pra `features/seo/publicRoutes.ts` pra
+    // permitir teste de integração HTTP.
     const PUBLIC_SITE_URL = (process.env.PUBLIC_SITE_URL || "https://rayo.app.br").replace(/\/+$/, "");
-    // Task #70 — sitemap inclui todas as páginas públicas marketing + posts
-    // do blog (artigos publicados). Posts são lidos a quente do banco a cada
-    // request; com cache HTTP de 1h o custo é insignificante.
-    // Task #111 — `lastmod` para páginas marketing estáticas. Em ordem de
-    // preferência: BUILD_TIME (env, geralmente injetada pelo CI/Replit
-    // Deploy), depois mtime de package.json (proxy de "última build"),
-    // depois "agora" (boot do processo). Garante que o sitemap reflita
-    // mudanças reais ao invés de carimbar `today` em todo request.
-    let MARKETING_LASTMOD: string;
-    try {
-      if (process.env.BUILD_TIME && !Number.isNaN(Date.parse(process.env.BUILD_TIME))) {
-        MARKETING_LASTMOD = new Date(process.env.BUILD_TIME).toISOString().slice(0, 10);
-      } else {
-        const pkgStat = await fs.stat(path.resolve(process.cwd(), "package.json")).catch(() => null);
-        MARKETING_LASTMOD = (pkgStat?.mtime ?? new Date()).toISOString().slice(0, 10);
-      }
-    } catch {
-      MARKETING_LASTMOD = new Date().toISOString().slice(0, 10);
-    }
-
-    const PUBLIC_PAGES: ReadonlyArray<{ path: string; priority: string; changefreq: string }> = [
-      { path: "/", priority: "1.0", changefreq: "weekly" },
-      { path: "/recursos", priority: "0.9", changefreq: "monthly" },
-      { path: "/como-funciona", priority: "0.9", changefreq: "monthly" },
-      { path: "/empresa", priority: "0.7", changefreq: "monthly" },
-      { path: "/contato", priority: "0.6", changefreq: "yearly" },
-      { path: "/faq", priority: "0.7", changefreq: "monthly" },
-      { path: "/imprensa", priority: "0.6", changefreq: "monthly" },
-      { path: "/blog", priority: "0.8", changefreq: "weekly" },
-      { path: "/privacy", priority: "0.5", changefreq: "yearly" },
-      { path: "/terms", priority: "0.5", changefreq: "yearly" },
-      { path: "/excluir-dados", priority: "0.5", changefreq: "yearly" },
-    ];
-    app.get("/sitemap.xml", async (_req, res) => {
-      const today = new Date().toISOString().slice(0, 10);
-      const urls: string[] = PUBLIC_PAGES.map(
-        (p) =>
-          `  <url>\n    <loc>${PUBLIC_SITE_URL}${p.path}</loc>\n    <lastmod>${MARKETING_LASTMOD}</lastmod>\n    <changefreq>${p.changefreq}</changefreq>\n    <priority>${p.priority}</priority>\n  </url>`,
-      );
-      try {
-        const { query: dbQuery } = await import("./db/index.js");
-        // Blog posts publicados.
-        const { rows: blogRows } = await dbQuery(
-          `SELECT slug, COALESCE(updated_at, published_at, created_at) AS lastmod
-             FROM content_items
-            WHERE kind = 'artigo' AND status = 'published' AND slug IS NOT NULL
-            ORDER BY published_at DESC NULLS LAST
-            LIMIT 1000`,
-        );
-        for (const r of blogRows as Array<{ slug: string; lastmod: Date | null }>) {
-          const lm = r.lastmod ? new Date(r.lastmod).toISOString().slice(0, 10) : today;
-          urls.push(
-            `  <url>\n    <loc>${PUBLIC_SITE_URL}/blog/${encodeURIComponent(r.slug)}</loc>\n    <lastmod>${lm}</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.6</priority>\n  </url>`,
-          );
-        }
-        // Task #111 — turmas ativas. Landing /turmas/:id é pública (servida
-        // pelo SPA + meta tags via resolvePublicMeta), então entram no
-        // sitemap. lastmod = courses.updated_at (real, não placeholder).
-        const { rows: turmaRows } = await dbQuery(
-          `SELECT id, COALESCE(updated_at, created_at) AS lastmod
-             FROM courses
-            WHERE is_active = TRUE
-            ORDER BY updated_at DESC NULLS LAST
-            LIMIT 1000`,
-        );
-        for (const r of turmaRows as Array<{ id: number; lastmod: Date | null }>) {
-          const lm = r.lastmod ? new Date(r.lastmod).toISOString().slice(0, 10) : today;
-          urls.push(
-            `  <url>\n    <loc>${PUBLIC_SITE_URL}/turmas/${r.id}</loc>\n    <lastmod>${lm}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>`,
-          );
-        }
-      } catch (err) {
-        logger.warn("Sitemap", `Failed to fetch dynamic urls for sitemap: ${(err as Error).message}`);
-      }
-      const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
-      res.set("Content-Type", "application/xml; charset=utf-8");
-      res.set("Cache-Control", "public, max-age=3600");
-      res.send(xml);
-    });
-    app.get("/robots.txt", (_req, res) => {
-      // Task #111 — `/turmas/` virou indexável (landings públicas com OG +
-      // JSON-LD Course). `/u/` continua disallow pra indexação geral mas
-      // bots de link preview (Facebook/WhatsApp/LinkedIn) ignoram robots
-      // pra unfurls — meta tags do `/u/:id` vão aparecer mesmo assim.
-      const allows = [
-        "/$", "/recursos", "/como-funciona", "/empresa", "/contato",
-        "/faq", "/imprensa", "/blog", "/turmas", "/privacy", "/terms",
-        "/excluir-dados",
-      ];
-      const body =
-        `User-agent: *\n${allows.map((a) => `Allow: ${a}`).join("\n")}\n` +
-        `Disallow: /api/\nDisallow: /admin\nDisallow: /perfil\nDisallow: /conversas\nDisallow: /u/\n\n` +
-        `Sitemap: ${PUBLIC_SITE_URL}/sitemap.xml\n`;
-      res.set("Content-Type", "text/plain; charset=utf-8");
-      res.set("Cache-Control", "public, max-age=3600");
-      res.send(body);
-    });
+    await mountPublicSitemapAndRobots(app);
 
     // Task #111 — /.well-known/security.txt (RFC 9116). Sinaliza canal
     // de segurança para pesquisadores e bug-bounty hunters.
