@@ -233,30 +233,14 @@ async function start() {
         server: { middlewareMode: true },
         appType: "spa",
       });
-      // Middleware SEO em dev: re-lê o template a cada request (HMR-friendly).
-      // Resolver async pra cobrir rotas dinâmicas (/blog/:slug, /u/:id, /turmas/:id)
-      // além das estáticas em PUBLIC_META.
-      app.use(async (req, res, next) => {
-        if (req.method !== "GET") return next();
-        const accept = String(req.headers.accept || "");
-        if (!accept.includes("text/html")) return next();
-        try {
-          const meta = await resolvePublicMeta(req.path);
-          if (!meta) return next();
-          const raw = await fs.readFile(indexHtmlPath, "utf-8");
-          const transformed = await vite.transformIndexHtml(req.originalUrl, raw);
-          const finalHtml = applyPublicMeta(transformed, meta);
-          res.set("Content-Type", "text/html; charset=utf-8");
-          // Task #203 — index.html NUNCA pode ser cacheado pelo browser/CDN.
-          // Os chunks com hash continuam cacheáveis longos; só o HTML precisa
-          // ser fresco pra apontar pros chunks atuais (evita ChunkLoadError
-          // após deploy em quem tinha o HTML antigo cacheado).
-          res.set("Cache-Control", "no-cache, no-store, must-revalidate");
-          res.send(finalHtml);
-        } catch (err) {
-          logger.warn("PublicSEO", `Failed to render ${req.path}: ${(err as Error).message}`);
-          next();
-        }
+      // Task #236 — Middleware SEO em dev via helper compartilhado.
+      // O getter re-lê o template a cada request (HMR-friendly) e passa
+      // por vite.transformIndexHtml. Resolver async em mountPublicSeoHtml
+      // cobre rotas dinâmicas (/blog/:slug, /u/:id, /turmas/:id) além
+      // das estáticas em PUBLIC_META.
+      mountPublicSeoHtml(app, async (req) => {
+        const raw = await fs.readFile(indexHtmlPath, "utf-8");
+        return await vite.transformIndexHtml(req.originalUrl, raw);
       });
       app.use(vite.middlewares);
       logger.info("Server", "Vite dev middleware attached.");
@@ -270,26 +254,7 @@ async function start() {
       } catch (err) {
         logger.warn("PublicSEO", `Could not preload index.html: ${(err as Error).message}`);
       }
-      app.use(async (req, res, next) => {
-        if (req.method !== "GET" || !prodIndexHtml) return next();
-        const accept = String(req.headers.accept || "");
-        if (!accept.includes("text/html")) return next();
-        try {
-          const meta = await resolvePublicMeta(req.path);
-          if (!meta) return next();
-          const finalHtml = applyPublicMeta(prodIndexHtml, meta);
-          res.set("Content-Type", "text/html; charset=utf-8");
-          // Task #203 — index.html NUNCA pode ser cacheado pelo browser/CDN.
-          // Os chunks com hash continuam cacheáveis longos; só o HTML precisa
-          // ser fresco pra apontar pros chunks atuais (evita ChunkLoadError
-          // após deploy em quem tinha o HTML antigo cacheado).
-          res.set("Cache-Control", "no-cache, no-store, must-revalidate");
-          res.send(finalHtml);
-        } catch (err) {
-          logger.warn("PublicSEO", `Failed to render ${req.path}: ${(err as Error).message}`);
-          next();
-        }
-      });
+      mountPublicSeoHtml(app, async () => prodIndexHtml);
       app.use(express.static(buildPath, {
         // Task #203 — cache agressivo SÓ para assets com hash (chunks JS/CSS,
         // imagens). index.html cai no fallback abaixo com no-store, garantindo

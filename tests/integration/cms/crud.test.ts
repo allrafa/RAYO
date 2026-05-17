@@ -169,6 +169,33 @@ describe("CMS ownership matrix (Task #236)", () => {
     assert.equal(result.id, item.id);
   });
 
+  it("role 'client' tentando editar conteúdo de producer → 403 NOT_OWNER", async () => {
+    // RBAC: cliente comum (`role='client'`, nível mais baixo) NÃO tem
+    // override sobre conteúdo alheio. A hierarquia é
+    // client < producer < moderator < admin e `assertCanMutate` só
+    // libera owner OU `moderator+`. Esse caso é importante porque
+    // representa o usuário típico autenticado — não basta validar
+    // unauth (null) e producer alheio.
+    const owner = await makeUser({ role: "producer" });
+    const client = await makeUser({ role: "client" });
+    const { item } = await createContent(asSafeUser(owner, "producer"), {
+      kind: "audio",
+      title: "Áudio do producer",
+    });
+    await assert.rejects(
+      () =>
+        updateContent(asSafeUser(client, "client"), item.id, {
+          title: "cliente tentou mexer",
+        }),
+      (err: unknown) => {
+        assert.ok(err instanceof CmsError);
+        assert.equal((err as CmsError).code, "NOT_OWNER");
+        assert.equal((err as CmsError).statusCode, 403);
+        return true;
+      },
+    );
+  });
+
   it("unauth (user=null) em updateContent → 401 UNAUTHORIZED", async () => {
     const owner = await makeUser({ role: "producer" });
     const { item } = await createContent(asSafeUser(owner, "producer"), {
@@ -230,6 +257,28 @@ describe("CMS status transitions / soft-archive (Task #236)", () => {
     assert.ok(published.item.published_at);
 
     const archived = await setContentStatus(user, item.id, "archived");
+    assert.equal(archived.item.status, "archived");
+  });
+
+  it("moderator override pode arquivar (soft-delete) conteúdo alheio", async () => {
+    // Soft-delete via `status='archived'` é o caminho real de retirada
+    // editorial (deleteContent físico é raro/admin). Validamos que
+    // moderator+ aplica `archived` em conteúdo de terceiros — o caso
+    // típico de moderação editorial.
+    const owner = await makeUser({ role: "producer" });
+    const mod = await makeUser({ role: "moderator" });
+    const { item } = await createContent(asSafeUser(owner, "producer"), {
+      kind: "artigo",
+      title: "Post a moderar",
+    });
+    // Owner publica primeiro pra exercitar a transição published→archived
+    // (que é o ciclo real: moderator arquiva algo que estava no ar).
+    await setContentStatus(asSafeUser(owner, "producer"), item.id, "published");
+    const archived = await setContentStatus(
+      asSafeUser(mod, "moderator"),
+      item.id,
+      "archived",
+    );
     assert.equal(archived.item.status, "archived");
   });
 

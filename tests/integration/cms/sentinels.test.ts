@@ -98,13 +98,15 @@ describe("Public CMS detail — resolução de sentinels (Task #236)", () => {
     });
   });
 
-  it("objstore:// em media_url NÃO vaza o sentinel cru pra resposta", async () => {
-    // Object Storage está disponível no Replit (integration instalado).
-    // O resolver chama `signPublicObjectUrl` que devolve uma URL HTTPS
-    // assinada pelo sidecar. Mesmo se a chave não existir fisicamente,
-    // o sidecar costuma assinar — só a leitura da URL é que 404'a.
-    // O contrato testado aqui é: o cliente NUNCA vê `objstore://...`
-    // cru no JSON de resposta.
+  it("objstore:// em media_url é resolvido pra signed URL HTTPS", async () => {
+    // Object Storage está INSTALLED no Replit (integration ativa). O
+    // resolver `resolveStoredMediaUrl` chama `signPublicObjectUrl` que
+    // posta no sidecar `/object-storage/signed-object-url` e devolve
+    // uma URL HTTPS assinada. O sidecar assina mesmo chaves que não
+    // existem fisicamente — só a leitura da URL é que 404'a.
+    //
+    // Contrato testado: o cliente NUNCA vê `objstore://...` cru no
+    // JSON, e o que vê é uma string HTTPS válida.
     const owner = await makeUser({ role: "producer" });
     const id = await insertPublishedContent(owner.id, {
       kind: "audio",
@@ -119,16 +121,13 @@ describe("Public CMS detail — resolução de sentinels (Task #236)", () => {
       assert.equal(r.status, 200);
       const item = r.body.data.item;
       const mediaUrl = item.media_url;
-      // Aceitamos string resolvida (signed URL) OU null (se a assinatura
-      // falhou em ambiente de teste), mas NUNCA o sentinel cru.
-      if (typeof mediaUrl === "string") {
-        assert.ok(
-          !mediaUrl.startsWith("objstore://"),
-          `media_url vazou sentinel cru: ${mediaUrl}`,
-        );
-      } else {
-        assert.equal(mediaUrl, null);
-      }
+      assert.equal(typeof mediaUrl, "string", "media_url deve ser uma string signed");
+      const str = String(mediaUrl);
+      assert.ok(
+        !str.startsWith("objstore://"),
+        `media_url vazou sentinel cru: ${str}`,
+      );
+      assert.match(str, /^https?:\/\//, `media_url deve ser HTTP(S): ${str}`);
     });
   });
 
