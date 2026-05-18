@@ -108,6 +108,13 @@ describe("DM / /since gap-fill (Task #238)", () => {
       });
       assert.equal(r1.status, 400);
       assert.equal((r1.body as { error: { code: string } }).error.code, "INVALID_CURSOR");
+
+      const r2 = await request(base, {
+        path: `/api/messages/conversations/${conv.id}/since?cursor=abc`,
+        cookie: a.sessionCookie,
+      });
+      assert.equal(r2.status, 400);
+      assert.equal((r2.body as { error: { code: string } }).error.code, "INVALID_CURSOR");
     });
   });
 
