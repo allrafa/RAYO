@@ -29,6 +29,20 @@ interface StripeSyncInstance {
   [key: string]: unknown;
 }
 
+// Task #239 — Seam de teste pra injetar stubs do Stripe SDK e do
+// stripe-replit-sync. Usado SÓ por integration tests; em prod
+// `__setStripeClientForTest(null)` mantém o comportamento original.
+// Setado via dynamic import no spec, lido aqui antes de cair na lógica
+// real de Replit Connectors / Stripe API.
+let stripeClientOverride: Stripe | null = null;
+let stripeSyncOverride: StripeSyncInstance | null = null;
+export function __setStripeClientForTest(client: Stripe | null): void {
+  stripeClientOverride = client;
+}
+export function __setStripeSyncForTest(sync: StripeSyncInstance | null): void {
+  stripeSyncOverride = sync;
+}
+
 let connectionSettings: ReplitConnectionItem | null = null;
 
 async function getCredentials(): Promise<{ publishableKey: string; secretKey: string }> {
@@ -78,6 +92,7 @@ async function getCredentials(): Promise<{ publishableKey: string; secretKey: st
 
 // WARNING: Never cache this client. Tokens expire.
 export async function getUncachableStripeClient(): Promise<Stripe> {
+  if (stripeClientOverride) return stripeClientOverride;
   const { secretKey } = await getCredentials();
   return new Stripe(secretKey, {
     apiVersion: "2025-08-27.basil",
@@ -97,6 +112,7 @@ export async function getStripeSecretKey(): Promise<string> {
 let stripeSync: StripeSyncInstance | null = null;
 
 export async function getStripeSync(): Promise<StripeSyncInstance> {
+  if (stripeSyncOverride) return stripeSyncOverride;
   if (!stripeSync) {
     const mod = (await import("stripe-replit-sync")) as { StripeSync: StripeSyncCtor };
     const secretKey = await getStripeSecretKey();

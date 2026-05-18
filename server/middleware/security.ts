@@ -82,6 +82,13 @@ export type RateLimiterOptions = {
   skip?: (req: Request) => boolean;
 };
 
+// Task #239 — registry de buckets só pra teste. Em prod nunca é lida.
+// Permite zerar TODOS os limiters entre specs sem expor o Map interno.
+const __allLimiterBuckets: Array<Map<string, { count: number; resetAt: number }>> = [];
+export function __resetRateLimitersForTest(): void {
+  for (const m of __allLimiterBuckets) m.clear();
+}
+
 export function rateLimiter(
   maxRequests: number,
   windowMs: number,
@@ -91,6 +98,7 @@ export function rateLimiter(
   // every limiter instance would mean one route's traffic eating another
   // route's quota — defeating the per-prefix limits configured in index.ts.
   const requestCounts = new Map<string, { count: number; resetAt: number }>();
+  __allLimiterBuckets.push(requestCounts);
   const { keyByUser = false, skip } = options;
 
   // Periodic GC for this limiter's bucket only.
