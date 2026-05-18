@@ -269,7 +269,7 @@ describe("Dashboard / GET /api/home-feed (Task #240)", () => {
 
 interface DashboardOk {
   success: true;
-  data: { recommendedSectionOrder: string[]; user: { segments: string[] } };
+  data: { recommendedSectionOrder: string[]; greeting: { segments: string[] } };
   error: null;
 }
 
@@ -302,7 +302,7 @@ describe("Dashboard / GET /api/dashboard recommendedSectionOrder (Task #240)", (
       const order = r.body.data.recommendedSectionOrder;
       assert.equal(order[0], "quizzes");
       assert.equal(order[1], "recommended");
-      assert.deepEqual(r.body.data.user.segments, ["solteiro"]);
+      assert.deepEqual(r.body.data.greeting.segments, ["solteiro"]);
     });
   });
 
