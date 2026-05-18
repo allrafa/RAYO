@@ -22,6 +22,19 @@ import {
   makeUser,
 } from "../helpers/db.js";
 
+// `notifyRecipient` em sendMessage roda via `void ... .catch()` (fire-and-
+// forget pra não bloquear a resposta da mensagem). Polling com timeout
+// curto é determinístico — não depende de magic-number de setTimeout.
+async function waitForUnread(userId: number, expected: number, timeoutMs = 3000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const c = await getUnreadCount(userId);
+    if (c >= expected) return c;
+    await new Promise((r) => setTimeout(r, 20));
+  }
+  throw new Error(`waitForUnread timeout: esperado ${expected}, recebido ${await getUnreadCount(userId)}`);
+}
+
 before(async () => { await ensureSchema(); });
 afterEach(async () => { await truncateAll(); });
 after(async () => { await closeDbPool(); });
@@ -38,10 +51,7 @@ describe("DM → Notification integration (Task #237)", () => {
     });
     assert.equal(msg.content, "oi bob");
 
-    // notifyRecipient roda via `void ... .catch()` em paralelo — aguarda
-    // o microtask flush + alguns ticks pra a INSERT no PG terminar.
-    await new Promise((r) => setTimeout(r, 200));
-
+    await waitForUnread(bob.id, 1);
     const bobNotifs = await listNotifications(bob.id, 1, 20);
     assert.equal(bobNotifs.total, 1, "bob recebe exatamente 1 notification");
     const n = bobNotifs.notifications[0];
@@ -70,7 +80,7 @@ describe("DM → Notification integration (Task #237)", () => {
       attachmentUrl: "objstore://messages/image/test.jpg",
       attachmentMeta: { mime: "image/jpeg" },
     });
-    await new Promise((r) => setTimeout(r, 200));
+    await waitForUnread(bob.id, 1);
 
     const notifs = await listNotifications(bob.id, 1, 20);
     assert.equal(notifs.total, 1);
@@ -86,7 +96,7 @@ describe("DM → Notification integration (Task #237)", () => {
     await sendMessage(conv.id, alice.id, { kind: "text", content: "1" });
     await sendMessage(conv.id, alice.id, { kind: "text", content: "2" });
     await sendMessage(conv.id, alice.id, { kind: "text", content: "3" });
-    await new Promise((r) => setTimeout(r, 300));
+    await waitForUnread(bob.id, 3);
 
     assert.equal(await getUnreadCount(bob.id), 3);
     const notifs = await listNotifications(bob.id, 1, 20);

@@ -217,13 +217,6 @@ describe("Community / Posts (Task #237)", () => {
     assert.equal(actions.length, 0, "auto-delete não registra em mod_actions");
   });
 
-  // NOTA — view_count idempotente:
-  // A idempotência de views vive no handler socket `post:view`
-  // (server/realtime/community.ts) via Set<postId> per-socket.
-  // Não é testável aqui sem subir um Socket.IO real + cliente.
-  // Além disso a coluna `posts.view_count` referenciada pelo handler
-  // não está em `server/db/schema.ts` (divergência de contrato — fica
-  // pra follow-up no schema, fora do escopo de cobertura deste task).
 
   it("post oculto (soft-hide) some de getPostDetail (POST_NOT_FOUND)", async () => {
     const author = await makeUser();
