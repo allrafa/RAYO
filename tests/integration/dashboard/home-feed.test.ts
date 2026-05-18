@@ -1,15 +1,19 @@
-// Task #240 — Dashboard / Home: "Hoje no RAYO" + complete.
+// Task #240 — Dashboard / Home feed.
 //
-// Cobre:
-//   * 401 sem cookie.
-//   * GET /api/home/today devolve item determinístico por (epochDay+userId)
-//     — chamadas repetidas pelo mesmo user retornam o mesmo item.
-//   * Filtragem por segments: user com segments=['solteiro'] só vê itens
-//     com segmento que cruza (Postgres &&).
-//   * POST /api/home/today/complete: 1ª chamada concede +15 XP + 200,
-//     2ª chamada vira { alreadyCompleted: true, xpAwarded: 0 }.
-//   * INVALID_TODAY_ITEM quando body.itemId não é o pickado pra hoje.
-//   * ITEM_NOT_FOUND quando não existe nenhum item publicado.
+// Cobre três superfícies declaradas em `Done looks like` da task:
+//
+// 1) "Hoje no RAYO" — `GET /api/home/today` + `POST /today/complete`:
+//    determinismo por (epochDay+userId), filtragem por segments,
+//    XP idempotente, INVALID_TODAY_ITEM, ITEM_NOT_FOUND.
+//
+// 2) `GET /api/home-feed` — agrupa cards ativos nas 4 seções fixas
+//    (recently_played, made_for_you, trending, podcasts), ordenadas
+//    por sort_order, e oculta cards cujo conteúdo linkado não está
+//    publicado.
+//
+// 3) `GET /api/dashboard` — `recommendedSectionOrder` reflete o
+//    primeiro segmento do user (Task #43); fallback DEFAULT_RAIL_ORDER
+//    quando user não tem segment definido.
 import { after, afterEach, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -161,6 +165,163 @@ describe("Dashboard / Home (Task #240)", () => {
       });
       assert.equal(r.status, 409);
       assert.equal(r.body.error.code, "INVALID_TODAY_ITEM");
+    });
+  });
+});
+
+// ── /api/home-feed (publicHomeFeedRouter) ────────────────────────────
+// Cards de destaque curados em `home_feed_items` (não confundir com
+// /api/home/today, que é o "Hoje no RAYO"). Mounted em /api/home-feed.
+
+interface FeedOk {
+  success: true;
+  data: {
+    sections: {
+      recently_played: Array<{ id: number; title: string; sort_order: number }>;
+      made_for_you: Array<{ id: number; title: string; sort_order: number }>;
+      trending: Array<{ id: number; title: string; sort_order: number }>;
+      podcasts: Array<{ id: number; title: string; sort_order: number }>;
+    };
+  };
+  error: null;
+}
+
+async function insertFeedItem(opts: {
+  section: "recently_played" | "made_for_you" | "trending" | "podcasts";
+  title: string;
+  sort_order?: number;
+  is_active?: boolean;
+  content_item_id?: number | null;
+}) {
+  const { rows } = await getPool().query<{ id: number }>(
+    `INSERT INTO home_feed_items (section, title, sort_order, is_active, content_item_id)
+     VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+    [opts.section, opts.title, opts.sort_order ?? 0, opts.is_active ?? true, opts.content_item_id ?? null],
+  );
+  return rows[0].id;
+}
+
+describe("Dashboard / GET /api/home-feed (Task #240)", () => {
+  // Default truncation entre testes; sem auth (optionalAuth) — feed é público.
+  it("retorna 4 seções fixas com cards ativos ordenados por sort_order", async () => {
+    // Seed do migrate.ts já pode ter inserido cards. Apagamos pra ter um
+    // universo controlado por este teste (truncateAll do afterEach NÃO
+    // limpa o seed, que é re-executado a cada boot do schema).
+    await getPool().query(`DELETE FROM home_feed_items`);
+
+    await insertFeedItem({ section: "trending", title: "T-segundo", sort_order: 20 });
+    await insertFeedItem({ section: "trending", title: "T-primeiro", sort_order: 10 });
+    await insertFeedItem({ section: "made_for_you", title: "MFY-A", sort_order: 5 });
+    await insertFeedItem({ section: "podcasts", title: "PC-A", sort_order: 1 });
+
+    await withServer(createTestApp(), async (base) => {
+      const r = await request<FeedOk>(base, { path: "/api/home-feed" });
+      assert.equal(r.status, 200);
+      const s = r.body.data.sections;
+      // 4 chaves esperadas, sempre presentes (mesmo vazias).
+      assert.deepEqual(Object.keys(s).sort(), [
+        "made_for_you", "podcasts", "recently_played", "trending",
+      ]);
+      assert.equal(s.recently_played.length, 0);
+      assert.equal(s.trending.length, 2);
+      // trending ordenado por sort_order ASC
+      assert.equal(s.trending[0].title, "T-primeiro");
+      assert.equal(s.trending[1].title, "T-segundo");
+      assert.equal(s.made_for_you[0].title, "MFY-A");
+      assert.equal(s.podcasts[0].title, "PC-A");
+    });
+  });
+
+  it("oculta card cujo content_item linkado não está publicado", async () => {
+    await getPool().query(`DELETE FROM home_feed_items`);
+    const draftId = await insertContent({ title: "Draft", status: "draft" });
+    const pubId = await insertContent({ title: "Pub", status: "published" });
+    await insertFeedItem({ section: "trending", title: "Visivel-Pub", content_item_id: pubId });
+    await insertFeedItem({ section: "trending", title: "Oculto-Draft", content_item_id: draftId });
+    // Card SEM link permanece visível (curadoria estática).
+    await insertFeedItem({ section: "trending", title: "Visivel-SemLink", content_item_id: null });
+
+    await withServer(createTestApp(), async (base) => {
+      const r = await request<FeedOk>(base, { path: "/api/home-feed" });
+      assert.equal(r.status, 200);
+      const titles = r.body.data.sections.trending.map((c) => c.title).sort();
+      assert.deepEqual(titles, ["Visivel-Pub", "Visivel-SemLink"]);
+    });
+  });
+
+  it("oculta card com is_active=false", async () => {
+    await getPool().query(`DELETE FROM home_feed_items`);
+    await insertFeedItem({ section: "podcasts", title: "Ativo", is_active: true });
+    await insertFeedItem({ section: "podcasts", title: "Inativo", is_active: false });
+
+    await withServer(createTestApp(), async (base) => {
+      const r = await request<FeedOk>(base, { path: "/api/home-feed" });
+      assert.equal(r.status, 200);
+      assert.equal(r.body.data.sections.podcasts.length, 1);
+      assert.equal(r.body.data.sections.podcasts[0].title, "Ativo");
+    });
+  });
+});
+
+// ── /api/dashboard ───────────────────────────────────────────────────
+// Endpoint agregado consumido pela HomePage. Cobre apenas a parte
+// declarada no escopo da task: `recommendedSectionOrder` por segmento.
+
+interface DashboardOk {
+  success: true;
+  data: { recommendedSectionOrder: string[]; user: { segments: string[] } };
+  error: null;
+}
+
+describe("Dashboard / GET /api/dashboard recommendedSectionOrder (Task #240)", () => {
+  it("user sem segments → DEFAULT_RAIL_ORDER (começa com 'continue')", async () => {
+    const u = await makeUser();
+    await withServer(createTestApp(), async (base) => {
+      const r = await request<DashboardOk>(base, {
+        path: "/api/dashboard",
+        cookie: u.sessionCookie,
+      });
+      assert.equal(r.status, 200);
+      assert.equal(r.body.data.recommendedSectionOrder[0], "continue");
+      // DEFAULT_RAIL_ORDER tem 9 entradas
+      assert.equal(r.body.data.recommendedSectionOrder.length, 9);
+    });
+  });
+
+  it("user com primary segment='solteiro' → ordem começa com 'quizzes'", async () => {
+    const u = await makeUser();
+    await getPool().query(
+      `UPDATE users SET segments = ARRAY['solteiro']::text[] WHERE id = $1`, [u.id],
+    );
+    await withServer(createTestApp(), async (base) => {
+      const r = await request<DashboardOk>(base, {
+        path: "/api/dashboard",
+        cookie: u.sessionCookie,
+      });
+      assert.equal(r.status, 200);
+      const order = r.body.data.recommendedSectionOrder;
+      assert.equal(order[0], "quizzes");
+      assert.equal(order[1], "recommended");
+      assert.deepEqual(r.body.data.user.segments, ["solteiro"]);
+    });
+  });
+
+  it("user com primary segment='casados' → ordem começa com 'continue'", async () => {
+    const u = await makeUser();
+    await getPool().query(
+      `UPDATE users SET segments = ARRAY['casados','pais']::text[] WHERE id = $1`, [u.id],
+    );
+    await withServer(createTestApp(), async (base) => {
+      const r = await request<DashboardOk>(base, {
+        path: "/api/dashboard",
+        cookie: u.sessionCookie,
+      });
+      assert.equal(r.status, 200);
+      const order = r.body.data.recommendedSectionOrder;
+      // 'casados' (primary) tem 'continue' como primeira rail.
+      assert.equal(order[0], "continue");
+      assert.equal(order[1], "recommended");
+      assert.equal(order[2], "discussoes");
     });
   });
 });
