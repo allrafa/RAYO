@@ -75,26 +75,35 @@ describe("Gamification / XP + Level-up + Missions (Task #240)", () => {
     assert.ok(!badges.some((b) => b.name === "level_5"), "level_5 não deveria ter sido concedido ainda");
   });
 
-  it("atravessar 1000 XP → level 5 + unlock level_5; segundo addXP no mesmo nível NÃO duplica", async () => {
+  it("atravessar limiares progressivamente: level_3 → level_5; sem duplicar", async () => {
     const u = await makeUser();
-    await addXP(u.id, 1100, "complete_course");
 
-    const { rows: badges1 } = await getPool().query<{ name: string }>(
+    // addXP só unlocka o badge do nível RECÉM-atingido (level_${newLevel}),
+    // não dos intermediários (ver service.ts: [3,5].includes(newLevel)).
+    // Cruzando os limiares em passos:
+    await addXP(u.id, 260, "complete_course"); // → level 3
+    const { rows: b1 } = await getPool().query<{ name: string }>(
       `SELECT b.name FROM user_badges ub
          JOIN badges b ON b.id = ub.badge_id
-        WHERE ub.user_id = $1
-        ORDER BY b.name`, [u.id],
+        WHERE ub.user_id = $1`, [u.id],
     );
-    // Esperamos AMBOS level_3 e level_5 (passou pelos dois limiares de uma vez).
-    assert.ok(badges1.some((b) => b.name === "level_3"));
-    assert.ok(badges1.some((b) => b.name === "level_5"));
+    assert.ok(b1.some((b) => b.name === "level_3"));
+
+    await addXP(u.id, 800, "complete_course"); // → level 5 (>= 1000)
+    const { rows: b2 } = await getPool().query<{ name: string }>(
+      `SELECT b.name FROM user_badges ub
+         JOIN badges b ON b.id = ub.badge_id
+        WHERE ub.user_id = $1`, [u.id],
+    );
+    assert.ok(b2.some((b) => b.name === "level_5"));
 
     // Mais XP sem mudar de nível: NÃO deve duplicar user_badges.
+    const totalBefore = b2.length;
     await addXP(u.id, 50, "create_post");
-    const { rows: badges2 } = await getPool().query<{ count: string }>(
+    const { rows: count } = await getPool().query<{ count: string }>(
       `SELECT COUNT(*)::text AS count FROM user_badges WHERE user_id = $1`, [u.id],
     );
-    assert.equal(parseInt(badges2[0].count, 10), badges1.length, "user_badges duplicou após segundo addXP");
+    assert.equal(parseInt(count[0].count, 10), totalBefore, "user_badges duplicou após XP sem level-up");
   });
 
   it("recordMissionProgress: 1ª chamada cria progresso, 2ª completa quando atinge action_count", async () => {

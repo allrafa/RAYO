@@ -192,6 +192,61 @@ describe("Admin / Moderation (Task #240)", () => {
     });
   });
 
+  it("GET /api/admin/moderation/comments moderator → 200 lista incluindo hidden", async () => {
+    const mod = await makeUser({ role: "moderator" });
+    const author = await makeUser({ role: "client" });
+    const postId = await seedPost(author);
+    const c1 = await seedComment(author, postId);
+    const c2 = await seedComment(author, postId);
+    // Esconde um pra cobrir o filtro padrão (lista ambos).
+    await getPool().query(
+      `UPDATE comments SET is_hidden = TRUE, hidden_by = $1, hidden_at = NOW() WHERE id = $2`,
+      [mod.id, c2],
+    );
+
+    await withServer(createTestApp(), async (base) => {
+      const r = await request<{
+        success: true;
+        data: { comments: Array<{ id: number; is_hidden: boolean }>; total: number };
+        error: null;
+      }>(base, {
+        path: "/api/admin/moderation/comments",
+        cookie: mod.sessionCookie,
+      });
+      assert.equal(r.status, 200);
+      assert.equal(r.body.data.total, 2);
+      const ids = r.body.data.comments.map((c) => c.id).sort();
+      assert.deepEqual(ids, [c1, c2].sort());
+    });
+  });
+
+  it("POST /moderation/comments/:id/restore moderator → 200 + is_hidden=false", async () => {
+    const mod = await makeUser({ role: "moderator" });
+    const author = await makeUser({ role: "client" });
+    const postId = await seedPost(author);
+    const commentId = await seedComment(author, postId);
+    await getPool().query(
+      `UPDATE comments SET is_hidden = TRUE, hidden_by = $1, hidden_at = NOW() WHERE id = $2`,
+      [mod.id, commentId],
+    );
+
+    await withServer(createTestApp(), async (base) => {
+      const r = await request<HiddenOk>(base, {
+        method: "POST",
+        path: `/api/admin/moderation/comments/${commentId}/restore`,
+        cookie: mod.sessionCookie,
+      });
+      assert.equal(r.status, 200);
+      assert.equal(r.body.data.hidden, false);
+
+      const { rows } = await getPool().query<{ is_hidden: boolean; hidden_by: number | null }>(
+        `SELECT is_hidden, hidden_by FROM comments WHERE id = $1`, [commentId],
+      );
+      assert.equal(rows[0].is_hidden, false);
+      assert.equal(rows[0].hidden_by, null);
+    });
+  });
+
   it("POST /moderation/comments/:id/hide moderator → 200 + DB is_hidden=true", async () => {
     const mod = await makeUser({ role: "moderator" });
     const author = await makeUser({ role: "client" });

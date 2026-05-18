@@ -18,6 +18,7 @@ import {
   getPool,
 } from "../helpers/db.js";
 import { __resetRateLimitersForTest } from "../../../server/middleware/security.js";
+import { invalidateTrailLookupCache } from "../../../server/features/billing/service.js";
 import { createTestApp } from "../helpers/app.js";
 import { withServer, request } from "../helpers/http.js";
 
@@ -31,6 +32,13 @@ before(async () => { await ensureSchema(); });
 afterEach(async () => {
   await truncateAll();
   __resetRateLimitersForTest();
+  // /enroll e /turmas/:id/posts passam por checkCourseAccess(), que
+  // popula um cache módulo-global de billing (courseToTrailCache).
+  // truncateAll usa RESTART IDENTITY → course_ids reciclam entre
+  // testes; sem limpar o cache, hits stale podem causar false 402 ou
+  // false allow em specs subsequentes. Mesma rotina usada pelo
+  // resetBillingCaches() do helper de billing.
+  invalidateTrailLookupCache();
 });
 after(async () => { await closeDbPool(); });
 

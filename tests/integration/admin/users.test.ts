@@ -76,6 +76,30 @@ describe("Admin / Users (Task #240)", () => {
     });
   });
 
+  it("GET /api/admin/users com filtro role inválido → INVALID_ROLE_FILTER 400", async () => {
+    const admin = await makeUser({ role: "admin" });
+    await withServer(createTestApp(), async (base) => {
+      const r = await request<ApiErr>(base, {
+        path: "/api/admin/users?role=superuser",
+        cookie: admin.sessionCookie,
+      });
+      assert.equal(r.status, 400);
+      assert.equal(r.body.error.code, "INVALID_ROLE_FILTER");
+    });
+  });
+
+  it("GET /api/admin/users com filtro premium inválido → INVALID_PREMIUM_FILTER 400", async () => {
+    const admin = await makeUser({ role: "admin" });
+    await withServer(createTestApp(), async (base) => {
+      const r = await request<ApiErr>(base, {
+        path: "/api/admin/users?premium=maybe",
+        cookie: admin.sessionCookie,
+      });
+      assert.equal(r.status, 400);
+      assert.equal(r.body.error.code, "INVALID_PREMIUM_FILTER");
+    });
+  });
+
   it("GET /api/admin/users com filtro role=producer só devolve producers", async () => {
     const admin = await makeUser({ role: "admin" });
     const prod = await makeUser({ role: "producer" });

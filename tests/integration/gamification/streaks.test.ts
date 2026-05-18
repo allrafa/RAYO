@@ -25,10 +25,14 @@ before(async () => { await ensureSchema(); });
 afterEach(async () => { await truncateAll(); });
 after(async () => { await closeDbPool(); });
 
+// `updateStreak` calcula "hoje" em UTC via
+// `new Date().toISOString().split("T")[0]`. Pra evitar flake em day-boundary
+// quando DB TZ != UTC, gravamos `last_activity_date` ancorada em UTC também,
+// usando `(NOW() AT TIME ZONE 'UTC')::date - daysAgo`.
 async function setLastActivity(userId: number, daysAgo: number, streak: number) {
   await getPool().query(
     `UPDATE users
-        SET last_activity_date = CURRENT_DATE - ($2::int),
+        SET last_activity_date = ((NOW() AT TIME ZONE 'UTC')::date - ($2::int)),
             streak = $3,
             longest_streak = GREATEST(longest_streak, $3),
             xp = 0, level = 1
