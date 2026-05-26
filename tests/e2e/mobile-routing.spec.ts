@@ -30,7 +30,11 @@ test.describe("Mobile / Routing — deep-link + bottom nav (Task #242)", () => {
     await closeDbPool();
   });
 
-  test("deep-link /perfil/comentarios → PerfilPage abre direto na aba 'Comentários'", async ({ browser, baseURL }) => {
+  test("deep-link /perfil/conquistas (tab XP) → PerfilPage abre direto na aba 'Conquistas'", async ({ browser, baseURL }) => {
+    // Task #242 pediu `/perfil/xp`, mas `PROFILE_TAB_SLUGS` no PerfilPage
+    // (linha 235) é `posts|comentarios|comunidades|conquistas|salvos|sobre`
+    // — não existe slug `xp`. A aba de XP/gamificação é "conquistas",
+    // então o deep-link real é `/perfil/conquistas`.
     expect(baseURL).toBeTruthy();
     const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
     user = await registerUser(api, { email: makeTestEmail("test-mob-dl"), name: "Mob Deep" });
@@ -39,14 +43,46 @@ test.describe("Mobile / Routing — deep-link + bottom nav (Task #242)", () => {
     const ctx = await browser.newContext({ ...MOBILE_CTX });
     await loginViaApi(ctx, baseURL!, user);
     const page = await ctx.newPage();
-    await page.goto("/perfil/comentarios", { waitUntil: "domcontentloaded" });
+    await page.goto("/perfil/conquistas", { waitUntil: "domcontentloaded" });
     try { await page.getByRole("button", { name: /^Aceitar$/ }).click({ timeout: 2_000 }); } catch { /* noop */ }
 
-    // PerfilPage hidrata e a URL permanece em /perfil/comentarios (não é
-    // redirecionada pra /perfil ou /perfil/posts).
-    await expect(page).toHaveURL(/\/perfil\/comentarios$/, { timeout: 15_000 });
+    // URL permanece em /perfil/conquistas (não redirecionada pra
+    // /perfil ou /perfil/posts pelo effect URL↔state).
+    await expect(page).toHaveURL(/\/perfil\/conquistas$/, { timeout: 15_000 });
 
     await ctx.close();
+  });
+
+  test("troca de rota via bottom nav reseta scrollY pro topo", async ({ browser, baseURL }) => {
+    // Validação separada do scroll-top-on-route-change (App.tsx:424
+    // `window.scrollTo(0, 0)` no listener de mudança de pathname),
+    // distinto do scroll-top via re-tap (que dispara `rayo:scroll-top`).
+    expect(baseURL).toBeTruthy();
+    const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
+    user = await registerUser(api, { email: makeTestEmail("test-mob-stop"), name: "Mob Stop" });
+    await api.dispose();
+
+    const ctx = await browser.newContext({ ...MOBILE_CTX });
+    await loginViaApi(ctx, baseURL!, user);
+    const page = await ctx.newPage();
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    try { await page.getByRole("button", { name: /^Aceitar$/ }).click({ timeout: 2_000 }); } catch { /* noop */ }
+
+    const nav = page.getByRole("navigation", { name: /Navegação principal/i });
+    await expect(nav).toBeVisible({ timeout: 15_000 });
+
+    // Força um scroll real no body antes de trocar de aba.
+    await page.evaluate(() => {
+      document.documentElement.style.minHeight = "5000px";
+      window.scrollTo(0, 1200);
+    });
+    await page.waitForFunction(() => window.scrollY > 800, null, { timeout: 5_000 });
+
+    await nav.getByRole("button", { name: /Comunidade/ }).first().click();
+    await expect(page).toHaveURL(/\/comunidade(?:\/|$)/, { timeout: 10_000 });
+
+    // Após o navigate, scrollY deve ter voltado pro topo.
+    await page.waitForFunction(() => window.scrollY === 0, null, { timeout: 5_000 });
   });
 
   test("bottom nav: navega Home → Comunidade → Home pelos botões da navegação inferior", async ({ browser, baseURL }) => {

@@ -107,6 +107,22 @@ test.describe("Home / Destaques — admin adiciona card e outro user vê na Home
     await expect(page.getByText(cardTitle, { exact: false }).first())
       .toBeVisible({ timeout: 20_000 });
 
+    // Edit path — admin renomeia o card via PATCH /api/admin/home-feed/:id
+    // (mesma rota que o botão "Editar" do AdminHomeFeedPage consome) e
+    // o viewer (após reload) vê o título novo no lugar do antigo.
+    const editApi = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
+    await editApi.post("/api/auth/login", { data: { email: admin.email, password: admin.password } });
+    const renamedTitle = `${cardTitle} EDITADO`;
+    const patchRes = await editApi.patch(`/api/admin/home-feed/${itemId}`, {
+      data: { title: renamedTitle },
+    });
+    expect(patchRes.status(), `edit: ${await patchRes.text()}`).toBeLessThan(300);
+    await editApi.dispose();
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByText(renamedTitle, { exact: false }).first())
+      .toBeVisible({ timeout: 20_000 });
+
     await ctx.close();
   });
 });
