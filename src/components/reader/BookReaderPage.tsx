@@ -6,7 +6,7 @@
 // ============================================================================
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowLeftCircle, User, Settings2, BookMarked, StickyNote, Trash2, Pencil, Check, Share2 } from 'lucide-react';
+import { ArrowLeft, ArrowLeftCircle, User, Settings2, BookMarked, StickyNote, Trash2, Pencil, Check, Share2, List, Sun, Moon, Minus, Plus, BookOpen } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Book } from '../types/BookTypes';
 import { useTheme } from '../ThemeProvider';
@@ -15,7 +15,7 @@ import { BookReaderProvider, useBookReader } from './BookReaderContext';
 import { getBookContent } from './mockTranscripts';
 import { TranscriptViewer } from './TranscriptViewer';
 import { CompactAudioPlayer } from './CompactAudioPlayer';
-import { PdfViewer, type RenderedHighlight, type HighlightColor, type SelectionInfo, type NormalizedRect } from './PdfViewer';
+import { PdfViewer, type RenderedHighlight, type HighlightColor, type SelectionInfo, type NormalizedRect, type ReaderTheme, type OutlineItem } from './PdfViewer';
 import { api } from '../../lib/api';
 import { toast } from 'sonner@2.0.3';
 import {
@@ -49,8 +49,25 @@ interface BookReaderPageProps {
 // PDF flow (livros do CMS com `fileUrl`)
 // ────────────────────────────────────────────────────────────────────────────
 
+// Preferências de leitura — persistidas no browser.
+const THEME_KEY = 'rayo:reader:theme';
+const ZOOM_KEY = 'rayo:reader:zoom';
+const ZOOM_MIN = 0.7;
+const ZOOM_MAX = 1.8;
+const ZOOM_STEP = 0.1;
+
+function readStoredTheme(): ReaderTheme {
+  if (typeof window === 'undefined') return 'light';
+  const v = window.localStorage.getItem(THEME_KEY);
+  return v === 'sepia' || v === 'dark' || v === 'light' ? v : 'light';
+}
+function readStoredZoom(): number {
+  if (typeof window === 'undefined') return 1;
+  const v = parseFloat(window.localStorage.getItem(ZOOM_KEY) || '');
+  return Number.isFinite(v) && v >= ZOOM_MIN && v <= ZOOM_MAX ? v : 1;
+}
+
 function PdfBookReader({ book, onBack }: BookReaderPageProps) {
-  const { theme } = useTheme();
   const { updateBookProgress } = useApp();
   const [initialPage, setInitialPage] = useState<number>(book.currentPage > 0 ? book.currentPage : 1);
   const [page, setPage] = useState<number>(initialPage);
@@ -59,6 +76,8 @@ function PdfBookReader({ book, onBack }: BookReaderPageProps) {
   const [highlights, setHighlights] = useState<ServerHighlight[]>([]);
   const [notes, setNotes] = useState<ServerNote[]>([]);
   const [annotationsOpen, setAnnotationsOpen] = useState(false);
+  const [tocOpen, setTocOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [noteDraft, setNoteDraft] = useState<{ selection: SelectionInfo; content: string } | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteText, setEditingNoteText] = useState<string>('');
@@ -68,6 +87,20 @@ function PdfBookReader({ book, onBack }: BookReaderPageProps) {
   const [forumsLoaded, setForumsLoaded] = useState(false);
   const [selectedForumId, setSelectedForumId] = useState<number | null>(null);
   const [sharing, setSharing] = useState(false);
+  // Kindle UX: chrome visível por padrão; tap no centro alterna.
+  const [chromeVisible, setChromeVisible] = useState(true);
+  const [readerTheme, setReaderTheme] = useState<ReaderTheme>(() => readStoredTheme());
+  const [zoom, setZoom] = useState<number>(() => readStoredZoom());
+  const [outline, setOutline] = useState<OutlineItem[]>([]);
+  // Posição local do scrubber enquanto o usuário arrasta (commita no onChange final).
+  const [scrubValue, setScrubValue] = useState<number | null>(null);
+
+  // Persist preferências.
+  useEffect(() => { try { localStorage.setItem(THEME_KEY, readerTheme); } catch {} }, [readerTheme]);
+  useEffect(() => { try { localStorage.setItem(ZOOM_KEY, String(zoom)); } catch {} }, [zoom]);
+
+  const toggleChrome = () => setChromeVisible((v) => !v);
+  const anySheetOpen = annotationsOpen || tocOpen || settingsOpen || !!noteDraft || !!shareTarget;
 
   // Carrega progresso + anotações persistidos do servidor uma vez.
   useEffect(() => {
@@ -90,6 +123,13 @@ function PdfBookReader({ book, onBack }: BookReaderPageProps) {
       if (annRes.success && annRes.data) {
         setHighlights(annRes.data.highlights || []);
         setNotes(annRes.data.notes || []);
+      }
+      // Sincroniza os refs de persistência com o valor canônico do servidor
+      // antes de liberar o agendador. Senão, o cleanup poderia flushar a
+      // página inicial local sobre um progresso remoto mais avançado.
+      if (remote && remote > 0) {
+        lastSavedRef.current = remote;
+        pendingPageRef.current = remote;
       }
       setLoadedRemote(true);
     })();
@@ -272,69 +312,65 @@ function PdfBookReader({ book, onBack }: BookReaderPageProps) {
   }, [book.id]);
 
   const progressPct = total > 0 ? Math.round((page / total) * 100) : 0;
+  const displayPage = scrubValue ?? page;
+
+  // Cor de fundo da página inteira combina com o tema do leitor.
+  const pageBg =
+    readerTheme === 'sepia' ? '#efe3c8' :
+    readerTheme === 'dark'  ? '#15181d' :
+    'var(--rayo-sand-100)';
+  // Cor do texto na chrome — contraste com pageBg.
+  const chromeFg = readerTheme === 'dark' ? '#e7e3d6' : 'var(--rayo-ink-700)';
+  const chromeBgGlass = readerTheme === 'dark'
+    ? 'rgba(20, 23, 28, 0.85)'
+    : readerTheme === 'sepia'
+      ? 'rgba(239, 227, 200, 0.92)'
+      : 'rgba(255, 255, 255, 0.92)';
+
+  // Classes de auto-hide pras barras: slide pra fora + fade quando escondidas.
+  const topBarClass = chromeVisible
+    ? 'translate-y-0 opacity-100'
+    : 'pointer-events-none -translate-y-full opacity-0';
+  const bottomBarClass = chromeVisible
+    ? 'translate-y-0 opacity-100'
+    : 'pointer-events-none translate-y-full opacity-0';
 
   return (
-    <div className="min-h-screen flex flex-col pb-10" style={{ background: 'var(--rayo-sand-100)' }}>
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ background: pageBg, transition: 'background 200ms ease' }}
+    >
+      {/* ── Top bar (auto-hide) ─────────────────────────────────────────── */}
       <div
-        className="sticky top-0 z-10 border-b backdrop-blur-lg"
+        className={`fixed top-0 left-0 right-0 z-20 border-b backdrop-blur-lg transition-all duration-200 ${topBarClass}`}
         style={{
-          background: theme === 'dark' ? 'rgba(17, 24, 39, 0.8)' : 'rgba(255, 255, 255, 0.8)',
-          borderColor: 'var(--rayo-sand-300)',
+          background: chromeBgGlass,
+          borderColor: readerTheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'var(--rayo-sand-300)',
         }}
       >
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack} style={{ color: 'var(--rayo-ink-700)' }}>
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
+          <Button variant="ghost" size="icon" onClick={onBack} style={{ color: chromeFg }} aria-label="Voltar">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className="flex-1 text-center truncate text-sm" style={{ color: 'var(--rayo-forest-900)', fontWeight: 600 }}>
+          <div className="flex-1 text-center truncate text-sm" style={{ color: chromeFg, fontWeight: 600 }}>
             {book.title}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="text-xs tabular-nums hidden sm:block" style={{ color: 'var(--rayo-ink-400)' }}>
-              {total > 0 ? `${progressPct}%` : ''}
-            </div>
-            <Sheet open={annotationsOpen} onOpenChange={setAnnotationsOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="gap-1"
-                  style={{ color: 'var(--rayo-ink-700)' }}
-                  aria-label="Minhas anotações"
-                >
-                  <BookMarked className="w-4 h-4" />
-                  <span className="text-xs tabular-nums">
-                    {highlights.length + notes.length}
-                  </span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" style={{ background: 'var(--rayo-sand-50)', borderColor: 'var(--rayo-sand-300)' }}>
-                <SheetHeader>
-                  <SheetTitle style={{ color: 'var(--rayo-forest-900)' }}>Minhas anotações</SheetTitle>
-                  <SheetDescription style={{ color: 'var(--rayo-ink-400)' }}>
-                    Todos os destaques e anotações deste livro.
-                  </SheetDescription>
-                </SheetHeader>
-                <AnnotationsList
-                  highlights={highlights}
-                  notes={notes}
-                  onJump={goToPage}
-                  onDeleteHighlight={handleDeleteHighlight}
-                  onDeleteNote={handleDeleteNote}
-                  editingNoteId={editingNoteId}
-                  editingNoteText={editingNoteText}
-                  setEditingNoteId={setEditingNoteId}
-                  setEditingNoteText={setEditingNoteText}
-                  onSaveEditedNote={handleSaveEditedNote}
-                  onShare={openShare}
-                />
-              </SheetContent>
-            </Sheet>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1"
+            onClick={() => setAnnotationsOpen(true)}
+            style={{ color: chromeFg }}
+            aria-label="Minhas anotações"
+          >
+            <BookMarked className="w-4 h-4" />
+            <span className="text-xs tabular-nums">{highlights.length + notes.length}</span>
+          </Button>
         </div>
       </div>
 
-      <div className="flex-1 max-w-4xl mx-auto w-full px-2 sm:px-4 py-4">
+      {/* ── Área de leitura (com padding pras barras não sobreporem texto) ─ */}
+      <div className="flex-1 max-w-4xl mx-auto w-full px-2 sm:px-4 pt-14 pb-24">
         <PdfViewer
           fileUrl={book.fileUrl!}
           initialPage={initialPage}
@@ -343,8 +379,252 @@ function PdfBookReader({ book, onBack }: BookReaderPageProps) {
           onCreateHighlight={handleCreateHighlight}
           onCreateNote={handleStartNote}
           jumpToPage={jumpToPage}
+          theme={readerTheme}
+          zoom={zoom}
+          onTapCenter={toggleChrome}
+          onOutlineReady={setOutline}
+          hideSelectionMenu={anySheetOpen}
         />
       </div>
+
+      {/* ── Bottom bar (auto-hide): scrubber + ações ────────────────────── */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-20 border-t backdrop-blur-lg transition-all duration-200 ${bottomBarClass}`}
+        style={{
+          background: chromeBgGlass,
+          borderColor: readerTheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'var(--rayo-sand-300)',
+        }}
+        // O próprio chrome não deve disparar o tap-center do viewer.
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}
+      >
+        <div className="max-w-4xl mx-auto px-3 sm:px-4 py-3 flex flex-col gap-2">
+          {/* Scrubber */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs tabular-nums w-12 text-right" style={{ color: chromeFg }}>
+              {displayPage}
+            </span>
+            <input
+              type="range"
+              min={1}
+              max={Math.max(1, total)}
+              value={displayPage}
+              disabled={total <= 0}
+              onChange={(e) => setScrubValue(parseInt(e.target.value, 10) || 1)}
+              onMouseUp={() => {
+                if (scrubValue != null) {
+                  setJumpToPage(scrubValue);
+                  setScrubValue(null);
+                  setTimeout(() => setJumpToPage(undefined), 100);
+                }
+              }}
+              onTouchEnd={() => {
+                if (scrubValue != null) {
+                  setJumpToPage(scrubValue);
+                  setScrubValue(null);
+                  setTimeout(() => setJumpToPage(undefined), 100);
+                }
+              }}
+              className="flex-1 accent-current"
+              style={{ color: 'var(--rayo-terra-500)' }}
+              aria-label="Navegar pelas páginas"
+            />
+            <span className="text-xs tabular-nums w-12" style={{ color: chromeFg, opacity: 0.7 }}>
+              {total > 0 ? `/${total}` : ''}
+            </span>
+          </div>
+          {/* Ações: TOC / Ajustes / Progresso% */}
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setTocOpen(true)}
+              disabled={outline.length === 0}
+              style={{ color: chromeFg }}
+              aria-label="Sumário"
+            >
+              <List className="w-4 h-4" />
+              <span className="text-xs">Sumário</span>
+            </Button>
+            <div className="text-xs tabular-nums" style={{ color: chromeFg, opacity: 0.7 }}>
+              {total > 0 ? `${progressPct}% lido` : ''}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setSettingsOpen(true)}
+              style={{ color: chromeFg }}
+              aria-label="Ajustes de leitura"
+            >
+              <Settings2 className="w-4 h-4" />
+              <span className="text-xs">Ajustes</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Sheet: Anotações ────────────────────────────────────────────── */}
+      <Sheet open={annotationsOpen} onOpenChange={setAnnotationsOpen}>
+        <SheetContent side="right" style={{ background: 'var(--rayo-sand-50)', borderColor: 'var(--rayo-sand-300)' }}>
+          <SheetHeader>
+            <SheetTitle style={{ color: 'var(--rayo-forest-900)' }}>Minhas anotações</SheetTitle>
+            <SheetDescription style={{ color: 'var(--rayo-ink-400)' }}>
+              Todos os destaques e anotações deste livro.
+            </SheetDescription>
+          </SheetHeader>
+          <AnnotationsList
+            highlights={highlights}
+            notes={notes}
+            onJump={goToPage}
+            onDeleteHighlight={handleDeleteHighlight}
+            onDeleteNote={handleDeleteNote}
+            editingNoteId={editingNoteId}
+            editingNoteText={editingNoteText}
+            setEditingNoteId={setEditingNoteId}
+            setEditingNoteText={setEditingNoteText}
+            onSaveEditedNote={handleSaveEditedNote}
+            onShare={openShare}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Sheet: Sumário (TOC do PDF) ─────────────────────────────────── */}
+      <Sheet open={tocOpen} onOpenChange={setTocOpen}>
+        <SheetContent side="left" style={{ background: 'var(--rayo-sand-50)', borderColor: 'var(--rayo-sand-300)' }}>
+          <SheetHeader>
+            <SheetTitle style={{ color: 'var(--rayo-forest-900)' }}>Sumário</SheetTitle>
+            <SheetDescription style={{ color: 'var(--rayo-ink-400)' }}>
+              Capítulos e seções deste livro.
+            </SheetDescription>
+          </SheetHeader>
+          {outline.length === 0 ? (
+            <div className="mt-10 text-center text-sm flex flex-col items-center gap-3" style={{ color: 'var(--rayo-ink-400)' }}>
+              <BookOpen className="w-8 h-8 opacity-50" />
+              <p>Este livro ainda não tem um sumário interno.</p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-1 overflow-y-auto pr-1" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+              {outline.map((item, idx) => (
+                <button
+                  key={`${item.page}-${idx}`}
+                  type="button"
+                  onClick={() => { setTocOpen(false); goToPage(item.page); }}
+                  className="w-full text-left px-3 py-2.5 rounded-lg hover:opacity-80 flex items-center justify-between gap-3"
+                  style={{
+                    background: page === item.page ? 'var(--rayo-sand-100)' : 'transparent',
+                    color: 'var(--rayo-forest-900)',
+                  }}
+                >
+                  <span className="text-sm truncate">{item.title}</span>
+                  <span className="text-xs tabular-nums shrink-0" style={{ color: 'var(--rayo-ink-400)' }}>
+                    {item.page}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Sheet: Ajustes de leitura (tema + zoom) ─────────────────────── */}
+      <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <SheetContent side="bottom" style={{ background: 'var(--rayo-sand-50)', borderColor: 'var(--rayo-sand-300)' }}>
+          <SheetHeader>
+            <SheetTitle style={{ color: 'var(--rayo-forest-900)' }}>Ajustes de leitura</SheetTitle>
+            <SheetDescription style={{ color: 'var(--rayo-ink-400)' }}>
+              Personalize a aparência do leitor.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-6 pb-6">
+            {/* Tema */}
+            <div>
+              <p className="text-xs mb-2" style={{ color: 'var(--rayo-ink-400)', fontWeight: 600 }}>TEMA</p>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { id: 'light' as const, label: 'Claro', icon: <Sun className="w-4 h-4" />, bg: '#FFFFFF', fg: '#1a1d23' },
+                  { id: 'sepia' as const, label: 'Sépia', icon: <BookOpen className="w-4 h-4" />, bg: '#efe3c8', fg: '#5a4a2a' },
+                  { id: 'dark'  as const, label: 'Escuro', icon: <Moon className="w-4 h-4" />, bg: '#15181d', fg: '#e7e3d6' },
+                ]).map((opt) => {
+                  const active = readerTheme === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setReaderTheme(opt.id)}
+                      className="flex flex-col items-center justify-center gap-1 p-3 rounded-xl"
+                      style={{
+                        background: opt.bg,
+                        color: opt.fg,
+                        border: `2px solid ${active ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)'}`,
+                        fontWeight: active ? 700 : 500,
+                      }}
+                      aria-pressed={active}
+                    >
+                      {opt.icon}
+                      <span className="text-xs">{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Zoom */}
+            <div>
+              <p className="text-xs mb-2" style={{ color: 'var(--rayo-ink-400)', fontWeight: 600 }}>
+                TAMANHO DA PÁGINA · {Math.round(zoom * 100)}%
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setZoom((z) => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2)))}
+                  disabled={zoom <= ZOOM_MIN + 0.001}
+                  aria-label="Diminuir tamanho"
+                  style={{ color: 'var(--rayo-forest-900)' }}
+                >
+                  <Minus className="w-4 h-4" />
+                </Button>
+                <input
+                  type="range"
+                  min={ZOOM_MIN}
+                  max={ZOOM_MAX}
+                  step={ZOOM_STEP}
+                  value={zoom}
+                  onChange={(e) => setZoom(parseFloat(e.target.value))}
+                  className="flex-1"
+                  style={{ accentColor: 'var(--rayo-terra-500)' }}
+                  aria-label="Zoom"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setZoom((z) => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)))}
+                  disabled={zoom >= ZOOM_MAX - 0.001}
+                  aria-label="Aumentar tamanho"
+                  style={{ color: 'var(--rayo-forest-900)' }}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setZoom(1)}
+                  style={{ color: 'var(--rayo-ink-700)' }}
+                >
+                  100%
+                </Button>
+              </div>
+            </div>
+
+            <p className="text-xs" style={{ color: 'var(--rayo-ink-400)', textAlign: 'center' }}>
+              Toque no centro da página pra esconder ou mostrar as barras.
+              <br />Toque nas laterais ou arraste pra virar a página.
+            </p>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Modal de compartilhamento — Task #256 */}
       {shareTarget && (
