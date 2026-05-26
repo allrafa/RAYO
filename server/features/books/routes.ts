@@ -125,10 +125,24 @@ function sanitizeRects(raw: unknown): { x: number; y: number; w: number; h: numb
 }
 
 interface HighlightRow {
-  id: string; page: number; text: string; color: string; rects: unknown; created_at: Date;
+  id: string; page: number; text: string; color: string; rects: unknown;
+  cfi_range: string | null; created_at: Date;
 }
 interface NoteRow {
-  id: string; page: number; selected_text: string; content: string; created_at: Date; updated_at: Date;
+  id: string; page: number; selected_text: string; content: string;
+  cfi: string | null; created_at: Date; updated_at: Date;
+}
+
+// Task #261 — CFI (EPUB Canonical Fragment Identifier) é só uma string
+// gerada pelo epubjs. Não tentamos validar a sintaxe — só limitamos
+// tamanho e tipo. Quando o highlight vem de EPUB, `rects` fica vazio
+// e `cfi_range` carrega o "endereço" do trecho.
+function sanitizeCfi(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  // CFIs realistas têm <500 chars; cap em 2000 por segurança.
+  return trimmed.length > 2000 ? trimmed.slice(0, 2000) : trimmed;
 }
 
 // GET /api/books/:contentId/annotations — devolve highlights + notes.
@@ -141,13 +155,13 @@ router.get("/:contentId/annotations", requireAuth, async (req, res, next) => {
 
     const [hs, ns] = await Promise.all([
       query<HighlightRow>(
-        `SELECT id::text, page, text, color, rects, created_at
+        `SELECT id::text, page, text, color, rects, cfi_range, created_at
            FROM book_highlights WHERE user_id = $1 AND content_id = $2
           ORDER BY page ASC, created_at ASC`,
         [req.user!.id, contentId],
       ),
       query<NoteRow>(
-        `SELECT id::text, page, selected_text, content, created_at, updated_at
+        `SELECT id::text, page, selected_text, content, cfi, created_at, updated_at
            FROM book_notes WHERE user_id = $1 AND content_id = $2
           ORDER BY page ASC, created_at ASC`,
         [req.user!.id, contentId],
@@ -157,11 +171,12 @@ router.get("/:contentId/annotations", requireAuth, async (req, res, next) => {
     success(res, {
       highlights: hs.rows.map((r) => ({
         id: r.id, page: r.page, text: r.text, color: r.color,
-        rects: r.rects, createdAt: r.created_at,
+        rects: r.rects, cfiRange: r.cfi_range, createdAt: r.created_at,
       })),
       notes: ns.rows.map((r) => ({
         id: r.id, page: r.page, selectedText: r.selected_text,
-        content: r.content, createdAt: r.created_at, updatedAt: r.updated_at,
+        content: r.content, cfi: r.cfi,
+        createdAt: r.created_at, updatedAt: r.updated_at,
       })),
     });
   } catch (err) { next(err); }
@@ -175,25 +190,43 @@ router.post("/:contentId/highlights", requireAuth, async (req, res, next) => {
     const livro = await loadLivro(contentId);
     if (!livro) { sendError(res, "Livro não encontrado", "BOOK_NOT_FOUND", 404); return; }
 
-    const body = (req.body ?? {}) as { page?: unknown; text?: unknown; color?: unknown; rects?: unknown };
+    const body = (req.body ?? {}) as {
+      page?: unknown; text?: unknown; color?: unknown;
+      rects?: unknown; cfiRange?: unknown;
+    };
     const pageNum = typeof body.page === "number" ? body.page : parseInt(String(body.page ?? ""), 10);
     if (!Number.isFinite(pageNum) || pageNum < 1) { sendError(res, "page inválido", "INVALID_PAGE", 400); return; }
+    // EPUB não tem "páginas" reais; clamp só faz sentido pra PDFs com
+    // total de páginas conhecido. Quando `livro.pages` é null (EPUB),
+    // qualquer page>=1 é aceita (cliente usa permil 1..1000 pra ordenar).
     const max = livro.pages && livro.pages > 0 ? livro.pages : pageNum;
     const page = Math.max(1, Math.min(Math.floor(pageNum), max));
 
     const text = typeof body.text === "string" ? body.text.slice(0, 4000) : "";
     const color = typeof body.color === "string" && HIGHLIGHT_COLORS.has(body.color) ? body.color : "yellow";
     const rects = sanitizeRects(body.rects);
-    if (rects.length === 0) { sendError(res, "rects vazios", "INVALID_RECTS", 400); return; }
+    const cfiRange = sanitizeCfi(body.cfiRange);
+    // Pelo menos um identificador de localização tem que vir: rects (PDF)
+    // ou cfiRange (EPUB). Sem nenhum dos dois, não dá pra renderizar o
+    // overlay nem voltar pro trecho.
+    if (rects.length === 0 && !cfiRange) {
+      sendError(res, "Localização do trecho ausente", "INVALID_LOCATION", 400);
+      return;
+    }
 
     const { rows } = await query<HighlightRow>(
-      `INSERT INTO book_highlights (user_id, content_id, page, text, color, rects)
-       VALUES ($1, $2, $3, $4, $5, $6::jsonb)
-       RETURNING id::text, page, text, color, rects, created_at`,
-      [req.user!.id, contentId, page, text, color, JSON.stringify(rects)],
+      `INSERT INTO book_highlights (user_id, content_id, page, text, color, rects, cfi_range)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
+       RETURNING id::text, page, text, color, rects, cfi_range, created_at`,
+      [req.user!.id, contentId, page, text, color, JSON.stringify(rects), cfiRange],
     );
     const r = rows[0];
-    success(res, { highlight: { id: r.id, page: r.page, text: r.text, color: r.color, rects: r.rects, createdAt: r.created_at } }, 201);
+    success(res, {
+      highlight: {
+        id: r.id, page: r.page, text: r.text, color: r.color,
+        rects: r.rects, cfiRange: r.cfi_range, createdAt: r.created_at,
+      },
+    }, 201);
   } catch (err) { next(err); }
 });
 
@@ -220,7 +253,9 @@ router.post("/:contentId/notes", requireAuth, async (req, res, next) => {
     const livro = await loadLivro(contentId);
     if (!livro) { sendError(res, "Livro não encontrado", "BOOK_NOT_FOUND", 404); return; }
 
-    const body = (req.body ?? {}) as { page?: unknown; selectedText?: unknown; content?: unknown };
+    const body = (req.body ?? {}) as {
+      page?: unknown; selectedText?: unknown; content?: unknown; cfi?: unknown;
+    };
     const pageNum = typeof body.page === "number" ? body.page : parseInt(String(body.page ?? ""), 10);
     if (!Number.isFinite(pageNum) || pageNum < 1) { sendError(res, "page inválido", "INVALID_PAGE", 400); return; }
     const max = livro.pages && livro.pages > 0 ? livro.pages : pageNum;
@@ -229,15 +264,22 @@ router.post("/:contentId/notes", requireAuth, async (req, res, next) => {
     const selectedText = typeof body.selectedText === "string" ? body.selectedText.slice(0, 4000) : "";
     const content = typeof body.content === "string" ? body.content.trim().slice(0, 4000) : "";
     if (!content) { sendError(res, "Conteúdo da anotação obrigatório", "INVALID_CONTENT", 400); return; }
+    const cfi = sanitizeCfi(body.cfi);
 
     const { rows } = await query<NoteRow>(
-      `INSERT INTO book_notes (user_id, content_id, page, selected_text, content)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id::text, page, selected_text, content, created_at, updated_at`,
-      [req.user!.id, contentId, page, selectedText, content],
+      `INSERT INTO book_notes (user_id, content_id, page, selected_text, content, cfi)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id::text, page, selected_text, content, cfi, created_at, updated_at`,
+      [req.user!.id, contentId, page, selectedText, content, cfi],
     );
     const r = rows[0];
-    success(res, { note: { id: r.id, page: r.page, selectedText: r.selected_text, content: r.content, createdAt: r.created_at, updatedAt: r.updated_at } }, 201);
+    success(res, {
+      note: {
+        id: r.id, page: r.page, selectedText: r.selected_text,
+        content: r.content, cfi: r.cfi,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+      },
+    }, 201);
   } catch (err) { next(err); }
 });
 
@@ -253,12 +295,18 @@ router.patch("/:contentId/notes/:id", requireAuth, async (req, res, next) => {
     const { rows } = await query<NoteRow>(
       `UPDATE book_notes SET content = $1, updated_at = NOW()
         WHERE id = $2 AND user_id = $3 AND content_id = $4
-       RETURNING id::text, page, selected_text, content, created_at, updated_at`,
+       RETURNING id::text, page, selected_text, content, cfi, created_at, updated_at`,
       [content, noteId, req.user!.id, contentId],
     );
     const r = rows[0];
     if (!r) { sendError(res, "Anotação não encontrada", "NOT_FOUND", 404); return; }
-    success(res, { note: { id: r.id, page: r.page, selectedText: r.selected_text, content: r.content, createdAt: r.created_at, updatedAt: r.updated_at } });
+    success(res, {
+      note: {
+        id: r.id, page: r.page, selectedText: r.selected_text,
+        content: r.content, cfi: r.cfi,
+        createdAt: r.created_at, updatedAt: r.updated_at,
+      },
+    });
   } catch (err) { next(err); }
 });
 
@@ -272,11 +320,12 @@ interface BookMetaRow {
   author: string | null;
   slug: string | null;
   cover_url: string | null;
+  pages: number | null;
 }
 
 async function loadBookMeta(contentId: number): Promise<BookMetaRow | null> {
   const { rows } = await query<BookMetaRow>(
-    `SELECT title, author, slug, cover_url FROM content_items
+    `SELECT title, author, slug, cover_url, pages FROM content_items
       WHERE id = $1 AND kind = 'livro' LIMIT 1`,
     [contentId],
   );
@@ -336,6 +385,9 @@ function buildSharePostContent(opts: {
   bookTitle: string;
   bookAuthor: string | null;
   page: number;
+  /** Total de páginas do livro. Null/0 indica EPUB (sem páginas fixas) — nesse
+   *  caso `page` carrega o permil 1..1000 e renderizamos como "X% lido". */
+  totalPages: number | null;
   quote: string;
   note?: string;
 }): string {
@@ -350,7 +402,10 @@ function buildSharePostContent(opts: {
     lines.push("");
   }
   const author = opts.bookAuthor?.trim() ? ` — ${opts.bookAuthor.trim()}` : "";
-  lines.push(`📖 ${opts.bookTitle}${author} (pág. ${opts.page})`);
+  const locator = opts.totalPages && opts.totalPages > 0
+    ? `pág. ${opts.page}`
+    : `${Math.max(0, Math.min(100, Math.round(opts.page / 10)))}% lido`;
+  lines.push(`📖 ${opts.bookTitle}${author} (${locator})`);
   return lines.join("\n").slice(0, 5000);
 }
 
@@ -380,7 +435,7 @@ router.post("/:contentId/highlights/:id/share", requireAuth, async (req, res, ne
 
     const content = buildSharePostContent({
       bookTitle: book.title, bookAuthor: book.author,
-      page: hl.page, quote: hl.text,
+      page: hl.page, totalPages: book.pages, quote: hl.text,
     });
     try {
       const post = await createSharePost({
@@ -423,8 +478,8 @@ router.post("/:contentId/notes/:id/share", requireAuth, async (req, res, next) =
 
     const content = buildSharePostContent({
       bookTitle: book.title, bookAuthor: book.author,
-      page: note.page, quote: note.selected_text || "",
-      note: note.content,
+      page: note.page, totalPages: book.pages,
+      quote: note.selected_text || "", note: note.content,
     });
     try {
       const post = await createSharePost({

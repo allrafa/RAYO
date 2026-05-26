@@ -30,7 +30,7 @@ RAYO é uma plataforma digital para fortalecer famílias através de conteúdo t
 
 ## Product
 - **Auth**: registro, login, logout, reset, perfil, verificação de e-mail (código + magic link), OAuth Google/Facebook — ver `docs/contracts/auth.md`.
-- **CMS**: 6 kinds (audio, video, reels, serie, curso, livro) + `artigo` (blog) — ver `docs/contracts/content-and-media.md`.
+- **CMS**: 6 kinds (audio, video, reels, serie, curso, livro) + `artigo` (blog) — ver `docs/contracts/content-and-media.md`. Livros aceitam PDF e EPUB (Task #261); o `BookReaderPage` roteia automaticamente pra `EpubBookReader` quando `fileUrl` termina em `.epub`. Anotações EPUB persistem CFI (`book_highlights.cfi_range`, `book_notes.cfi`) e o progresso vira permil 1..1000 derivado de `location.start.percentage`.
 - **Gamification**: XP, badges, missões, streaks. **Personalized Dashboard** agrega tudo + comunidade.
 - **Community Forums**: subreddit-style, criação por usuários, mod local — ver `docs/contracts/comunidade.md`.
 - **Direct Messaging**: per-side state + attachments + swipe + áudio — ver `docs/contracts/dm.md`.

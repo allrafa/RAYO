@@ -284,6 +284,7 @@ function guessContentType(name: string): string {
     case ".webm": return "video/webm";
     case ".mov": return "video/quicktime";
     case ".pdf": return "application/pdf";
+    case ".epub": return "application/epub+zip";
     default: return "application/octet-stream";
   }
 }

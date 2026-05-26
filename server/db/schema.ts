@@ -1222,6 +1222,10 @@ export async function initializeSchema() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_book_highlights_user_content ON book_highlights(user_id, content_id);`);
   await query(`CREATE INDEX IF NOT EXISTS idx_book_highlights_user_content_page ON book_highlights(user_id, content_id, page);`);
+  // Task #261 — EPUB support: CFI (Canonical Fragment Identifier) é o
+  // "endereço" do trecho num EPUB. Coexiste com `rects` (PDF). Quando
+  // `cfi_range` é setado, `rects` pode ficar vazio.
+  await query(`ALTER TABLE book_highlights ADD COLUMN IF NOT EXISTS cfi_range TEXT`);
 
   await query(`
     CREATE TABLE IF NOT EXISTS book_notes (
@@ -1237,6 +1241,8 @@ export async function initializeSchema() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_book_notes_user_content ON book_notes(user_id, content_id);`);
   await query(`CREATE INDEX IF NOT EXISTS idx_book_notes_user_content_page ON book_notes(user_id, content_id, page);`);
+  // Task #261 — EPUB: CFI do trecho selecionado (NULL pra notas em PDF).
+  await query(`ALTER TABLE book_notes ADD COLUMN IF NOT EXISTS cfi TEXT`);
 
   console.log("[DB] Schema initialized successfully.");
 }

@@ -33,6 +33,7 @@ function inferKind(mime: string): string {
   if (mime.startsWith("video/")) return "video";
   if (mime.startsWith("image/")) return "image";
   if (mime === "application/pdf") return "pdf";
+  if (mime === "application/epub+zip") return "epub";
   return "other";
 }
 
@@ -48,6 +49,7 @@ function extensionForMime(mime: string): string {
     case "image/png": return ".png";
     case "image/webp": return ".webp";
     case "application/pdf": return ".pdf";
+    case "application/epub+zip": return ".epub";
     default: return "";
   }
 }
@@ -57,6 +59,10 @@ const ALLOWED = new Set([
   "video/mp4", "video/webm", "video/quicktime",
   "image/jpeg", "image/png", "image/webp", "image/gif",
   "application/pdf",
+  // Task #261 — EPUB upload pra "Livros" no CMS. Browsers às vezes mandam
+  // os EPUBs como octet-stream; aceitamos os dois e validamos a extensão
+  // na hora de inferir o kind.
+  "application/epub+zip", "application/octet-stream",
 ]);
 
 const memoryUpload = multer({
@@ -101,7 +107,16 @@ export function uploadMiddleware(
           // and let object storage / consumers reject it.
         }
       }
-      const originalExt = path.extname(file.originalname);
+      const originalExt = path.extname(file.originalname).toLowerCase();
+      // Task #261 — alguns browsers mandam .epub como octet-stream. Quando
+      // o mime é genérico mas a extensão é conhecida, promovemos pra epub
+      // (idem proteção: só aceita extensões da nossa lista).
+      if (mimetype === "application/octet-stream" && originalExt === ".epub") {
+        mimetype = "application/epub+zip";
+        file.mimetype = mimetype;
+      } else if (mimetype === "application/octet-stream") {
+        throw new Error(`Tipo de arquivo não permitido: ${mimetype}`);
+      }
       const ext = mimetype.startsWith("image/")
         ? extensionForMime(mimetype) || originalExt
         : originalExt || extensionForMime(mimetype);
