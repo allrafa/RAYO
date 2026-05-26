@@ -29,10 +29,17 @@ import {
 } from '../ui/sheet';
 
 interface ServerHighlight {
-  id: string; page: number; text: string; color: HighlightColor; rects: NormalizedRect[]; createdAt: string;
+  id: string; page: number; text: string; color: HighlightColor;
+  // PDF fornece rects; EPUB fornece cfiRange. Servidor exige um dos dois.
+  rects: NormalizedRect[];
+  cfiRange?: string | null;
+  createdAt: string;
 }
 interface ServerNote {
-  id: string; page: number; selectedText: string; content: string; createdAt: string; updatedAt: string;
+  id: string; page: number; selectedText: string; content: string;
+  // EPUB usa cfi pra ancorar a anotação ao texto refluído.
+  cfi?: string | null;
+  createdAt: string; updatedAt: string;
 }
 interface ForumOption {
   id: number; name: string; slug: string; icon?: string | null;
@@ -1318,10 +1325,9 @@ function EpubBookReader({ book, onBack }: BookReaderPageProps) {
   };
   const onJumpFromList = (pagePermille: number) => {
     // Tenta achar uma anotação dessa permille com CFI e usa o CFI dela.
-    const hit = highlights.find((h) => h.page === pagePermille && h.cfiRange)
-      ?? notes.find((n) => n.page === pagePermille && n.cfi);
-    const cfi = (hit as { cfiRange?: string; cfi?: string } | undefined)?.cfiRange
-      ?? (hit as { cfi?: string } | undefined)?.cfi;
+    const hl = highlights.find((h) => h.page === pagePermille && h.cfiRange);
+    const nt = !hl ? notes.find((n) => n.page === pagePermille && n.cfi) : undefined;
+    const cfi = hl?.cfiRange ?? nt?.cfi;
     if (cfi) goToCfi(cfi);
     else setAnnotationsOpen(false);
   };
