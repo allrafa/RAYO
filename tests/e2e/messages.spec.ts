@@ -7,6 +7,7 @@ import {
   deleteAllTestUsersByEmailPrefix,
   closeDbPool,
   makeTestEmail,
+  startConversationWithMessage,
   type TestUser,
 } from "./helpers/api";
 
@@ -139,3 +140,68 @@ async function openMessagesTab(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Mensagens" }).first().click();
   await expect(page.getByRole("heading", { name: "Mensagens" })).toBeVisible({ timeout: 8_000 });
 }
+
+// ── Task #241 — DM: read receipts via Socket.IO ──
+
+test.describe("DM — read receipts (Task #241)", () => {
+  let userA: TestUser;
+  let userB: TestUser;
+
+  test.beforeAll(async () => {
+    await deleteAllTestUsersByEmailPrefix();
+  });
+
+  test.afterEach(async () => {
+    const ids = [userA?.id, userB?.id].filter((v): v is number => typeof v === "number");
+    if (ids.length) await deleteUsersById(ids);
+  });
+
+  test.afterAll(async () => { await closeDbPool(); });
+
+  test("A envia mensagem → bubble 'Enviado'; B abre conversa → bubble do A vira 'Lido'", async ({ browser, baseURL }) => {
+    expect(baseURL).toBeTruthy();
+    const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
+    userA = await registerUser(api, { email: makeTestEmail("test-rr-a"), name: "Alice RR" });
+    userB = await registerUser(api, { email: makeTestEmail("test-rr-b"), name: "Bruno RR" });
+    await api.dispose();
+
+    // Seed: A já mandou uma mensagem pra B via API REST (mais rápido do que
+    // tocar todo o composer; a UI carrega a conversa pre-existente).
+    const msgText = `read-receipt-${Date.now()}`;
+    const { conversationId } = await startConversationWithMessage(baseURL!, userA, userB, msgText);
+
+    // A abre a conversa no browser → bubble do A renderiza com aria-label "Enviado"
+    // (porque B ainda não leu).
+    const ctxA = await browser.newContext({ ...MOBILE_CTX });
+    await loginViaApi(ctxA, baseURL!, userA);
+    const pageA = await ctxA.newPage();
+    await pageA.goto(`/conversas/${conversationId}`, { waitUntil: "domcontentloaded" });
+    await dismissCookieBanner(pageA);
+
+    const bubbleA = pageA.locator(".ra-chat-bubble", { hasText: msgText }).first();
+    await expect(bubbleA).toBeVisible({ timeout: 15_000 });
+    // Checkmark "Enviado" visível dentro do bubble do remetente.
+    await expect(
+      pageA.locator('[aria-label="Enviado"]').first(),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // B abre a conversa em outro contexto → POST /conversations/:id/read
+    // dispara → backend emite `message_read` via Socket.IO pro user:A.
+    const ctxB = await browser.newContext({ ...MOBILE_CTX });
+    await loginViaApi(ctxB, baseURL!, userB);
+    const pageB = await ctxB.newPage();
+    await pageB.goto(`/conversas/${conversationId}`, { waitUntil: "domcontentloaded" });
+    await dismissCookieBanner(pageB);
+    await expect(
+      pageB.locator(".ra-chat-bubble", { hasText: msgText }).first(),
+    ).toBeVisible({ timeout: 15_000 });
+
+    // De volta em A: o aria-label do bubble vira "Lido às HH:MM" via socket.
+    await expect(
+      pageA.locator('[aria-label^="Lido às"]').first(),
+    ).toBeVisible({ timeout: 15_000 });
+
+    await ctxA.close();
+    await ctxB.close();
+  });
+});

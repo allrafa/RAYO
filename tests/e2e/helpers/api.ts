@@ -267,3 +267,102 @@ export async function deleteAllTestUsersByEmailPrefix(prefix?: string): Promise<
   );
   await deleteUsersById(rows.map((r) => r.id));
 }
+
+// ── Task #241 helpers ────────────────────────────────────────────────
+
+/**
+ * Insere um token de reset de senha direto no DB com hash sha256 conhecido.
+ * Espelha exatamente o que `createPasswordResetToken` faz no service:
+ *   - hash sha256 hex do token raw
+ *   - TTL 30 min (mesmo do service)
+ * Devolve o token raw pra usar na URL `/?reset_token=XXX` que o App.tsx
+ * intercepta em src/App.tsx:262.
+ */
+export async function insertPasswordResetToken(userId: number): Promise<string> {
+  const crypto = await import("node:crypto");
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  await getPool().query(
+    `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+     VALUES ($1, $2, NOW() + INTERVAL '30 minutes')`,
+    [userId, tokenHash],
+  );
+  return rawToken;
+}
+
+/**
+ * Promove um user diretamente no DB pra um role específico. Usado pelos
+ * specs de admin pra montar o cenário "admin loga e modera/promove" sem
+ * depender de outro admin pré-existente no seed.
+ */
+export async function setUserRole(
+  userId: number,
+  role: "client" | "producer" | "moderator" | "admin",
+): Promise<void> {
+  await getPool().query(`UPDATE users SET role = $1 WHERE id = $2`, [role, userId]);
+}
+
+/**
+ * Cria um post via API REST autenticada (usado por admin.spec pra ter
+ * algo pra moderar). Devolve o id do post + slug do fórum (default 1
+ * = "Solteiros & Preparação", sempre existe por seed).
+ */
+export async function createPostAsUser(
+  baseURL: string,
+  user: TestUser,
+  body: { title: string; content: string; forum_id?: number },
+): Promise<{ id: number; forumSlug: string }> {
+  const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
+  const loginRes = await api.post("/api/auth/login", {
+    data: { email: user.email, password: user.password },
+  });
+  if (!loginRes.ok()) throw new Error(`login falhou: ${loginRes.status()} ${await loginRes.text()}`);
+  const res = await api.post("/api/community/posts", {
+    data: {
+      forum_id: body.forum_id ?? 1,
+      title: body.title,
+      content: body.content,
+      category: "discussao",
+    },
+  });
+  if (!res.ok()) throw new Error(`createPost falhou: ${res.status()} ${await res.text()}`);
+  const json = await res.json();
+  const post = json?.data?.post;
+  if (!post?.id) throw new Error(`createPost: resposta inesperada: ${JSON.stringify(json)}`);
+  const forumsRes = await api.get("/api/community/forums");
+  const forums = (await forumsRes.json())?.data?.forums ?? [];
+  const forum = forums.find((f: { id: number }) => f.id === (body.forum_id ?? 1));
+  await api.dispose();
+  return { id: post.id, forumSlug: forum?.slug ?? "solteiros-preparacao" };
+}
+
+/**
+ * Inicia uma conversa entre A e B via API + manda uma mensagem inicial.
+ * Devolve o id da conversa e da mensagem. Espelha o fluxo do composer
+ * (POST /api/messages/conversations + POST .../messages).
+ */
+export async function startConversationWithMessage(
+  baseURL: string,
+  sender: TestUser,
+  recipient: TestUser,
+  text: string,
+): Promise<{ conversationId: number; messageId: number }> {
+  const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
+  const loginRes = await api.post("/api/auth/login", {
+    data: { email: sender.email, password: sender.password },
+  });
+  if (!loginRes.ok()) throw new Error(`login falhou: ${loginRes.status()} ${await loginRes.text()}`);
+  const convRes = await api.post("/api/messages/conversations", {
+    data: { other_user_id: recipient.id },
+  });
+  if (!convRes.ok()) throw new Error(`createConv falhou: ${convRes.status()} ${await convRes.text()}`);
+  const conv = (await convRes.json())?.data?.conversation;
+  if (!conv?.id) throw new Error(`createConv: resposta inesperada`);
+  const msgRes = await api.post(`/api/messages/conversations/${conv.id}/messages`, {
+    data: { content: text },
+  });
+  if (!msgRes.ok()) throw new Error(`sendMsg falhou: ${msgRes.status()} ${await msgRes.text()}`);
+  const msg = (await msgRes.json())?.data?.message;
+  await api.dispose();
+  return { conversationId: conv.id, messageId: msg.id };
+}

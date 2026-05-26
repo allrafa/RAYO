@@ -122,3 +122,122 @@ test.describe("Comunidade — comentar em post via UI", () => {
     await ctx.close();
   });
 });
+
+// ── Task #241 — Comunidade: reagir com emoji + follow/unfollow fórum ──
+
+test.describe("Comunidade — reagir em post (Task #241)", () => {
+  let user: TestUser;
+
+  test.beforeAll(async () => {
+    await deleteAllTestUsersByEmailPrefix();
+  });
+
+  test.afterEach(async () => {
+    if (user?.id) await deleteUsersById([user.id]);
+  });
+
+  test("user reage com ❤️ → chip aparece com aria-label 'Remover reação ❤️'", async ({ browser, baseURL }) => {
+    expect(baseURL).toBeTruthy();
+    const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
+    user = await registerUser(api, { email: makeTestEmail("test-react"), name: "Renata Reaction" });
+    await api.dispose();
+
+    const stamp = Date.now();
+    const postTitle = `Post pra reagir ${stamp}`;
+    const post = await createPostViaApi(baseURL!, user, {
+      title: postTitle,
+      content: `Conteúdo ${stamp}`,
+    });
+
+    const ctx = await browser.newContext({ ...MOBILE_CTX });
+    await loginViaApi(ctx, baseURL!, user);
+    const page = await ctx.newPage();
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: /^Comunidade(,|$)/ }).first().waitFor({ timeout: 20_000 });
+    try { await page.getByRole("button", { name: /^Aceitar$/ }).click({ timeout: 2_000 }); } catch { /* noop */ }
+
+    await page.evaluate((slug) => {
+      try { sessionStorage.setItem("rayo-pending-community-slug", slug); } catch { /* noop */ }
+      window.dispatchEvent(new CustomEvent("rayo:open-community", { detail: { slug } }));
+    }, post.forumSlug);
+
+    // Aguarda o card do POST RECÉM-CRIADO aparecer e escopamos toda
+    // ação dentro do <article> dele — feeds seedados podem ter outros
+    // posts com o mesmo trigger global "Reagir ao post" (review #241).
+    // PostCard root é uma <div className="ra-card ra-card-hover" role="button"
+    // aria-label="Abrir discussão da publicação de X">; o título aparece como
+    // texto visível dentro. Escopamos pelo .ra-card que contém o título.
+    const postArticle = page.locator(".ra-card", { hasText: postTitle }).first();
+    await expect(postArticle).toBeVisible({ timeout: 20_000 });
+
+    const picker = postArticle.getByRole("button", { name: /Reagir ao post/ });
+    await expect(picker).toBeVisible({ timeout: 10_000 });
+    await picker.click();
+
+    // Menu popover do picker — escolhe ❤️ (popover é portal global,
+    // então fica fora do article; mas só um picker está aberto por vez).
+    const heart = page.getByRole("button", { name: /Reagir com ❤️/ }).first();
+    await expect(heart).toBeVisible({ timeout: 5_000 });
+    await heart.click();
+
+    // Chip agregado aparece DENTRO do mesmo article (re-escopado).
+    await expect(postArticle.getByRole("button", { name: /Remover reação ❤️/ }))
+      .toBeVisible({ timeout: 10_000 });
+
+    await ctx.close();
+  });
+});
+
+test.describe("Comunidade — seguir/parar de seguir fórum (Task #241)", () => {
+  let user: TestUser;
+
+  test.beforeAll(async () => {
+    await deleteAllTestUsersByEmailPrefix();
+  });
+
+  test.afterEach(async () => {
+    if (user?.id) await deleteUsersById([user.id]);
+  });
+
+  test.afterAll(async () => { await closeDbPool(); });
+
+  test("'Entrar' → vira 'Inscrito' → click de novo volta pra 'Entrar'", async ({ browser, baseURL }) => {
+    expect(baseURL).toBeTruthy();
+    const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
+    user = await registerUser(api, { email: makeTestEmail("test-follow"), name: "Fabio Follow" });
+    await api.dispose();
+
+    const ctx = await browser.newContext({ ...MOBILE_CTX });
+    await loginViaApi(ctx, baseURL!, user);
+    const page = await ctx.newPage();
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: /^Comunidade(,|$)/ }).first().waitFor({ timeout: 20_000 });
+    try { await page.getByRole("button", { name: /^Aceitar$/ }).click({ timeout: 2_000 }); } catch { /* noop */ }
+
+    // Navega pro fórum seed "solteiros-preparacao".
+    await page.evaluate(() => {
+      const slug = "solteiros-preparacao";
+      try { sessionStorage.setItem("rayo-pending-community-slug", slug); } catch { /* noop */ }
+      window.dispatchEvent(new CustomEvent("rayo:open-community", { detail: { slug } }));
+    });
+
+    // CommunityDetailPage renderiza botão "Entrar" (não-inscrito) ou
+    // "Inscrito" (já segue). Em conta nova, esperamos "Entrar".
+    const entrarBtn = page.getByRole("button", { name: /^Entrar$/ }).first();
+    await expect(entrarBtn).toBeVisible({ timeout: 20_000 });
+    await entrarBtn.click();
+
+    // Após subscribe, o mesmo botão re-renderiza como "Inscrito".
+    await expect(page.getByRole("button", { name: /^Inscrito$/ }).first())
+      .toBeVisible({ timeout: 10_000 });
+
+    // Toggle off → volta pra "Entrar".
+    await page.getByRole("button", { name: /^Inscrito$/ }).first().click();
+    await expect(page.getByRole("button", { name: /^Entrar$/ }).first())
+      .toBeVisible({ timeout: 10_000 });
+
+    await ctx.close();
+  });
+});
