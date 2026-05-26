@@ -1204,6 +1204,40 @@ export async function initializeSchema() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_book_progress_user ON book_progress(user_id);`);
 
+  // Task #255 — destaques (highlights) e anotações (notes) por usuário.
+  // `rects` é um array JSON de retângulos normalizados (0..1) relativos ao
+  // tamanho da página renderizada — armazenar normalizado deixa o overlay
+  // funcionar em qualquer zoom/largura. `text` guarda o trecho selecionado.
+  await query(`
+    CREATE TABLE IF NOT EXISTS book_highlights (
+      id BIGSERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content_id INTEGER NOT NULL REFERENCES content_items(id) ON DELETE CASCADE,
+      page INTEGER NOT NULL CHECK (page >= 1),
+      text TEXT NOT NULL DEFAULT '',
+      color TEXT NOT NULL DEFAULT 'yellow',
+      rects JSONB NOT NULL DEFAULT '[]'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_book_highlights_user_content ON book_highlights(user_id, content_id);`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_book_highlights_user_content_page ON book_highlights(user_id, content_id, page);`);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS book_notes (
+      id BIGSERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content_id INTEGER NOT NULL REFERENCES content_items(id) ON DELETE CASCADE,
+      page INTEGER NOT NULL CHECK (page >= 1),
+      selected_text TEXT NOT NULL DEFAULT '',
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_book_notes_user_content ON book_notes(user_id, content_id);`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_book_notes_user_content_page ON book_notes(user_id, content_id, page);`);
+
   console.log("[DB] Schema initialized successfully.");
 }
 
