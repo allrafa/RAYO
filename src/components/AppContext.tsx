@@ -24,6 +24,7 @@ interface CmsLivro {
   pages: number | null;
   view_count: number;
   published_at: string | null;
+  media_url: string | null;
 }
 
 function mapLivroToBook(c: CmsLivro): Book {
@@ -48,6 +49,9 @@ function mapLivroToBook(c: CmsLivro): Book {
     notes: [],
     highlights: [],
     format: 'pdf',
+    // Task #252 — `media_url` é resolvido pelo backend (objstore:// → signed URL).
+    // Quando presente, o leitor abre o PDF real; senão, cai pro mock de transcrição.
+    fileUrl: c.media_url ?? undefined,
     isPremium: !!c.is_premium,
     price: typeof c.price === 'string' ? parseFloat(c.price) : (c.price ?? 0),
     readers: c.view_count,

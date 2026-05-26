@@ -1,21 +1,22 @@
 // ============================================================================
 // 📚 RAYO ECOSYSTEM - BOOK READER PAGE
-// Leitor interativo com sincronização de áudio e texto
+// Leitor de livros. Quando o livro tem `fileUrl` (PDF real do CMS),
+// renderiza o PdfViewer. Quando não tem, cai pro fluxo legado de
+// transcrição mock (mantido pra compat enquanto migramos catálogo).
 // ============================================================================
 
-import { useState } from 'react';
-import { ArrowLeft, BookOpen, Headphones, Sparkles, User, Volume2, Menu, Settings2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, User, Settings2 } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Card, CardContent } from '../ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
-import { Badge } from '../ui/badge';
 import { Book } from '../types/BookTypes';
 import { useTheme } from '../ThemeProvider';
-import { BookReaderProvider, useBookReader, ReadingMode } from './BookReaderContext';
+import { useApp } from '../AppContext';
+import { BookReaderProvider, useBookReader } from './BookReaderContext';
 import { getBookContent } from './mockTranscripts';
-import { AudioPlayer } from './AudioPlayer';
 import { TranscriptViewer } from './TranscriptViewer';
 import { CompactAudioPlayer } from './CompactAudioPlayer';
+import { PdfViewer } from './PdfViewer';
+import { api } from '../../lib/api';
 import { toast } from 'sonner@2.0.3';
 import {
   Sheet,
@@ -31,261 +32,256 @@ interface BookReaderPageProps {
   onBack: () => void;
 }
 
-function BookReaderContent({ book, onBack }: BookReaderPageProps) {
-  const { state, setMode, setNarrator, transcript } = useBookReader();
-  const { theme } = useTheme();
-  const [showSettings, setShowSettings] = useState(false);
+// ────────────────────────────────────────────────────────────────────────────
+// PDF flow (livros do CMS com `fileUrl`)
+// ────────────────────────────────────────────────────────────────────────────
 
-  // Pegar o título do segmento atual
-  const currentSegment = transcript.find(seg => seg.id === state.currentSegmentId);
-  const currentChapter = currentSegment?.text.split('.')[0] || 'Capítulo atual';
+function PdfBookReader({ book, onBack }: BookReaderPageProps) {
+  const { theme } = useTheme();
+  const { updateBookProgress } = useApp();
+  const [initialPage, setInitialPage] = useState<number>(book.currentPage > 0 ? book.currentPage : 1);
+  const [page, setPage] = useState<number>(initialPage);
+  const [total, setTotal] = useState<number>(book.pages || 0);
+  const [loadedRemote, setLoadedRemote] = useState(false);
+
+  // Carrega progresso persistido do servidor uma vez.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const res = await api.get<{ progress: { currentPage: number } | null }>(
+        `/api/books/${encodeURIComponent(book.id)}/progress`,
+      );
+      if (!alive) return;
+      const remote = res.success && res.data?.progress?.currentPage;
+      if (remote && remote > 0) {
+        setInitialPage(remote);
+        setPage(remote);
+      }
+      setLoadedRemote(true);
+    })();
+    return () => { alive = false; };
+  }, [book.id]);
+
+  // Debounced save (800ms) — evita bater backend a cada flip de página.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedRef = useRef<number>(initialPage);
+  const pendingPageRef = useRef<number>(initialPage);
+
+  const schedulePersist = (next: number) => {
+    pendingPageRef.current = next;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      saveTimer.current = null;
+      const toSave = pendingPageRef.current;
+      if (toSave === lastSavedRef.current) return;
+      const res = await api.put<{ progress: { currentPage: number } }>(
+        `/api/books/${encodeURIComponent(book.id)}/progress`,
+        { currentPage: toSave },
+      );
+      if (res.success && res.data?.progress) {
+        lastSavedRef.current = res.data.progress.currentPage;
+      }
+    }, 800);
+  };
+
+  const handlePageChange = (next: number, totalPages: number) => {
+    setPage(next);
+    setTotal(totalPages);
+    // Atualiza estado local (badges/progress da home) imediatamente.
+    updateBookProgress(book.id, next);
+    if (loadedRemote) schedulePersist(next);
+  };
+
+  // Cleanup SÓ no unmount (ou troca de livro). Depender de `page` aqui faria
+  // o cleanup rodar a cada flip de página e cancelaria o debounce —
+  // a persistência só aconteceria no unmount. Fix do code review.
+  useEffect(() => {
+    const bookId = book.id;
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+      const last = pendingPageRef.current;
+      if (last !== lastSavedRef.current) {
+        // Flush final: sem await (estamos no cleanup) e fire-and-forget.
+        api.put(`/api/books/${encodeURIComponent(bookId)}/progress`, { currentPage: last }).catch(() => {});
+      }
+    };
+  }, [book.id]);
+
+  const progressPct = total > 0 ? Math.round((page / total) * 100) : 0;
 
   return (
-    <div 
-      className="min-h-screen flex flex-col pb-20"
-      style={{ background: 'var(--rayo-sand-100)' }}
-    >
-      {/* Header Minimalista */}
-      <div 
+    <div className="min-h-screen flex flex-col pb-10" style={{ background: 'var(--rayo-sand-100)' }}>
+      <div
         className="sticky top-0 z-10 border-b backdrop-blur-lg"
-        style={{ 
-          background: theme === 'dark' 
-            ? 'rgba(17, 24, 39, 0.8)' 
-            : 'rgba(255, 255, 255, 0.8)',
-          borderColor: 'var(--rayo-sand-300)'
+        style={{
+          background: theme === 'dark' ? 'rgba(17, 24, 39, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+          borderColor: 'var(--rayo-sand-300)',
         }}
       >
-        <div className="max-w-4xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            {/* Left: Back */}
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={onBack}
-              style={{ color: 'var(--rayo-ink-700)' }}
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            
-            {/* Center: Mode Tabs */}
-            <div className="flex items-center gap-1 bg-opacity-50 rounded-full p-1"
-              style={{ background: 'var(--rayo-sand-300)' }}
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMode('read')}
-                className="rounded-full px-3"
-                style={{
-                  background: state.mode === 'read' 
-                    ? 'var(--rayo-sand-50)' 
-                    : 'transparent',
-                  color: state.mode === 'read' 
-                    ? 'var(--rayo-forest-900)'
-                    : 'var(--rayo-ink-400)',
-                }}
-              >
-                Read
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMode('listen')}
-                className="rounded-full px-3"
-                style={{
-                  background: state.mode === 'listen' 
-                    ? 'var(--rayo-sand-50)' 
-                    : 'transparent',
-                  color: state.mode === 'listen' 
-                    ? 'var(--rayo-forest-900)'
-                    : 'var(--rayo-ink-400)',
-                }}
-              >
-                Listen
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMode('read-listen')}
-                className="rounded-full px-3"
-                style={{
-                  background: state.mode === 'read-listen' 
-                    ? 'var(--rayo-sand-50)' 
-                    : 'transparent',
-                  color: state.mode === 'read-listen' 
-                    ? 'var(--rayo-forest-900)'
-                    : 'var(--rayo-ink-400)',
-                }}
-              >
-                Read + Listen
-              </Button>
-            </div>
-
-            {/* Right: Settings */}
-            <Sheet open={showSettings} onOpenChange={setShowSettings}>
-              <SheetTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  style={{ color: 'var(--rayo-ink-700)' }}
-                >
-                  <Settings2 className="w-5 h-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent 
-                side="right"
-                style={{ 
-                  background: 'var(--rayo-sand-50)',
-                  borderColor: 'var(--rayo-sand-300)'
-                }}
-              >
-                <SheetHeader>
-                  <SheetTitle style={{ color: 'var(--rayo-forest-900)' }}>
-                    Configurações
-                  </SheetTitle>
-                  <SheetDescription style={{ color: 'var(--rayo-ink-400)' }}>
-                    Personalize sua experiência de leitura
-                  </SheetDescription>
-                </SheetHeader>
-                
-                <div className="space-y-6 mt-6">
-                  {/* Narrator Selection */}
-                  <div>
-                    <h3 
-                      className="text-sm mb-3 flex items-center gap-2"
-                      style={{ 
-                        fontWeight: 600,
-                        color: 'var(--rayo-forest-900)' 
-                      }}
-                    >
-                      <User className="w-4 h-4" />
-                      Narrador
-                    </h3>
-                    <div className="space-y-2">
-                      <Button
-                        variant={state.narratorVoice === 'female' ? 'default' : 'outline'}
-                        className="w-full justify-start"
-                        onClick={() => {
-                          setNarrator('female');
-                          toast.success('Narrador alterado para voz feminina');
-                        }}
-                        style={{
-                          background: state.narratorVoice === 'female' 
-                            ? 'var(--rayo-terra-500)' 
-                            : 'transparent',
-                          color: state.narratorVoice === 'female' 
-                            ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
-                            : 'var(--rayo-ink-700)',
-                          borderColor: state.narratorVoice === 'female' 
-                            ? 'var(--rayo-terra-500)' 
-                            : 'var(--rayo-sand-300)'
-                        }}
-                      >
-                        👩 Voz Feminina
-                      </Button>
-                      <Button
-                        variant={state.narratorVoice === 'male' ? 'default' : 'outline'}
-                        className="w-full justify-start"
-                        onClick={() => {
-                          setNarrator('male');
-                          toast.success('Narrador alterado para voz masculina');
-                        }}
-                        style={{
-                          background: state.narratorVoice === 'male' 
-                            ? 'var(--rayo-terra-500)' 
-                            : 'transparent',
-                          color: state.narratorVoice === 'male' 
-                            ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
-                            : 'var(--rayo-ink-700)',
-                          borderColor: state.narratorVoice === 'male' 
-                            ? 'var(--rayo-terra-500)' 
-                            : 'var(--rayo-sand-300)'
-                        }}
-                      >
-                        👨 Voz Masculina
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Progress Info */}
-                  <div>
-                    <h3 
-                      className="text-sm mb-3"
-                      style={{ 
-                        fontWeight: 600,
-                        color: 'var(--rayo-forest-900)' 
-                      }}
-                    >
-                      Progresso
-                    </h3>
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between">
-                        <span style={{ color: 'var(--rayo-ink-400)' }}>Página atual</span>
-                        <span style={{ color: 'var(--rayo-forest-900)', fontWeight: 600 }}>
-                          {state.currentPage} de {book.pages}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span style={{ color: 'var(--rayo-ink-400)' }}>Progresso</span>
-                        <span style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}>
-                          {Math.round((state.currentPage / book.pages) * 100)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <Button variant="ghost" size="icon" onClick={onBack} style={{ color: 'var(--rayo-ink-700)' }}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="flex-1 text-center truncate text-sm" style={{ color: 'var(--rayo-forest-900)', fontWeight: 600 }}>
+            {book.title}
+          </div>
+          <div className="text-xs tabular-nums" style={{ color: 'var(--rayo-ink-400)' }}>
+            {total > 0 ? `${progressPct}%` : ''}
           </div>
         </div>
       </div>
 
-      {/* Main Content - Full Width com Título Destacado */}
+      <div className="flex-1 max-w-4xl mx-auto w-full px-2 sm:px-4 py-4">
+        <PdfViewer
+          fileUrl={book.fileUrl!}
+          initialPage={initialPage}
+          onPageChange={handlePageChange}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Legacy flow (transcrição mock — preservado pra livros sem arquivo)
+// ────────────────────────────────────────────────────────────────────────────
+
+function LegacyBookReaderContent({ book, onBack }: BookReaderPageProps) {
+  const { state, setNarrator, transcript } = useBookReader();
+  const { theme } = useTheme();
+  const [showSettings, setShowSettings] = useState(false);
+
+  const currentSegment = transcript.find(seg => seg.id === state.currentSegmentId);
+  const currentChapter = currentSegment?.text.split('.')[0] || 'Capítulo atual';
+
+  return (
+    <div className="min-h-screen flex flex-col pb-20" style={{ background: 'var(--rayo-sand-100)' }}>
+      <div
+        className="sticky top-0 z-10 border-b backdrop-blur-lg"
+        style={{
+          background: theme === 'dark' ? 'rgba(17, 24, 39, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+          borderColor: 'var(--rayo-sand-300)',
+        }}
+      >
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <Button variant="ghost" size="icon" onClick={onBack} style={{ color: 'var(--rayo-ink-700)' }}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="flex-1" />
+          <Sheet open={showSettings} onOpenChange={setShowSettings}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" style={{ color: 'var(--rayo-ink-700)' }}>
+                <Settings2 className="w-5 h-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" style={{ background: 'var(--rayo-sand-50)', borderColor: 'var(--rayo-sand-300)' }}>
+              <SheetHeader>
+                <SheetTitle style={{ color: 'var(--rayo-forest-900)' }}>Configurações</SheetTitle>
+                <SheetDescription style={{ color: 'var(--rayo-ink-400)' }}>
+                  Personalize sua experiência de leitura
+                </SheetDescription>
+              </SheetHeader>
+              <div className="space-y-6 mt-6">
+                <div>
+                  <h3 className="text-sm mb-3 flex items-center gap-2" style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
+                    <User className="w-4 h-4" /> Narrador
+                  </h3>
+                  <div className="space-y-2">
+                    <Button
+                      variant={state.narratorVoice === 'female' ? 'default' : 'outline'}
+                      className="w-full justify-start"
+                      onClick={() => { setNarrator('female'); toast.success('Narrador alterado para voz feminina'); }}
+                      style={{
+                        background: state.narratorVoice === 'female' ? 'var(--rayo-terra-500)' : 'transparent',
+                        color: state.narratorVoice === 'female'
+                          ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+                          : 'var(--rayo-ink-700)',
+                        borderColor: state.narratorVoice === 'female' ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)',
+                      }}
+                    >
+                      👩 Voz Feminina
+                    </Button>
+                    <Button
+                      variant={state.narratorVoice === 'male' ? 'default' : 'outline'}
+                      className="w-full justify-start"
+                      onClick={() => { setNarrator('male'); toast.success('Narrador alterado para voz masculina'); }}
+                      style={{
+                        background: state.narratorVoice === 'male' ? 'var(--rayo-terra-500)' : 'transparent',
+                        color: state.narratorVoice === 'male'
+                          ? (theme === 'dark' ? 'var(--rayo-forest-900)' : '#FFFFFF')
+                          : 'var(--rayo-ink-700)',
+                        borderColor: state.narratorVoice === 'male' ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)',
+                      }}
+                    >
+                      👨 Voz Masculina
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+
       <div className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
-        {/* Título do Capítulo Atual - Destacado como na imagem */}
-        <h1 
-          className="text-2xl lg:text-3xl mb-6 lg:mb-8 leading-tight"
-          style={{ 
-            fontWeight: 700,
-            color: 'var(--rayo-forest-900)',
-          }}
-        >
+        <h1 className="text-2xl lg:text-3xl mb-6 lg:mb-8 leading-tight" style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}>
           {currentChapter}
         </h1>
-
-        {/* Transcript - Texto limpo e focado */}
         <TranscriptViewer />
       </div>
 
-      {/* Compact Player - Fixo no Bottom */}
       <CompactAudioPlayer book={book} />
     </div>
   );
 }
 
-// Wrapper com Provider
-export function BookReaderPage({ book, onBack }: BookReaderPageProps) {
-  // CMS-managed books expose a stable `slug` (e.g. "os-5-pilares...") so the
-  // reader keeps working after numeric CMS IDs replaced the legacy "book-N".
-  const content = getBookContent(book.slug ?? book.id);
+// ────────────────────────────────────────────────────────────────────────────
+// Entrypoint — escolhe entre PDF real, legacy mock ou mensagem de "sem arquivo".
+// ────────────────────────────────────────────────────────────────────────────
 
-  if (!content) {
+export function BookReaderPage({ book, onBack }: BookReaderPageProps) {
+  // 1) Livro do CMS com arquivo real → leitor PDF de verdade.
+  if (book.fileUrl) {
+    return <PdfBookReader book={book} onBack={onBack} />;
+  }
+
+  // 2) Livro sem arquivo mas com transcrição mock → fluxo legado de áudio.
+  const content = getBookContent(book.slug ?? book.id);
+  if (content) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Conteúdo do livro não encontrado.</p>
-      </div>
+      <BookReaderProvider book={book} transcript={content.transcript} audioUrl={content.audioUrl}>
+        <LegacyBookReaderContent book={book} onBack={onBack} />
+      </BookReaderProvider>
     );
   }
 
+  // 3) Sem arquivo nem transcrição → mensagem amigável.
   return (
-    <BookReaderProvider
-      book={book}
-      transcript={content.transcript}
-      audioUrl={content.audioUrl}
-    >
-      <BookReaderContent book={book} onBack={onBack} />
-    </BookReaderProvider>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--rayo-sand-100)' }}>
+      <div className="px-4 py-3">
+        <Button variant="ghost" size="icon" onClick={onBack} style={{ color: 'var(--rayo-ink-700)' }}>
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+      </div>
+      <div className="flex-1 flex items-center justify-center px-6">
+        <div
+          className="max-w-md text-center px-6 py-8 rounded-2xl"
+          style={{
+            background: 'var(--rayo-sand-50)',
+            border: '1px solid var(--rayo-sand-300)',
+          }}
+        >
+          <h2 className="text-xl mb-2" style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}>
+            Este livro ainda não tem arquivo disponível
+          </h2>
+          <p className="text-sm" style={{ color: 'var(--rayo-ink-700)' }}>
+            Nossa equipe está preparando o conteúdo. Volte em breve — você receberá uma notificação assim que estiver pronto.
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }

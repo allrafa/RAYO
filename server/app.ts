@@ -30,6 +30,7 @@ import adminRoutes from "./features/admin/routes.js";
 import { adminCmsRouter, publicCmsRouter } from "./features/cms/routes.js";
 import { adminHomeFeedRouter, publicHomeFeedRouter } from "./features/home-feed/routes.js";
 import bundlesRoutes from "./features/bundles/routes.js";
+import booksRouter from "./features/books/routes.js";
 import { UPLOAD_ROOT } from "./features/cms/upload.js";
 import {
   signLegacyUploadUrlIfPresent,
@@ -151,6 +152,9 @@ export function createApp(opts: CreateAppOptions = {}): Express {
   app.use("/api/admin/home-feed", optionalAuth, rateLimiter(300, 15 * 60 * 1000, { keyByUser: true }), adminHomeFeedRouter);
   app.use("/api/home-feed", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), publicHomeFeedRouter);
   app.use("/api/bundles", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), bundlesRoutes);
+
+  // Task #252 — progresso de leitura de livros (PDF reader MVP).
+  app.use("/api/books", optionalAuth, rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }), booksRouter);
 
   // Task #130 — Trilhas pagas (Stripe).
   app.use("/api/trails", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), trailsRouter);

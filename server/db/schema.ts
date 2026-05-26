@@ -1191,6 +1191,19 @@ export async function initializeSchema() {
     console.warn(`[DB] Backfill OAuth verified emails skipped: ${err instanceof Error ? err.message : String(err)}`);
   }
 
+  // Task #252 — progresso de leitura de livros (MVP do Leitor PDF).
+  // Uma linha por (user, conteúdo livro). `current_page` é 1-based.
+  await query(`
+    CREATE TABLE IF NOT EXISTS book_progress (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content_id INTEGER NOT NULL REFERENCES content_items(id) ON DELETE CASCADE,
+      current_page INTEGER NOT NULL DEFAULT 1 CHECK (current_page >= 1),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, content_id)
+    );
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_book_progress_user ON book_progress(user_id);`);
+
   console.log("[DB] Schema initialized successfully.");
 }
 
