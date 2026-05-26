@@ -336,6 +336,134 @@ export async function createPostAsUser(
   return { id: post.id, forumSlug: forum?.slug ?? "solteiros-preparacao" };
 }
 
+// ── Task #242 helpers ────────────────────────────────────────────────
+
+/**
+ * Cria uma trilha + 1 curso + vínculo em trail_courses direto no DB.
+ * Trilha tem `stripe_*_id` NULL — basta pro gating (`requireTrailAccess`)
+ * funcionar (que lê só `subscriptions` + `trail_courses`). Pra um checkout
+ * real exigiria os Price IDs, mas o spec mocka o pós-checkout via DB.
+ * Devolve ids pra cleanup.
+ */
+export async function createTrailWithCourse(input: {
+  slugPrefix?: string;
+  trailTitle?: string;
+  courseTitle?: string;
+  monthlyPriceCents?: number;
+}): Promise<{ trailId: number; trailSlug: string; courseId: number }> {
+  const pool = getPool();
+  const slug = uniqueSlug(input.slugPrefix ?? "test-trail");
+  const trailTitle = input.trailTitle ?? "Trilha Teste E2E";
+  const courseTitle = input.courseTitle ?? "Turma Teste E2E";
+  const price = input.monthlyPriceCents ?? 4990;
+
+  const trailIns = await pool.query<{ id: number }>(
+    `INSERT INTO trails (slug, title, life_stage, description, monthly_price_cents, yearly_price_cents, active)
+     VALUES ($1, $2, 'solteiro', 'desc teste', $3, $4, TRUE)
+     RETURNING id`,
+    [slug, trailTitle, price, price * 10],
+  );
+  const trailId = trailIns.rows[0].id;
+
+  const courseIns = await pool.query<{ id: number }>(
+    `INSERT INTO courses (title, description, life_context, is_premium, price, is_active)
+     VALUES ($1, 'curso teste', 'solteiro', TRUE, 49.90, TRUE)
+     RETURNING id`,
+    [courseTitle],
+  );
+  const courseId = courseIns.rows[0].id;
+
+  await pool.query(
+    `INSERT INTO trail_courses (trail_id, course_id, sort_order) VALUES ($1, $2, 0)`,
+    [trailId, courseId],
+  );
+
+  return { trailId, trailSlug: slug, courseId };
+}
+
+/**
+ * Cleanup de trilhas/cursos criados por `createTrailWithCourse`. O
+ * `trail_courses` CASCADE deleta os vínculos junto. `subscriptions`
+ * também CASCADE quando trail é deletada.
+ */
+export async function deleteTrailAndCourse(input: { trailId?: number; courseId?: number }): Promise<void> {
+  const pool = getPool();
+  if (input.trailId) {
+    await pool.query(`DELETE FROM subscriptions WHERE trail_id = $1`, [input.trailId]).catch(() => {});
+    await pool.query(`DELETE FROM trails WHERE id = $1`, [input.trailId]).catch(() => {});
+  }
+  if (input.courseId) {
+    await pool.query(`DELETE FROM courses WHERE id = $1`, [input.courseId]).catch(() => {});
+  }
+}
+
+/**
+ * Mock do "pós-checkout": insere row em `subscriptions` com status=active
+ * direto no DB. Espelha exatamente o que `upsertSubscriptionRow` faz
+ * via webhook. `stripe_subscription_id` único é gerado random pra
+ * permitir múltiplos specs sem colisão.
+ */
+export async function createSubscription(input: {
+  userId: number;
+  trailId: number;
+  status?: "active" | "trialing" | "past_due" | "canceled";
+  interval?: "month" | "year";
+}): Promise<{ id: number; stripeSubscriptionId: string }> {
+  const crypto = await import("node:crypto");
+  const stripeSubId = `sub_test_${crypto.randomBytes(8).toString("hex")}`;
+  const stripeCustId = `cus_test_${crypto.randomBytes(8).toString("hex")}`;
+  const { rows } = await getPool().query<{ id: number }>(
+    `INSERT INTO subscriptions
+       (user_id, trail_id, stripe_subscription_id, stripe_customer_id,
+        status, interval, current_period_end, cancel_at_period_end)
+     VALUES ($1, $2, $3, $4, $5, $6, NOW() + INTERVAL '30 days', FALSE)
+     RETURNING id`,
+    [
+      input.userId,
+      input.trailId,
+      stripeSubId,
+      stripeCustId,
+      input.status ?? "active",
+      input.interval ?? "month",
+    ],
+  );
+  return { id: rows[0].id, stripeSubscriptionId: stripeSubId };
+}
+
+/**
+ * Cria um `content_item` direto no DB. Usado pelo spec de SEO
+ * pra garantir um artigo de blog publicado sem depender de seed.
+ * Devolve id + slug pra cleanup.
+ */
+export async function createContentItem(input: {
+  kind?: "audio" | "video" | "reels" | "serie" | "curso" | "livro" | "artigo";
+  title?: string;
+  slugPrefix?: string;
+  status?: "draft" | "published" | "archived";
+  body?: string;
+  createdBy?: number | null;
+}): Promise<{ id: number; slug: string }> {
+  const slug = uniqueSlug(input.slugPrefix ?? "test-art");
+  const kind = input.kind ?? "artigo";
+  const status = input.status ?? "published";
+  const title = input.title ?? "Artigo de teste E2E";
+  const body = input.body ?? "Corpo do artigo de teste.";
+  const { rows } = await getPool().query<{ id: number }>(
+    `INSERT INTO content_items
+       (kind, title, slug, short_description, long_description, status, published_at, created_by, segments)
+     VALUES ($1, $2, $3, $4, $5, $6,
+             CASE WHEN $6 = 'published' THEN NOW() ELSE NULL END,
+             $7, ARRAY[]::text[])
+     RETURNING id`,
+    [kind, title, slug, body.slice(0, 200), body, status, input.createdBy ?? null],
+  );
+  return { id: rows[0].id, slug };
+}
+
+export async function deleteContentItem(id: number): Promise<void> {
+  await getPool().query(`DELETE FROM content_items WHERE id = $1`, [id]).catch(() => {});
+}
+
 /**
  * Inicia uma conversa entre A e B via API + manda uma mensagem inicial.
  * Devolve o id da conversa e da mensagem. Espelha o fluxo do composer
