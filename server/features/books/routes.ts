@@ -9,6 +9,8 @@ import type { Request, Response, NextFunction } from "express";
 import { requireAuth } from "../../middleware/auth.js";
 import { success, error as sendError } from "../../utils/response.js";
 import { query } from "../../db/index.js";
+import { AppError } from "../academia/service.js";
+import { resolveStoredMediaUrl } from "../../lib/objectStorageBridge.js";
 
 const router = Router();
 
@@ -257,6 +259,230 @@ router.patch("/:contentId/notes/:id", requireAuth, async (req, res, next) => {
     const r = rows[0];
     if (!r) { sendError(res, "Anotação não encontrada", "NOT_FOUND", 404); return; }
     success(res, { note: { id: r.id, page: r.page, selectedText: r.selected_text, content: r.content, createdAt: r.created_at, updatedAt: r.updated_at } });
+  } catch (err) { next(err); }
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Task #256 — Compartilhar destaques/anotações na comunidade + carrossel
+// "Trechos mais destacados" na página do livro.
+// ────────────────────────────────────────────────────────────────────────────
+
+interface BookMetaRow {
+  title: string;
+  author: string | null;
+  slug: string | null;
+  cover_url: string | null;
+}
+
+async function loadBookMeta(contentId: number): Promise<BookMetaRow | null> {
+  const { rows } = await query<BookMetaRow>(
+    `SELECT title, author, slug, cover_url FROM content_items
+      WHERE id = $1 AND kind = 'livro' LIMIT 1`,
+    [contentId],
+  );
+  return rows[0] ?? null;
+}
+
+// Cria post de share direto (bypassa a validação de POST_IMAGE_PREFIX do
+// community.service.createPost) porque a capa do livro vem do CMS (trusted)
+// e mora num namespace diferente de `objstore://posts/...`. Faz forum
+// validation + INSERT e devolve o post enriquecido pro client.
+async function createSharePost(opts: {
+  userId: number;
+  forumId: number;
+  content: string;
+  category: string;
+  coverRef: string | null;
+}) {
+  const { rows: forumCheck } = await query<{ id: number; name: string; slug: string; icon: string | null }>(
+    `SELECT id, name, slug, icon FROM forums WHERE id = $1 AND is_active = true`,
+    [opts.forumId],
+  );
+  if (forumCheck.length === 0) {
+    throw new AppError("Comunidade não encontrada", "FORUM_NOT_FOUND", 404);
+  }
+  const images: string[] = [];
+  if (opts.coverRef && typeof opts.coverRef === "string" && opts.coverRef.trim()) {
+    images.push(opts.coverRef.trim());
+  }
+  const { rows } = await query<any>(
+    `INSERT INTO posts (forum_id, user_id, title, content, category, images, class_id)
+     VALUES ($1, $2, NULL, $3, $4, $5::jsonb, NULL)
+     RETURNING id, forum_id, class_id, title, content, category, is_pinned,
+               like_count, comment_count, share_count, created_at, images`,
+    [opts.forumId, opts.userId, opts.content, opts.category, JSON.stringify(images)],
+  );
+  const post = rows[0];
+  const { rows: userRows } = await query<{ name: string; avatar_url: string | null }>(
+    `SELECT name, avatar_url FROM users WHERE id = $1`,
+    [opts.userId],
+  );
+  const resolvedImages: string[] = [];
+  for (const ref of images) {
+    const url = await resolveStoredMediaUrl(ref);
+    if (url) resolvedImages.push(url);
+  }
+  post.images = resolvedImages;
+  post.author_id = opts.userId;
+  post.author_name = userRows[0]?.name || "Anônimo";
+  post.author_avatar = await resolveStoredMediaUrl(userRows[0]?.avatar_url ?? null);
+  post.forum_name = forumCheck[0].name;
+  post.forum_slug = forumCheck[0].slug;
+  post.forum_icon = forumCheck[0].icon;
+  return post;
+}
+
+function buildSharePostContent(opts: {
+  bookTitle: string;
+  bookAuthor: string | null;
+  page: number;
+  quote: string;
+  note?: string;
+}): string {
+  const lines: string[] = [];
+  const cleanQuote = opts.quote.trim().replace(/\s+/g, " ");
+  if (cleanQuote) {
+    lines.push(`"${cleanQuote}"`);
+    lines.push("");
+  }
+  if (opts.note && opts.note.trim()) {
+    lines.push(opts.note.trim());
+    lines.push("");
+  }
+  const author = opts.bookAuthor?.trim() ? ` — ${opts.bookAuthor.trim()}` : "";
+  lines.push(`📖 ${opts.bookTitle}${author} (pág. ${opts.page})`);
+  return lines.join("\n").slice(0, 5000);
+}
+
+// POST /api/books/:contentId/highlights/:id/share — publica o trecho destacado
+// como post numa comunidade escolhida pelo usuário. Body: { forum_id }.
+router.post("/:contentId/highlights/:id/share", requireAuth, async (req, res, next) => {
+  try {
+    const contentId = parseId(req.params.contentId);
+    const hlId = parseBigId(req.params.id);
+    if (!contentId || !hlId) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const forumIdRaw = (req.body as { forum_id?: unknown })?.forum_id;
+    const forumId = typeof forumIdRaw === "number" ? forumIdRaw : parseInt(String(forumIdRaw ?? ""), 10);
+    if (!Number.isFinite(forumId) || forumId < 1) {
+      sendError(res, "Selecione uma comunidade", "INVALID_FORUM_ID", 400);
+      return;
+    }
+    const { rows } = await query<{ page: number; text: string }>(
+      `SELECT page, text FROM book_highlights
+        WHERE id = $1 AND user_id = $2 AND content_id = $3 LIMIT 1`,
+      [hlId, req.user!.id, contentId],
+    );
+    const hl = rows[0];
+    if (!hl) { sendError(res, "Destaque não encontrado", "NOT_FOUND", 404); return; }
+    if (!hl.text.trim()) { sendError(res, "Destaque sem texto pra compartilhar", "EMPTY_HIGHLIGHT", 400); return; }
+    const book = await loadBookMeta(contentId);
+    if (!book) { sendError(res, "Livro não encontrado", "BOOK_NOT_FOUND", 404); return; }
+
+    const content = buildSharePostContent({
+      bookTitle: book.title, bookAuthor: book.author,
+      page: hl.page, quote: hl.text,
+    });
+    try {
+      const post = await createSharePost({
+        userId: req.user!.id, forumId, content,
+        category: "Trecho de livro", coverRef: book.cover_url,
+      });
+      success(res, { post }, 201);
+    } catch (err) {
+      if (err instanceof AppError) {
+        sendError(res, err.message, err.code, err.statusCode);
+        return;
+      }
+      throw err;
+    }
+  } catch (err) { next(err); }
+});
+
+// POST /api/books/:contentId/notes/:id/share — publica a anotação (com o
+// trecho selecionado quando houver) como post da comunidade.
+router.post("/:contentId/notes/:id/share", requireAuth, async (req, res, next) => {
+  try {
+    const contentId = parseId(req.params.contentId);
+    const noteId = parseBigId(req.params.id);
+    if (!contentId || !noteId) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const forumIdRaw = (req.body as { forum_id?: unknown })?.forum_id;
+    const forumId = typeof forumIdRaw === "number" ? forumIdRaw : parseInt(String(forumIdRaw ?? ""), 10);
+    if (!Number.isFinite(forumId) || forumId < 1) {
+      sendError(res, "Selecione uma comunidade", "INVALID_FORUM_ID", 400);
+      return;
+    }
+    const { rows } = await query<{ page: number; selected_text: string; content: string }>(
+      `SELECT page, selected_text, content FROM book_notes
+        WHERE id = $1 AND user_id = $2 AND content_id = $3 LIMIT 1`,
+      [noteId, req.user!.id, contentId],
+    );
+    const note = rows[0];
+    if (!note) { sendError(res, "Anotação não encontrada", "NOT_FOUND", 404); return; }
+    const book = await loadBookMeta(contentId);
+    if (!book) { sendError(res, "Livro não encontrado", "BOOK_NOT_FOUND", 404); return; }
+
+    const content = buildSharePostContent({
+      bookTitle: book.title, bookAuthor: book.author,
+      page: note.page, quote: note.selected_text || "",
+      note: note.content,
+    });
+    try {
+      const post = await createSharePost({
+        userId: req.user!.id, forumId, content,
+        category: "Anotação de livro", coverRef: book.cover_url,
+      });
+      success(res, { post }, 201);
+    } catch (err) {
+      if (err instanceof AppError) {
+        sendError(res, err.message, err.code, err.statusCode);
+        return;
+      }
+      throw err;
+    }
+  } catch (err) { next(err); }
+});
+
+// GET /api/books/:contentId/top-highlights — agrega destaques por trecho
+// normalizado (lowercase + colapsa whitespace) e devolve os mais marcados
+// por usuários distintos. Público (não exige auth) — é prova social na
+// página do livro.
+router.get("/:contentId/top-highlights", async (req, res, next) => {
+  try {
+    const contentId = parseId(req.params.contentId);
+    if (!contentId) { sendError(res, "ID inválido", "INVALID_ID", 400); return; }
+    const book = await loadBookMeta(contentId);
+    if (!book) { sendError(res, "Livro não encontrado", "BOOK_NOT_FOUND", 404); return; }
+    const limit = Math.max(1, Math.min(parseInt(String(req.query.limit ?? "8"), 10) || 8, 20));
+
+    const { rows } = await query<{
+      sample_id: string; text: string; color: string; page: number; user_count: number;
+    }>(
+      `WITH norm AS (
+         SELECT id, page, text, color, user_id,
+                lower(regexp_replace(btrim(text), '\\s+', ' ', 'g')) AS norm_text
+           FROM book_highlights
+          WHERE content_id = $1 AND length(btrim(text)) >= 8
+       )
+       SELECT MIN(id)::text AS sample_id,
+              (array_agg(text ORDER BY id))[1] AS text,
+              (array_agg(color ORDER BY id))[1] AS color,
+              MIN(page) AS page,
+              COUNT(DISTINCT user_id)::int AS user_count
+         FROM norm
+        GROUP BY norm_text
+        ORDER BY user_count DESC, MIN(id) DESC
+        LIMIT $2`,
+      [contentId, limit],
+    );
+    success(res, {
+      highlights: rows.map((r) => ({
+        id: r.sample_id,
+        text: r.text,
+        color: r.color,
+        page: r.page,
+        userCount: r.user_count,
+      })),
+    });
   } catch (err) { next(err); }
 });
 

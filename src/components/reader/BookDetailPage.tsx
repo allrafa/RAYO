@@ -3,8 +3,8 @@
 // Página de detalhes do livro estilo Netflix
 // ============================================================================
 
-import { useState } from 'react';
-import { ArrowLeft, Play, Star, Users, BookOpen, Clock, Heart, Share2, Download } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, Play, Star, Users, BookOpen, Clock, Heart, Share2, Download, Quote } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent } from '../ui/card';
@@ -13,7 +13,20 @@ import { Book } from '../types/BookTypes';
 import { useTheme } from '../ThemeProvider';
 import { useApp } from '../AppContext';
 import { getBookContent, estimateReadingDuration } from './mockTranscripts';
+import { api } from '../../lib/api';
 import { toast } from 'sonner@2.0.3';
+
+interface TopHighlight {
+  id: string;
+  text: string;
+  color: 'yellow' | 'green' | 'blue' | 'pink';
+  page: number;
+  userCount: number;
+}
+
+const TOP_HL_COLORS: Record<string, string> = {
+  yellow: '#FACC15', green: '#4ADE80', blue: '#60A5FA', pink: '#F472B6',
+};
 
 interface BookDetailPageProps {
   book: Book;
@@ -25,10 +38,24 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
   const { theme } = useTheme();
   const { toggleBookFavorite } = useApp();
   const [imageLoaded, setImageLoaded] = useState(false);
-  
+  const [topHighlights, setTopHighlights] = useState<TopHighlight[]>([]);
+
   // Use slug (CMS) and fall back to id so any legacy data still resolves.
   const content = getBookContent(book.slug ?? book.id);
   const estimatedDuration = content ? estimateReadingDuration(content.transcript) : book.estimatedReadTime;
+
+  // Task #256 — carrega "Trechos mais destacados" deste livro (público).
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const res = await api.get<{ highlights: TopHighlight[] }>(
+        `/api/books/${encodeURIComponent(book.id)}/top-highlights?limit=8`,
+      );
+      if (!alive) return;
+      if (res.success && res.data?.highlights) setTopHighlights(res.data.highlights);
+    })();
+    return () => { alive = false; };
+  }, [book.id]);
 
   return (
     <div 
@@ -252,6 +279,60 @@ export function BookDetailPage({ book, onBack, onStartReading }: BookDetailPageP
 
       {/* Content Sections */}
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Trechos mais destacados — Task #256 */}
+        {topHighlights.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2
+                className="text-[24px]"
+                style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
+              >
+                Trechos mais destacados
+              </h2>
+              <span className="text-xs" style={{ color: 'var(--rayo-ink-400)' }}>
+                pelos leitores
+              </span>
+            </div>
+            <div
+              className="flex gap-4 overflow-x-auto pb-3 -mx-6 px-6"
+              style={{ scrollbarWidth: 'thin' }}
+            >
+              {topHighlights.map((h) => (
+                <div
+                  key={h.id}
+                  className="flex-shrink-0 w-[280px] sm:w-[320px] rounded-2xl p-4"
+                  style={{
+                    background: 'var(--rayo-sand-50)',
+                    border: '1px solid var(--rayo-sand-300)',
+                    borderLeft: `4px solid ${TOP_HL_COLORS[h.color] || TOP_HL_COLORS.yellow}`,
+                  }}
+                >
+                  <Quote
+                    className="w-4 h-4 mb-2"
+                    style={{ color: 'var(--rayo-terra-500)' }}
+                  />
+                  <p
+                    className="text-sm italic mb-3 line-clamp-6"
+                    style={{ color: 'var(--rayo-ink-700)', lineHeight: 1.5 }}
+                  >
+                    “{h.text.length > 260 ? h.text.slice(0, 260) + '…' : h.text}”
+                  </p>
+                  <div
+                    className="flex items-center justify-between text-xs"
+                    style={{ color: 'var(--rayo-ink-400)' }}
+                  >
+                    <span>Pág. {h.page}</span>
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      {h.userCount} {h.userCount === 1 ? 'leitor' : 'leitores'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Summary */}
         {content && (
           <Card style={{ background: 'var(--rayo-sand-50)', borderColor: 'var(--rayo-sand-300)' }}>

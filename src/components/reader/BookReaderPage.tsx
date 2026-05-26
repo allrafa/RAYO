@@ -6,7 +6,7 @@
 // ============================================================================
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowLeftCircle, User, Settings2, BookMarked, StickyNote, Trash2, Pencil, Check } from 'lucide-react';
+import { ArrowLeft, ArrowLeftCircle, User, Settings2, BookMarked, StickyNote, Trash2, Pencil, Check, Share2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Book } from '../types/BookTypes';
 import { useTheme } from '../ThemeProvider';
@@ -33,6 +33,12 @@ interface ServerHighlight {
 interface ServerNote {
   id: string; page: number; selectedText: string; content: string; createdAt: string; updatedAt: string;
 }
+interface ForumOption {
+  id: number; name: string; slug: string; icon?: string | null;
+}
+type ShareTarget =
+  | { kind: 'hl'; id: string; page: number; text: string }
+  | { kind: 'nt'; id: string; page: number; selectedText: string; content: string };
 
 interface BookReaderPageProps {
   book: Book;
@@ -57,6 +63,11 @@ function PdfBookReader({ book, onBack }: BookReaderPageProps) {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteText, setEditingNoteText] = useState<string>('');
   const [jumpToPage, setJumpToPage] = useState<number | undefined>(undefined);
+  const [shareTarget, setShareTarget] = useState<ShareTarget | null>(null);
+  const [forums, setForums] = useState<ForumOption[]>([]);
+  const [forumsLoaded, setForumsLoaded] = useState(false);
+  const [selectedForumId, setSelectedForumId] = useState<number | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   // Carrega progresso + anotações persistidos do servidor uma vez.
   useEffect(() => {
@@ -149,6 +160,43 @@ function PdfBookReader({ book, onBack }: BookReaderPageProps) {
     if (!res.success) {
       setNotes(prev);
       toast.error('Não foi possível remover a anotação');
+    }
+  };
+
+  const ensureForumsLoaded = async () => {
+    if (forumsLoaded) return;
+    const res = await api.get<{ forums: ForumOption[] }>(`/api/community/forums/me`);
+    let list: ForumOption[] = res.success && res.data?.forums ? res.data.forums : [];
+    if (list.length === 0) {
+      const all = await api.get<{ forums: ForumOption[] }>(`/api/community/forums`);
+      list = all.success && all.data?.forums ? all.data.forums : [];
+    }
+    setForums(list);
+    if (list.length > 0) setSelectedForumId((cur) => cur ?? list[0].id);
+    setForumsLoaded(true);
+  };
+
+  const openShare = async (target: ShareTarget) => {
+    setShareTarget(target);
+    await ensureForumsLoaded();
+  };
+
+  const handleShare = async () => {
+    if (!shareTarget || !selectedForumId) {
+      toast.error('Selecione uma comunidade');
+      return;
+    }
+    setSharing(true);
+    const path = shareTarget.kind === 'hl'
+      ? `/api/books/${encodeURIComponent(book.id)}/highlights/${shareTarget.id}/share`
+      : `/api/books/${encodeURIComponent(book.id)}/notes/${shareTarget.id}/share`;
+    const res = await api.post<{ post: { id: number } }>(path, { forum_id: selectedForumId });
+    setSharing(false);
+    if (res.success) {
+      toast.success('Compartilhado na comunidade');
+      setShareTarget(null);
+    } else {
+      toast.error(res.error?.message || 'Não foi possível compartilhar');
     }
   };
 
@@ -278,6 +326,7 @@ function PdfBookReader({ book, onBack }: BookReaderPageProps) {
                   setEditingNoteId={setEditingNoteId}
                   setEditingNoteText={setEditingNoteText}
                   onSaveEditedNote={handleSaveEditedNote}
+                  onShare={openShare}
                 />
               </SheetContent>
             </Sheet>
@@ -296,6 +345,82 @@ function PdfBookReader({ book, onBack }: BookReaderPageProps) {
           jumpToPage={jumpToPage}
         />
       </div>
+
+      {/* Modal de compartilhamento — Task #256 */}
+      {shareTarget && (
+        <div
+          className="fixed inset-0 z-30 flex items-center justify-center px-4"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Compartilhar na comunidade"
+          onClick={(e) => { if (e.target === e.currentTarget && !sharing) setShareTarget(null); }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-5 shadow-xl"
+            style={{ background: 'var(--rayo-sand-50)', border: '1px solid var(--rayo-sand-300)' }}
+          >
+            <h3 className="text-base mb-3" style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}>
+              Compartilhar na comunidade
+            </h3>
+            <blockquote
+              className="text-sm mb-3 p-3 rounded-lg italic"
+              style={{
+                background: 'var(--rayo-sand-100)',
+                borderLeft: '3px solid var(--rayo-terra-500)',
+                color: 'var(--rayo-ink-700)',
+              }}
+            >
+              “{(shareTarget.kind === 'hl' ? shareTarget.text : (shareTarget.selectedText || shareTarget.content)).slice(0, 240)}
+              {(shareTarget.kind === 'hl' ? shareTarget.text : (shareTarget.selectedText || shareTarget.content)).length > 240 ? '…' : ''}”
+            </blockquote>
+            <label className="text-xs mb-1 block" style={{ color: 'var(--rayo-ink-400)' }}>
+              Em qual comunidade?
+            </label>
+            {forums.length === 0 ? (
+              <p className="text-sm py-3" style={{ color: 'var(--rayo-ink-400)' }}>
+                {forumsLoaded
+                  ? 'Você ainda não participa de nenhuma comunidade.'
+                  : 'Carregando comunidades…'}
+              </p>
+            ) : (
+              <select
+                value={selectedForumId ?? ''}
+                onChange={(e) => setSelectedForumId(parseInt(e.target.value, 10) || null)}
+                className="w-full rounded-lg p-2 text-sm"
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid var(--rayo-sand-300)',
+                  color: 'var(--rayo-forest-900)',
+                }}
+              >
+                {forums.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.icon ? `${f.icon} ` : ''}{f.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                variant="ghost"
+                onClick={() => setShareTarget(null)}
+                disabled={sharing}
+                style={{ color: 'var(--rayo-ink-700)' }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleShare}
+                disabled={sharing || !selectedForumId || forums.length === 0}
+                style={{ background: 'var(--rayo-terra-500)', color: '#FFFFFF', fontWeight: 600 }}
+              >
+                {sharing ? 'Compartilhando…' : 'Compartilhar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de criação de nota */}
       {noteDraft && (
@@ -383,10 +508,12 @@ function AnnotationsList(props: {
   setEditingNoteId: (id: string | null) => void;
   setEditingNoteText: (s: string) => void;
   onSaveEditedNote: (id: string) => void;
+  onShare: (target: ShareTarget) => void;
 }) {
   const {
     highlights, notes, onJump, onDeleteHighlight, onDeleteNote,
     editingNoteId, editingNoteText, setEditingNoteId, setEditingNoteText, onSaveEditedNote,
+    onShare,
   } = props;
 
   type Item =
@@ -448,6 +575,25 @@ function AnnotationsList(props: {
                     aria-label="Editar anotação"
                   >
                     <Pencil className="w-3.5 h-3.5" style={{ color: 'var(--rayo-ink-700)' }} />
+                  </button>
+                )}
+                {!isEditing && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (item.kind === 'hl') {
+                        onShare({ kind: 'hl', id: item.data.id, page: item.data.page, text: item.data.text });
+                      } else {
+                        onShare({
+                          kind: 'nt', id: item.data.id, page: item.data.page,
+                          selectedText: item.data.selectedText, content: item.data.content,
+                        });
+                      }
+                    }}
+                    className="p-1 rounded hover:bg-black/5"
+                    aria-label={item.kind === 'hl' ? 'Compartilhar destaque' : 'Compartilhar anotação'}
+                  >
+                    <Share2 className="w-3.5 h-3.5" style={{ color: 'var(--rayo-ink-700)' }} />
                   </button>
                 )}
                 <button
