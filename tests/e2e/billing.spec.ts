@@ -86,10 +86,28 @@ test.describe("Billing — gating 402 + acesso após assinatura mockada (Task #2
       .toBeVisible({ timeout: 15_000 });
     const cta = page.getByRole("button", { name: /Assinar|Começar|planos/i }).first();
     const link = page.getByRole("link", { name: /Assinar|Começar|planos/i }).first();
-    // Pelo menos um deles (botão ou link) precisa estar visível.
     const ctaVisible = await cta.isVisible().catch(() => false);
     const linkVisible = await link.isVisible().catch(() => false);
     expect(ctaVisible || linkVisible).toBeTruthy();
+
+    // Clicar no CTA precisa disparar o checkout — POST /api/trails/:slug/checkout
+    // (criado pelo TrilhaDetailPage). Trilha de teste não tem `stripe_*_id`
+    // configurado, então a resposta pode ser erro de billing, mas o
+    // request precisa SER feito (prova de que a UI ligou o botão).
+    if (ctaVisible) {
+      const [checkoutResp] = await Promise.all([
+        page.waitForResponse(
+          (r) => r.url().includes(`/api/trails/${created.trailSlug}/checkout`),
+          { timeout: 10_000 },
+        ),
+        cta.click(),
+      ]);
+      // 200 (com URL Stripe) ou 4xx (config faltando) — ambos OK pra prova
+      // de fluxo. Só não pode ser 404 (rota errada) ou 5xx (bug servidor).
+      const status = checkoutResp.status();
+      expect(status).not.toBe(404);
+      expect(status).toBeLessThan(500);
+    }
 
     await ctx.close();
   });

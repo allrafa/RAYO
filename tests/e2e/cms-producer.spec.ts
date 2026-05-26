@@ -94,6 +94,26 @@ test.describe("CMS Producer — criar / listar / arquivar (Task #242)", () => {
         .toBeVisible({ timeout: 15_000 });
     }
 
+    // Edit path — PATCH /api/admin/cms/:id mudando o título e confere
+    // que a versão nova aparece (e a antiga some) na lista.
+    const editApi = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
+    await editApi.post("/api/auth/login", { data: { email: producer.email, password: producer.password } });
+    const targetId = createdIds[0];
+    const originalTitle = kinds[0].title;
+    const renamedTitle = `${originalTitle} EDITADO`;
+    const patchRes = await editApi.patch(`/api/admin/cms/${targetId}`, {
+      data: { title: renamedTitle },
+    });
+    expect(patchRes.status(), `edit: ${await patchRes.text()}`).toBeLessThan(300);
+    await editApi.dispose();
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: /^Conteúdo$/ }).first().click();
+    await expect(page.getByText(renamedTitle, { exact: false }).first())
+      .toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { level: 3, name: originalTitle }))
+      .toHaveCount(0);
+
     await ctx.close();
   });
 

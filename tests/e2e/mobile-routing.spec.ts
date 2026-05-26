@@ -74,7 +74,7 @@ test.describe("Mobile / Routing — deep-link + bottom nav (Task #242)", () => {
     await ctx.close();
   });
 
-  test("re-tap na aba ativa NÃO troca URL (scroll-top only)", async ({ browser, baseURL }) => {
+  test("re-tap na aba ativa dispara rayo:scroll-top com a tab certa, sem trocar URL nem vazar pras outras abas", async ({ browser, baseURL }) => {
     expect(baseURL).toBeTruthy();
     const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
     user = await registerUser(api, { email: makeTestEmail("test-mob-retap"), name: "Mob Retap" });
@@ -89,12 +89,31 @@ test.describe("Mobile / Routing — deep-link + bottom nav (Task #242)", () => {
     const nav = page.getByRole("navigation", { name: /Navegação principal/i });
     await expect(nav).toBeVisible({ timeout: 15_000 });
 
+    // Instala um sniffer global do evento `rayo:scroll-top` (window-level,
+    // dispatched por `dispatchScrollTop` em src/lib/scrollTop.ts).
+    await page.evaluate(() => {
+      (window as unknown as { __scrollTopEvents: string[] }).__scrollTopEvents = [];
+      window.addEventListener("rayo:scroll-top", (e) => {
+        const detail = (e as CustomEvent<{ tab: string }>).detail;
+        (window as unknown as { __scrollTopEvents: string[] }).__scrollTopEvents.push(detail?.tab ?? "");
+      });
+    });
+
     const before = page.url();
     await nav.getByRole("button", { name: /Comunidade/ }).first().click();
-    // Aguarda um tick pra qualquer navigate processar.
-    await page.waitForTimeout(500);
+    // Aguarda um tick pra qualquer navigate/dispatch processar.
+    await page.waitForTimeout(300);
+
+    // (1) URL não muda no re-tap.
     const after = page.url();
     expect(new URL(after).pathname).toBe(new URL(before).pathname);
+
+    // (2) Evento `rayo:scroll-top` foi disparado com tab="comunidade".
+    // (3) Evento NÃO vazou pra outras tabs (só "comunidade" no array).
+    const events = await page.evaluate(
+      () => (window as unknown as { __scrollTopEvents: string[] }).__scrollTopEvents,
+    );
+    expect(events).toEqual(["comunidade"]);
 
     await ctx.close();
   });

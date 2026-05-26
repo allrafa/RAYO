@@ -54,7 +54,7 @@ test.describe("SEO — sitemap + robots + Home + blog (Task #242)", () => {
     await api.dispose();
   });
 
-  test("GET / (sem login) renderiza HTML com <title>, og:title e canonical", async ({ baseURL }) => {
+  test("GET / (sem login) renderiza HTML com <title>, og:title, canonical e JSON-LD", async ({ baseURL }) => {
     const api = await request.newContext({ baseURL, ignoreHTTPSErrors: true });
     const res = await api.get("/", { headers: { Accept: "text/html" } });
     expect(res.status()).toBe(200);
@@ -64,6 +64,10 @@ test.describe("SEO — sitemap + robots + Home + blog (Task #242)", () => {
     expect(html).toMatch(/<title>[^<]+<\/title>/i);
     expect(html).toMatch(/<meta[^>]+property=["']og:title["']/i);
     expect(html).toMatch(/<link[^>]+rel=["']canonical["']/i);
+    // applyPublicMeta injeta Organization + WebSite na home (publicMeta.ts:182).
+    expect(html).toMatch(/<script[^>]+type=["']application\/ld\+json["'][^>]*>/i);
+    expect(html).toMatch(/"@type"\s*:\s*"Organization"/);
+    expect(html).toMatch(/"@type"\s*:\s*"WebSite"/);
     await api.dispose();
   });
 
