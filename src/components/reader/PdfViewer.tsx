@@ -27,8 +27,17 @@ export function PdfViewer({ fileUrl, initialPage = 1, onPageChange }: PdfViewerP
   const [pageNumber, setPageNumber] = useState<number>(Math.max(1, initialPage));
   const [pageInput, setPageInput] = useState<string>(String(Math.max(1, initialPage)));
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadKey, setLoadKey] = useState<number>(0); // bump pra forçar reload no "Tentar de novo"
   const [width, setWidth] = useState<number>(800);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Refs pra evitar stale closures no onDocLoad (callback de carga assíncrona
+  // do react-pdf, que pode disparar depois que o pai já hidratou o progresso
+  // remoto e mudou `initialPage` → `pageNumber`).
+  const pageNumberRef = useRef(pageNumber);
+  const onPageChangeRef = useRef(onPageChange);
+  useEffect(() => { pageNumberRef.current = pageNumber; }, [pageNumber]);
+  useEffect(() => { onPageChangeRef.current = onPageChange; }, [onPageChange]);
 
   // Re-syncs quando o initialPage muda (e.g. trocar de livro).
   useEffect(() => {
@@ -78,23 +87,24 @@ export function PdfViewer({ fileUrl, initialPage = 1, onPageChange }: PdfViewerP
     return () => window.removeEventListener('keydown', onKey);
   }, [goPrev, goNext, goTo, numPages]);
 
-  const onDocLoad = useCallback(
-    ({ numPages: total }: { numPages: number }) => {
-      setNumPages(total);
-      setLoadError(null);
-      // Garante que o initialPage não passa do total.
-      const start = Math.max(1, Math.min(total, pageNumber));
-      if (start !== pageNumber) {
-        setPageNumber(start);
-        setPageInput(String(start));
-      }
-      onPageChange?.(start, total);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
+  const onDocLoad = useCallback(({ numPages: total }: { numPages: number }) => {
+    setNumPages(total);
+    setLoadError(null);
+    // Lê o valor MAIS atual via ref — o pai pode ter hidratado progresso
+    // remoto enquanto o PDF carregava, atualizando initialPage→pageNumber.
+    const current = pageNumberRef.current;
+    const start = Math.max(1, Math.min(total, current));
+    if (start !== current) {
+      setPageNumber(start);
+      setPageInput(String(start));
+    }
+    onPageChangeRef.current?.(start, total);
+  }, []);
 
-  const fileProp = useMemo(() => ({ url: fileUrl }), [fileUrl]);
+  // `loadKey` no useMemo força o react-pdf a recarregar quando o usuário
+  // clica em "Tentar de novo" (mesma URL, instância diferente).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fileProp = useMemo(() => ({ url: fileUrl }), [fileUrl, loadKey]);
 
   return (
     <div ref={containerRef} className="w-full flex flex-col items-center">
@@ -108,7 +118,18 @@ export function PdfViewer({ fileUrl, initialPage = 1, onPageChange }: PdfViewerP
           }}
         >
           <p style={{ fontWeight: 600, marginBottom: 6 }}>Não foi possível abrir o PDF</p>
-          <p className="text-sm" style={{ color: 'var(--rayo-ink-400)' }}>{loadError}</p>
+          <p className="text-sm mb-4" style={{ color: 'var(--rayo-ink-400)' }}>{loadError}</p>
+          <button
+            onClick={() => { setLoadError(null); setLoadKey((k) => k + 1); }}
+            className="px-4 py-2 rounded-lg text-sm"
+            style={{
+              background: 'var(--rayo-terra-500)',
+              color: '#FFFFFF',
+              fontWeight: 600,
+            }}
+          >
+            Tentar de novo
+          </button>
         </div>
       ) : (
         <Document

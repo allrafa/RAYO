@@ -6,7 +6,7 @@
 // ============================================================================
 
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, User, Settings2 } from 'lucide-react';
+import { ArrowLeft, ArrowLeftCircle, User, Settings2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Book } from '../types/BookTypes';
 import { useTheme } from '../ThemeProvider';
@@ -150,7 +150,7 @@ function PdfBookReader({ book, onBack }: BookReaderPageProps) {
 // ────────────────────────────────────────────────────────────────────────────
 
 function LegacyBookReaderContent({ book, onBack }: BookReaderPageProps) {
-  const { state, setNarrator, transcript } = useBookReader();
+  const { state, setMode, setNarrator, transcript } = useBookReader();
   const { theme } = useTheme();
   const [showSettings, setShowSettings] = useState(false);
 
@@ -170,7 +170,29 @@ function LegacyBookReaderContent({ book, onBack }: BookReaderPageProps) {
           <Button variant="ghost" size="icon" onClick={onBack} style={{ color: 'var(--rayo-ink-700)' }}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className="flex-1" />
+
+          {/* Mode tabs (Read / Listen / Read + Listen) — só pro fluxo legado
+              de transcrição mock. No PDF real essa UI não existe. */}
+          <div
+            className="flex items-center gap-1 bg-opacity-50 rounded-full p-1"
+            style={{ background: 'var(--rayo-sand-300)' }}
+          >
+            {(['read', 'listen', 'read-listen'] as const).map((m) => (
+              <Button
+                key={m}
+                variant="ghost"
+                size="sm"
+                onClick={() => setMode(m)}
+                className="rounded-full px-3"
+                style={{
+                  background: state.mode === m ? 'var(--rayo-sand-50)' : 'transparent',
+                  color: state.mode === m ? 'var(--rayo-forest-900)' : 'var(--rayo-ink-400)',
+                }}
+              >
+                {m === 'read' ? 'Read' : m === 'listen' ? 'Listen' : 'Read + Listen'}
+              </Button>
+            ))}
+          </div>
           <Sheet open={showSettings} onOpenChange={setShowSettings}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" style={{ color: 'var(--rayo-ink-700)' }}>
@@ -258,7 +280,7 @@ export function BookReaderPage({ book, onBack }: BookReaderPageProps) {
     );
   }
 
-  // 3) Sem arquivo nem transcrição → mensagem amigável.
+  // 3) Sem arquivo nem transcrição → mensagem amigável + CTA pra biblioteca.
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--rayo-sand-100)' }}>
       <div className="px-4 py-3">
@@ -277,9 +299,21 @@ export function BookReaderPage({ book, onBack }: BookReaderPageProps) {
           <h2 className="text-xl mb-2" style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}>
             Este livro ainda não tem arquivo disponível
           </h2>
-          <p className="text-sm" style={{ color: 'var(--rayo-ink-700)' }}>
+          <p className="text-sm mb-6" style={{ color: 'var(--rayo-ink-700)' }}>
             Nossa equipe está preparando o conteúdo. Volte em breve — você receberá uma notificação assim que estiver pronto.
           </p>
+          <Button
+            onClick={onBack}
+            className="gap-2"
+            style={{
+              background: 'var(--rayo-terra-500)',
+              color: '#FFFFFF',
+              fontWeight: 600,
+            }}
+          >
+            <ArrowLeftCircle className="w-4 h-4" />
+            Voltar pra Biblioteca
+          </Button>
         </div>
       </div>
     </div>

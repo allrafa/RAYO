@@ -70,14 +70,15 @@ router.put("/:contentId/progress", requireAuth, async (req: Request, res: Respon
     const max = livro.pages && livro.pages > 0 ? livro.pages : n;
     const currentPage = Math.max(1, Math.min(Math.floor(n), max));
 
-    // Monotônico: clientes podem enviar PUTs fora de ordem (latência variável,
-    // debounce reabrindo, etc). Pegar GREATEST garante que uma resposta atrasada
-    // de página menor não regrida um salvamento mais recente já gravado.
+    // Last-write-wins: "onde o usuário parou" — se ele voltou pra rever um
+    // capítulo e fechou, a próxima abertura deve retomar lá, não no máximo
+    // já alcançado. Ordering out-of-order é tratado no cliente (debounce
+    // + cancelamento de timer pendente garante 1 PUT por pausa de leitura).
     const { rows } = await query<{ current_page: number; updated_at: Date }>(
       `INSERT INTO book_progress (user_id, content_id, current_page, updated_at)
             VALUES ($1, $2, $3, NOW())
        ON CONFLICT (user_id, content_id) DO UPDATE
-          SET current_page = GREATEST(book_progress.current_page, EXCLUDED.current_page),
+          SET current_page = EXCLUDED.current_page,
               updated_at   = NOW()
        RETURNING current_page, updated_at`,
       [req.user!.id, contentId, currentPage],
