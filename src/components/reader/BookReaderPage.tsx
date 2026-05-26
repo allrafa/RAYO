@@ -1170,6 +1170,13 @@ function EpubBookReader({ book, onBack }: BookReaderPageProps) {
         setPermille(remote);
         lastSavedRef.current = remote;
         pendingPermilleRef.current = remote;
+        // Restore cross-device: se não há CFI local (novo dispositivo / storage
+        // limpo), pede ao EpubViewer pra seek até a percentagem persistida via
+        // book.locations. CFI local, quando existir, tem precedência (mais exato).
+        if (!initialCfi && remote > 1) {
+          seekNonceRef.current += 1;
+          setSeekPermille(remote + seekNonceRef.current * 1e-6);
+        }
       }
       if (annRes.success && annRes.data) {
         setHighlights(annRes.data.highlights || []);
