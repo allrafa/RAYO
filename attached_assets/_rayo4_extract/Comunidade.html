@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RAYO — Comunidade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sand-50:#FAF4E8;--sand-100:#F2E9D5;--sand-200:#E8DBBF;--sand-300:#D9C89E;--sand-400:#BFA87A;
+    --forest-900:#0C3B2E;--forest-700:#144D3C;--forest-500:#1E6A52;
+    --sage-100:#DCE8D2;--sage-300:#A9C396;--sage-500:#6D9773;--sage-700:#4F7253;
+    --terra-100:#F2D6CC;--terra-300:#E08770;--terra-500:#C8553D;--terra-700:#9C3A26;--terra-900:#5E2113;
+    --ochre-300:#E8C77E;--ochre-500:#D4A24C;--ochre-700:#A37A2D;
+    --ink-900:#0E1A14;--ink-700:#1F2A22;--ink-500:#4A5247;--ink-400:#6E7569;--ink-300:#9CA098;
+    --r-sm:10px;--r-md:16px;--r-lg:24px;--r-xl:32px;--r-pill:999px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--sand-100);color:var(--ink-900);font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  .app{display:grid;grid-template-columns:260px 1fr;min-height:100vh;}
+
+  /* Sidebar (idêntica) */
+  .side{background:var(--sand-50);border-right:1px solid var(--sand-300);padding:28px 20px;display:flex;flex-direction:column;gap:24px;position:sticky;top:0;height:100vh;}
+  .side-brand{display:flex;align-items:center;gap:12px;padding:0 8px;}
+  .brand-mark{width:44px;height:44px;border-radius:12px;background:var(--terra-500);display:grid;place-items:center;flex-shrink:0;}
+  .brand-name{font-size:20px;font-weight:700;letter-spacing:-0.03em;color:var(--forest-900);line-height:1;}
+  .brand-sub{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--terra-500);font-family:ui-monospace,monospace;font-weight:600;margin-top:4px;display:block;}
+  .side-user{background:var(--forest-900);border-radius:var(--r-md);padding:14px;display:flex;align-items:center;gap:12px;color:var(--sand-100);}
+  .side-user-avatar{width:40px;height:40px;border-radius:50%;background:var(--terra-500);display:grid;place-items:center;font-weight:600;font-size:14px;color:var(--sand-50);}
+  .side-user-name{font-size:13px;font-weight:600;line-height:1.2;}
+  .side-user-meta{font-size:11px;color:var(--sand-300);margin-top:2px;}
+  .side-nav{display:flex;flex-direction:column;gap:2px;}
+  .side-section-label{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-400);padding:8px;margin-top:8px;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:var(--r-sm);font-size:14px;color:var(--ink-500);cursor:pointer;font-weight:500;}
+  .nav-item:hover{background:var(--sand-200);color:var(--forest-900);}
+  .nav-item.active{background:var(--forest-900);color:var(--sand-100);}
+  .side-bottom{margin-top:auto;display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--sand-300);padding-top:16px;}
+
+  .main{padding:0;}
+  .topbar{background:var(--sand-50);border-bottom:1px solid var(--sand-300);padding:16px 32px;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:10;}
+  .search{flex:1;display:flex;align-items:center;gap:12px;background:var(--sand-100);border:1px solid var(--sand-300);border-radius:var(--r-pill);padding:11px 20px;font-size:14px;color:var(--ink-400);max-width:560px;}
+  .topbar-icons{display:flex;align-items:center;gap:6px;margin-left:auto;}
+  .icon-btn{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--ink-500);cursor:pointer;border:none;background:transparent;}
+  .icon-btn:hover{background:var(--sand-200);color:var(--forest-900);}
+  .premium-btn{background:var(--terra-500);color:var(--sand-50);border:none;padding:11px 22px;border-radius:var(--r-pill);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;}
+
+  /* Hero comunidade */
+  .com-hero{padding:48px 32px 32px;border-bottom:1px solid var(--sand-300);}
+  .com-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:32px;margin-bottom:32px;}
+  .com-hero-eyebrow{font-size:11px;font-family:ui-monospace,monospace;letter-spacing:0.14em;text-transform:uppercase;color:var(--terra-500);font-weight:600;margin-bottom:14px;}
+  .com-hero-title{font-size:72px;font-weight:600;letter-spacing:-0.05em;line-height:0.95;color:var(--forest-900);}
+  .com-hero-title .light{font-weight:200;color:var(--terra-500);}
+  .com-hero-meta{display:flex;gap:32px;align-items:center;font-size:12px;color:var(--ink-500);font-family:ui-monospace,monospace;letter-spacing:0.04em;line-height:1.6;flex-shrink:0;text-align:right;}
+  .com-hero-meta .num{font-size:26px;font-weight:600;color:var(--forest-900);font-family:'Outfit',sans-serif;letter-spacing:-0.03em;display:block;line-height:1;}
+  .com-hero-meta-item{display:flex;flex-direction:column;gap:6px;}
+  .com-filters{display:flex;justify-content:space-between;align-items:center;gap:16px;}
+  .com-filters-left{display:flex;gap:8px;flex-wrap:wrap;}
+  .filter-chip{padding:9px 18px;border-radius:var(--r-pill);font-size:13px;font-weight:500;background:var(--sand-50);border:1px solid var(--sand-300);color:var(--ink-700);cursor:pointer;display:inline-flex;align-items:center;gap:8px;}
+  .filter-chip.active{background:var(--forest-900);color:var(--sand-100);border-color:var(--forest-900);font-weight:600;}
+  .filter-chip .badge{background:var(--terra-500);color:var(--sand-50);font-size:10px;padding:1px 6px;border-radius:6px;font-weight:600;}
+  .com-new-post{background:var(--terra-500);color:var(--sand-50);border:none;padding:11px 22px;border-radius:var(--r-pill);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;}
+
+  /* Layout: feed + side */
+  .com-grid{display:grid;grid-template-columns:1fr 340px;gap:40px;padding:40px 32px 64px;}
+
+  /* Feed */
+  .feed{display:flex;flex-direction:column;gap:18px;}
+  .post{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:var(--r-lg);padding:28px;}
+  .post-head{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .post-avatar{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-weight:600;font-size:14px;color:var(--sand-50);flex-shrink:0;}
+  .av-1{background:var(--terra-500);}
+  .av-2{background:var(--forest-700);}
+  .av-3{background:var(--sage-700);}
+  .av-4{background:var(--ochre-700);}
+  .post-author{font-size:14px;font-weight:600;color:var(--forest-900);letter-spacing:-0.01em;}
+  .post-meta{font-size:12px;color:var(--ink-400);font-family:ui-monospace,monospace;letter-spacing:0.04em;display:flex;align-items:center;gap:8px;margin-top:2px;}
+  .post-tag{padding:3px 9px;border-radius:6px;background:var(--sand-200);color:var(--forest-700);font-size:10px;font-weight:600;letter-spacing:0.06em;}
+  .post-tag.pais{background:var(--sage-100);color:var(--sage-700);}
+  .post-tag.cas{background:var(--terra-100);color:var(--terra-700);}
+  .post-tag.fin{background:#F4E4C5;color:var(--ochre-700);}
+  .post-fix{margin-left:auto;font-size:11px;font-family:ui-monospace,monospace;letter-spacing:0.08em;color:var(--terra-500);font-weight:600;display:inline-flex;align-items:center;gap:6px;}
+  .post-question{font-size:24px;font-weight:600;color:var(--forest-900);letter-spacing:-0.025em;line-height:1.2;margin-bottom:12px;}
+  .post-body{font-size:15px;color:var(--ink-700);line-height:1.55;margin-bottom:20px;}
+  .post-body em{font-style:italic;color:var(--terra-500);}
+  .post-actions{display:flex;align-items:center;gap:24px;padding-top:18px;border-top:1px solid var(--sand-300);}
+  .post-action{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-500);font-weight:500;cursor:pointer;}
+  .post-action.active{color:var(--terra-500);}
+  .post-action:hover{color:var(--forest-900);}
+  .post-action .count{font-family:ui-monospace,monospace;font-size:12px;letter-spacing:0.04em;}
+  .post-share{margin-left:auto;}
+
+  /* Sidebar (right) */
+  .side-col{display:flex;flex-direction:column;gap:24px;position:sticky;top:88px;align-self:flex-start;}
+  .panel{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:var(--r-lg);padding:24px;}
+  .panel-eyebrow{font-size:11px;font-family:ui-monospace,monospace;letter-spacing:0.14em;text-transform:uppercase;color:var(--terra-500);font-weight:600;margin-bottom:8px;}
+  .panel-title{font-size:22px;font-weight:600;letter-spacing:-0.03em;color:var(--forest-900);line-height:1;margin-bottom:18px;}
+  .panel-title .light{font-weight:200;color:var(--terra-500);}
+
+  .topic{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--sand-200);cursor:pointer;}
+  .topic:last-child{border-bottom:none;}
+  .topic-rank{font-size:11px;font-family:ui-monospace,monospace;color:var(--ink-400);width:24px;font-weight:600;letter-spacing:0.04em;}
+  .topic-body{flex:1;}
+  .topic-name{font-size:14px;font-weight:600;color:var(--forest-900);letter-spacing:-0.01em;line-height:1.2;}
+  .topic-meta{font-size:11px;color:var(--ink-400);font-family:ui-monospace,monospace;letter-spacing:0.04em;margin-top:2px;}
+  .topic-up{color:var(--sage-500);font-size:11px;font-weight:600;font-family:ui-monospace,monospace;letter-spacing:0.04em;display:inline-flex;align-items:center;gap:3px;}
+
+  /* Stats panel */
+  .panel-stats{background:var(--forest-900);color:var(--sand-100);}
+  .panel-stats .panel-title{color:var(--sand-50);}
+  .panel-stats .panel-eyebrow{color:var(--ochre-300);}
+  .stat-row{display:flex;justify-content:space-between;align-items:baseline;padding:14px 0;border-bottom:1px solid rgba(217,200,158,0.15);}
+  .stat-row:last-child{border-bottom:none;}
+  .stat-label{font-size:13px;color:var(--sand-300);}
+  .stat-val{font-size:24px;font-weight:600;letter-spacing:-0.03em;color:var(--sand-50);}
+  .stat-val .small{font-size:12px;font-family:ui-monospace,monospace;letter-spacing:0.04em;color:var(--ochre-300);font-weight:500;margin-left:6px;}
+
+  /* Mods panel */
+  .mods{display:flex;flex-direction:column;gap:14px;}
+  .mod{display:flex;align-items:center;gap:12px;}
+  .mod-av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--sand-50);flex-shrink:0;}
+  .mod-name{font-size:13px;font-weight:600;color:var(--forest-900);letter-spacing:-0.01em;}
+  .mod-role{font-size:11px;color:var(--ink-400);font-family:ui-monospace,monospace;letter-spacing:0.04em;margin-top:2px;}
+  .mod-badge{margin-left:auto;font-size:10px;font-family:ui-monospace,monospace;letter-spacing:0.08em;color:var(--terra-500);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="app" data-screen-label="Comunidade">
+
+  <aside class="side">
+    <div class="side-brand">
+      <div class="brand-mark">
+        <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
+          <circle cx="18" cy="18" r="6" fill="#FAF4E8"/>
+          <g stroke="#FAF4E8" stroke-width="1.8" stroke-linecap="round">
+            <line x1="18" y1="2" x2="18" y2="7"/><line x1="18" y1="29" x2="18" y2="34"/>
+            <line x1="2" y1="18" x2="7" y2="18"/><line x1="29" y1="18" x2="34" y2="18"/>
+            <line x1="6.5" y1="6.5" x2="10" y2="10"/><line x1="26" y1="26" x2="29.5" y2="29.5"/>
+            <line x1="6.5" y1="29.5" x2="10" y2="26"/><line x1="26" y1="10" x2="29.5" y2="6.5"/>
+          </g>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">RAYO</div>
+        <span class="brand-sub">Ecossistema</span>
+      </div>
+    </div>
+
+    <div class="side-user">
+      <div class="side-user-avatar">RR</div>
+      <div>
+        <div class="side-user-name">Rafael Raio</div>
+        <div class="side-user-meta">Nível 1 · Casados</div>
+      </div>
+    </div>
+
+    <nav class="side-nav">
+      <span class="side-section-label">Navegar</span>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 8l6-5 6 5v7a1 1 0 0 1-1 1h-3v-4H7v4H4a1 1 0 0 1-1-1V8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Início
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 6l7-3 7 3-7 3-7-3z m0 4l7 3 7-3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Academia
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+        Conselheiro
+      </div>
+      <div class="nav-item active">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="6.5" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M2 15c0-2 2-3.5 4.5-3.5S11 13 11 15M11 15c0-1.5 1.5-2.5 3-2.5s3 1 3 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Comunidade
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 4h12v8a1 1 0 0 1-1 1H6l-3 2V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Mensagens
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-3 3-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Perfil
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2L3 4v5c0 4 2.5 6 6 7 3.5-1 6-3 6-7V4L9 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Admin
+      </div>
+    </nav>
+
+    <div class="side-bottom">
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="m11 4-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Minimizar
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M14 11A6 6 0 0 1 7 4a6 6 0 1 0 7 7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Modo Escuro
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M9 1v2M9 15v2M1 9h2M15 9h2M3 3l1.4 1.4M13.6 13.6L15 15M3 15l1.4-1.4M13.6 4.4L15 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Configurações
+      </div>
+      <div class="nav-item" style="color:var(--terra-500);">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M7 3H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M11 12l3-3-3-3M14 9H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Sair
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="m11 11 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Buscar discussões, pessoas, tópicos…
+      </div>
+      <div class="topbar-icons">
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 16s-7-4-7-9.5A4.5 4.5 0 0 1 9 3a4.5 4.5 0 0 1 7 3.5C16 12 9 16 9 16z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 4h12v9a1 1 0 0 1-1 1H6l-3 2V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M5 7a4 4 0 1 1 8 0v3l1.5 2.5h-11L5 10V7z M7 14a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        <button class="premium-btn">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor"><path d="m6.5 1 1.6 3.3 3.6.5-2.6 2.5.6 3.6L6.5 9.2 3.3 11l.6-3.6L1.3 4.8l3.6-.5L6.5 1z"/></svg>
+          Premium
+        </button>
+      </div>
+    </div>
+
+    <!-- HERO COMUNIDADE -->
+    <section class="com-hero">
+      <div class="com-hero-top">
+        <div>
+          <div class="com-hero-eyebrow">Comunidade · trocas reais entre famílias</div>
+          <h1 class="com-hero-title">Conversas <span class="light">que</span><br>importam.</h1>
+        </div>
+        <div class="com-hero-meta">
+          <div class="com-hero-meta-item">
+            <span class="num">2 847</span>
+            FAMÍLIAS<br>ATIVAS HOJE
+          </div>
+          <div class="com-hero-meta-item">
+            <span class="num">128</span>
+            DISCUSSÕES<br>NESTA SEMANA
+          </div>
+        </div>
+      </div>
+      <div class="com-filters">
+        <div class="com-filters-left">
+          <span class="filter-chip active">Todas <span class="badge">128</span></span>
+          <span class="filter-chip">Pais</span>
+          <span class="filter-chip">Casados</span>
+          <span class="filter-chip">Noivos</span>
+          <span class="filter-chip">Finanças</span>
+          <span class="filter-chip">Comunicação</span>
+          <span class="filter-chip">Espiritualidade</span>
+        </div>
+        <button class="com-new-post">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          Nova discussão
+        </button>
+      </div>
+    </section>
+
+    <!-- GRID FEED + SIDE -->
+    <div class="com-grid">
+
+      <!-- FEED -->
+      <div class="feed">
+
+        <article class="post">
+          <div class="post-head">
+            <div class="post-avatar av-2">MS</div>
+            <div>
+              <div class="post-author">Marina Silva</div>
+              <div class="post-meta">há 12 min · <span class="post-tag pais">Pais</span></div>
+            </div>
+            <span class="post-fix">
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v6m-2-3 2-2 2 2M3 9h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              FIXADO
+            </span>
+          </div>
+          <h3 class="post-question">Como vocês têm conversado sobre limites de telas com filhos pequenos?</h3>
+          <p class="post-body">Estamos tentando estabelecer rotinas saudáveis em casa, mas confesso que <em>cada dia parece uma nova negociação</em>. Vocês têm algum acordo familiar que funcione? Estratégias práticas que de fato sustentam no longo prazo?</p>
+          <div class="post-actions">
+            <span class="post-action active">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><path d="M7.5 12s-5-3-5-7a3 3 0 0 1 5-2 3 3 0 0 1 5 2c0 4-5 7-5 7z"/></svg>
+              <span class="count">42</span>
+            </span>
+            <span class="post-action">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3 4h9v6a1 1 0 0 1-1 1H6l-3 2V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              <span class="count">28 respostas</span>
+            </span>
+            <span class="post-action">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M4 3h7v9l-3.5-2.5L4 12V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              Salvar
+            </span>
+            <span class="post-action post-share">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="4" cy="7.5" r="1.5" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="3.5" r="1.5" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="11.5" r="1.5" stroke="currentColor" stroke-width="1.5"/><path d="m5.5 6.5 4-2M5.5 8.5l4 2" stroke="currentColor" stroke-width="1.5"/></svg>
+              Compartilhar
+            </span>
+          </div>
+        </article>
+
+        <article class="post">
+          <div class="post-head">
+            <div class="post-avatar av-1">CO</div>
+            <div>
+              <div class="post-author">Carlos Oliveira</div>
+              <div class="post-meta">há 1h · <span class="post-tag fin">Finanças</span></div>
+            </div>
+          </div>
+          <h3 class="post-question">Conta conjunta ou contas separadas: o que funciona aí?</h3>
+          <p class="post-body">Estamos casados há 3 anos e ainda não chegamos num acordo. Conta conjunta total, mista, ou separadas com aporte para despesas comuns? Queria entender como outras famílias estão organizando isso na prática.</p>
+          <div class="post-actions">
+            <span class="post-action">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 12s-5-3-5-7a3 3 0 0 1 5-2 3 3 0 0 1 5 2c0 4-5 7-5 7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              <span class="count">31</span>
+            </span>
+            <span class="post-action">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3 4h9v6a1 1 0 0 1-1 1H6l-3 2V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              <span class="count">19 respostas</span>
+            </span>
+            <span class="post-action">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M4 3h7v9l-3.5-2.5L4 12V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              Salvar
+            </span>
+          </div>
+        </article>
+
+        <article class="post">
+          <div class="post-head">
+            <div class="post-avatar av-3">AC</div>
+            <div>
+              <div class="post-author">Ana Costa</div>
+              <div class="post-meta">há 3h · <span class="post-tag cas">Casados</span></div>
+            </div>
+          </div>
+          <h3 class="post-question">Encontros do casal: como vocês mantêm a chama do começo?</h3>
+          <p class="post-body">Lemos um livro lindo sobre intencionalidade no casamento e queria saber: vocês têm rituais, encontros marcados, alguma forma de garantir que a relação continue prioridade mesmo com filhos e rotina pesada?</p>
+          <div class="post-actions">
+            <span class="post-action">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 12s-5-3-5-7a3 3 0 0 1 5-2 3 3 0 0 1 5 2c0 4-5 7-5 7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              <span class="count">56</span>
+            </span>
+            <span class="post-action">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3 4h9v6a1 1 0 0 1-1 1H6l-3 2V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              <span class="count">34 respostas</span>
+            </span>
+            <span class="post-action">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M4 3h7v9l-3.5-2.5L4 12V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              Salvar
+            </span>
+          </div>
+        </article>
+
+        <article class="post">
+          <div class="post-head">
+            <div class="post-avatar av-4">JR</div>
+            <div>
+              <div class="post-author">Júlio Ribeiro</div>
+              <div class="post-meta">há 5h · <span class="post-tag pais">Pais</span></div>
+            </div>
+          </div>
+          <h3 class="post-question">Birras de criança: paciência ou firmeza?</h3>
+          <p class="post-body">Minha filha de 4 anos está numa fase intensa. Tenho pesquisado bastante e oscilo entre acolher e estabelecer limites com firmeza. Como vocês têm equilibrado isso na prática?</p>
+          <div class="post-actions">
+            <span class="post-action">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 12s-5-3-5-7a3 3 0 0 1 5-2 3 3 0 0 1 5 2c0 4-5 7-5 7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              <span class="count">22</span>
+            </span>
+            <span class="post-action">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M3 4h9v6a1 1 0 0 1-1 1H6l-3 2V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              <span class="count">14 respostas</span>
+            </span>
+            <span class="post-action">
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M4 3h7v9l-3.5-2.5L4 12V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              Salvar
+            </span>
+          </div>
+        </article>
+
+      </div>
+
+      <!-- SIDE -->
+      <aside class="side-col">
+
+        <div class="panel">
+          <div class="panel-eyebrow">Em alta agora</div>
+          <h3 class="panel-title">Tópicos <span class="light">em</span> alta</h3>
+
+          <div class="topic">
+            <span class="topic-rank">01</span>
+            <div class="topic-body">
+              <div class="topic-name">Limites e rotinas com filhos</div>
+              <div class="topic-meta">142 conversas · 24h</div>
+            </div>
+            <span class="topic-up">▲ 38%</span>
+          </div>
+          <div class="topic">
+            <span class="topic-rank">02</span>
+            <div class="topic-body">
+              <div class="topic-name">Finanças do casal</div>
+              <div class="topic-meta">98 conversas · 24h</div>
+            </div>
+            <span class="topic-up">▲ 22%</span>
+          </div>
+          <div class="topic">
+            <span class="topic-rank">03</span>
+            <div class="topic-body">
+              <div class="topic-name">Encontros e intencionalidade</div>
+              <div class="topic-meta">76 conversas · 24h</div>
+            </div>
+            <span class="topic-up">▲ 17%</span>
+          </div>
+          <div class="topic">
+            <span class="topic-rank">04</span>
+            <div class="topic-body">
+              <div class="topic-name">Conflitos com sogra/sogro</div>
+              <div class="topic-meta">54 conversas · 24h</div>
+            </div>
+            <span class="topic-up">▲ 11%</span>
+          </div>
+          <div class="topic">
+            <span class="topic-rank">05</span>
+            <div class="topic-body">
+              <div class="topic-name">Espiritualidade em casal</div>
+              <div class="topic-meta">41 conversas · 24h</div>
+            </div>
+            <span class="topic-up">▲ 8%</span>
+          </div>
+        </div>
+
+        <div class="panel panel-stats">
+          <div class="panel-eyebrow">Você esta semana</div>
+          <h3 class="panel-title">Sua participação</h3>
+
+          <div class="stat-row">
+            <span class="stat-label">Posts criados</span>
+            <span class="stat-val">2 <span class="small">+1 vs. semana passada</span></span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Respostas enviadas</span>
+            <span class="stat-val">14 <span class="small">+6</span></span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Curtidas recebidas</span>
+            <span class="stat-val">87 <span class="small">+42</span></span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Conexões novas</span>
+            <span class="stat-val">5</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-eyebrow">Quem cuida do espaço</div>
+          <h3 class="panel-title">Moderadores <span class="light">ativos</span></h3>
+          <div class="mods">
+            <div class="mod">
+              <div class="mod-av av-1">AC</div>
+              <div>
+                <div class="mod-name">Dra. Ana Costa</div>
+                <div class="mod-role">Psicóloga · Casados</div>
+              </div>
+              <span class="mod-badge">MOD</span>
+            </div>
+            <div class="mod">
+              <div class="mod-av av-2">PM</div>
+              <div>
+                <div class="mod-name">Dr. Paulo Mendes</div>
+                <div class="mod-role">Terapeuta · Pais</div>
+              </div>
+              <span class="mod-badge">MOD</span>
+            </div>
+            <div class="mod">
+              <div class="mod-av av-3">MS</div>
+              <div>
+                <div class="mod-name">Maria Santos</div>
+                <div class="mod-role">Educadora · Família</div>
+              </div>
+              <span class="mod-badge">MOD</span>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+    </div>
+  </main>
+</div>
+</body>
+</html>

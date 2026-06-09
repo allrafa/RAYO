@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RAYO — Perfil · Dark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sand-50:#FAF4E8;--sand-100:#F2E9D5;--sand-200:#E8DBBF;--sand-300:#D9C89E;--sand-400:#BFA87A;
+    --forest-900:#0C3B2E;--forest-700:#144D3C;--forest-500:#1E6A52;
+    --sage-100:#DCE8D2;--sage-300:#A9C396;--sage-500:#6D9773;--sage-700:#4F7253;
+    --terra-100:#F2D6CC;--terra-300:#E08770;--terra-500:#C8553D;--terra-700:#9C3A26;--terra-900:#5E2113;
+    --ochre-300:#E8C77E;--ochre-500:#D4A24C;--ochre-700:#A37A2D;
+    --ink-900:#0E1A14;--ink-700:#1F2A22;--ink-500:#4A5247;--ink-400:#6E7569;--ink-300:#9CA098;
+    --r-sm:10px;--r-md:16px;--r-lg:24px;--r-xl:32px;--r-pill:999px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--sand-100);color:var(--ink-900);font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+  .app{display:grid;grid-template-columns:260px 1fr;min-height:100vh;}
+
+  /* Sidebar */
+  .side{background:var(--sand-50);border-right:1px solid var(--sand-300);padding:28px 20px;display:flex;flex-direction:column;gap:24px;position:sticky;top:0;height:100vh;}
+  .side-brand{display:flex;align-items:center;gap:12px;padding:0 8px;}
+  .brand-mark{width:44px;height:44px;border-radius:12px;background:var(--terra-500);display:grid;place-items:center;flex-shrink:0;}
+  .brand-name{font-size:20px;font-weight:700;letter-spacing:-0.03em;color:var(--forest-900);line-height:1;}
+  .brand-sub{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--terra-500);font-family:ui-monospace,monospace;font-weight:600;margin-top:4px;display:block;}
+  .side-user{background:var(--forest-900);border-radius:var(--r-md);padding:14px;display:flex;align-items:center;gap:12px;color:var(--sand-100);}
+  .side-user-avatar{width:40px;height:40px;border-radius:50%;background:var(--terra-500);display:grid;place-items:center;font-weight:600;font-size:14px;color:var(--sand-50);}
+  .side-user-name{font-size:13px;font-weight:600;line-height:1.2;}
+  .side-user-meta{font-size:11px;color:var(--sand-300);margin-top:2px;}
+  .side-nav{display:flex;flex-direction:column;gap:2px;}
+  .side-section-label{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-400);padding:8px;margin-top:8px;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:var(--r-sm);font-size:14px;color:var(--ink-500);cursor:pointer;font-weight:500;}
+  .nav-item:hover{background:var(--sand-200);color:var(--forest-900);}
+  .nav-item.active{background:var(--forest-900);color:var(--sand-100);}
+  .side-bottom{margin-top:auto;display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--sand-300);padding-top:16px;}
+
+  .main{padding:0;}
+  .topbar{background:var(--sand-50);border-bottom:1px solid var(--sand-300);padding:16px 32px;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:10;}
+  .search{flex:1;display:flex;align-items:center;gap:12px;background:var(--sand-100);border:1px solid var(--sand-300);border-radius:var(--r-pill);padding:11px 20px;font-size:14px;color:var(--ink-400);max-width:560px;}
+  .topbar-icons{display:flex;align-items:center;gap:6px;margin-left:auto;}
+  .icon-btn{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--ink-500);cursor:pointer;border:none;background:transparent;}
+  .icon-btn:hover{background:var(--sand-200);color:var(--forest-900);}
+  .premium-btn{background:var(--terra-500);color:var(--sand-50);border:none;padding:11px 22px;border-radius:var(--r-pill);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;}
+
+  .content{padding:40px 32px 64px;display:flex;flex-direction:column;gap:48px;}
+
+  /* Hero perfil */
+  .pf-hero{background:var(--forest-900);border-radius:var(--r-xl);padding:48px;color:var(--sand-100);position:relative;overflow:hidden;}
+  .pf-hero::after{content:"";position:absolute;top:-100px;right:-80px;width:380px;height:380px;border-radius:50%;background:radial-gradient(circle,rgba(200,85,61,0.35) 0%,transparent 65%);}
+  .pf-hero::before{content:"";position:absolute;bottom:-60px;right:120px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(232,199,126,0.18) 0%,transparent 70%);}
+  .pf-hero-row{display:flex;gap:32px;align-items:center;position:relative;z-index:1;}
+  .pf-avatar{width:120px;height:120px;border-radius:50%;background:var(--terra-500);display:grid;place-items:center;font-size:42px;font-weight:600;color:var(--sand-50);letter-spacing:-0.03em;border:4px solid rgba(250,244,232,0.15);flex-shrink:0;}
+  .pf-name{font-size:56px;font-weight:600;letter-spacing:-0.04em;line-height:1;color:var(--sand-50);margin-bottom:8px;}
+  .pf-handle{font-size:14px;color:var(--ochre-300);font-family:ui-monospace,monospace;letter-spacing:0.04em;margin-bottom:18px;}
+  .pf-tags{display:flex;gap:8px;flex-wrap:wrap;}
+  .pf-tag{padding:6px 14px;border-radius:var(--r-pill);background:rgba(250,244,232,0.1);color:var(--sand-100);font-size:12px;font-weight:500;border:1px solid rgba(250,244,232,0.15);}
+  .pf-tag.primary{background:var(--terra-500);border-color:var(--terra-500);color:var(--sand-50);font-weight:600;}
+  .pf-edit{margin-left:auto;background:var(--sand-50);color:var(--forest-900);border:none;padding:13px 24px;border-radius:var(--r-pill);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;flex-shrink:0;}
+  .pf-edit:hover{background:var(--ochre-300);}
+
+  .pf-bio{margin-top:36px;padding-top:32px;border-top:1px solid rgba(217,200,158,0.2);font-size:18px;line-height:1.55;color:var(--sand-100);max-width:62ch;position:relative;z-index:1;}
+  .pf-bio em{font-style:italic;color:var(--ochre-300);}
+
+  /* Stats row */
+  .pf-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+  .pf-stat{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:var(--r-lg);padding:24px;display:flex;flex-direction:column;gap:8px;position:relative;}
+  .pf-stat-icon{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--forest-700);position:absolute;top:24px;right:24px;}
+  .pf-stat-icon.s1{background:var(--sage-100);}
+  .pf-stat-icon.s2{background:var(--terra-100);color:var(--terra-700);}
+  .pf-stat-icon.s3{background:#F4E4C5;color:var(--ochre-700);}
+  .pf-stat-icon.s4{background:var(--sage-100);}
+  .pf-stat-eyebrow{font-size:11px;font-family:ui-monospace,monospace;letter-spacing:0.12em;text-transform:uppercase;color:var(--terra-500);font-weight:600;}
+  .pf-stat-num{font-size:48px;font-weight:600;letter-spacing:-0.04em;color:var(--forest-900);line-height:1;}
+  .pf-stat-num .unit{font-size:18px;font-weight:400;color:var(--ink-400);margin-left:6px;}
+  .pf-stat-label{font-size:13px;color:var(--ink-500);}
+
+  /* Section */
+  .sec{display:flex;flex-direction:column;gap:24px;}
+  .sec-head{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:14px;border-bottom:1px solid var(--sand-300);}
+  .sec-eyebrow{font-size:11px;font-family:ui-monospace,monospace;letter-spacing:0.14em;text-transform:uppercase;color:var(--terra-500);font-weight:600;margin-bottom:8px;}
+  .sec-title{font-size:40px;font-weight:600;letter-spacing:-0.04em;color:var(--forest-900);line-height:1;}
+  .sec-title .light{font-weight:200;color:var(--terra-500);}
+  .sec-action{font-size:13px;color:var(--terra-500);font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;}
+
+  /* Missions */
+  .mission-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+  .mission{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:var(--r-lg);padding:28px;display:flex;flex-direction:column;gap:16px;}
+  .mission.done{background:var(--forest-900);color:var(--sand-100);border-color:var(--forest-900);}
+  .mission-top{display:flex;justify-content:space-between;align-items:flex-start;}
+  .mission-icon{width:44px;height:44px;border-radius:12px;background:var(--sage-100);display:grid;place-items:center;color:var(--forest-700);}
+  .mission.done .mission-icon{background:var(--sage-500);color:var(--forest-900);}
+  .mission-status{font-size:10px;font-family:ui-monospace,monospace;letter-spacing:0.12em;text-transform:uppercase;font-weight:600;padding:5px 10px;border-radius:6px;background:var(--sand-200);color:var(--ink-700);}
+  .mission-status.active{background:var(--terra-500);color:var(--sand-50);}
+  .mission.done .mission-status{background:var(--sage-500);color:var(--forest-900);}
+  .mission-name{font-size:20px;font-weight:600;color:var(--forest-900);letter-spacing:-0.02em;line-height:1.2;}
+  .mission.done .mission-name{color:var(--sand-50);}
+  .mission-desc{font-size:13px;color:var(--ink-500);line-height:1.45;}
+  .mission.done .mission-desc{color:var(--sand-300);}
+  .mission-bar{height:6px;background:var(--sand-200);border-radius:var(--r-pill);overflow:hidden;}
+  .mission.done .mission-bar{background:rgba(217,200,158,0.2);}
+  .mission-bar-fill{height:100%;background:var(--terra-500);border-radius:var(--r-pill);}
+  .mission.done .mission-bar-fill{background:var(--sage-500);}
+  .mission-foot{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-family:ui-monospace,monospace;letter-spacing:0.04em;color:var(--ink-500);font-weight:500;}
+  .mission.done .mission-foot{color:var(--sand-300);}
+  .mission-xp{color:var(--terra-500);font-weight:700;}
+  .mission.done .mission-xp{color:var(--ochre-300);}
+
+  /* Settings two-col */
+  .settings{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .panel{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:var(--r-lg);padding:28px;}
+  .panel-eyebrow{font-size:11px;font-family:ui-monospace,monospace;letter-spacing:0.14em;text-transform:uppercase;color:var(--terra-500);font-weight:600;margin-bottom:8px;}
+  .panel-title{font-size:24px;font-weight:600;letter-spacing:-0.025em;color:var(--forest-900);line-height:1;margin-bottom:24px;}
+  .panel-title .light{font-weight:200;color:var(--terra-500);}
+
+  .row{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--sand-200);}
+  .row:last-child{border-bottom:none;padding-bottom:0;}
+  .row-left{display:flex;align-items:center;gap:14px;}
+  .row-icon{width:36px;height:36px;border-radius:10px;background:var(--sand-200);display:grid;place-items:center;color:var(--forest-700);flex-shrink:0;}
+  .row-name{font-size:14px;font-weight:600;color:var(--forest-900);letter-spacing:-0.01em;}
+  .row-desc{font-size:12px;color:var(--ink-400);margin-top:2px;}
+  .row-action{font-size:13px;color:var(--terra-500);font-weight:600;display:inline-flex;align-items:center;gap:4px;cursor:pointer;}
+
+  /* Toggle */
+  .toggle{width:42px;height:24px;border-radius:var(--r-pill);background:var(--sand-300);position:relative;cursor:pointer;flex-shrink:0;}
+  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--sand-50);transition:0.2s;}
+  .toggle.on{background:var(--sage-500);}
+  .toggle.on::after{left:21px;}
+
+  .row-value{font-size:12px;font-family:ui-monospace,monospace;letter-spacing:0.04em;color:var(--ink-500);font-weight:500;background:var(--sand-200);padding:6px 12px;border-radius:var(--r-pill);}
+</style>
+<link rel="stylesheet" href="dark-theme.css">
+</head>
+<body>
+<div class="app" data-screen-label="Perfil">
+
+  <aside class="side">
+    <div class="side-brand">
+      <div class="brand-mark">
+        <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
+          <circle cx="18" cy="18" r="6" fill="#FAF4E8"/>
+          <g stroke="#FAF4E8" stroke-width="1.8" stroke-linecap="round">
+            <line x1="18" y1="2" x2="18" y2="7"/><line x1="18" y1="29" x2="18" y2="34"/>
+            <line x1="2" y1="18" x2="7" y2="18"/><line x1="29" y1="18" x2="34" y2="18"/>
+            <line x1="6.5" y1="6.5" x2="10" y2="10"/><line x1="26" y1="26" x2="29.5" y2="29.5"/>
+            <line x1="6.5" y1="29.5" x2="10" y2="26"/><line x1="26" y1="10" x2="29.5" y2="6.5"/>
+          </g>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">RAYO</div>
+        <span class="brand-sub">Ecossistema</span>
+      </div>
+    </div>
+
+    <div class="side-user">
+      <div class="side-user-avatar">RR</div>
+      <div>
+        <div class="side-user-name">Rafael Raio</div>
+        <div class="side-user-meta">Nível 1 · Casados</div>
+      </div>
+    </div>
+
+    <nav class="side-nav">
+      <span class="side-section-label">Navegar</span>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 8l6-5 6 5v7a1 1 0 0 1-1 1h-3v-4H7v4H4a1 1 0 0 1-1-1V8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Início
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 6l7-3 7 3-7 3-7-3z m0 4l7 3 7-3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Academia
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+        Conselheiro
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="6.5" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M2 15c0-2 2-3.5 4.5-3.5S11 13 11 15M11 15c0-1.5 1.5-2.5 3-2.5s3 1 3 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Comunidade
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 4h12v8a1 1 0 0 1-1 1H6l-3 2V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Mensagens
+      </div>
+      <div class="nav-item active">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-3 3-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Perfil
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2L3 4v5c0 4 2.5 6 6 7 3.5-1 6-3 6-7V4L9 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Admin
+      </div>
+    </nav>
+
+    <div class="side-bottom">
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="m11 4-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Minimizar
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M14 11A6 6 0 0 1 7 4a6 6 0 1 0 7 7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Modo Escuro
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M9 1v2M9 15v2M1 9h2M15 9h2M3 3l1.4 1.4M13.6 13.6L15 15M3 15l1.4-1.4M13.6 4.4L15 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Configurações
+      </div>
+      <div class="nav-item" style="color:var(--terra-500);">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M7 3H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M11 12l3-3-3-3M14 9H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Sair
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="m11 11 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Buscar no RAYO…
+      </div>
+      <div class="topbar-icons">
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 16s-7-4-7-9.5A4.5 4.5 0 0 1 9 3a4.5 4.5 0 0 1 7 3.5C16 12 9 16 9 16z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 4h12v9a1 1 0 0 1-1 1H6l-3 2V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M5 7a4 4 0 1 1 8 0v3l1.5 2.5h-11L5 10V7z M7 14a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        <button class="premium-btn">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor"><path d="m6.5 1 1.6 3.3 3.6.5-2.6 2.5.6 3.6L6.5 9.2 3.3 11l.6-3.6L1.3 4.8l3.6-.5L6.5 1z"/></svg>
+          Premium
+        </button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- HERO -->
+      <section class="pf-hero">
+        <div class="pf-hero-row">
+          <div class="pf-avatar">RR</div>
+          <div>
+            <h1 class="pf-name">Rafael Raio</h1>
+            <div class="pf-handle">@rafaraio · membro desde mar/2024</div>
+            <div class="pf-tags">
+              <span class="pf-tag primary">Casados</span>
+              <span class="pf-tag">Nível 1</span>
+              <span class="pf-tag">São Paulo, BR</span>
+              <span class="pf-tag">Premium</span>
+            </div>
+          </div>
+          <button class="pf-edit">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 11V9l7-7 2 2-7 7H2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            Editar perfil
+          </button>
+        </div>
+        <p class="pf-bio">Construindo uma família intencional com a Camila. <em>Aprendendo todos os dias</em> sobre comunicação, parentalidade e finanças — e compartilhando o que dá certo (e o que não dá) por aqui.</p>
+      </section>
+
+      <!-- STATS -->
+      <section class="pf-stats">
+        <div class="pf-stat">
+          <div class="pf-stat-icon s1">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 6l7-3 7 3-7 3-7-3z m0 4l7 3 7-3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          </div>
+          <span class="pf-stat-eyebrow">Aprendizado</span>
+          <div class="pf-stat-num">12<span class="unit">cursos</span></div>
+          <div class="pf-stat-label">Concluídos no RAYO</div>
+        </div>
+        <div class="pf-stat">
+          <div class="pf-stat-icon s2">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1l2.4 5 5.6.8-4 4 1 5.6L9 13.7 3.9 16.4 5 10.8l-4-4 5.6-.8L9 1z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          </div>
+          <span class="pf-stat-eyebrow">Engajamento</span>
+          <div class="pf-stat-num">2 480<span class="unit">XP</span></div>
+          <div class="pf-stat-label">Faltam 520 para o nível 2</div>
+        </div>
+        <div class="pf-stat">
+          <div class="pf-stat-icon s3">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 16s-7-4-7-9.5A4.5 4.5 0 0 1 9 3a4.5 4.5 0 0 1 7 3.5C16 12 9 16 9 16z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          </div>
+          <span class="pf-stat-eyebrow">Sequência</span>
+          <div class="pf-stat-num">28<span class="unit">dias</span></div>
+          <div class="pf-stat-label">Streak ativo · recorde pessoal</div>
+        </div>
+        <div class="pf-stat">
+          <div class="pf-stat-icon s4">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="6.5" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M2 15c0-2 2-3.5 4.5-3.5S11 13 11 15M11 15c0-1.5 1.5-2.5 3-2.5s3 1 3 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <span class="pf-stat-eyebrow">Comunidade</span>
+          <div class="pf-stat-num">87<span class="unit">posts</span></div>
+          <div class="pf-stat-label">Publicações + respostas</div>
+        </div>
+      </section>
+
+      <!-- MISSÕES -->
+      <section class="sec">
+        <div class="sec-head">
+          <div>
+            <div class="sec-eyebrow">Em andamento · esta semana</div>
+            <h2 class="sec-title">Missões <span class="light">ativas</span></h2>
+          </div>
+          <span class="sec-action">Ver todas as missões
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M3 6.5h7m-2-2 2 2-2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </div>
+        <div class="mission-grid">
+          <div class="mission">
+            <div class="mission-top">
+              <div class="mission-icon">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M2 8l9-4 9 4-9 4-9-4z m4 4v4c0 1 2 2 5 2s5-1 5-2v-4" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              </div>
+              <span class="mission-status active">Em curso</span>
+            </div>
+            <div>
+              <div class="mission-name">Conclua a trilha "Comunicação no casamento"</div>
+              <p class="mission-desc">Você está em 3 de 4 itens. Falta só o último episódio do podcast.</p>
+            </div>
+            <div class="mission-bar"><div class="mission-bar-fill" style="width:75%;"></div></div>
+            <div class="mission-foot">
+              <span>3/4 itens · 75%</span>
+              <span class="mission-xp">+250 XP</span>
+            </div>
+          </div>
+
+          <div class="mission">
+            <div class="mission-top">
+              <div class="mission-icon">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="6.5" cy="8" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="9" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M2 17c0-2 2-3.5 4.5-3.5S11 15 11 17M11 17c0-1.5 1.5-2.5 3-2.5s3 1 3 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </div>
+              <span class="mission-status active">Em curso</span>
+            </div>
+            <div>
+              <div class="mission-name">Participe de 5 discussões na comunidade</div>
+              <p class="mission-desc">Já são 2 esta semana. Mais 3 e você desbloqueia o badge "Voz ativa".</p>
+            </div>
+            <div class="mission-bar"><div class="mission-bar-fill" style="width:40%;"></div></div>
+            <div class="mission-foot">
+              <span>2/5 · 40%</span>
+              <span class="mission-xp">+150 XP</span>
+            </div>
+          </div>
+
+          <div class="mission done">
+            <div class="mission-top">
+              <div class="mission-icon">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="m5 11 4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <span class="mission-status">Concluída</span>
+            </div>
+            <div>
+              <div class="mission-name">Complete o ritual diário por 7 dias</div>
+              <p class="mission-desc">Você manteve o hábito por 28 dias. Conquista desbloqueada esta semana.</p>
+            </div>
+            <div class="mission-bar"><div class="mission-bar-fill" style="width:100%;"></div></div>
+            <div class="mission-foot">
+              <span>7/7 · 100%</span>
+              <span class="mission-xp">+100 XP</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CONTA + PREFERÊNCIAS -->
+      <section class="settings">
+
+        <div class="panel">
+          <div class="panel-eyebrow">Sua conta</div>
+          <h3 class="panel-title">Dados <span class="light">e</span> assinatura</h3>
+
+          <div class="row">
+            <div class="row-left">
+              <div class="row-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 14c0-2.5 2.2-4.5 5-4.5s5 2 5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Informações pessoais</div>
+                <div class="row-desc">Nome, e-mail, telefone</div>
+              </div>
+            </div>
+            <span class="row-action">Editar →</span>
+          </div>
+          <div class="row">
+            <div class="row-left">
+              <div class="row-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="6" width="10" height="8" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M5 6V4a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.5"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Segurança</div>
+                <div class="row-desc">Senha e autenticação em 2 etapas</div>
+              </div>
+            </div>
+            <span class="row-action">Gerenciar →</span>
+          </div>
+          <div class="row">
+            <div class="row-left">
+              <div class="row-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 5h12v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5z M2 8h12" stroke="currentColor" stroke-width="1.5"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Plano Premium</div>
+                <div class="row-desc">Anual · próxima cobrança em 14/03/2026</div>
+              </div>
+            </div>
+            <span class="row-action">Detalhes →</span>
+          </div>
+          <div class="row">
+            <div class="row-left">
+              <div class="row-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2 2 5v4c0 3 2.5 5 6 6 3.5-1 6-3 6-6V5L8 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Privacidade</div>
+                <div class="row-desc">Quem vê seu perfil e atividade</div>
+              </div>
+            </div>
+            <span class="row-action">Configurar →</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-eyebrow">Sua experiência</div>
+          <h3 class="panel-title">Preferências</h3>
+
+          <div class="row">
+            <div class="row-left">
+              <div class="row-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5 6a3 3 0 1 1 6 0v2l1.5 2h-9L5 8V6z M6 12a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Notificações push</div>
+                <div class="row-desc">Lembretes do ritual diário</div>
+              </div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="row">
+            <div class="row-left">
+              <div class="row-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12v8a1 1 0 0 1-1 1H5l-3 2V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Resumo semanal por e-mail</div>
+                <div class="row-desc">Toda segunda às 8h</div>
+              </div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="row">
+            <div class="row-left">
+              <div class="row-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3 3l1 1M12 12l1 1M3 13l1-1M12 4l1-1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Tema</div>
+                <div class="row-desc">Claro, escuro ou sistema</div>
+              </div>
+            </div>
+            <span class="row-value">Claro</span>
+          </div>
+          <div class="row">
+            <div class="row-left">
+              <div class="row-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12" stroke="currentColor" stroke-width="1.5"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Idioma</div>
+                <div class="row-desc">Conteúdo e interface</div>
+              </div>
+            </div>
+            <span class="row-value">Português (BR)</span>
+          </div>
+          <div class="row">
+            <div class="row-left">
+              <div class="row-icon">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 6l6-3 6 3-6 3-6-3z m0 4l6 3 6-3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <div class="row-name">Recomendações por fase</div>
+                <div class="row-desc">Atualmente: Casados</div>
+              </div>
+            </div>
+            <span class="row-action">Trocar →</span>
+          </div>
+        </div>
+
+      </section>
+
+    </div>
+  </main>
+</div>
+</body>
+</html>

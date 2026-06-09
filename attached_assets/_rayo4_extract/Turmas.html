@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RAYO — Catálogo de turmas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sand-50:#FAF4E8; --sand-100:#F2E9D5; --sand-200:#E8DBBF; --sand-300:#D9C89E; --sand-400:#BFA87A;
+    --forest-900:#0C3B2E; --forest-700:#144D3C; --forest-500:#1E6A52;
+    --sage-100:#DCE8D2; --sage-300:#A9C396; --sage-500:#6D9773; --sage-700:#4F7253;
+    --terra-100:#F2D6CC; --terra-300:#E08770; --terra-500:#C8553D; --terra-700:#9C3A26; --terra-900:#5E2113;
+    --ochre-300:#E8C77E; --ochre-500:#D4A24C; --ochre-700:#A37A2D;
+    --ink-900:#0E1A14; --ink-700:#1F2A22; --ink-500:#4A5247; --ink-400:#6E7569; --ink-300:#9CA098;
+    --r-sm:10px; --r-md:16px; --r-lg:24px; --r-xl:32px; --r-pill:999px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--sand-100);color:var(--ink-900);font-family:'Outfit',system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .mono{font-family:ui-monospace,'SF Mono',monospace;}
+  .hidden{display:none !important;}
+  .app{display:grid;grid-template-columns:260px 1fr;min-height:100vh;}
+
+  /* ===== SIDEBAR ===== */
+  .side{background:var(--sand-50);border-right:1px solid var(--sand-300);padding:28px 20px;display:flex;flex-direction:column;gap:24px;position:sticky;top:0;height:100vh;}
+  .side-brand{display:flex;align-items:center;gap:12px;padding:0 8px;}
+  .brand-mark{width:44px;height:44px;border-radius:12px;background:var(--terra-500);display:grid;place-items:center;flex-shrink:0;}
+  .brand-name{font-size:20px;font-weight:700;letter-spacing:-0.03em;color:var(--forest-900);line-height:1;}
+  .brand-sub{font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--terra-500);font-family:ui-monospace,monospace;font-weight:600;margin-top:4px;display:block;}
+  .side-user{background:var(--forest-900);border-radius:var(--r-md);padding:14px;display:flex;align-items:center;gap:12px;color:var(--sand-100);}
+  .side-user-avatar{width:40px;height:40px;border-radius:50%;background:var(--terra-500);display:grid;place-items:center;font-weight:600;font-size:14px;color:var(--sand-50);}
+  .side-user-name{font-size:13px;font-weight:600;line-height:1.2;}
+  .side-user-meta{font-size:11px;color:var(--sand-300);margin-top:2px;}
+  .side-nav{display:flex;flex-direction:column;gap:2px;}
+  .side-section-label{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-400);padding:8px;margin-top:8px;}
+  .nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:var(--r-sm);font-size:14px;color:var(--ink-500);cursor:pointer;font-weight:500;}
+  .nav-item:hover{background:var(--sand-200);color:var(--forest-900);}
+  .nav-item.active{background:var(--forest-900);color:var(--sand-100);}
+  .side-bottom{margin-top:auto;display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--sand-300);padding-top:16px;}
+
+  /* ===== MAIN ===== */
+  .main{padding:0;min-width:0;}
+  .topbar{background:var(--sand-50);border-bottom:1px solid var(--sand-300);padding:16px 32px;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:30;}
+  .search{flex:1;display:flex;align-items:center;gap:12px;background:var(--sand-100);border:1px solid var(--sand-300);border-radius:var(--r-pill);padding:11px 20px;font-size:14px;color:var(--ink-400);max-width:560px;}
+  .topbar-icons{display:flex;align-items:center;gap:6px;margin-left:auto;}
+  .icon-btn{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--ink-500);cursor:pointer;border:none;background:transparent;}
+  .icon-btn:hover{background:var(--sand-200);color:var(--forest-900);}
+  .premium-btn{background:var(--terra-500);color:var(--sand-50);border:none;padding:11px 22px;border-radius:var(--r-pill);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;}
+
+  /* Tabs */
+  .tabs-bar{padding:0 32px;background:var(--sand-50);border-bottom:1px solid var(--sand-300);display:flex;gap:4px;}
+  .tab{padding:18px 4px;margin-right:24px;font-size:14px;color:var(--ink-400);font-weight:500;border-bottom:2px solid transparent;display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .tab.active{color:var(--forest-900);border-bottom-color:var(--terra-500);font-weight:600;}
+
+  /* ===== HERO ===== */
+  .hero{display:grid;grid-template-columns:1.1fr 0.9fr;gap:40px;align-items:center;padding:44px 32px 36px;}
+  .hero-eyebrow{font-size:13px;color:var(--terra-500);font-weight:500;margin-bottom:18px;}
+  .hero-title{font-size:60px;font-weight:600;letter-spacing:-0.045em;line-height:0.94;color:var(--forest-900);margin-bottom:18px;}
+  .hero-title .light{font-weight:200;color:var(--terra-500);font-style:italic;}
+  .hero-sub{font-size:16px;color:var(--ink-500);line-height:1.55;max-width:44ch;margin-bottom:24px;}
+  .hero-search{display:flex;align-items:center;gap:0;background:var(--sand-50);border:1px solid var(--sand-300);border-radius:var(--r-pill);padding:6px 6px 6px 22px;max-width:520px;}
+  .hero-search input{flex:1;border:none;background:transparent;font-family:inherit;font-size:14px;color:var(--forest-900);padding:12px 14px 12px 0;outline:none;}
+  .hero-search input::placeholder{color:var(--ink-400);}
+  .hero-search-btn{width:44px;height:44px;border-radius:50%;background:var(--terra-500);border:none;cursor:pointer;display:grid;place-items:center;color:var(--sand-50);flex-shrink:0;}
+  .hero-imgwrap{position:relative;aspect-ratio:4/3;border-radius:var(--r-xl);overflow:hidden;background:linear-gradient(140deg,#1E6A52 0%,#0C3B2E 55%,#5E2113 100%);}
+  .hero-imgwrap::before{content:"";position:absolute;inset:0;background-image:radial-gradient(ellipse 60% 50% at 58% 55%,rgba(232,199,126,0.32) 0%,transparent 70%),radial-gradient(ellipse 42% 32% at 24% 28%,rgba(200,85,61,0.38) 0%,transparent 70%);}
+  .hero-imgwrap::after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(60deg,transparent 0,transparent 22px,rgba(255,255,255,0.045) 22px,rgba(255,255,255,0.045) 23px);}
+
+  /* ===== STICKY FILTER SPINE ===== */
+  .filter-spine{position:sticky;top:71px;z-index:25;background:var(--sand-100);border-top:1px solid var(--sand-300);border-bottom:1px solid var(--sand-300);padding:16px 32px;}
+  .filter-row{display:flex;align-items:center;gap:16px;}
+  .filter-label{font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-400);font-weight:600;flex-shrink:0;}
+  .phase-chips{display:flex;gap:8px;flex-wrap:wrap;flex:1;}
+  .chip{padding:9px 18px;border-radius:var(--r-pill);font-size:13px;font-weight:500;background:var(--sand-50);border:1px solid var(--sand-300);color:var(--ink-700);cursor:pointer;transition:all .15s;user-select:none;}
+  .chip:hover{border-color:var(--forest-900);}
+  .chip.active{background:var(--forest-900);color:var(--sand-100);border-color:var(--forest-900);font-weight:600;}
+  .filter-clear{font-size:12px;color:var(--terra-500);font-weight:600;cursor:pointer;background:none;border:none;font-family:inherit;flex-shrink:0;display:none;}
+  .filter-clear.show{display:inline;}
+
+  .content{padding:48px 32px 80px;display:flex;flex-direction:column;gap:56px;max-width:1320px;}
+
+  /* Section heads */
+  .sec{display:flex;flex-direction:column;gap:22px;}
+  .sec-head{display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:14px;border-bottom:1px solid var(--sand-300);gap:24px;}
+  .sec-eyebrow{font-size:11px;font-family:ui-monospace,monospace;letter-spacing:0.14em;text-transform:uppercase;color:var(--terra-500);font-weight:600;margin-bottom:8px;}
+  .sec-title{font-size:32px;font-weight:600;letter-spacing:-0.035em;color:var(--forest-900);line-height:1;}
+  .sec-title .light{font-weight:200;color:var(--terra-500);font-style:italic;}
+  .sec-count{font-family:ui-monospace,monospace;font-size:12px;color:var(--ink-400);letter-spacing:0.04em;white-space:nowrap;}
+
+  /* ===== COMECE POR AQUI ===== */
+  .start{display:grid;grid-template-columns:1fr 1.1fr;background:var(--sand-50);border:1px solid var(--sand-300);border-radius:var(--r-lg);overflow:hidden;min-height:260px;}
+  .start-imgwrap{position:relative;background:linear-gradient(135deg,#2a3a30 0%,#1F2A22 55%,#0E1A14 100%);overflow:hidden;}
+  .start-imgwrap::before{content:"";position:absolute;inset:0;background-image:radial-gradient(ellipse 60% 50% at 60% 60%,rgba(200,85,61,0.35) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 25% 30%,rgba(108,151,115,0.28) 0%,transparent 70%);}
+  .start-imgwrap::after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent 0,transparent 16px,rgba(255,255,255,0.05) 16px,rgba(255,255,255,0.05) 17px);}
+  .start-badge{position:absolute;top:18px;left:18px;z-index:3;background:var(--sage-500);color:var(--forest-900);padding:6px 14px;border-radius:var(--r-pill);font-size:11px;font-weight:700;font-family:ui-monospace,monospace;letter-spacing:0.08em;text-transform:uppercase;display:flex;align-items:center;gap:6px;pointer-events:none;}
+  .start-body{padding:36px 40px;display:flex;flex-direction:column;justify-content:center;}
+  .start-eyebrow{font-size:11px;font-family:ui-monospace,monospace;letter-spacing:0.16em;text-transform:uppercase;color:var(--terra-500);font-weight:600;margin-bottom:12px;}
+  .start-title{font-size:30px;font-weight:600;letter-spacing:-0.03em;color:var(--forest-900);line-height:1.05;margin-bottom:12px;}
+  .start-desc{font-size:15px;color:var(--ink-500);line-height:1.55;margin-bottom:24px;max-width:46ch;}
+  .start-cta{align-self:flex-start;background:var(--terra-500);color:var(--sand-50);border:none;padding:14px 26px;border-radius:var(--r-pill);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:10px;}
+  .start-cta:hover{background:var(--terra-700);}
+
+  /* ===== TRILHAS (uniform grid, gradient category bands) ===== */
+  .trail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+  .trail{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:var(--r-lg);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:transform .18s ease,border-color .18s ease;}
+  .trail:hover{transform:translateY(-2px);border-color:var(--forest-500);}
+  .trail-band{height:96px;position:relative;display:flex;align-items:flex-end;padding:16px 20px;}
+  .trail-band.casados{background:linear-gradient(135deg,#1E6A52,#0C3B2E);}
+  .trail-band.namoro{background:linear-gradient(135deg,#4F7253,#1F2A22);}
+  .trail-band.noivos{background:linear-gradient(135deg,#9C3A26,#5E2113);}
+  .trail-band.pais{background:linear-gradient(135deg,#A37A2D,#5E2113);}
+  .trail-band.solteiro{background:linear-gradient(135deg,#6D9773,#144D3C);}
+  .trail-band::after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(45deg,transparent 0,transparent 14px,rgba(255,255,255,0.05) 14px,rgba(255,255,255,0.05) 15px);}
+  .trail-phase{position:relative;z-index:1;font-family:ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:var(--sand-50);font-weight:700;}
+  .trail-count{position:absolute;top:14px;right:16px;z-index:1;background:rgba(14,26,20,0.55);color:var(--sand-100);padding:4px 11px;border-radius:var(--r-pill);font-size:11px;font-family:ui-monospace,monospace;letter-spacing:0.04em;display:flex;align-items:center;gap:5px;}
+  .trail-count.soon{background:var(--ochre-500);color:var(--forest-900);font-weight:600;}
+  .trail-body{padding:20px;display:flex;flex-direction:column;flex:1;}
+  .trail-title{font-size:19px;font-weight:600;color:var(--forest-900);letter-spacing:-0.02em;line-height:1.15;margin-bottom:8px;}
+  .trail-desc{font-size:13px;color:var(--ink-500);line-height:1.5;margin-bottom:18px;}
+  .trail-foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:14px;border-top:1px solid var(--sand-200);}
+  .trail-meta{font-family:ui-monospace,monospace;font-size:11px;color:var(--ink-400);letter-spacing:0.04em;}
+  .trail-action{font-size:13px;color:var(--terra-500);font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+
+  /* ===== CONTEÚDOS (unified library, photo slots) ===== */
+  .lib-controls{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;}
+  .format-chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .format-chip{padding:8px 16px;border-radius:var(--r-pill);font-size:13px;font-weight:500;background:transparent;border:1px solid var(--sand-300);color:var(--ink-500);cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .15s;}
+  .format-chip:hover{border-color:var(--forest-900);color:var(--forest-900);}
+  .format-chip.active{background:var(--terra-500);border-color:var(--terra-500);color:var(--sand-50);font-weight:600;}
+  .format-chip .ct{opacity:0.7;font-size:11px;}
+  .format-chip.active .ct{opacity:0.85;}
+
+  .lib-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+  .card{background:var(--sand-50);border:1px solid var(--sand-300);border-radius:var(--r-md);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform .18s ease,border-color .18s ease;}
+  .card:hover{transform:translateY(-2px);border-color:var(--forest-500);}
+  .card-img{aspect-ratio:16/10;position:relative;overflow:hidden;background:linear-gradient(135deg,#2a3a30,#1F2A22);}
+  .card-type{position:absolute;top:12px;left:12px;z-index:3;background:rgba(14,26,20,0.62);color:var(--sand-100);padding:4px 11px;border-radius:var(--r-pill);font-size:10px;font-family:ui-monospace,monospace;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;display:flex;align-items:center;gap:5px;backdrop-filter:blur(4px);pointer-events:none;}
+  .card-bookmark{position:absolute;top:12px;right:12px;z-index:3;width:30px;height:30px;border-radius:50%;background:rgba(250,244,232,0.9);display:grid;place-items:center;color:var(--ink-500);border:none;cursor:pointer;}
+  .card-bookmark:hover{color:var(--terra-500);}
+  .card-bookmark.saved{color:var(--terra-500);}
+  .card-body{padding:16px 18px 18px;display:flex;flex-direction:column;flex:1;gap:6px;}
+  .card-title{font-size:15px;font-weight:600;color:var(--forest-900);letter-spacing:-0.01em;line-height:1.25;}
+  .card-author{font-size:12px;color:var(--ink-400);}
+  .card-foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:14px;}
+  .status{font-size:12px;font-weight:600;font-family:ui-monospace,monospace;letter-spacing:0.04em;display:inline-flex;align-items:center;gap:6px;}
+  .status .dot{width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;}
+  .status.free{color:var(--sage-700);}
+  .status.premium{color:var(--ink-700);}
+  .status.soon{color:var(--ochre-700);}
+  .status.open{color:var(--forest-500);}
+  .card-action{padding:8px 16px;border-radius:var(--r-pill);font-size:12px;font-weight:600;font-family:inherit;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+  .card-action.primary{background:var(--terra-500);color:var(--sand-50);}
+  .card-action.primary:hover{background:var(--terra-700);}
+  .card-action.outline{background:transparent;color:var(--forest-900);border:1.5px solid var(--forest-900);padding:6.5px 14.5px;}
+  .card-action.outline:hover{background:var(--forest-900);color:var(--sand-100);}
+  .card-action.soft{background:var(--sand-200);color:var(--ink-700);}
+  .card-action.soft:hover{background:var(--sand-300);}
+
+  /* Empty state */
+  .empty{grid-column:1/-1;text-align:center;padding:64px 0;color:var(--ink-400);}
+  .empty svg{margin-bottom:16px;color:var(--sand-400);}
+  .empty-title{font-size:18px;font-weight:600;color:var(--forest-900);margin-bottom:6px;}
+  .empty-sub{font-size:14px;}
+
+  .show-more{align-self:center;margin-top:8px;background:transparent;border:1.5px solid var(--sand-400);color:var(--forest-900);padding:13px 28px;border-radius:var(--r-pill);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;}
+  .show-more:hover{border-color:var(--forest-900);background:var(--sand-50);}
+
+  @media (max-width:1200px){
+    .lib-grid{grid-template-columns:repeat(3,1fr);}
+    .trail-grid{grid-template-columns:repeat(2,1fr);}
+  }
+  @media (max-width:900px){
+    .app{grid-template-columns:1fr;}
+    .side{display:none;}
+    .hero{grid-template-columns:1fr;}
+    .hero-imgwrap{display:none;}
+    .start{grid-template-columns:1fr;}
+    .start-imgwrap{min-height:200px;}
+    .lib-grid{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+<div class="app" data-screen-label="Turmas">
+
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <div class="side-brand">
+      <div class="brand-mark">
+        <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
+          <circle cx="18" cy="18" r="6" fill="#FAF4E8"/>
+          <g stroke="#FAF4E8" stroke-width="1.8" stroke-linecap="round">
+            <line x1="18" y1="2" x2="18" y2="7"/><line x1="18" y1="29" x2="18" y2="34"/>
+            <line x1="2" y1="18" x2="7" y2="18"/><line x1="29" y1="18" x2="34" y2="18"/>
+            <line x1="6.5" y1="6.5" x2="10" y2="10"/><line x1="26" y1="26" x2="29.5" y2="29.5"/>
+            <line x1="6.5" y1="29.5" x2="10" y2="26"/><line x1="26" y1="10" x2="29.5" y2="6.5"/>
+          </g>
+        </svg>
+      </div>
+      <div>
+        <div class="brand-name">RAYO</div>
+        <span class="brand-sub">Família</span>
+      </div>
+    </div>
+
+    <div class="side-user">
+      <div class="side-user-avatar">RR</div>
+      <div>
+        <div class="side-user-name">Rafael Raio</div>
+        <div class="side-user-meta">Nível 1 · Casados</div>
+      </div>
+    </div>
+
+    <nav class="side-nav">
+      <span class="side-section-label">Navegar</span>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 8l6-5 6 5v7a1 1 0 0 1-1 1h-3v-4H7v4H4a1 1 0 0 1-1-1V8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Início
+      </div>
+      <div class="nav-item active">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 6l7-3 7 3-7 3-7-3z m0 4l7 3 7-3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Turmas
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6.5" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+        Conselheiro
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="6.5" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M2 15c0-2 2-3.5 4.5-3.5S11 13 11 15M11 15c0-1.5 1.5-2.5 3-2.5s3 1 3 2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Comunidade
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 4h12v8a1 1 0 0 1-1 1H6l-3 2V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Mensagens
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-3 3-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Perfil
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 2L3 4v5c0 4 2.5 6 6 7 3.5-1 6-3 6-7V4L9 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Admin
+      </div>
+    </nav>
+
+    <div class="side-bottom">
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="m11 4-5 5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Minimizar
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M14 11A6 6 0 0 1 7 4a6 6 0 1 0 7 7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Modo Escuro
+      </div>
+      <div class="nav-item">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M9 1v2M9 15v2M1 9h2M15 9h2M3 3l1.4 1.4M13.6 13.6L15 15M3 15l1.4-1.4M13.6 4.4L15 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Configurações
+      </div>
+      <div class="nav-item" style="color:var(--terra-500);">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M7 3H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3M11 12l3-3-3-3M14 9H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Sair
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="m11 11 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Buscar cursos, conteúdos, comunidade…
+      </div>
+      <div class="topbar-icons">
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 16s-7-4-7-9.5A4.5 4.5 0 0 1 9 3a4.5 4.5 0 0 1 7 3.5C16 12 9 16 9 16z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 4h12v9a1 1 0 0 1-1 1H6l-3 2V4z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M5 7a4 4 0 1 1 8 0v3l1.5 2.5h-11L5 10V7z M7 14a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+        <button class="premium-btn">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor"><path d="m6.5 1 1.6 3.3 3.6.5-2.6 2.5.6 3.6L6.5 9.2 3.3 11l.6-3.6L1.3 4.8l3.6-.5L6.5 1z"/></svg>
+          Seja Premium
+        </button>
+      </div>
+    </div>
+
+    <div class="tabs-bar">
+      <div class="tab"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3h7a3 3 0 0 1 3 3v7H6a3 3 0 0 1-3-3V3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg> Minhas Turmas</div>
+      <div class="tab active"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 5h10v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5z M5 5V3h6v2" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg> Catálogo de turmas</div>
+    </div>
+
+    <!-- HERO -->
+    <section class="hero">
+      <div>
+        <div class="hero-eyebrow">Conteúdo para a sua família</div>
+        <h1 class="hero-title">O que vocês <span class="light">vão</span><br>construir hoje?</h1>
+        <p class="hero-sub">Trilhas curadas e uma biblioteca de cursos, livros e vídeos — organizados pela fase da sua família.</p>
+        <div class="hero-search">
+          <input placeholder='Busque por "comunicação", "filhos" ou "finanças"' />
+          <button class="hero-search-btn">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.6"/><path d="m11 11 3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="hero-imgwrap"></div>
+    </section>
+
+    <!-- STICKY FILTER SPINE -->
+    <div class="filter-spine">
+      <div class="filter-row">
+        <span class="filter-label">Para o seu momento</span>
+        <div class="phase-chips" id="phaseChips">
+          <span class="chip active" data-phase="todos">Todos</span>
+          <span class="chip" data-phase="solteiro">Solteiro</span>
+          <span class="chip" data-phase="namoro">Namoro</span>
+          <span class="chip" data-phase="noivos">Noivos</span>
+          <span class="chip" data-phase="casados">Casados</span>
+          <span class="chip" data-phase="pais">Pais</span>
+        </div>
+        <button class="filter-clear" id="filterClear">Limpar filtros ×</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- COMECE POR AQUI -->
+      <section class="sec" id="startSec">
+        <div class="sec-head">
+          <div>
+            <div class="sec-eyebrow">Seu ponto de partida</div>
+            <h2 class="sec-title">Comece por <span class="light">aqui</span></h2>
+          </div>
+        </div>
+        <div class="start">
+          <div class="start-imgwrap">
+            <span class="start-badge">
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v9m-4-4.5h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              Comece grátis
+            </span>
+          </div>
+          <div class="start-body">
+            <div class="start-eyebrow" id="startEyebrow">Recomendado para Casados</div>
+            <h3 class="start-title" id="startTitle">Fundamentos do Relacionamento</h3>
+            <p class="start-desc" id="startDesc">Uma base sólida com os princípios de comunicação, respeito e confiança — o primeiro passo antes de qualquer trilha.</p>
+            <button class="start-cta">
+              Começar agora
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8m-3-3l3 3-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TRILHAS -->
+      <section class="sec" id="trailSec">
+        <div class="sec-head">
+          <div>
+            <div class="sec-eyebrow">Jornadas curadas de ponta a ponta</div>
+            <h2 class="sec-title">Trilhas <span class="light">para a sua fase</span></h2>
+          </div>
+          <span class="sec-count" id="trailCount"></span>
+        </div>
+        <div class="trail-grid" id="trailGrid"></div>
+      </section>
+
+      <!-- CONTEÚDOS -->
+      <section class="sec" id="libSec">
+        <div class="sec-head">
+          <div>
+            <div class="sec-eyebrow">Biblioteca · acesso digital imediato</div>
+            <h2 class="sec-title">Todos os <span class="light">conteúdos</span></h2>
+          </div>
+          <span class="sec-count" id="libCount"></span>
+        </div>
+        <div class="lib-controls">
+          <div class="format-chips" id="formatChips">
+            <span class="format-chip active" data-format="todos">Todos <span class="ct" data-ct="todos"></span></span>
+            <span class="format-chip" data-format="curso">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M1 5l6-2.5L13 5 7 7.5 1 5z m3 3v3c0 .7 1.3 1.3 3 1.3s3-.6 3-1.3V8" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+              Cursos <span class="ct" data-ct="curso"></span>
+            </span>
+            <span class="format-chip" data-format="livro">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M4 2h8v11l-4-2-4 2V2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+              Livros <span class="ct" data-ct="livro"></span>
+            </span>
+            <span class="format-chip" data-format="video">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><rect x="1.5" y="3.5" width="8" height="7" rx="1.2" stroke="currentColor" stroke-width="1.3"/><path d="m9.5 6 3-1.5v5L9.5 8" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+              Vídeos <span class="ct" data-ct="video"></span>
+            </span>
+          </div>
+        </div>
+        <div class="lib-grid" id="libGrid"></div>
+        <button class="show-more" id="showMore" style="display:none;">
+          Ver mais conteúdos
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8m-3-3l3 3 3-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  const PHASE_LABEL = {solteiro:'Solteiro',namoro:'Namoro',noivos:'Noivos',casados:'Casados',pais:'Pais'};
+
+  const START_BY_PHASE = {
+    todos:    {eb:'Recomendado para começar', t:'Fundamentos do Relacionamento', d:'Uma base sólida com os princípios de comunicação, respeito e confiança — o primeiro passo antes de qualquer trilha.', ph:'Casal abraçado · ao ar livre · intimista'},
+    solteiro: {eb:'Recomendado para Solteiro', t:'Identidade & propósito', d:'Conhecer a si mesmo, fortalecer a fé e construir uma base saudável antes do próximo passo.', ph:'Pessoa só · reflexiva · luz natural'},
+    namoro:   {eb:'Recomendado para Namoro', t:'Fundamentos do namoro', d:'Comunicação, limites e visão de futuro para namoros que constroem, em vez de só ocupar tempo.', ph:'Casal jovem · caminhando · espontâneo'},
+    noivos:   {eb:'Recomendado para Noivos', t:'Preparando o sim', d:'Finanças, expectativas, família de origem e os combinados práticos que poucos casais fazem antes de casar.', ph:'Casal noivo · planejando juntos'},
+    casados:  {eb:'Recomendado para Casados', t:'Fundamentos do Relacionamento', d:'Uma base sólida com os princípios de comunicação, respeito e confiança — o primeiro passo antes de qualquer trilha.', ph:'Casal abraçado · ao ar livre · intimista'},
+    pais:     {eb:'Recomendado para Pais', t:'Primeiros anos em família', d:'Sono, rotina, vínculo afetivo e os primeiros combinados do casal como pais.', ph:'Pais com bebê · em casa · afetivo'}
+  };
+
+  const TRAILS = [
+    {phase:'casados', title:'Comunicação no casamento', desc:'Ferramentas práticas para conversas difíceis, perdão e reconexão no dia a dia do casal.', items:3, dur:'2h 40m', author:'Dra. Ana Costa'},
+    {phase:'casados', title:'Intimidade e cumplicidade', desc:'Caminhos para reaproximação afetiva, sexual e espiritual no casamento de longa duração.', items:3, dur:'3h 15m', author:'Dr. Paulo Mendes'},
+    {phase:'namoro', title:'Fundamentos do namoro', desc:'Comunicação, limites e visão de futuro para namoros que constroem de verdade.', items:1, dur:'55m', author:'Juliana Rodrigues'},
+    {phase:'noivos', title:'Preparando o sim', desc:'Finanças, expectativas e combinados práticos que poucos casais fazem antes de casar.', items:0, dur:'Em breve', author:'Pr. Ricardo Almeida'},
+    {phase:'pais', title:'Primeiros anos em família', desc:'Sono, rotina, vínculo afetivo e os primeiros combinados do casal como pais.', items:1, dur:'1h 10m', author:'Dra. Maria Santos'},
+    {phase:'pais', title:'Pais de adolescentes', desc:'Diálogo sem perder a autoridade: conexão, limites firmes e fé viva com filhos de 11 a 19 anos.', items:1, dur:'1h 25m', author:'Dr. Paulo Mendes'},
+    {phase:'solteiro', title:'Identidade & propósito', desc:'Conteúdos para se conhecer, fortalecer a fé e construir uma base saudável antes do próximo passo.', items:1, dur:'48m', author:'Equipe RAYO'}
+  ];
+
+  const CONTENT = [
+    {type:'curso', title:'Fundamentos do Relacionamento', author:'Dr. Paulo Mendes', status:'free', phases:['casados','noivos','namoro'], ph:'Casal sentado · conversa · luz quente'},
+    {type:'curso', title:'Comunicação Não-Violenta para Famílias', author:'Dra. Ana Costa', status:'soon', phases:['pais','casados'], ph:'Família abraçada · casa · ternura'},
+    {type:'curso', title:'Finanças para Casais', author:'Carlos Oliveira', status:'free', phases:['casados','noivos'], ph:'Casal à mesa · planilha · planejando'},
+    {type:'curso', title:'Educação Positiva: Criando Filhos Resilientes', author:'Dra. Maria Santos', status:'soon', phases:['pais'], ph:'Criança sorrindo · brincando · viva'},
+    {type:'curso', title:'Preparação para o Namoro Saudável', author:'Juliana Rodrigues', status:'free', phases:['solteiro','namoro'], ph:'Jovens · ar livre · leveza'},
+    {type:'curso', title:'Construindo um Noivado com Propósito', author:'Pr. Ricardo Almeida', status:'soon', phases:['noivos'], ph:'Casal noivo · mãos dadas · sereno'},
+    {type:'livro', title:'Como começar no homeschool?', author:'Rafael e Jéssica Raio', status:'premium', price:'R$ 79', phases:['pais'], ph:'Capa do livro · colorida · ilustrada'},
+    {type:'livro', title:'Casamento que comunica', author:'Dra. Ana Costa', status:'premium', price:'R$ 64', phases:['casados'], ph:'Capa do livro · sóbria · editorial'},
+    {type:'video', title:'15 anos dizendo SIM pra Deus: valeu a pena obedecer?', author:'RAYO Talks', status:'open', phases:['casados','solteiro'], ph:'Thumbnail vídeo · apresentador · estúdio'},
+    {type:'video', title:'Intimidade no Casamento: reconectando corpo e alma', author:'Dr. Paulo Mendes', status:'open', phases:['casados'], ph:'Casal maduro · próximo · penumbra quente'},
+    {type:'video', title:'Finanças do Casal: organizar o dinheiro sem brigas', author:'Carlos Oliveira', status:'open', phases:['casados','noivos'], ph:'Casal idoso · mesa · documentos'},
+    {type:'video', title:'Como Educar Filhos com Disciplina Positiva — Método RAIO', author:'Dra. Maria Santos', status:'open', phases:['pais'], ph:'Família · piquenique · ao ar livre'},
+    {type:'video', title:'5 Sinais de que Seu Relacionamento Precisa de Ajuda', author:'Dra. Ana Costa', status:'open', phases:['casados','namoro'], ph:'Mulher pensativa · descanso · luz suave'},
+    {type:'video', title:'Como Transformar Seu Casamento em 30 Dias', author:'RAYO Talks', status:'open', phases:['casados'], ph:'Casal · varanda · cumplicidade'}
+  ];
+
+  const GRADS = ['g1','g2','g3','g4','g6','g7'];
+  const TYPE_LABEL = {curso:'Curso', livro:'Livro', video:'Vídeo'};
+  const TYPE_ICON = {
+    curso:'<svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M1 5l6-2.5L13 5 7 7.5 1 5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+    livro:'<svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M4 2h8v11l-4-2-4 2V2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+    video:'<svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M5 4v6l5-3-5-3z" fill="currentColor"/></svg>'
+  };
+  const STATUS = {
+    free:    {cls:'free', label:'Gratuito', action:'<button class="card-action outline">Acessar →</button>'},
+    open:    {cls:'open', label:'Acesso imediato', action:'<button class="card-action soft">Assistir</button>'},
+    premium: {cls:'premium', label:'', action:'<button class="card-action primary">Adquirir</button>'},
+    soon:    {cls:'soon', label:'Em breve', action:'<button class="card-action soft">Avise-me</button>'}
+  };
+
+  let phase = 'todos';
+  let format = 'todos';
+  let limit = 8;
+
+  // ---------- BUILD (render once) ----------
+  const trailGrid = document.getElementById('trailGrid');
+  TRAILS.forEach(t=>{
+    const soon = t.items===0;
+    const el = document.createElement('article');
+    el.className = 'trail';
+    el.dataset.phase = t.phase;
+    el.innerHTML = `
+      <div class="trail-band ${t.phase}">
+        <span class="trail-phase">${PHASE_LABEL[t.phase]}</span>
+        <span class="trail-count ${soon?'soon':''}">
+          ${soon?'Em breve':`<svg width="10" height="10" viewBox="0 0 11 11" fill="none"><rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.3"/></svg> ${t.items} ${t.items===1?'item':'itens'}`}
+        </span>
+      </div>
+      <div class="trail-body">
+        <h3 class="trail-title">${t.title}</h3>
+        <p class="trail-desc">${t.desc}</p>
+        <div class="trail-foot">
+          <span class="trail-meta">${t.dur} · ${t.author}</span>
+          <span class="trail-action">Ver trilha
+            <svg width="12" height="12" viewBox="0 0 13 13" fill="none"><path d="M3 6.5h7m-2-2 2 2-2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </div>
+      </div>`;
+    trailGrid.appendChild(el);
+  });
+  const trailEmpty = document.createElement('div');
+  trailEmpty.className = 'empty hidden';
+  trailEmpty.innerHTML = emptyHTML('Nenhuma trilha para esta fase ainda','Estamos preparando novas jornadas. Veja a biblioteca abaixo.');
+  trailGrid.appendChild(trailEmpty);
+
+  const libGrid = document.getElementById('libGrid');
+  CONTENT.forEach((c,i)=>{
+    const st = STATUS[c.status];
+    const statusText = c.status==='premium' ? c.price : st.label;
+    const el = document.createElement('article');
+    el.className = 'card';
+    el.dataset.type = c.type;
+    el.dataset.phases = c.phases.join(',');
+    el.innerHTML = `
+      <div class="card-img ${GRADS[i%GRADS.length]}">
+        <span class="card-type">${TYPE_ICON[c.type]} ${TYPE_LABEL[c.type]}</span>
+        <button class="card-bookmark" type="button">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M4 2h6v10l-3-2-3 2V2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <div class="card-body">
+        <h3 class="card-title">${c.title}</h3>
+        <p class="card-author">${c.author}</p>
+        <div class="card-foot">
+          <span class="status ${st.cls}">${st.cls==='premium'?'':'<span class="dot"></span>'}${statusText}</span>
+          ${st.action}
+        </div>
+      </div>`;
+    libGrid.appendChild(el);
+  });
+  const libEmpty = document.createElement('div');
+  libEmpty.className = 'empty hidden';
+  libEmpty.innerHTML = emptyHTML('Nada por aqui com esses filtros','Tente outra fase ou outro formato.');
+  libGrid.appendChild(libEmpty);
+
+  // bookmark toggle
+  libGrid.addEventListener('click', e=>{
+    const b = e.target.closest('.card-bookmark');
+    if(b){ b.classList.toggle('saved'); e.stopPropagation(); }
+  });
+
+  const trailEls = Array.from(trailGrid.querySelectorAll('.trail'));
+  const contEls = Array.from(libGrid.querySelectorAll('.card'));
+
+  function emptyHTML(title,sub){
+    return `<svg width="40" height="40" viewBox="0 0 40 40" fill="none"><circle cx="18" cy="18" r="12" stroke="currentColor" stroke-width="2"/><path d="m27 27 8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <div class="empty-title">${title}</div><div class="empty-sub">${sub}</div>`;
+  }
+
+  // ---------- FILTER ----------
+  function matchPhaseTrail(el){ return phase==='todos' || el.dataset.phase===phase; }
+
+  function renderStart(){
+    const s = START_BY_PHASE[phase] || START_BY_PHASE.todos;
+    document.getElementById('startEyebrow').textContent = s.eb;
+    document.getElementById('startTitle').textContent = s.t;
+    document.getElementById('startDesc').textContent = s.d;
+  }
+
+  function applyTrails(){
+    let n=0;
+    trailEls.forEach(el=>{ const m=matchPhaseTrail(el); el.classList.toggle('hidden',!m); if(m)n++; });
+    document.getElementById('trailCount').textContent = n + (n===1?' trilha':' trilhas');
+    trailEmpty.classList.toggle('hidden', n>0);
+  }
+
+  function applyFormatCounts(){
+    const counts={todos:0,curso:0,livro:0,video:0};
+    contEls.forEach(el=>{
+      const ph=el.dataset.phases.split(',');
+      if(phase==='todos'||ph.includes(phase)){ counts.todos++; counts[el.dataset.type]++; }
+    });
+    document.querySelectorAll('[data-ct]').forEach(el=>{ el.textContent=counts[el.getAttribute('data-ct')]; });
+  }
+
+  function applyLib(){
+    const matched = contEls.filter(el=>{
+      const ph=el.dataset.phases.split(',');
+      const okPhase = phase==='todos'||ph.includes(phase);
+      const okFmt = format==='todos'||el.dataset.type===format;
+      return okPhase && okFmt;
+    });
+    contEls.forEach(el=>el.classList.add('hidden'));
+    matched.forEach((el,i)=>{ if(i<limit) el.classList.remove('hidden'); });
+    document.getElementById('libCount').textContent = matched.length + (matched.length===1?' conteúdo':' conteúdos');
+    libEmpty.classList.toggle('hidden', matched.length>0);
+    document.getElementById('showMore').style.display = matched.length>limit ? 'inline-flex' : 'none';
+  }
+
+  function renderAll(){ renderStart(); applyTrails(); applyFormatCounts(); applyLib(); }
+
+  // ---------- EVENTS ----------
+  document.getElementById('phaseChips').addEventListener('click', e=>{
+    const chip=e.target.closest('.chip'); if(!chip) return;
+    phase=chip.getAttribute('data-phase'); limit=8;
+    document.querySelectorAll('#phaseChips .chip').forEach(c=>c.classList.toggle('active',c===chip));
+    document.getElementById('filterClear').classList.toggle('show', phase!=='todos'||format!=='todos');
+    renderAll();
+  });
+  document.getElementById('formatChips').addEventListener('click', e=>{
+    const chip=e.target.closest('.format-chip'); if(!chip) return;
+    format=chip.getAttribute('data-format'); limit=8;
+    document.querySelectorAll('#formatChips .format-chip').forEach(c=>c.classList.toggle('active',c===chip));
+    document.getElementById('filterClear').classList.toggle('show', phase!=='todos'||format!=='todos');
+    applyLib();
+  });
+  document.getElementById('showMore').addEventListener('click', ()=>{ limit+=8; applyLib(); });
+  document.getElementById('filterClear').addEventListener('click', ()=>{
+    phase='todos'; format='todos'; limit=8;
+    document.querySelectorAll('#phaseChips .chip').forEach(c=>c.classList.toggle('active',c.getAttribute('data-phase')==='todos'));
+    document.querySelectorAll('#formatChips .format-chip').forEach(c=>c.classList.toggle('active',c.getAttribute('data-format')==='todos'));
+    document.getElementById('filterClear').classList.remove('show');
+    renderAll();
+  });
+
+  renderAll();
+</script>
+</body>
+</html>

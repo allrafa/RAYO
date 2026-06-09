@@ -1,0 +1,248 @@
+/* RAYO — Dark theme override
+   Aplica-se em cima de qualquer tela do RAYO sem mudar o HTML.
+   Estratégia: inverte a base "sand" (clara) para "ink" (escura),
+   mantém forest/sage/terra/ochre como acentos vibrantes, e suaviza
+   bordas para baixa luminância. */
+
+:root {
+  /* Base invertida — agora os 'sand' são tons escuros */
+  --sand-50:  #14201A;   /* fundo principal */
+  --sand-100: #0E1A14;   /* fundo mais profundo */
+  --sand-200: #1E2A23;   /* superfícies elevadas */
+  --sand-300: #2A3830;   /* bordas e divisores */
+  --sand-400: #3A4A40;   /* bordas de destaque */
+
+  /* Forest fica como destaque escuro 'invertido' — usado em painéis premium */
+  --forest-900: #0A2E24;
+  --forest-700: #144D3C;
+  --forest-500: #2E8265;   /* mais brilhante para se ler no escuro */
+
+  /* Sage mais luminoso */
+  --sage-100: #2A3D2C;
+  --sage-300: #6E9572;
+  --sage-500: #8FB695;     /* puxa pro claro pra contrastar */
+  --sage-700: #B8D2BC;
+
+  /* Terracota vibrante para CTAs e marca */
+  --terra-100: #4A2218;
+  --terra-300: #C8553D;
+  --terra-500: #E07258;     /* mais quente e claro */
+  --terra-700: #F2A48E;
+  --terra-900: #FBD4C6;
+
+  /* Ochre dourado mantido vibrante */
+  --ochre-300: #F0D89A;
+  --ochre-500: #E8C77E;
+  --ochre-700: #C9A55C;
+
+  /* Ink invertido — agora são tons claros */
+  --ink-900: #FAF4E8;     /* texto principal */
+  --ink-700: #E8DEC8;
+  --ink-500: #B5AC95;     /* texto secundário */
+  --ink-400: #8E866F;     /* texto terciário / mono */
+  --ink-300: #6E6855;
+}
+
+html, body { background: var(--sand-100) !important; color: var(--ink-900) !important; }
+
+/* Sidebar e topbar respiram um tom mais claro do que o body */
+.side, .topbar { background: var(--sand-50) !important; border-color: var(--sand-300) !important; }
+
+/* Search input no topbar: fundo um pouco mais escuro, borda discreta */
+.search { background: var(--sand-200) !important; border-color: var(--sand-300) !important; color: var(--ink-500) !important; }
+
+/* Cards genéricos do projeto */
+.panel, .post, .format, .trail, .course-card, .pf-stat, .mission,
+.daily-card, .stat-card, .reco-card, .disc-card, .ftu-card, .trend-card,
+.podcast-card, .short-card, .quiz-card, .miss-card, .hero-card, .pop {
+  background: var(--sand-50) !important;
+  border-color: var(--sand-300) !important;
+}
+
+/* Painéis "escuros" (forest-900 sobre fundo claro originalmente)
+   no dark mode invertem: ficam mais luminosos (sage/forest-700) */
+.side-user, .pf-hero, .panel-stats, .mission.done, .format.active,
+.chip.active, .filter-chip.active, .nav-item.active, .tab.active + *,
+.pop-eyebrow, .com-hero-meta .num {
+  /* sem reset global — específicos abaixo */
+}
+.side-user { background: var(--forest-700) !important; color: var(--ink-900) !important; }
+.pf-hero { background: linear-gradient(140deg, var(--forest-700) 0%, #08231C 70%) !important; }
+.panel-stats { background: var(--forest-700) !important; }
+.panel-stats .stat-label, .panel-stats .stat-val { color: var(--ink-900) !important; }
+.mission.done { background: var(--forest-700) !important; border-color: var(--forest-700) !important; }
+.format.active { background: var(--forest-700) !important; border-color: var(--forest-700) !important; color: var(--ink-900) !important; }
+.format.active .format-icon { background: var(--forest-500) !important; color: var(--ochre-300) !important; }
+.format.active .format-name { color: var(--ink-900) !important; }
+.format.active .format-desc { color: var(--ink-500) !important; }
+.chip.active, .filter-chip.active { background: var(--terra-500) !important; border-color: var(--terra-500) !important; color: var(--sand-100) !important; }
+.nav-item.active { background: var(--terra-500) !important; color: var(--sand-100) !important; }
+
+/* Tabs */
+.tabs-bar { background: var(--sand-50) !important; border-color: var(--sand-300) !important; }
+.tab.active { color: var(--ink-900) !important; border-bottom-color: var(--terra-500) !important; }
+
+/* Marca: mantém terracota brilhante */
+.brand-mark { background: var(--terra-500) !important; }
+.brand-name { color: var(--ink-900) !important; }
+.brand-sub { color: var(--terra-500) !important; }
+
+/* Headings que estavam em forest-900 (fundo claro) agora vão para ink-900 (claro no escuro) */
+.acad-hero-title, .com-hero-title, .sec-title, .panel-title, .pf-name,
+.trail-title, .course-name, .post-question, .pop-title, .pf-stat-num,
+.format-name, .topic-name, .row-name, .mission-name {
+  color: var(--ink-900) !important;
+}
+.acad-hero-title .light, .com-hero-title .light, .sec-title .light,
+.panel-title .light, .trail-tag-line, .sec-eyebrow, .panel-eyebrow,
+.pf-stat-eyebrow, .pf-handle, .com-hero-eyebrow {
+  color: var(--terra-500) !important;
+}
+
+/* Botões */
+.premium-btn, .com-new-post, .course-buy:not(.outline), .acad-hero-search-btn {
+  background: var(--terra-500) !important; color: var(--sand-100) !important;
+}
+.btn-outline, .course-buy.outline, .pf-edit {
+  border-color: var(--ink-900) !important; color: var(--ink-900) !important; background: transparent !important;
+}
+.pf-edit { background: var(--sand-200) !important; }
+
+/* Toggles */
+.toggle { background: var(--sand-300) !important; }
+.toggle.on { background: var(--sage-500) !important; }
+.toggle::after { background: var(--sand-50) !important; }
+
+/* Bordas/divisores internos */
+.row, .stat-row, .topic, .trail-foot, .course-price-row, .post-actions, .sec-head {
+  border-color: var(--sand-300) !important;
+}
+.panel-stats .stat-row { border-color: rgba(255,255,255,0.08) !important; }
+
+/* Tags coloridas — tornam-se chips mais escuros para contraste */
+.post-tag.pais { background: rgba(143,182,149,0.15) !important; color: var(--sage-500) !important; }
+.post-tag.cas  { background: rgba(224,114,88,0.15)  !important; color: var(--terra-500) !important; }
+.post-tag.fin  { background: rgba(232,199,126,0.15) !important; color: var(--ochre-500) !important; }
+.post-tag      { background: var(--sand-200) !important; color: var(--ink-700) !important; }
+
+/* Ícones de stat — fundos suaves */
+.pf-stat-icon.s1, .pf-stat-icon.s4 { background: rgba(143,182,149,0.18) !important; color: var(--sage-500) !important; }
+.pf-stat-icon.s2 { background: rgba(224,114,88,0.18) !important; color: var(--terra-500) !important; }
+.pf-stat-icon.s3 { background: rgba(232,199,126,0.18) !important; color: var(--ochre-500) !important; }
+
+/* Format icon padrão */
+.format-icon, .row-icon, .mission-icon { background: var(--sand-200) !important; color: var(--sage-500) !important; }
+
+/* Course buy outline hover */
+.course-buy.outline:hover { background: var(--ink-900) !important; color: var(--sand-100) !important; }
+.btn-outline:hover { background: var(--ink-900) !important; color: var(--sand-100) !important; }
+
+/* Side user inner */
+.side-user-name { color: var(--ink-900) !important; }
+.side-user-meta { color: var(--ink-500) !important; }
+.side-section-label { color: var(--ink-400) !important; }
+.nav-item { color: var(--ink-500) !important; }
+.nav-item:hover { background: var(--sand-200) !important; color: var(--ink-900) !important; }
+
+/* Mission progress fill */
+.mission-bar { background: var(--sand-300) !important; }
+.mission-bar-fill { background: var(--terra-500) !important; }
+.mission.done .mission-bar { background: rgba(255,255,255,0.1) !important; }
+.mission.done .mission-bar-fill { background: var(--sage-500) !important; }
+
+/* Topic up arrows */
+.topic-up { color: var(--sage-500) !important; }
+
+/* Imagens de gradiente do feed/cursos: já são escuras — só escurecemos a borda */
+.trail-img, .course-card-img, .pop-img, .acad-hero-img { filter: brightness(0.92) !important; }
+
+/* ============================================================
+   SUPERFÍCIES SEMPRE-ESCURAS (mesmo no tema light)
+   ============================================================
+   Estas áreas tinham fundo verde-escuro/preto no light mode com
+   texto claro. No dark mode, sem ajuste, o texto que dependia de
+   --sand-* (agora escuro) ficava ilegível. Forçamos cor clara.
+*/
+
+/* Hero da Home (.hero) — fundo verde permanece, texto deve ser claro */
+.hero, .hero-photo, .hero-overlay { /* mantém estrutura */ }
+.hero-title { color: #FAF4E8 !important; }
+.hero-title .light { color: #F2A48E !important; }
+.hero-subtitle { color: #E8DEC8 !important; }
+.hero-eyebrow { color: var(--ochre-300) !important; }
+.hero-eyebrow::before { background: var(--ochre-300) !important; }
+.hero-cta { background: var(--terra-300) !important; color: #FAF4E8 !important; }
+.hero-cta-ghost { color: #FAF4E8 !important; border-color: rgba(250,244,232,0.4) !important; }
+.hero-tag { background: rgba(250,244,232,0.1) !important; border-color: rgba(250,244,232,0.25) !important; color: #FAF4E8 !important; }
+
+/* Side user — bloco verde com avatar */
+.side-user-name { color: #FAF4E8 !important; }
+.side-user-meta { color: #C9C2A8 !important; }
+.side-user-avatar { color: #FAF4E8 !important; }
+
+/* Brand mark em todas as telas */
+.brand-mark { background: var(--terra-300) !important; }
+.brand-mark svg circle { fill: #FAF4E8 !important; }
+.brand-mark svg g { stroke: #FAF4E8 !important; }
+
+/* Nav active — terracota com texto claro */
+.nav-item.active { color: #FAF4E8 !important; }
+
+/* Hero Academia (acad-hero) — fundo gradient escuro */
+.acad-hero-img-tag { color: #FAF4E8 !important; background: rgba(250,244,232,0.12) !important; border-color: rgba(250,244,232,0.25) !important; }
+
+/* Hero Comunidade — sobre fundo body escuro mas com NUM grandes em forest */
+.com-hero-meta .num { color: #FAF4E8 !important; }
+
+/* Perfil hero — fundo verde-escuro */
+.pf-name { color: #FAF4E8 !important; }
+.pf-handle { color: var(--ochre-300) !important; }
+.pf-bio { color: #E8DEC8 !important; }
+.pf-bio em { color: var(--ochre-300) !important; }
+.pf-tag { background: rgba(250,244,232,0.1) !important; border-color: rgba(250,244,232,0.15) !important; color: #FAF4E8 !important; }
+.pf-tag.primary { background: var(--terra-300) !important; border-color: var(--terra-300) !important; color: #FAF4E8 !important; }
+.pf-edit { background: #FAF4E8 !important; color: #0E1A14 !important; border: none !important; }
+
+/* Panel stats (forest) — texto claro */
+.panel-stats .panel-title { color: #FAF4E8 !important; }
+.panel-stats .panel-eyebrow { color: var(--ochre-300) !important; }
+.panel-stats .stat-label { color: #C9C2A8 !important; }
+.panel-stats .stat-val { color: #FAF4E8 !important; }
+.panel-stats .stat-val .small { color: var(--ochre-300) !important; }
+
+/* Mission concluída (forest) */
+.mission.done .mission-name { color: #FAF4E8 !important; }
+.mission.done .mission-desc { color: #C9C2A8 !important; }
+.mission.done .mission-foot { color: #C9C2A8 !important; }
+.mission.done .mission-xp { color: var(--ochre-300) !important; }
+.mission.done .mission-status { background: var(--sage-300) !important; color: #0E1A14 !important; }
+.mission.done .mission-icon { background: var(--sage-300) !important; color: #0E1A14 !important; }
+
+/* Format active (forest) */
+.format.active .format-name { color: #FAF4E8 !important; }
+.format.active .format-desc { color: #C9C2A8 !important; }
+.format.active .format-meta { color: var(--ochre-300) !important; border-top-color: rgba(232,199,126,0.3) !important; }
+
+/* Filter chip / chip ativos — terracota com texto claro */
+.chip.active, .filter-chip.active { color: #FAF4E8 !important; }
+
+/* Tabs — borda inferior visível em terracota */
+.tab.active { color: var(--ink-900) !important; border-bottom-color: var(--terra-300) !important; }
+
+/* Cards de curso/topicos — texto sobre overlay escuro */
+.pop-eyebrow { color: var(--ochre-300) !important; }
+.pop-count { color: #FAF4E8 !important; background: rgba(250,244,232,0.15) !important; }
+.pop-title { color: #FAF4E8 !important; }
+.trail-img-tag { color: #FAF4E8 !important; }
+.trail-img-eyebrow { color: var(--ochre-300) !important; }
+
+/* Botões premium / CTA — todos os terracota agora um pouco mais quentes */
+.premium-btn, .com-new-post, .acad-hero-search-btn,
+.course-buy:not(.outline), .post-action.active,
+.hero-cta {
+  background: var(--terra-300) !important;
+  color: #FAF4E8 !important;
+}
+
+/* Side section labels e brand subtitle */
+.brand-sub { color: var(--terra-500) !important; }

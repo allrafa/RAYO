@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RAYO — Design System v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Sand — base mais quente e saturada */
+    --sand-50:  #FAF4E8;
+    --sand-100: #F2E9D5;
+    --sand-200: #E8DBBF;
+    --sand-300: #D9C89E;
+    --sand-400: #BFA87A;
+
+    /* Forest — verde escuro dominante */
+    --forest-900: #0C3B2E;
+    --forest-700: #144D3C;
+    --forest-500: #1E6A52;
+
+    /* Sage — verde médio vivo */
+    --sage-100: #DCE8D2;
+    --sage-300: #A9C396;
+    --sage-500: #6D9773;
+    --sage-700: #4F7253;
+
+    /* Terracota — vermelho-terra saturado */
+    --terra-100: #F2D6CC;
+    --terra-300: #E08770;
+    --terra-500: #C8553D;
+    --terra-700: #9C3A26;
+    --terra-900: #5E2113;
+
+    /* Ochre — dourado pontual */
+    --ochre-300: #E8C77E;
+    --ochre-500: #D4A24C;
+    --ochre-700: #A37A2D;
+
+    /* Ink */
+    --ink-900: #0E1A14;
+    --ink-700: #1F2A22;
+    --ink-500: #4A5247;
+    --ink-400: #6E7569;
+    --ink-300: #9CA098;
+
+    --white: #FFFFFF;
+    --black: #000000;
+
+    --r-sm: 10px; --r-md: 16px; --r-lg: 24px; --r-xl: 32px; --r-pill: 999px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--sand-100);
+    color: var(--ink-900);
+    font-family: 'Outfit', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  .mono { font-family: ui-monospace, 'SF Mono', monospace; }
+  .page { max-width: 1280px; margin: 0 auto; padding: 80px 64px 120px; }
+
+  /* HEADER */
+  .ds-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding-bottom: 48px;
+    border-bottom: 1px solid var(--sand-300);
+    margin-bottom: 80px;
+  }
+  .ds-header-left { display: flex; align-items: center; gap: 24px; }
+  .ds-header h1 {
+    font-size: 96px; font-weight: 700; letter-spacing: -0.05em; line-height: 0.92;
+    color: var(--forest-900);
+  }
+  .ds-header h1 .light { font-weight: 200; color: var(--terra-500); }
+  .ds-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border: 1px solid var(--forest-900); border-radius: var(--r-pill);
+    font-size: 13px; color: var(--forest-900); background: transparent;
+  }
+  .ds-tag-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--terra-500); }
+  .ds-meta { text-align: right; font-size: 13px; color: var(--ink-500); line-height: 1.6; }
+  .ds-meta strong { color: var(--forest-900); font-weight: 600; }
+
+  section { margin-bottom: 96px; }
+  .sec-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 32px; padding-bottom: 16px;
+    border-bottom: 1px solid var(--sand-300);
+  }
+  .sec-head h2 {
+    font-size: 36px; font-weight: 600; letter-spacing: -0.03em; color: var(--forest-900);
+  }
+  .sec-head h2 .light { font-weight: 200; color: var(--terra-500); }
+  .sec-head .num { font-family: ui-monospace, monospace; font-weight: 500; color: var(--forest-500); font-size: 14px; }
+  .sec-head .desc { font-size: 13px; color: var(--ink-500); max-width: 360px; text-align: right; }
+
+  /* LOGO */
+  .logo-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 24px; }
+  .logo-card {
+    background: var(--sand-50);
+    border: 1px solid var(--sand-300);
+    border-radius: var(--r-lg);
+    padding: 48px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    min-height: 280px;
+  }
+  .logo-card.dark { background: var(--forest-900); border-color: var(--forest-900); }
+  .logo-card.terra { background: var(--terra-500); border-color: var(--terra-700); }
+  .logo-display { display: flex; align-items: center; gap: 16px; }
+  .logo-mark {
+    width: 56px; height: 56px;
+    background: var(--terra-500);
+    border-radius: 14px;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .logo-mark.forest { background: var(--forest-900); }
+  .logo-mark.invert { background: var(--sand-100); }
+  .logo-wordmark { font-size: 32px; font-weight: 700; letter-spacing: -0.03em; color: var(--forest-900); }
+  .logo-wordmark.invert { color: var(--sand-100); }
+  .logo-sub {
+    display: block; font-size: 11px; font-weight: 500;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--terra-500); margin-top: 2px;
+  }
+  .logo-sub.invert { color: var(--sand-300); }
+  .logo-caption {
+    font-family: ui-monospace, monospace;
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-400);
+  }
+  .logo-caption.invert { color: var(--sand-300); }
+
+  /* COLORS */
+  .color-row {
+    display: grid; grid-template-columns: 200px 1fr; gap: 32px;
+    margin-bottom: 40px; align-items: start;
+  }
+  .color-row-label h3 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 8px; color: var(--forest-900); }
+  .color-row-label h3 .light { font-weight: 200; color: var(--terra-500); }
+  .color-row-label p { font-size: 13px; color: var(--ink-500); line-height: 1.6; }
+  .swatch-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .swatch {
+    aspect-ratio: 1 / 1.15;
+    border-radius: var(--r-md);
+    padding: 14px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    font-size: 12px;
+    border: 1px solid rgba(14,26,20,0.06);
+  }
+  .swatch .name { font-weight: 600; letter-spacing: -0.01em; }
+  .swatch .hex { font-family: ui-monospace, monospace; font-size: 10px; opacity: 0.75; }
+  .swatch.lite { color: var(--ink-700); }
+  .swatch.dark { color: var(--sand-100); }
+
+  /* Big palette poster */
+  .palette-poster {
+    margin-top: 32px;
+    background: var(--sand-50);
+    border-radius: var(--r-xl);
+    padding: 48px;
+    border: 1px solid var(--sand-300);
+  }
+  .palette-poster-strip {
+    display: grid;
+    grid-template-columns: 1.2fr 1.6fr 1fr 1fr 0.8fr;
+    height: 280px;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+  .palette-poster-strip > div {
+    padding: 24px; display: flex; flex-direction: column; justify-content: space-between;
+    color: var(--sand-50);
+  }
+  .palette-poster-strip .name { font-size: 14px; font-weight: 600; letter-spacing: 0.02em; }
+  .palette-poster-strip .hex { font-family: ui-monospace, monospace; font-size: 24px; font-weight: 500; letter-spacing: -0.01em; }
+  .palette-poster-strip .role { font-size: 11px; font-family: ui-monospace, monospace; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.75; }
+
+  /* TYPE */
+  .type-hero {
+    background: var(--forest-900);
+    border-radius: var(--r-xl);
+    padding: 64px;
+    color: var(--sand-100);
+    position: relative;
+    overflow: hidden;
+  }
+  .type-hero-mega {
+    font-size: 240px; font-weight: 700; letter-spacing: -0.07em; line-height: 0.85;
+  }
+  .type-hero-mega .light { font-weight: 200; color: var(--terra-300); }
+  .type-hero-meta {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-top: 32px; padding-top: 24px;
+    border-top: 1px solid rgba(242,233,213,0.2);
+  }
+  .type-hero-meta .stack { font-size: 13px; color: var(--sand-300); }
+  .type-hero-meta .stack b { color: var(--sand-100); font-weight: 600; }
+
+  .type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+  .type-card {
+    background: var(--sand-50);
+    border: 1px solid var(--sand-300);
+    border-radius: var(--r-lg);
+    padding: 40px;
+  }
+  .type-scale-row {
+    display: grid; grid-template-columns: 60px 1fr 100px;
+    align-items: baseline; padding: 18px 0;
+    border-bottom: 1px solid var(--sand-300);
+    gap: 20px;
+  }
+  .type-scale-row:last-child { border-bottom: none; }
+  .type-scale-row .px, .type-scale-row .role {
+    font-family: ui-monospace, monospace; font-size: 11px; color: var(--ink-400);
+  }
+  .type-scale-row .role { text-align: right; text-transform: uppercase; letter-spacing: 0.08em; }
+  .type-scale-row .sample { color: var(--forest-900); }
+
+  .type-pairing-display {
+    font-size: 64px; font-weight: 600; letter-spacing: -0.04em; line-height: 0.95;
+    color: var(--forest-900);
+    margin-bottom: 16px;
+  }
+  .type-pairing-display .light { font-weight: 200; color: var(--terra-500); }
+  .type-pairing-body {
+    font-size: 16px; color: var(--ink-500); line-height: 1.55; max-width: 36ch;
+  }
+  .type-pairing-foot {
+    margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--sand-300);
+    font-family: ui-monospace, monospace; font-size: 11px; color: var(--ink-400);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+
+  /* COMPONENTS */
+  .comp-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 24px; }
+  .comp-card {
+    background: var(--sand-50);
+    border: 1px solid var(--sand-300);
+    border-radius: var(--r-lg);
+    padding: 32px;
+  }
+  .comp-card.span-4 { grid-column: span 4; }
+  .comp-card.span-5 { grid-column: span 5; }
+  .comp-card.span-6 { grid-column: span 6; }
+  .comp-card.span-7 { grid-column: span 7; }
+  .comp-card.span-8 { grid-column: span 8; }
+  .comp-card.span-12 { grid-column: span 12; }
+
+  .comp-label {
+    font-family: ui-monospace, monospace;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-400); margin-bottom: 24px;
+  }
+  .comp-stage { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .comp-stage.col { flex-direction: column; align-items: stretch; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 14px 24px; border-radius: var(--r-pill);
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    border: none; cursor: pointer; transition: all 0.18s ease;
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--forest-900); color: var(--sand-100); }
+  .btn-primary:hover { background: var(--forest-700); }
+  .btn-terra { background: var(--terra-500); color: var(--sand-50); }
+  .btn-terra:hover { background: var(--terra-700); }
+  .btn-sage { background: var(--sage-500); color: var(--forest-900); font-weight: 600; }
+  .btn-sage:hover { background: var(--sage-700); color: var(--sand-50); }
+  .btn-outline { background: transparent; border: 1.5px solid var(--forest-900); color: var(--forest-900); padding: 12.5px 22.5px; }
+  .btn-outline:hover { background: var(--forest-900); color: var(--sand-100); }
+  .btn-ghost { background: transparent; color: var(--ink-700); }
+  .btn-ghost:hover { background: var(--sand-200); }
+  .btn-sm { padding: 8px 14px; font-size: 12px; }
+  .btn-lg { padding: 18px 32px; font-size: 15px; }
+
+  /* Chips */
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: var(--r-pill);
+    font-size: 12px; font-weight: 500;
+    background: var(--sand-100); border: 1px solid var(--sand-300);
+    color: var(--ink-700);
+  }
+  .chip.active { background: var(--forest-900); color: var(--sand-100); border-color: var(--forest-900); }
+  .chip.sage { background: var(--sage-100); color: var(--forest-700); border-color: var(--sage-300); }
+  .chip.terra { background: var(--terra-100); color: var(--terra-700); border-color: var(--terra-300); }
+  .chip.ochre { background: var(--ochre-300); color: var(--ochre-700); border-color: var(--ochre-500); }
+  .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.7; }
+
+  /* Input */
+  .input {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 20px;
+    background: var(--sand-100);
+    border: 1px solid var(--sand-300);
+    border-radius: var(--r-pill);
+    font-size: 14px; color: var(--ink-400);
+    width: 100%;
+  }
+  .input.focused { border-color: var(--forest-900); background: var(--sand-50); color: var(--forest-900); }
+
+  /* Stat card */
+  .stat-card {
+    background: var(--sand-100);
+    border: 1px solid var(--sand-300);
+    border-radius: var(--r-md);
+    padding: 20px; flex: 1; min-width: 0;
+  }
+  .stat-card.sage { background: var(--sage-100); border-color: var(--sage-300); }
+  .stat-card.terra { background: var(--terra-100); border-color: var(--terra-300); }
+  .stat-card.forest { background: var(--forest-900); border-color: var(--forest-900); color: var(--sand-100); }
+  .stat-card-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: grid; place-items: center;
+    background: var(--sand-50); margin-bottom: 16px;
+    color: var(--forest-900);
+  }
+  .stat-card.sage .stat-card-icon { background: var(--sage-300); color: var(--forest-900); }
+  .stat-card.terra .stat-card-icon { background: var(--terra-300); color: var(--terra-900); }
+  .stat-card.forest .stat-card-icon { background: var(--forest-700); color: var(--ochre-300); }
+  .stat-card-value { font-size: 32px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; margin-bottom: 4px; }
+  .stat-card-label { font-size: 12px; color: var(--ink-400); }
+  .stat-card.forest .stat-card-label { color: var(--sand-300); }
+
+  /* Course mini */
+  .course-mini {
+    background: var(--sand-50);
+    border: 1px solid var(--sand-300);
+    border-radius: var(--r-md);
+    overflow: hidden;
+    width: 100%; max-width: 220px;
+  }
+  .course-mini-img {
+    aspect-ratio: 4/3;
+    background: linear-gradient(135deg, var(--sage-500), var(--forest-700));
+    position: relative; overflow: hidden;
+  }
+  .course-mini-img.terra { background: linear-gradient(135deg, var(--terra-300), var(--terra-700)); }
+  .course-mini-img.forest { background: linear-gradient(135deg, var(--forest-700), var(--forest-900)); }
+  .course-mini-img::after {
+    content: ""; position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(45deg, transparent 0, transparent 8px, rgba(255,255,255,0.06) 8px, rgba(255,255,255,0.06) 9px);
+  }
+  .course-mini-tag {
+    position: absolute; top: 10px; left: 10px;
+    padding: 4px 10px; border-radius: var(--r-pill);
+    background: rgba(14,26,20,0.7); color: var(--sand-100);
+    font-size: 10px; font-family: ui-monospace, monospace;
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .course-mini-tag.ochre { background: var(--ochre-500); color: var(--forest-900); font-weight: 600; }
+  .course-mini-body { padding: 14px 16px 16px; }
+  .course-mini-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; line-height: 1.3; color: var(--forest-900); }
+  .course-mini-meta { font-size: 11px; color: var(--ink-400); display: flex; gap: 8px; align-items: center; }
+
+  /* Avatar */
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--sage-300); color: var(--forest-900);
+    display: grid; place-items: center; font-size: 14px; font-weight: 600;
+    border: 1px solid var(--sand-300);
+  }
+  .avatar-lg { width: 64px; height: 64px; font-size: 22px; }
+  .avatar.terra { background: var(--terra-300); color: var(--terra-900); }
+  .avatar.forest { background: var(--forest-900); color: var(--sand-100); }
+
+  /* Progress */
+  .progress {
+    height: 6px; background: var(--sand-300);
+    border-radius: var(--r-pill); overflow: hidden; width: 100%;
+  }
+  .progress-bar { height: 100%; background: var(--terra-500); border-radius: var(--r-pill); }
+  .progress.sage .progress-bar { background: var(--sage-500); }
+  .progress.forest .progress-bar { background: var(--forest-900); }
+
+  /* Nav item */
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: var(--r-md);
+    font-size: 14px; color: var(--ink-500); cursor: pointer;
+    font-weight: 500;
+  }
+  .nav-item:hover { background: var(--sand-200); color: var(--forest-900); }
+  .nav-item.active { background: var(--forest-900); color: var(--sand-100); }
+
+  /* Tabs */
+  .tab-row { display: flex; gap: 2px; border-bottom: 1px solid var(--sand-300); }
+  .tab {
+    padding: 14px 20px; font-size: 14px; color: var(--ink-400);
+    cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; font-weight: 500;
+  }
+  .tab.active { color: var(--forest-900); border-bottom-color: var(--terra-500); font-weight: 600; }
+
+  /* Hero preview */
+  .hero-preview {
+    height: 240px; border-radius: var(--r-lg);
+    overflow: hidden; position: relative;
+    background: var(--forest-900);
+    padding: 32px; color: var(--sand-100);
+    display: flex; flex-direction: column; justify-content: flex-end;
+  }
+  .hero-preview::before {
+    content: ""; position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(135deg, transparent 0, transparent 12px, rgba(255,255,255,0.04) 12px, rgba(255,255,255,0.04) 13px);
+  }
+  .hero-preview-eyebrow {
+    font-family: ui-monospace, monospace; font-size: 10px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ochre-300); margin-bottom: 12px; z-index: 1; font-weight: 600;
+  }
+  .hero-preview-title {
+    font-weight: 600; font-size: 38px; letter-spacing: -0.03em; line-height: 1; z-index: 1;
+  }
+  .hero-preview-title .light { font-weight: 200; color: var(--terra-300); }
+
+  /* Scale */
+  .scale-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+  .scale-cell {
+    background: var(--sand-50); border: 1px solid var(--sand-300);
+    border-radius: var(--r-md); padding: 20px; text-align: center;
+  }
+  .scale-cell .demo {
+    margin: 0 auto 12px; background: var(--sage-500);
+    width: 56px; height: 56px;
+  }
+  .scale-cell .name { font-size: 12px; color: var(--forest-900); font-weight: 600; }
+  .scale-cell .val { font-family: ui-monospace, monospace; font-size: 10px; color: var(--ink-400); }
+
+  /* Icons */
+  .icon-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .icon-cell {
+    aspect-ratio: 1; background: var(--sand-50); border: 1px solid var(--sand-300);
+    border-radius: var(--r-md); display: grid; place-items: center;
+    color: var(--forest-900);
+  }
+
+  /* Footer */
+  .ds-footer {
+    margin-top: 80px; padding-top: 32px;
+    border-top: 1px solid var(--sand-300);
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--ink-400);
+  }
+
+  /* Tone strip */
+  .tone-strip {
+    display: grid; grid-template-columns: repeat(20, 1fr);
+    height: 64px; border-radius: var(--r-md); overflow: hidden; margin-top: 16px;
+  }
+  .tone-strip > div {
+    display: grid; place-items: end center; padding: 8px;
+    font-family: ui-monospace, monospace; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="ds-header">
+    <div class="ds-header-left">
+      <div class="logo-mark" style="width:72px;height:72px;border-radius:18px;">
+        <svg width="40" height="40" viewBox="0 0 36 36" fill="none">
+          <circle cx="18" cy="18" r="6" fill="#FAF4E8"/>
+          <g stroke="#FAF4E8" stroke-width="1.8" stroke-linecap="round">
+            <line x1="18" y1="2" x2="18" y2="7"/><line x1="18" y1="29" x2="18" y2="34"/>
+            <line x1="2" y1="18" x2="7" y2="18"/><line x1="29" y1="18" x2="34" y2="18"/>
+            <line x1="6.5" y1="6.5" x2="10" y2="10"/><line x1="26" y1="26" x2="29.5" y2="29.5"/>
+            <line x1="6.5" y1="29.5" x2="10" y2="26"/><line x1="26" y1="10" x2="29.5" y2="6.5"/>
+          </g>
+        </svg>
+      </div>
+      <div>
+        <h1>RAYO <span class="light">Design System</span></h1>
+        <div class="ds-tag" style="margin-top:16px;">
+          <span class="ds-tag-dot"></span>
+          v2.0 · Rebrand · Maio 2026
+        </div>
+      </div>
+    </div>
+    <div class="ds-meta">
+      <strong>Ecossistema RAYO</strong><br>
+      Conteúdo, comunidade e práticas<br>
+      para todas as fases da família
+    </div>
+  </header>
+
+  <!-- 01 — TOM -->
+  <section>
+    <div class="sec-head">
+      <h2>Filosofia <span class="light">do tom</span></h2>
+      <span class="num">01 / 06</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:32px;align-items:stretch;">
+      <div class="comp-card" style="padding:48px;background:var(--forest-900);border-color:var(--forest-900);color:var(--sand-100);">
+        <p style="font-weight:600;font-size:38px;line-height:1.15;letter-spacing:-0.025em;color:var(--sand-100);max-width:24ch;">
+          Conteúdo <span class="light" style="font-weight:200;color:var(--terra-300);">denso,</span> embalagem <span class="light" style="font-weight:200;color:var(--ochre-300);">leve.</span>
+        </p>
+        <div style="margin-top:40px;padding-top:24px;border-top:1px solid rgba(242,233,213,0.2);display:flex;gap:32px;font-size:13px;color:var(--sand-300);">
+          <div><strong style="color:var(--sand-100);font-weight:600;display:block;margin-bottom:4px;">Princípio</strong>Calmo e contrastante.</div>
+          <div><strong style="color:var(--sand-100);font-weight:600;display:block;margin-bottom:4px;">Cores</strong>Forest · Sage · Terracota · Ochre</div>
+          <div><strong style="color:var(--sand-100);font-weight:600;display:block;margin-bottom:4px;">Tipo</strong>Outfit · uma só, do 200 ao 700</div>
+        </div>
+      </div>
+      <div class="comp-card" style="background:var(--terra-500);border-color:var(--terra-700);padding:40px;display:flex;flex-direction:column;justify-content:space-between;color:var(--sand-50);">
+        <span class="ds-tag" style="background:transparent;border-color:var(--sand-100);color:var(--sand-100);align-self:flex-start;">
+          <span class="ds-tag-dot" style="background:var(--ochre-300);"></span> Antes / Depois
+        </span>
+        <div>
+          <p style="font-size:11px;font-family:ui-monospace,monospace;letter-spacing:0.14em;text-transform:uppercase;opacity:0.85;margin-bottom:8px;">DE</p>
+          <p style="font-size:14px;margin-bottom:20px;line-height:1.5;">Laranja saturado dominando tudo, gradientes berrantes, mistura caótica de rosa/amarelo/laranja.</p>
+          <p style="font-size:11px;font-family:ui-monospace,monospace;letter-spacing:0.14em;text-transform:uppercase;opacity:0.85;margin-bottom:8px;">PARA</p>
+          <p style="font-size:14px;line-height:1.5;">Forest profundo como base, sage como respiração, terracota como gesto humano, ochre pontual.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 — MARCA -->
+  <section>
+    <div class="sec-head">
+      <h2>Marca</h2>
+      <span class="num">02 / 06</span>
+      <p class="desc">Símbolo do sol em terracota saturado. Sol que aquece, não que cega.</p>
+    </div>
+
+    <div class="logo-grid">
+      <div class="logo-card">
+        <span class="logo-caption">Primária · sand</span>
+        <div class="logo-display">
+          <div class="logo-mark">
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+              <circle cx="18" cy="18" r="6" fill="#FAF4E8"/>
+              <g stroke="#FAF4E8" stroke-width="1.8" stroke-linecap="round">
+                <line x1="18" y1="2" x2="18" y2="7"/><line x1="18" y1="29" x2="18" y2="34"/>
+                <line x1="2" y1="18" x2="7" y2="18"/><line x1="29" y1="18" x2="34" y2="18"/>
+                <line x1="6.5" y1="6.5" x2="10" y2="10"/><line x1="26" y1="26" x2="29.5" y2="29.5"/>
+                <line x1="6.5" y1="29.5" x2="10" y2="26"/><line x1="26" y1="10" x2="29.5" y2="6.5"/>
+              </g>
+            </svg>
+          </div>
+          <div>
+            <div class="logo-wordmark">RAYO</div>
+            <span class="logo-sub">Ecossistema</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="logo-card dark">
+        <span class="logo-caption invert">Forest · institucional</span>
+        <div class="logo-display">
+          <div class="logo-mark">
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+              <circle cx="18" cy="18" r="6" fill="#FAF4E8"/>
+              <g stroke="#FAF4E8" stroke-width="1.8" stroke-linecap="round">
+                <line x1="18" y1="2" x2="18" y2="7"/><line x1="18" y1="29" x2="18" y2="34"/>
+                <line x1="2" y1="18" x2="7" y2="18"/><line x1="29" y1="18" x2="34" y2="18"/>
+                <line x1="6.5" y1="6.5" x2="10" y2="10"/><line x1="26" y1="26" x2="29.5" y2="29.5"/>
+                <line x1="6.5" y1="29.5" x2="10" y2="26"/><line x1="26" y1="10" x2="29.5" y2="6.5"/>
+              </g>
+            </svg>
+          </div>
+          <div>
+            <div class="logo-wordmark invert">RAYO</div>
+            <span class="logo-sub" style="color:var(--ochre-300);">Ecossistema</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="logo-card terra">
+        <span class="logo-caption invert">Terracota · destaque</span>
+        <div class="logo-display">
+          <div class="logo-mark invert">
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+              <circle cx="18" cy="18" r="6" fill="#0E1A14"/>
+              <g stroke="#0E1A14" stroke-width="1.8" stroke-linecap="round">
+                <line x1="18" y1="2" x2="18" y2="7"/><line x1="18" y1="29" x2="18" y2="34"/>
+                <line x1="2" y1="18" x2="7" y2="18"/><line x1="29" y1="18" x2="34" y2="18"/>
+                <line x1="6.5" y1="6.5" x2="10" y2="10"/><line x1="26" y1="26" x2="29.5" y2="29.5"/>
+                <line x1="6.5" y1="29.5" x2="10" y2="26"/><line x1="26" y1="10" x2="29.5" y2="6.5"/>
+              </g>
+            </svg>
+          </div>
+          <div>
+            <div class="logo-wordmark invert">RAYO</div>
+            <span class="logo-sub invert">Ecossistema</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Symbol breakdown -->
+    <div style="margin-top:24px;display:grid;grid-template-columns:repeat(4,1fr);gap:24px;">
+      <div class="comp-card" style="padding:32px;display:flex;flex-direction:column;align-items:center;text-align:center;">
+        <div class="logo-mark" style="width:80px;height:80px;border-radius:20px;margin-bottom:20px;">
+          <svg width="48" height="48" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="6" fill="#FAF4E8"/>
+            <g stroke="#FAF4E8" stroke-width="1.8" stroke-linecap="round">
+              <line x1="18" y1="2" x2="18" y2="7"/><line x1="18" y1="29" x2="18" y2="34"/>
+              <line x1="2" y1="18" x2="7" y2="18"/><line x1="29" y1="18" x2="34" y2="18"/>
+              <line x1="6.5" y1="6.5" x2="10" y2="10"/><line x1="26" y1="26" x2="29.5" y2="29.5"/>
+              <line x1="6.5" y1="29.5" x2="10" y2="26"/><line x1="26" y1="10" x2="29.5" y2="6.5"/>
+            </g>
+          </svg>
+        </div>
+        <div class="comp-label" style="margin-bottom:6px;">App icon · 80px</div>
+        <p style="font-size:12px;color:var(--ink-400);">Radius 20px — toque generoso.</p>
+      </div>
+      <div class="comp-card" style="padding:32px;display:flex;flex-direction:column;align-items:center;text-align:center;">
+        <div class="logo-mark forest" style="width:48px;height:48px;border-radius:14px;margin-bottom:20px;">
+          <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="6" fill="#E8C77E"/>
+            <g stroke="#E8C77E" stroke-width="1.8" stroke-linecap="round">
+              <line x1="18" y1="2" x2="18" y2="7"/><line x1="18" y1="29" x2="18" y2="34"/>
+              <line x1="2" y1="18" x2="7" y2="18"/><line x1="29" y1="18" x2="34" y2="18"/>
+              <line x1="6.5" y1="6.5" x2="10" y2="10"/><line x1="26" y1="26" x2="29.5" y2="29.5"/>
+              <line x1="6.5" y1="29.5" x2="10" y2="26"/><line x1="26" y1="10" x2="29.5" y2="6.5"/>
+            </g>
+          </svg>
+        </div>
+        <div class="comp-label" style="margin-bottom:6px;">Sidebar · 48px</div>
+        <p style="font-size:12px;color:var(--ink-400);">Forest com sol ochre.</p>
+      </div>
+      <div class="comp-card" style="padding:32px;display:flex;flex-direction:column;align-items:center;text-align:center;">
+        <div style="margin-bottom:20px;">
+          <svg width="44" height="44" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="6" fill="#0C3B2E"/>
+            <g stroke="#0C3B2E" stroke-width="1.8" stroke-linecap="round">
+              <line x1="18" y1="2" x2="18" y2="7"/><line x1="18" y1="29" x2="18" y2="34"/>
+              <line x1="2" y1="18" x2="7" y2="18"/><line x1="29" y1="18" x2="34" y2="18"/>
+              <line x1="6.5" y1="6.5" x2="10" y2="10"/><line x1="26" y1="26" x2="29.5" y2="29.5"/>
+              <line x1="6.5" y1="29.5" x2="10" y2="26"/><line x1="26" y1="10" x2="29.5" y2="6.5"/>
+            </g>
+          </svg>
+        </div>
+        <div class="comp-label" style="margin-bottom:6px;">Símbolo isolado</div>
+        <p style="font-size:12px;color:var(--ink-400);">Loading, watermark.</p>
+      </div>
+      <div class="comp-card" style="padding:32px;display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;">
+        <div style="font-size:44px;font-weight:700;letter-spacing:-0.04em;color:var(--forest-900);margin-bottom:8px;">RAYO<span style="color:var(--terra-500);">.</span></div>
+        <div class="comp-label" style="margin-bottom:6px;">Wordmark</div>
+        <p style="font-size:12px;color:var(--ink-400);">Outfit Bold · ponto terra.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 — CORES -->
+  <section>
+    <div class="sec-head">
+      <h2>Paleta <span class="light">de cor</span></h2>
+      <span class="num">03 / 06</span>
+      <p class="desc">Forest é a base profunda. Sage respira. Terracota é o sol da família. Ochre, o brilho.</p>
+    </div>
+
+    <!-- Big poster -->
+    <div class="palette-poster" style="background:transparent;border:none;padding:0;margin-top:0;margin-bottom:32px;">
+      <div class="palette-poster-strip">
+        <div style="background:#6D9773;color:#0C3B2E;">
+          <div>
+            <div class="role">Sage</div>
+            <div class="name">primary</div>
+          </div>
+          <div class="hex">6D9773</div>
+        </div>
+        <div style="background:#0C3B2E;">
+          <div>
+            <div class="role">Forest</div>
+            <div class="name">dark base</div>
+          </div>
+          <div class="hex">0C3B2E</div>
+        </div>
+        <div style="background:#C8553D;">
+          <div>
+            <div class="role">Terracota</div>
+            <div class="name">accent</div>
+          </div>
+          <div class="hex">C8553D</div>
+        </div>
+        <div style="background:#D4A24C;color:#5E2113;">
+          <div>
+            <div class="role">Ochre</div>
+            <div class="name">highlight</div>
+          </div>
+          <div class="hex">D4A24C</div>
+        </div>
+        <div style="background:#F2E9D5;color:#0C3B2E;">
+          <div>
+            <div class="role">Sand</div>
+            <div class="name">canvas</div>
+          </div>
+          <div class="hex">F2E9D5</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Forest -->
+    <div class="color-row">
+      <div class="color-row-label">
+        <h3>Forest · <span class="light">base profunda</span></h3>
+        <p>Verde escuro saturado. Sidebar, hero cards, dark surfaces, foreground denso.</p>
+      </div>
+      <div class="swatch-row">
+        <div class="swatch dark" style="background:#1E6A52;"><span class="name">forest-500</span><span class="hex">#1E6A52</span></div>
+        <div class="swatch dark" style="background:#144D3C;"><span class="name">forest-700</span><span class="hex">#144D3C</span></div>
+        <div class="swatch dark" style="background:#0C3B2E;"><span class="name">forest-900</span><span class="hex">#0C3B2E</span></div>
+        <div class="swatch dark" style="background:#0E1A14;"><span class="name">ink-900</span><span class="hex">#0E1A14</span></div>
+        <div class="swatch dark" style="background:#1F2A22;"><span class="name">ink-700</span><span class="hex">#1F2A22</span></div>
+        <div class="swatch lite" style="background:#9CA098;"><span class="name">ink-300</span><span class="hex">#9CA098</span></div>
+      </div>
+    </div>
+
+    <!-- Sage -->
+    <div class="color-row">
+      <div class="color-row-label">
+        <h3>Sage · <span class="light">acento principal</span></h3>
+        <p>Verde médio vivo. Ícones positivos, badges, fundos de breath, áreas de respiração.</p>
+      </div>
+      <div class="swatch-row">
+        <div class="swatch lite" style="background:#DCE8D2;"><span class="name">sage-100</span><span class="hex">#DCE8D2</span></div>
+        <div class="swatch lite" style="background:#A9C396;"><span class="name">sage-300</span><span class="hex">#A9C396</span></div>
+        <div class="swatch dark" style="background:#6D9773;"><span class="name">sage-500</span><span class="hex">#6D9773</span></div>
+        <div class="swatch dark" style="background:#4F7253;"><span class="name">sage-700</span><span class="hex">#4F7253</span></div>
+        <div class="swatch dark" style="background:#1E6A52;"><span class="name">sage-deep</span><span class="hex">#1E6A52</span></div>
+        <div class="swatch dark" style="background:#0C3B2E;"><span class="name">forest-900</span><span class="hex">#0C3B2E</span></div>
+      </div>
+    </div>
+
+    <!-- Terra -->
+    <div class="color-row">
+      <div class="color-row-label">
+        <h3>Terracota · <span class="light">acento humano</span></h3>
+        <p>Vermelho-terra saturado. CTAs principais, gestos de calor, ênfases editoriais.</p>
+      </div>
+      <div class="swatch-row">
+        <div class="swatch lite" style="background:#F2D6CC;"><span class="name">terra-100</span><span class="hex">#F2D6CC</span></div>
+        <div class="swatch lite" style="background:#E08770;"><span class="name">terra-300</span><span class="hex">#E08770</span></div>
+        <div class="swatch dark" style="background:#C8553D;"><span class="name">terra-500</span><span class="hex">#C8553D</span></div>
+        <div class="swatch dark" style="background:#9C3A26;"><span class="name">terra-700</span><span class="hex">#9C3A26</span></div>
+        <div class="swatch dark" style="background:#5E2113;"><span class="name">terra-900</span><span class="hex">#5E2113</span></div>
+        <div class="swatch lite" style="background:#FAF4E8;"><span class="name">sand-50</span><span class="hex">#FAF4E8</span></div>
+      </div>
+    </div>
+
+    <!-- Ochre + Sand -->
+    <div class="color-row">
+      <div class="color-row-label">
+        <h3>Ochre &amp; Sand</h3>
+        <p>Ochre dourado para highlights pontuais (premium, badges, pequenos toques). Sand é o canvas quente.</p>
+      </div>
+      <div class="swatch-row">
+        <div class="swatch lite" style="background:#E8C77E;"><span class="name">ochre-300</span><span class="hex">#E8C77E</span></div>
+        <div class="swatch dark" style="background:#D4A24C;"><span class="name">ochre-500</span><span class="hex">#D4A24C</span></div>
+        <div class="swatch dark" style="background:#A37A2D;"><span class="name">ochre-700</span><span class="hex">#A37A2D</span></div>
+        <div class="swatch lite" style="background:#FAF4E8;"><span class="name">sand-50</span><span class="hex">#FAF4E8</span></div>
+        <div class="swatch lite" style="background:#F2E9D5;"><span class="name">sand-100</span><span class="hex">#F2E9D5</span></div>
+        <div class="swatch lite" style="background:#D9C89E;"><span class="name">sand-300</span><span class="hex">#D9C89E</span></div>
+      </div>
+    </div>
+
+    <!-- Distribution -->
+    <div class="comp-card" style="margin-top:32px;background:transparent;border:1px dashed var(--sand-400);padding:24px;">
+      <div class="comp-label" style="margin-bottom:0;">Distribuição recomendada na interface</div>
+      <div class="tone-strip">
+        <div style="background:#F2E9D5;color:#0C3B2E;grid-column:span 11;">SAND · 55%</div>
+        <div style="background:#0C3B2E;color:#F2E9D5;grid-column:span 4;">FOREST · 20%</div>
+        <div style="background:#6D9773;color:#0C3B2E;grid-column:span 2;">SAGE · 12%</div>
+        <div style="background:#C8553D;color:#FAF4E8;grid-column:span 2;">TERRA · 9%</div>
+        <div style="background:#D4A24C;color:#5E2113;">OCHRE · 4%</div>
+      </div>
+      <p style="margin-top:12px;font-size:11px;color:var(--ink-400);font-family:ui-monospace,monospace;">Sand 55 · Forest 20 · Sage 12 · Terracota 9 · Ochre 4</p>
+    </div>
+  </section>
+
+  <!-- 04 — TIPOGRAFIA -->
+  <section>
+    <div class="sec-head">
+      <h2>Tipografia</h2>
+      <span class="num">04 / 06</span>
+      <p class="desc">Outfit única. Variação por peso (200 → 700), tamanho, tracking. Sem mistura de famílias.</p>
+    </div>
+
+    <div class="type-hero">
+      <p class="comp-label" style="margin-bottom:24px;color:var(--sand-300);">DISPLAY · OUTFIT 200 + 700</p>
+      <div class="type-hero-mega">Aa <span class="light">Bb</span></div>
+      <div class="type-hero-meta">
+        <div class="stack">
+          <b>Outfit</b> · 200 · 300 · 400 · 500 · 600 · 700<br>
+          Designed by Rodrigo Fuenzalida · Open Font License
+        </div>
+        <div class="stack" style="text-align:right;">
+          <b>Estratégia editorial</b><br>
+          Bold para afirmar · Light para suspirar · Mesmo glifo, dois pesos
+        </div>
+      </div>
+    </div>
+
+    <div class="type-grid">
+      <!-- Scale -->
+      <div class="type-card">
+        <div class="comp-label" style="margin-bottom:16px;">ESCALA · DESKTOP</div>
+        <div class="type-scale-row">
+          <span class="px">96px</span>
+          <span class="sample" style="font-size:42px;font-weight:700;letter-spacing:-0.05em;line-height:1;">Display Bold</span>
+          <span class="role">Display</span>
+        </div>
+        <div class="type-scale-row">
+          <span class="px">64px</span>
+          <span class="sample" style="font-size:32px;font-weight:600;letter-spacing:-0.04em;">Hero h1</span>
+          <span class="role">H1</span>
+        </div>
+        <div class="type-scale-row">
+          <span class="px">36px</span>
+          <span class="sample" style="font-size:24px;font-weight:600;letter-spacing:-0.03em;">Section h2</span>
+          <span class="role">H2</span>
+        </div>
+        <div class="type-scale-row">
+          <span class="px">22px</span>
+          <span class="sample" style="font-size:18px;font-weight:600;">Card h3</span>
+          <span class="role">H3</span>
+        </div>
+        <div class="type-scale-row">
+          <span class="px">16px</span>
+          <span class="sample" style="font-size:15px;font-weight:400;">Body — texto corrido confortável</span>
+          <span class="role">Body</span>
+        </div>
+        <div class="type-scale-row">
+          <span class="px">13px</span>
+          <span class="sample" style="font-size:13px;color:var(--ink-500);font-weight:500;">Caption · suporte</span>
+          <span class="role">Caption</span>
+        </div>
+        <div class="type-scale-row">
+          <span class="px">11px</span>
+          <span class="sample mono" style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-400);font-weight:600;">EYEBROW · METADATA</span>
+          <span class="role">Eyebrow</span>
+        </div>
+      </div>
+
+      <!-- Pairing exemplo -->
+      <div class="type-card">
+        <div class="comp-label" style="margin-bottom:16px;">EXEMPLO · CABEÇALHO EDITORIAL (UMA SÓ FONTE)</div>
+        <div class="type-pairing-display">
+          O que vocês <span class="light">vão</span><br>construir hoje?
+        </div>
+        <p class="type-pairing-body">
+          Cursos, livros, áudios e trilhas pensados para cada momento — do solteiro aos pais — tudo em um só lugar.
+        </p>
+        <div class="type-pairing-foot">Outfit 600 + Outfit 200 · contraste por peso</div>
+      </div>
+    </div>
+
+    <!-- Text treatments -->
+    <div class="comp-card" style="margin-top:24px;padding:48px;">
+      <div class="comp-label" style="margin-bottom:24px;">RECURSOS DE ÊNFASE — sem mudar de fonte</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:32px 48px;">
+        <div>
+          <p style="font-size:32px;font-weight:600;color:var(--forest-900);letter-spacing:-0.03em;line-height:1.1;">Sua família, mais <span style="font-weight:200;">forte</span> a cada dia.</p>
+          <p class="comp-label" style="margin-top:12px;margin-bottom:0;">peso · 600 → 200</p>
+        </div>
+        <div>
+          <p style="font-size:32px;font-weight:600;color:var(--forest-900);letter-spacing:-0.03em;line-height:1.1;">Sua família, mais <span style="color:var(--terra-500);">forte</span> a cada dia.</p>
+          <p class="comp-label" style="margin-top:12px;margin-bottom:0;">cor · forest → terra</p>
+        </div>
+        <div>
+          <p style="font-size:32px;font-weight:600;color:var(--forest-900);letter-spacing:-0.03em;line-height:1.1;">Sua família, mais <span style="text-decoration:underline;text-decoration-color:var(--terra-500);text-decoration-thickness:3px;text-underline-offset:6px;">forte</span> a cada dia.</p>
+          <p class="comp-label" style="margin-top:12px;margin-bottom:0;">underline · terra 3px</p>
+        </div>
+        <div>
+          <p style="font-size:32px;font-weight:600;color:var(--forest-900);letter-spacing:-0.03em;line-height:1.1;">Sua família, mais <span style="background:var(--ochre-300);padding:0 8px;border-radius:6px;">forte</span> a cada dia.</p>
+          <p class="comp-label" style="margin-top:12px;margin-bottom:0;">highlight · ochre fundo</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 — COMPONENTES -->
+  <section>
+    <div class="sec-head">
+      <h2>Componentes</h2>
+      <span class="num">05 / 06</span>
+      <p class="desc">Bloco base. Tudo deriva destes átomos.</p>
+    </div>
+
+    <div class="comp-grid">
+      <!-- Buttons -->
+      <div class="comp-card span-7">
+        <div class="comp-label">BOTÕES</div>
+        <div class="comp-stage" style="margin-bottom:20px;">
+          <button class="btn btn-primary">Continuar trilha
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8m-3-3 3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="btn btn-terra">Adquirir curso</button>
+          <button class="btn btn-sage">Ver coleção</button>
+          <button class="btn btn-outline">Ver detalhes</button>
+          <button class="btn btn-ghost">Cancelar</button>
+        </div>
+        <div class="comp-stage">
+          <button class="btn btn-primary btn-sm">Pequeno</button>
+          <button class="btn btn-primary">Padrão</button>
+          <button class="btn btn-primary btn-lg">Grande · Hero</button>
+        </div>
+      </div>
+
+      <!-- Chips -->
+      <div class="comp-card span-5">
+        <div class="comp-label">CHIPS · FILTROS POR FASE</div>
+        <div class="comp-stage">
+          <span class="chip active">Todos</span>
+          <span class="chip">Solteiro</span>
+          <span class="chip">Namoro</span>
+          <span class="chip">Noivos</span>
+          <span class="chip">Casados</span>
+          <span class="chip">Pais</span>
+        </div>
+        <div class="comp-stage" style="margin-top:16px;">
+          <span class="chip sage"><span class="chip-dot"></span> Gratuito</span>
+          <span class="chip terra"><span class="chip-dot"></span> Premium</span>
+          <span class="chip ochre"><span class="chip-dot"></span> Novo</span>
+        </div>
+      </div>
+
+      <!-- Input -->
+      <div class="comp-card span-6">
+        <div class="comp-label">CAMPO DE BUSCA</div>
+        <div class="comp-stage col" style="gap:12px;">
+          <div class="input">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="m11 11 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Buscar cursos, conteúdos, comunidade…
+          </div>
+          <div class="input focused">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.5"/><path d="m11 11 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            comunicação no casamento|
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="comp-card span-6">
+        <div class="comp-label">TABS</div>
+        <div class="tab-row">
+          <span class="tab active">Minha Biblioteca</span>
+          <span class="tab">Marketplace</span>
+          <span class="tab">Em Alta</span>
+          <span class="tab">Salvos</span>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="comp-card span-12">
+        <div class="comp-label">STATS · GAMIFICAÇÃO</div>
+        <div class="comp-stage" style="gap:16px;">
+          <div class="stat-card sage">
+            <div class="stat-card-icon">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 1c1 3 3 4 3 7a3 3 0 1 1-6 0c0-3 2-4 3-7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="stat-card-value">12</div>
+            <div class="stat-card-label">Sequência · dias</div>
+          </div>
+          <div class="stat-card forest">
+            <div class="stat-card-icon">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M5 3h8v3a4 4 0 1 1-8 0V3zm4 7v3m-3 0h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="stat-card-value">Iniciante</div>
+            <div class="stat-card-label">Nível 1 · Casados</div>
+          </div>
+          <div class="stat-card terra">
+            <div class="stat-card-icon">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="m10 2-6 8h4l-2 6 6-8H8l2-6z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="stat-card-value">340</div>
+            <div class="stat-card-label">XP semanal</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-icon">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="9" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+            </div>
+            <div class="stat-card-value">7</div>
+            <div class="stat-card-label">Conquistas</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Course cards -->
+      <div class="comp-card span-7">
+        <div class="comp-label">CARDS DE CURSO · PREVIEW</div>
+        <div class="comp-stage" style="gap:16px;">
+          <div class="course-mini">
+            <div class="course-mini-img"><span class="course-mini-tag">5h 45m</span></div>
+            <div class="course-mini-body">
+              <div class="course-mini-title">Finanças para Casais</div>
+              <div class="course-mini-meta">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="#D4A24C"><path d="m6 1 1.5 3 3.5.5-2.5 2.5.5 3.5L6 9 3 10.5 3.5 7 1 4.5l3.5-.5L6 1z"/></svg>
+                4.9 · 10 aulas · <span style="color:var(--sage-700);font-weight:600;">Gratuito</span>
+              </div>
+            </div>
+          </div>
+          <div class="course-mini">
+            <div class="course-mini-img terra"><span class="course-mini-tag ochre">PREMIUM</span></div>
+            <div class="course-mini-body">
+              <div class="course-mini-title">Comunicação Não-Violenta</div>
+              <div class="course-mini-meta">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="#D4A24C"><path d="m6 1 1.5 3 3.5.5-2.5 2.5.5 3.5L6 9 3 10.5 3.5 7 1 4.5l3.5-.5L6 1z"/></svg>
+                4.8 · 11 aulas · <span style="color:var(--terra-700);font-weight:600;">R$ 297</span>
+              </div>
+            </div>
+          </div>
+          <div class="course-mini">
+            <div class="course-mini-img forest"><span class="course-mini-tag">6h 15m</span></div>
+            <div class="course-mini-body">
+              <div class="course-mini-title">Educação Positiva</div>
+              <div class="course-mini-meta">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="#D4A24C"><path d="m6 1 1.5 3 3.5.5-2.5 2.5.5 3.5L6 9 3 10.5 3.5 7 1 4.5l3.5-.5L6 1z"/></svg>
+                4.7 · 12 aulas
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero card -->
+      <div class="comp-card span-5">
+        <div class="comp-label">HERO CARD · DESTAQUE</div>
+        <div class="hero-preview">
+          <span class="hero-preview-eyebrow">CASADOS · TRILHA</span>
+          <div class="hero-preview-title">Comunicação <span class="light">no</span> casamento</div>
+        </div>
+      </div>
+
+      <!-- Avatar / Progress -->
+      <div class="comp-card span-4">
+        <div class="comp-label">AVATAR + PROGRESSO</div>
+        <div class="comp-stage" style="gap:16px;">
+          <div class="avatar avatar-lg">RR</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;color:var(--forest-900);">Rafael Raio</div>
+            <div style="font-size:12px;color:var(--ink-400);margin-bottom:8px;">Nível 1 · Iniciante</div>
+            <div class="progress"><div class="progress-bar" style="width:35%;"></div></div>
+            <div style="font-size:11px;color:var(--ink-400);margin-top:6px;font-family:ui-monospace,monospace;">35 / 100 XP</div>
+          </div>
+        </div>
+        <div class="comp-stage" style="gap:8px;margin-top:20px;">
+          <div class="avatar">RR</div>
+          <div class="avatar terra">MS</div>
+          <div class="avatar forest">PM</div>
+          <div class="avatar" style="background:var(--ochre-300);color:var(--ochre-700);">AC</div>
+        </div>
+      </div>
+
+      <!-- Nav -->
+      <div class="comp-card span-4">
+        <div class="comp-label">NAVEGAÇÃO LATERAL</div>
+        <div class="comp-stage col" style="gap:4px;">
+          <div class="nav-item active">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 7l6-5 6 5v6a1 1 0 0 1-1 1h-3v-4H6v4H3a1 1 0 0 1-1-1V7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            Início
+          </div>
+          <div class="nav-item">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 6l6-3 6 3-6 3-6-3z m0 4l6 3 6-3 m-12 4l6 3 6-3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            Academia
+          </div>
+          <div class="nav-item">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M8 2v12 M2 8h12" stroke="currentColor" stroke-width="1.5"/></svg>
+            Conselheiro
+          </div>
+          <div class="nav-item">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6" cy="6" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="11" cy="7" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M2 13c0-2 2-3 4-3s4 1 4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            Comunidade
+          </div>
+        </div>
+      </div>
+
+      <!-- Icons -->
+      <div class="comp-card span-4">
+        <div class="comp-label">ICONOGRAFIA · LINHA 1.5</div>
+        <div class="icon-grid">
+          <div class="icon-cell"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6v7a1 1 0 0 1-1 1h-4v-5H8v5H4a1 1 0 0 1-1-1V9z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+          <div class="icon-cell"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="2" stroke="currentColor" stroke-width="1.5"/></svg></div>
+          <div class="icon-cell"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3l1.8 4.5L17 8l-4 3.3 1.2 5.2L10 14l-4.2 2.5L7 11.3 3 8l5.2-.5L10 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+          <div class="icon-cell"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4c1.5 4 4.5 4.5 4.5 8a4.5 4.5 0 1 1-9 0c0-3.5 3-4 4.5-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+          <div class="icon-cell"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 6h14v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6z m0 0l7 4 7-4" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+          <div class="icon-cell"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 17s-7-4-7-9.5A4.5 4.5 0 0 1 10 4 4.5 4.5 0 0 1 17 7.5C17 13 10 17 10 17z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+          <div class="icon-cell"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+          <div class="icon-cell"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 10a7 7 0 1 1 14 0 7 7 0 0 1-14 0z m4 0l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 — RAIOS / SOMBRAS / ESPAÇO -->
+  <section>
+    <div class="sec-head">
+      <h2>Espaçamento <span class="light">e raios</span></h2>
+      <span class="num">06 / 06</span>
+      <p class="desc">Cantos generosos. Sombras quase invisíveis — bordas em vez de elevação.</p>
+    </div>
+
+    <div class="scale-grid">
+      <div class="scale-cell"><div class="demo" style="border-radius:10px;"></div><div class="name">radius-sm</div><div class="val">10px</div></div>
+      <div class="scale-cell"><div class="demo" style="border-radius:16px;"></div><div class="name">radius-md</div><div class="val">16px</div></div>
+      <div class="scale-cell"><div class="demo" style="border-radius:24px;"></div><div class="name">radius-lg</div><div class="val">24px</div></div>
+      <div class="scale-cell"><div class="demo" style="border-radius:32px;"></div><div class="name">radius-xl</div><div class="val">32px</div></div>
+      <div class="scale-cell"><div class="demo" style="border-radius:999px;"></div><div class="name">pill</div><div class="val">∞</div></div>
+    </div>
+
+    <div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div class="comp-card">
+        <div class="comp-label">SOMBRAS</div>
+        <div style="display:flex;gap:24px;align-items:flex-end;">
+          <div style="flex:1;text-align:center;"><div style="height:80px;background:var(--sand-50);border-radius:16px;border:1px solid var(--sand-300);"></div><div style="font-size:11px;color:var(--ink-400);margin-top:8px;font-family:ui-monospace,monospace;">none</div></div>
+          <div style="flex:1;text-align:center;"><div style="height:80px;background:var(--sand-50);border-radius:16px;box-shadow:0 1px 2px rgba(14,26,20,.05),0 2px 8px rgba(14,26,20,.04);"></div><div style="font-size:11px;color:var(--ink-400);margin-top:8px;font-family:ui-monospace,monospace;">shadow-sm</div></div>
+          <div style="flex:1;text-align:center;"><div style="height:80px;background:var(--sand-50);border-radius:16px;box-shadow:0 4px 16px rgba(14,26,20,.08),0 12px 40px rgba(14,26,20,.05);"></div><div style="font-size:11px;color:var(--ink-400);margin-top:8px;font-family:ui-monospace,monospace;">shadow-md</div></div>
+        </div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-label">ESCALA DE ESPAÇAMENTO · 4PT GRID</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;">
+          <div style="flex:1;text-align:center;"><div style="height:8px;background:var(--sage-300);border-radius:4px;"></div><div style="font-size:10px;color:var(--ink-400);margin-top:6px;">8</div></div>
+          <div style="flex:1;text-align:center;"><div style="height:12px;background:var(--sage-300);border-radius:4px;"></div><div style="font-size:10px;color:var(--ink-400);margin-top:6px;">12</div></div>
+          <div style="flex:1;text-align:center;"><div style="height:16px;background:var(--sage-300);border-radius:4px;"></div><div style="font-size:10px;color:var(--ink-400);margin-top:6px;">16</div></div>
+          <div style="flex:1;text-align:center;"><div style="height:24px;background:var(--sage-500);border-radius:4px;"></div><div style="font-size:10px;color:var(--ink-400);margin-top:6px;">24</div></div>
+          <div style="flex:1;text-align:center;"><div style="height:32px;background:var(--sage-500);border-radius:4px;"></div><div style="font-size:10px;color:var(--ink-400);margin-top:6px;">32</div></div>
+          <div style="flex:1;text-align:center;"><div style="height:48px;background:var(--forest-500);border-radius:4px;"></div><div style="font-size:10px;color:var(--ink-400);margin-top:6px;">48</div></div>
+          <div style="flex:1;text-align:center;"><div style="height:64px;background:var(--forest-700);border-radius:4px;"></div><div style="font-size:10px;color:var(--ink-400);margin-top:6px;">64</div></div>
+          <div style="flex:1;text-align:center;"><div style="height:80px;background:var(--forest-900);border-radius:4px;"></div><div style="font-size:10px;color:var(--ink-400);margin-top:6px;">80</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="ds-footer">
+    <div>RAYO · Design System v2.0 · Maio 2026</div>
+    <div style="color:var(--terra-500);font-weight:600;">Saturado · Contrastante · Editorial · Outfit</div>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RAYO — Rebranding (canvas)</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;font-family:'Outfit',system-ui,sans-serif;background:#1a1a18;color:#FAF4E8;}
+  iframe{border:0;display:block;width:100%;height:100%;background:#F2E9D5;}
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { DesignCanvas, DCSection, DCArtboard } = window;
+
+const Frame = ({src}) => <iframe src={src} loading="lazy" />;
+
+const App = () => (
+  <DesignCanvas
+    title="RAYO — Rebranding"
+    subtitle="Design system + 4 telas redesenhadas. Clique em qualquer artboard para abrir em tela cheia."
+  >
+    <DCSection id="ds" title="Design System">
+      <DCArtboard id="ds-1" label="Design System v2" width={1440} height={2200}>
+        <Frame src="Design System.html" />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="screens" title="Telas — Light">
+      <DCArtboard id="home" label="Início" width={1440} height={3600}>
+        <Frame src="Home.html" />
+      </DCArtboard>
+      <DCArtboard id="acad" label="Academia" width={1440} height={2800}>
+        <Frame src="Academia.html" />
+      </DCArtboard>
+      <DCArtboard id="com" label="Comunidade" width={1440} height={2400}>
+        <Frame src="Comunidade.html" />
+      </DCArtboard>
+      <DCArtboard id="perfil" label="Perfil" width={1440} height={2200}>
+        <Frame src="Perfil.html" />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="emails" title="Email Design System">
+      <DCArtboard id="email-ds" label="Email System · spec" width={1440} height={3800}>
+        <Frame src="Email System.html" />
+      </DCArtboard>
+      <DCArtboard id="email-welcome" label="Welcome" width={640} height={1200}>
+        <Frame src="Email - Welcome.html" />
+      </DCArtboard>
+      <DCArtboard id="email-carta" label="Carta semanal" width={640} height={1200}>
+        <Frame src="Email - Carta.html" />
+      </DCArtboard>
+      <DCArtboard id="email-conquista" label="Conquista" width={640} height={1100}>
+        <Frame src="Email - Conquista.html" />
+      </DCArtboard>
+      <DCArtboard id="email-missao" label="Missão diária" width={640} height={1100}>
+        <Frame src="Email - Missao.html" />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="screens-dark" title="Telas — Dark">
+      <DCArtboard id="home-d" label="Início · Dark" width={1440} height={3600}>
+        <Frame src="Home Dark.html" />
+      </DCArtboard>
+      <DCArtboard id="acad-d" label="Academia · Dark" width={1440} height={2800}>
+        <Frame src="Academia Dark.html" />
+      </DCArtboard>
+      <DCArtboard id="com-d" label="Comunidade · Dark" width={1440} height={2400}>
+        <Frame src="Comunidade Dark.html" />
+      </DCArtboard>
+      <DCArtboard id="perfil-d" label="Perfil · Dark" width={1440} height={2200}>
+        <Frame src="Perfil Dark.html" />
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
