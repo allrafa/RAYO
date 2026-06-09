@@ -1,0 +1,1 @@
+- [Course click routing contract](course-click-routing.md) — qualquer superfície que abre um curso deve replicar o roteamento por trilha do CourseCard (trail_slug → /trilhas/:slug), senão fura o paywall.

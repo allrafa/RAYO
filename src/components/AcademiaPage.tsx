@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Search, Star, Users, ArrowRight, Play, ChevronLeft, ChevronRight, Trophy, Clock, BookOpen, Lock, CheckCircle, ShoppingCart, ChevronUp, Sparkles, Book, Headphones, Video, Film, Layers, GraduationCap, Package, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
 import { Button } from "./ui/button";
@@ -703,6 +703,51 @@ const FORMAT_KINDS: Array<{
   { kind: "reels",  label: "Reels",   description: "Inspiração rápida",        Icon: Film },
 ];
 
+// Task #262 — Metadados de tipo de produto para o badge reutilizável do
+// catálogo (jornada Skool). Deriva rótulo + ícone + cor a partir do `kind`
+// do item; cai em "Curso" pra kinds desconhecidos.
+const PRODUCT_TYPE_META: Record<
+  string,
+  { label: string; Icon: React.ComponentType<{ className?: string }>; color: string }
+> = {
+  curso: { label: "Curso", Icon: GraduationCap, color: "var(--rayo-forest-900)" },
+  livro: { label: "Livro", Icon: Book,          color: "var(--rayo-terra-700)" },
+  audio: { label: "Áudio", Icon: Headphones,    color: "var(--rayo-sage-500)" },
+  video: { label: "Vídeo", Icon: Video,         color: "var(--rayo-terra-500)" },
+  serie: { label: "Série", Icon: Layers,        color: "var(--rayo-forest-900)" },
+  reels: { label: "Reels", Icon: Film,          color: "var(--rayo-terra-500)" },
+};
+
+// Badge de tipo de produto reutilizável. `solid` usa a cor do tipo como
+// fundo (pra fundos claros); o default usa pílula branca (pra overlay em
+// cima de imagem).
+function ProductTypeBadge({
+  kind,
+  solid = false,
+  className = "",
+}: {
+  kind: string;
+  solid?: boolean;
+  className?: string;
+}) {
+  const meta = PRODUCT_TYPE_META[kind] ?? PRODUCT_TYPE_META.curso;
+  const Icon = meta.Icon;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] ${className}`}
+      style={{
+        background: solid ? meta.color : "rgba(255,255,255,0.95)",
+        color: solid ? "#FFFFFF" : meta.color,
+        fontWeight: 600,
+        boxShadow: solid ? undefined : "0 1px 2px rgba(0,0,0,0.10)",
+      }}
+    >
+      <Icon className="w-3 h-3 shrink-0" />
+      {meta.label}
+    </span>
+  );
+}
+
 interface BundleItemAPI {
   id: number;
   title: string;
@@ -753,6 +798,7 @@ function MarketplaceView({
   // back-forward. Sem `?segmento`, cai pro primeiro segmento do
   // onboarding (ou "all"). useSearchParams cuida da serialização.
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const initialSegment =
     searchParams.get("segmento") ??
     (userSegments.length > 0 ? userSegments[0] : "all");
@@ -798,6 +844,12 @@ function MarketplaceView({
   const [bundles, setBundles] = useState<BundleAPI[]>([]);
   const [bundlesLoading, setBundlesLoading] = useState<boolean>(true);
   const [bundlesError, setBundlesError] = useState<string | null>(null);
+
+  // Task #262 — "Aprofunde um tema": produtos de conteúdo (não-curso) do
+  // segmento ativo, mesclados com os cursos numa grade única com badge de
+  // tipo. Exclui 'curso' (já vem dos CourseCards) e 'artigo' (blog).
+  const [deepenItems, setDeepenItems] = useState<ContentProductItem[]>([]);
+  const [deepenLoading, setDeepenLoading] = useState<boolean>(true);
 
   // Active format filter ("curso" scrolls; others render an inline showcase).
   // Task #128 — persiste em sessionStorage para sobreviver à
@@ -952,6 +1004,35 @@ function MarketplaceView({
     return () => { cancelled = true; };
   }, [selectedSegment]);
 
+  // Fetch mixed content products for "Aprofunde um tema". Filtra fora cursos
+  // (já renderizados como CourseCard) e artigos (blog) na exibição.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setDeepenLoading(true);
+      try {
+        const segParam =
+          selectedSegment && selectedSegment !== "all"
+            ? `&segment=${encodeURIComponent(selectedSegment)}`
+            : "";
+        const res = await api.get<{ items: ContentProductItem[] }>(
+          `/api/content?limit=12${segParam}`,
+        );
+        if (cancelled) return;
+        if (res.success && res.data && Array.isArray(res.data.items)) {
+          setDeepenItems(res.data.items);
+        } else {
+          setDeepenItems([]);
+        }
+      } catch {
+        if (!cancelled) setDeepenItems([]);
+      } finally {
+        if (!cancelled) setDeepenLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedSegment]);
+
   // Backend-driven segment filter: when a non-"all" segment is selected we
   // refetch from /api/courses?life_context=X (server applies the filter and
   // ordering). Falls back to client-side filtering of the in-memory `courses`
@@ -996,6 +1077,27 @@ function MarketplaceView({
   }, [filteredCourses, selectedSegment, serverSegmentCourses, searchQuery]);
 
   const segmentLabel = SEGMENTS.find((s) => s.value === selectedSegment)?.label;
+
+  // Task #262 — "Comece por aqui": ponto de entrada de baixo atrito por
+  // momento. Prefere um curso gratuito não-matriculado; cai pro primeiro
+  // curso do segmento. `null` => bloco oculto (sem dados → sem espaço morto).
+  const startHereCourse = useMemo(() => {
+    const pool = segmentFilteredCourses;
+    if (!pool || pool.length === 0) return null;
+    const freeFirst = pool.find(
+      (c) => !(Number(c?.price) > 0) && !c?.isEnrolled,
+    );
+    return freeFirst ?? pool[0];
+  }, [segmentFilteredCourses]);
+
+  // Produtos de conteúdo (não-curso) prontos pra grade "Aprofunde um tema".
+  const deepenProducts = useMemo(
+    () =>
+      deepenItems.filter(
+        (it) => it.kind !== "curso" && it.kind !== "artigo",
+      ),
+    [deepenItems],
+  );
 
   // Task #151 — Auditoria: "Mais populares" e "Melhores avaliações" agora
   // respeitam o filtro de segmento (antes ignoravam, vinham crus do parent).
@@ -1279,7 +1381,219 @@ function MarketplaceView({
           </section>
         ) : (
           <>
-            {/* FORMAT EXPLORER — 6 CMS kinds */}
+            {/* COMECE POR AQUI — ponto de entrada de baixo atrito */}
+            {startHereCourse && (
+              <section>
+                <div className="mb-5 md:mb-6">
+                  <h2
+                    className="font-display-serif"
+                    style={{
+                      fontSize: 'clamp(26px, 3vw, 32px)',
+                      lineHeight: 1.1,
+                      color: 'var(--rayo-forest-900)',
+                      fontWeight: 400,
+                    }}
+                  >
+                    Comece por{' '}
+                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
+                      aqui
+                    </span>
+                  </h2>
+                  <p className="text-[15px] mt-2" style={{ color: 'var(--rayo-ink-700)' }}>
+                    {selectedSegment === 'all'
+                      ? 'Seu primeiro passo na jornada RAYO — sem complicação.'
+                      : `O melhor jeito de começar em ${segmentLabel}.`}
+                  </p>
+                </div>
+                <StartHereCard
+                  course={startHereCourse}
+                  segmentLabel={selectedSegment !== 'all' ? segmentLabel : undefined}
+                  onOpen={() => {
+                    // Mesmo contrato do CourseCard: curso de trilha paga vai
+                    // pro detalhe da trilha (/trilhas/:slug, onde mora o
+                    // checkout); curso avulso abre o detalhe do curso.
+                    if (startHereCourse.trail_slug) {
+                      window.location.href = `/trilhas/${startHereCourse.trail_slug}`;
+                    } else {
+                      setCurrentCourseId(startHereCourse.id);
+                      setIsInCourseDetail(true);
+                    }
+                  }}
+                />
+              </section>
+            )}
+
+            {/* CURATED BUNDLES — trilhas */}
+            <section>
+              <div className="flex items-end justify-between gap-4 mb-6 md:mb-8">
+                <div>
+                  <h2
+                    className="font-display-serif"
+                    style={{
+                      fontSize: 'clamp(26px, 3vw, 32px)',
+                      lineHeight: 1.1,
+                      color: 'var(--rayo-forest-900)',
+                      fontWeight: 400,
+                    }}
+                  >
+                    Sua trilha{' '}
+                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
+                      completa
+                    </span>
+                  </h2>
+                  <p className="text-[15px] mt-2" style={{ color: 'var(--rayo-ink-700)' }}>
+                    {selectedSegment === 'all'
+                      ? 'Jornadas curadas de ponta a ponta para cada momento da família.'
+                      : `A jornada completa pensada para ${segmentLabel}.`}
+                  </p>
+                </div>
+              </div>
+
+              {bundlesLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--rayo-terra-500)' }} />
+                </div>
+              ) : bundlesError ? (
+                <EmptyMarketplaceState
+                  title="Não conseguimos carregar as trilhas"
+                  description={bundlesError}
+                />
+              ) : bundles.length === 0 ? (
+                <EmptyMarketplaceState
+                  title="Nenhuma trilha para este segmento ainda"
+                  description="Em breve novas trilhas curadas. Enquanto isso, explore outros segmentos."
+                  actionLabel="Ver todos os segmentos"
+                  onAction={() => setSelectedSegment('all')}
+                />
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                  {bundles.map((b) => (
+                    <BundleCard
+                      key={b.id}
+                      bundle={b}
+                      isExpanded={expandedBundleId === b.id}
+                      onToggle={() =>
+                        setExpandedBundleId((curr) => (curr === b.id ? null : b.id))
+                      }
+                      onOpenCourse={(courseId) => {
+                        setCurrentCourseId(courseId);
+                        setIsInCourseDetail(true);
+                      }}
+                      onSeeAllInSegment={() => {
+                        setSelectedSegment(b.segment);
+                        setTimeout(() => {
+                          allCoursesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 60);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* APROFUNDE UM TEMA — grade mista: cursos + produtos digitais */}
+            <section ref={allCoursesRef}>
+              <div className="mb-6 md:mb-8 flex items-end justify-between gap-4 flex-wrap">
+                <div>
+                  <h2
+                    className="font-display-serif"
+                    style={{
+                      fontSize: 'clamp(26px, 3vw, 32px)',
+                      lineHeight: 1.1,
+                      color: 'var(--rayo-forest-900)',
+                      fontWeight: 400,
+                    }}
+                  >
+                    Aprofunde um{' '}
+                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
+                      tema
+                    </span>
+                    {selectedSegment !== 'all' && segmentLabel ? (
+                      <span style={{ color: 'var(--rayo-ink-700)', fontSize: '0.7em', fontStyle: 'normal' }}>
+                        {' '}· {segmentLabel}
+                      </span>
+                    ) : null}
+                  </h2>
+                  <p className="text-[14px] mt-1" style={{ color: 'var(--rayo-ink-700)' }}>
+                    Cursos, livros, áudios e vídeos para ir além — acesso digital
+                    imediato.
+                  </p>
+                </div>
+                {selectedSegment !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSegment('all')}
+                    className="text-[14px] underline-offset-4 hover:underline"
+                    style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}
+                  >
+                    Ver todos os segmentos
+                  </button>
+                )}
+              </div>
+
+              {segmentFilteredCourses.length === 0 && deepenProducts.length === 0 ? (
+                deepenLoading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--rayo-terra-500)' }} />
+                  </div>
+                ) : (
+                  <EmptyMarketplaceState
+                    title={`Sem conteúdos para ${segmentLabel || 'este segmento'} ainda`}
+                    description="Em breve novos materiais para este momento. Enquanto isso, explore os outros segmentos."
+                    actionLabel="Ver todos os segmentos"
+                    onAction={() => setSelectedSegment('all')}
+                  />
+                )
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                  {segmentFilteredCourses.map((course) => (
+                    <CourseCard
+                      key={`curso-${course.id}`}
+                      course={course}
+                      onClick={() => {
+                        setCurrentCourseId(course.id);
+                        setIsInCourseDetail(true);
+                      }}
+                      enrollInCourse={enrollInCourse}
+                    />
+                  ))}
+                  {deepenProducts.map((it) => {
+                    // Roteia por kind (mesmo contrato do showcase de formato).
+                    const handleOpen = () => {
+                      switch (it.kind) {
+                        case 'livro':
+                          setCurrentBookId(String(it.id));
+                          setIsInBookDetail(true);
+                          break;
+                        case 'video':
+                        case 'audio':
+                        case 'reels':
+                          setCurrentVideoId(String(it.id));
+                          setIsInVideoPage(true);
+                          break;
+                        case 'serie':
+                          toast.info('Página de séries em breve');
+                          break;
+                        default:
+                          break;
+                      }
+                    };
+                    return (
+                      <ContentProductCard
+                        key={`${it.kind}-${it.id}`}
+                        item={it}
+                        onOpen={handleOpen}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* COMUNIDADE — upsell de pertencimento (caminho /comunidade) */}
+            <CommunityUpsell onJoin={() => navigate('/comunidade')} />
+
+            {/* FORMAT EXPLORER — 6 CMS kinds (demoted: explorar por formato) */}
             <section>
               <div className="mb-6 md:mb-8">
                 <h2
@@ -1297,7 +1611,8 @@ function MarketplaceView({
                   </span>
                 </h2>
                 <p className="text-[15px] mt-2" style={{ color: 'var(--rayo-ink-700)' }}>
-                  Escolha como você prefere consumir hoje.
+                  Prefere navegar pelo tipo de conteúdo? Escolha como você quer
+                  consumir hoje.
                 </p>
               </div>
 
@@ -1435,305 +1750,15 @@ function MarketplaceView({
                           }
                         };
                         return (
-                          <div
+                          <ContentProductCard
                             key={it.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={handleOpen}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                handleOpen();
-                              }
-                            }}
-                            className="ra-card ra-card-hover overflow-hidden cursor-pointer focus:outline-none focus-visible:ring-2"
-                            style={{ padding: 0 }}
-                            aria-label={`Abrir ${it.title}`}
-                          >
-                            <div className="relative w-full" style={{ aspectRatio: '4 / 3' }}>
-                              <ImageWithFallback
-                                src={it.cover_url || ''}
-                                alt={it.title}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="p-4">
-                              <div
-                                className="text-[14px] line-clamp-2"
-                                style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
-                              >
-                                {it.title}
-                              </div>
-                              {it.short_description && (
-                                <div
-                                  className="text-[12px] mt-1 line-clamp-2"
-                                  style={{ color: 'var(--rayo-ink-700)' }}
-                                >
-                                  {it.short_description}
-                                </div>
-                              )}
-                              {it.author && (
-                                <div
-                                  className="text-[11px] mt-2"
-                                  style={{ color: 'var(--rayo-ink-400)' }}
-                                >
-                                  {it.author}
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                            item={{ ...it, kind: selectedKind }}
+                            onOpen={handleOpen}
+                          />
                         );
                       })}
                     </div>
                   )}
-                </div>
-              )}
-            </section>
-
-            {/* CURATED BUNDLES — trilhas */}
-            <section>
-              <div className="flex items-end justify-between gap-4 mb-6 md:mb-8">
-                <div>
-                  <h2
-                    className="font-display-serif"
-                    style={{
-                      fontSize: 'clamp(26px, 3vw, 32px)',
-                      lineHeight: 1.1,
-                      color: 'var(--rayo-forest-900)',
-                      fontWeight: 400,
-                    }}
-                  >
-                    Trilhas{' '}
-                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
-                      curadas
-                    </span>
-                  </h2>
-                  <p className="text-[15px] mt-2" style={{ color: 'var(--rayo-ink-700)' }}>
-                    {selectedSegment === 'all'
-                      ? 'Combinações pensadas para cada momento da sua família.'
-                      : `Selecionadas para ${segmentLabel}.`}
-                  </p>
-                </div>
-              </div>
-
-              {bundlesLoading ? (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--rayo-terra-500)' }} />
-                </div>
-              ) : bundlesError ? (
-                <EmptyMarketplaceState
-                  title="Não conseguimos carregar as trilhas"
-                  description={bundlesError}
-                />
-              ) : bundles.length === 0 ? (
-                <EmptyMarketplaceState
-                  title="Nenhuma trilha para este segmento ainda"
-                  description="Em breve novas trilhas curadas. Enquanto isso, explore outros segmentos."
-                  actionLabel="Ver todos os segmentos"
-                  onAction={() => setSelectedSegment('all')}
-                />
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                  {bundles.map((b) => (
-                    <BundleCard
-                      key={b.id}
-                      bundle={b}
-                      isExpanded={expandedBundleId === b.id}
-                      onToggle={() =>
-                        setExpandedBundleId((curr) => (curr === b.id ? null : b.id))
-                      }
-                      onOpenCourse={(courseId) => {
-                        setCurrentCourseId(courseId);
-                        setIsInCourseDetail(true);
-                      }}
-                      onSeeAllInSegment={() => {
-                        setSelectedSegment(b.segment);
-                        setTimeout(() => {
-                          allCoursesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }, 60);
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {/* MOST POPULAR */}
-            <section ref={popularSectionRef}>
-              <div className="flex items-center justify-between mb-6 md:mb-8 gap-4">
-                <div>
-                  <h2
-                    className="font-display-serif"
-                    style={{
-                      fontSize: 'clamp(26px, 3vw, 32px)',
-                      lineHeight: 1.1,
-                      color: 'var(--rayo-forest-900)',
-                      fontWeight: 400,
-                    }}
-                  >
-                    Mais{' '}
-                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
-                      populares
-                    </span>
-                  </h2>
-                  {!showAllPopular && displayedTotalPopular > 4 && (
-                    <p className="text-[14px] mt-1" style={{ color: 'var(--rayo-ink-700)' }}>
-                      {displayedTotalPopular} cursos disponíveis
-                      {selectedSegment !== 'all' && segmentLabel ? ` em ${segmentLabel}` : ''}
-                    </p>
-                  )}
-                </div>
-                {displayedTotalPopular > 4 && (
-                  <Button
-                    variant="ghost"
-                    className="gap-2 hover:bg-transparent transition-all shrink-0"
-                    style={{ color: 'var(--rayo-terra-500)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--rayo-terra-700)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--rayo-terra-500)'; }}
-                    onClick={() => {
-                      const newValue = !showAllPopular;
-                      setShowAllPopular(newValue);
-                      if (newValue) {
-                        toast.success(`Mostrando todos os ${displayedTotalPopular} cursos populares`);
-                      }
-                    }}
-                  >
-                    <span style={{ fontWeight: 600 }}>
-                      {showAllPopular ? 'Mostrar menos' : 'Explorar tudo'}
-                    </span>
-                    {showAllPopular ? (
-                      <ChevronUp className="w-5 h-5" />
-                    ) : (
-                      <ArrowRight className="w-5 h-5" />
-                    )}
-                  </Button>
-                )}
-              </div>
-              {displayedPopular.length === 0 ? (
-                <EmptyMarketplaceState
-                  title={selectedSegment === 'all' ? 'Sem cursos populares ainda' : `Sem cursos populares em ${segmentLabel}`}
-                  description={selectedSegment === 'all' ? 'Em breve novos lançamentos no catálogo.' : 'Tente outro segmento ou volte em breve.'}
-                />
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-500">
-                  {displayedPopular.map((course, index) => (
-                    <div
-                      key={course.id}
-                      className="animate-in fade-in slide-in-from-bottom-4"
-                      style={{
-                        animationDelay: `${index * 50}ms`,
-                        animationFillMode: 'backwards',
-                      }}
-                    >
-                      <PopularCard
-                        course={course}
-                        onClick={() => {
-                          setCurrentCourseId(course.id);
-                          setIsInCourseDetail(true);
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {/* BEST RATED — Task #151: usa displayedTopRated (segment-aware) */}
-            {displayedTopRated.length > 0 && (
-              <section>
-                <div className="mb-6 md:mb-8">
-                  <h2
-                    className="font-display-serif"
-                    style={{
-                      fontSize: 'clamp(26px, 3vw, 32px)',
-                      lineHeight: 1.1,
-                      color: 'var(--rayo-forest-900)',
-                      fontWeight: 400,
-                    }}
-                  >
-                    Cursos com{' '}
-                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
-                      boas avaliações
-                    </span>
-                    {selectedSegment !== 'all' && segmentLabel ? (
-                      <span style={{ color: 'var(--rayo-ink-700)', fontSize: '0.7em', fontStyle: 'normal' }}>
-                        {' '}· {segmentLabel}
-                      </span>
-                    ) : null}
-                  </h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                  {displayedTopRated.slice(0, 8).map((course) => (
-                    <CourseCard
-                      key={course.id}
-                      course={course}
-                      onClick={() => {
-                        setCurrentCourseId(course.id);
-                        setIsInCourseDetail(true);
-                      }}
-                      enrollInCourse={enrollInCourse}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* ALL COURSES — segment-filtered */}
-            <section ref={allCoursesRef}>
-              <div className="mb-6 md:mb-8 flex items-end justify-between gap-4 flex-wrap">
-                <div>
-                  <h2
-                    className="font-display-serif"
-                    style={{
-                      fontSize: 'clamp(26px, 3vw, 32px)',
-                      lineHeight: 1.1,
-                      color: 'var(--rayo-forest-900)',
-                      fontWeight: 400,
-                    }}
-                  >
-                    {selectedSegment === 'all' ? (
-                      <>Todos os <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>cursos</span></>
-                    ) : (
-                      <>Cursos para <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>{segmentLabel}</span></>
-                    )}
-                  </h2>
-                  <p className="text-[14px] mt-1" style={{ color: 'var(--rayo-ink-700)' }}>
-                    {segmentFilteredCourses.length}{' '}
-                    {segmentFilteredCourses.length === 1 ? 'curso' : 'cursos'}
-                  </p>
-                </div>
-                {selectedSegment !== 'all' && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSegment('all')}
-                    className="text-[14px] underline-offset-4 hover:underline"
-                    style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}
-                  >
-                    Ver todos os segmentos
-                  </button>
-                )}
-              </div>
-
-              {segmentFilteredCourses.length === 0 ? (
-                <EmptyMarketplaceState
-                  title={`Sem cursos para ${segmentLabel || 'este segmento'} ainda`}
-                  description="Em breve novos cursos para este momento. Enquanto isso, explore os outros segmentos."
-                  actionLabel="Ver todos os segmentos"
-                  onAction={() => setSelectedSegment('all')}
-                />
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                  {segmentFilteredCourses.map((course) => (
-                    <CourseCard
-                      key={course.id}
-                      course={course}
-                      onClick={() => {
-                        setCurrentCourseId(course.id);
-                        setIsInCourseDetail(true);
-                      }}
-                      enrollInCourse={enrollInCourse}
-                    />
-                  ))}
                 </div>
               )}
             </section>
@@ -1861,6 +1886,18 @@ function BundleCard({
             {bundle.description}
           </p>
         )}
+        {/* Task #262 — composição da trilha: chips dos tipos de produto que
+            ela inclui. No modelo atual as trilhas só agregam cursos, então
+            mostramos os tipos reais (sem fabricar livros/áudios). */}
+        {items.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {Array.from(
+              new Set(items.map((it: any) => (it && it.kind) || 'curso')),
+            ).map((k) => (
+              <ProductTypeBadge key={k as string} kind={k as string} solid />
+            ))}
+          </div>
+        )}
         <div
           className="text-[13px] pt-2 inline-flex items-center gap-1.5"
           style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}
@@ -1985,6 +2022,253 @@ function PopularCard({ course, onClick }: PopularCardProps) {
   );
 }
 
+// Task #262 — Card de produto de conteúdo (não-curso) usado nas grades
+// "Aprofunde um tema" e "Explore por formato". Mostra badge de tipo no topo
+// e um rótulo de baixo atrito ("Acesso imediato" pra gratuito, "Acesso
+// digital" pro pago) — tudo derivado de dados reais do content_item.
+interface ContentProductItem {
+  id: number | string;
+  title: string;
+  short_description?: string | null;
+  cover_url?: string | null;
+  author?: string | null;
+  kind: string;
+  is_premium?: boolean;
+  price?: number | string | null;
+}
+
+function ContentProductCard({
+  item,
+  onOpen,
+}: {
+  item: ContentProductItem;
+  onOpen: () => void;
+}) {
+  const isFree = !item.is_premium && !(Number(item.price) > 0);
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={cardKeyHandler(onOpen)}
+      className="ra-card ra-card-hover overflow-hidden cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
+      style={{ padding: 0 }}
+      aria-label={`Abrir ${item.title}`}
+    >
+      <div className="relative w-full" style={{ aspectRatio: "4 / 3" }}>
+        <ImageWithFallback
+          src={item.cover_url || ""}
+          alt={item.title}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute top-3 left-3">
+          <ProductTypeBadge kind={item.kind} />
+        </div>
+      </div>
+      <div className="p-4">
+        <div
+          className="text-[14px] line-clamp-2"
+          style={{ fontWeight: 600, color: "var(--rayo-forest-900)" }}
+        >
+          {item.title}
+        </div>
+        {item.short_description && (
+          <div
+            className="text-[12px] mt-1 line-clamp-2"
+            style={{ color: "var(--rayo-ink-700)" }}
+          >
+            {item.short_description}
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-2 mt-3">
+          {item.author ? (
+            <span className="text-[11px] truncate" style={{ color: "var(--rayo-ink-400)" }}>
+              {item.author}
+            </span>
+          ) : (
+            <span />
+          )}
+          <span
+            className="text-[11px] shrink-0"
+            style={{
+              color: isFree ? "var(--rayo-sage-500)" : "var(--rayo-ink-700)",
+              fontWeight: 600,
+            }}
+          >
+            {isFree ? "Acesso imediato" : "Acesso digital"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Task #262 — Card grande "Comece por aqui": o ponto de entrada de baixo
+// atrito por momento de vida. Deriva de um curso (preferencialmente
+// gratuito) do segmento ativo.
+function StartHereCard({
+  course,
+  segmentLabel,
+  onOpen,
+}: {
+  course: any;
+  segmentLabel?: string;
+  onOpen: () => void;
+}) {
+  const isFree = !(Number(course.price) > 0);
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={cardKeyHandler(onOpen)}
+      className="ra-card ra-card-hover overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
+      style={{ padding: 0, cursor: "pointer" }}
+      aria-label={`Começar ${course.title}`}
+    >
+      <div className="grid md:grid-cols-2">
+        <div className="relative" style={{ minHeight: 220 }}>
+          <ImageWithFallback
+            src={course.thumbnail}
+            alt={course.title}
+            className="w-full h-full object-cover"
+            style={{ position: "absolute", inset: 0 }}
+          />
+          <div
+            className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px]"
+            style={{ background: "var(--rayo-sage-500)", color: "#FFFFFF", fontWeight: 600 }}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            {isFree ? "Comece grátis" : "Recomendado"}
+          </div>
+        </div>
+        <div className="p-6 md:p-8 flex flex-col justify-center gap-3">
+          <span
+            className="text-[12px] uppercase tracking-wider"
+            style={{ color: "var(--rayo-terra-700)", letterSpacing: "0.12em", fontWeight: 600 }}
+          >
+            Seu primeiro passo{segmentLabel ? ` · ${segmentLabel}` : ""}
+          </span>
+          <h3
+            className="font-display-serif"
+            style={{
+              fontSize: "clamp(22px, 2.4vw, 30px)",
+              lineHeight: 1.1,
+              color: "var(--rayo-forest-900)",
+              fontWeight: 400,
+            }}
+          >
+            {course.title}
+          </h3>
+          {course.description && (
+            <p
+              className="text-[14px] line-clamp-3"
+              style={{ color: "var(--rayo-ink-700)", lineHeight: 1.6 }}
+            >
+              {course.description}
+            </p>
+          )}
+          <div className="pt-2">
+            <span
+              className="inline-flex items-center gap-2 h-[46px] px-5 rounded-full text-[15px]"
+              style={{ background: "var(--rayo-terra-500)", color: "#FFFFFF", fontWeight: 600 }}
+            >
+              {course.isEnrolled
+                ? "Continuar"
+                : isFree
+                ? "Começar agora"
+                : "Ver detalhes"}
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Task #262 — Bloco final "Faça parte da comunidade": upsell de
+// pertencimento que comunica o valor do acesso completo e leva ao caminho
+// de comunidade existente (/comunidade).
+function CommunityUpsell({ onJoin }: { onJoin: () => void }) {
+  const perks: Array<{ Icon: React.ComponentType<{ className?: string }>; title: string; text: string }> = [
+    { Icon: Users, title: "Comunidade ativa", text: "Troque experiências e tire dúvidas com outras famílias." },
+    { Icon: Layers, title: "Trilhas completas", text: "Acompanhe as jornadas curadas de ponta a ponta." },
+    { Icon: Sparkles, title: "Conteúdo novo toda semana", text: "Cursos, livros e áudios para o seu momento de vida." },
+  ];
+  return (
+    <section>
+      <div
+        className="rounded-3xl overflow-hidden p-8 md:p-12"
+        style={{ background: "linear-gradient(135deg, var(--rayo-forest-900), var(--rayo-terra-700))" }}
+      >
+        <div className="max-w-2xl">
+          <p
+            className="font-display-serif italic text-[14px] mb-2"
+            style={{ color: "rgba(255,255,255,0.85)", letterSpacing: "0.02em" }}
+          >
+            Mais do que conteúdo
+          </p>
+          <h2
+            className="font-display-serif"
+            style={{
+              fontSize: "clamp(28px, 3.4vw, 40px)",
+              lineHeight: 1.05,
+              color: "#FFFFFF",
+              fontWeight: 400,
+            }}
+          >
+            Faça parte da{" "}
+            <span style={{ fontStyle: "italic" }}>comunidade RAYO</span>
+          </h2>
+          <p className="text-[15px] md:text-[16px] mt-4" style={{ color: "rgba(255,255,255,0.88)", lineHeight: 1.6 }}>
+            Famílias caminham melhor juntas. Conecte-se, acompanhe trilhas
+            completas e receba novos conteúdos pensados para cada fase.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-4 mt-8">
+          {perks.map((p) => {
+            const Icon = p.Icon;
+            return (
+              <div
+                key={p.title}
+                className="rounded-2xl p-5"
+                style={{ background: "rgba(255,255,255,0.10)", backdropFilter: "blur(6px)" }}
+              >
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+                  style={{ background: "rgba(255,255,255,0.16)" }}
+                >
+                  <Icon className="w-5 h-5" />
+                </div>
+                <div className="text-[15px]" style={{ fontWeight: 600, color: "#FFFFFF" }}>
+                  {p.title}
+                </div>
+                <div className="text-[13px] mt-1" style={{ color: "rgba(255,255,255,0.82)" }}>
+                  {p.text}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-8">
+          <button
+            type="button"
+            onClick={onJoin}
+            className="inline-flex items-center gap-2 h-[50px] px-6 rounded-full text-[15px] transition-all hover:-translate-y-0.5"
+            style={{ background: "var(--rayo-sand-50)", color: "var(--rayo-forest-900)", fontWeight: 600 }}
+          >
+            Entrar na comunidade
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // Course Card - Hotmart product style
 interface CourseCardProps {
   course: any;
@@ -2082,6 +2366,11 @@ function CourseCard({ course, onClick, enrollInCourse: _enrollInCourse }: Course
             </Badge>
           </div>
         ) : null}
+        {/* Task #262 — badge de tipo (bottom-left p/ não colidir com os
+            badges Adquirido/Trilha no top-left). */}
+        <div className="absolute bottom-3 left-3">
+          <ProductTypeBadge kind="curso" />
+        </div>
       </div>
 
       {/* Content */}
