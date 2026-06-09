@@ -140,6 +140,7 @@ import { GlobalAudioPlayer } from "./components/GlobalAudioPlayer";
 import "./styles/app-rayo.css";
 import "./styles/auth-rayo.css";
 import "./styles/marketing-rayo.css";
+import "./styles/turmas-rayo.css";
 
 type PreAuthStage = "welcome" | "onboarding" | "auth";
 type AuthStartMode = "login" | "register";

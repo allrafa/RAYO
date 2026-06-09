@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, Star, Users, ArrowRight, Play, ChevronLeft, ChevronRight, Trophy, Clock, BookOpen, Lock, CheckCircle, ShoppingCart, ChevronUp, Sparkles, Book, Headphones, Video, Film, Layers, GraduationCap, Package, Loader2 } from "lucide-react";
+import { Search, Star, Users, ArrowRight, Play, ChevronLeft, ChevronRight, ChevronDown, Trophy, Clock, BookOpen, Lock, CheckCircle, ShoppingCart, ChevronUp, Sparkles, Book, Headphones, Video, Film, Layers, GraduationCap, Package, Loader2 } from "lucide-react";
 import { api } from "../lib/api";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -773,6 +773,30 @@ interface BundleAPI {
   items?: BundleItemAPI[];
 }
 
+// Item normalizado da biblioteca unificada "Todos os conteúdos" (mockup .card).
+// `status` segue o vocabulário visual do mockup: free | open | premium | soon.
+type LibStatus = "free" | "open" | "premium" | "soon";
+interface LibItem {
+  id: number;
+  kind: string;
+  title: string;
+  author: string | null;
+  cover: string | null;
+  status: LibStatus;
+  statusLabel: string;
+  actionLabel: string;
+  actionVariant: "primary" | "outline" | "soft";
+  trailSlug?: string | null;
+  favType: "course" | "video" | "post" | "product";
+}
+
+// Deriva o tipo de favorito (contrato do FavoriteIcon) a partir do kind.
+function favTypeFor(kind: string): LibItem["favType"] {
+  if (kind === "curso") return "course";
+  if (kind === "video" || kind === "audio" || kind === "reels") return "video";
+  return "product"; // livro, serie, etc.
+}
+
 function MarketplaceView({
   searchQuery,
   setSearchQuery,
@@ -839,10 +863,6 @@ function MarketplaceView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, userSegments]);
 
-  // Format counts (loaded from CMS public endpoint, one request per kind).
-  const [formatCounts, setFormatCounts] = useState<Record<string, number>>({});
-  const [formatCountsLoading, setFormatCountsLoading] = useState<boolean>(true);
-
   // Curated bundles (loaded from /api/bundles, optionally filtered by segment)
   const [bundles, setBundles] = useState<BundleAPI[]>([]);
   const [bundlesLoading, setBundlesLoading] = useState<boolean>(true);
@@ -854,67 +874,12 @@ function MarketplaceView({
   const [deepenItems, setDeepenItems] = useState<ContentProductItem[]>([]);
   const [deepenLoading, setDeepenLoading] = useState<boolean>(true);
 
-  // Active format filter ("curso" scrolls; others render an inline showcase).
-  // Task #128 — persiste em sessionStorage para sobreviver à
-  // remontagem causada por abrir um item do catálogo (livro/vídeo).
-  const [selectedKind, setSelectedKind] = useState<string | null>(() => {
-    try { return sessionStorage.getItem('rayo-academia-kind') || null; } catch { return null; }
-  });
-  useEffect(() => {
-    try {
-      if (selectedKind) sessionStorage.setItem('rayo-academia-kind', selectedKind);
-      else sessionStorage.removeItem('rayo-academia-kind');
-    } catch {}
-  }, [selectedKind]);
-  const [kindItems, setKindItems] = useState<Array<{
-    id: number;
-    title: string;
-    short_description: string | null;
-    cover_url: string | null;
-    author?: string | null;
-  }>>([]);
-  const [kindLoading, setKindLoading] = useState<boolean>(false);
-  const [kindError, setKindError] = useState<string | null>(null);
-  const kindShowcaseRef = useRef<HTMLDivElement>(null);
-
   // Inline-expanded bundle (shows real items list)
   const [expandedBundleId, setExpandedBundleId] = useState<number | null>(null);
 
-  // Fetch items for the selected non-curso format whenever kind or segment change
-  useEffect(() => {
-    if (!selectedKind || selectedKind === "curso") return;
-    let cancelled = false;
-    (async () => {
-      setKindLoading(true);
-      setKindError(null);
-      try {
-        const segParam =
-          selectedSegment && selectedSegment !== "all"
-            ? `&segment=${encodeURIComponent(selectedSegment)}`
-            : "";
-        const res = await api.get<{ items: typeof kindItems }>(
-          `/api/content?kind=${encodeURIComponent(selectedKind)}${segParam}&limit=12`
-        );
-        if (cancelled) return;
-        if (res.success && res.data && Array.isArray(res.data.items)) {
-          setKindItems(res.data.items);
-        } else {
-          setKindError("Não foi possível carregar este formato agora.");
-          setKindItems([]);
-        }
-      } catch {
-        if (!cancelled) {
-          setKindError("Não foi possível carregar este formato agora.");
-          setKindItems([]);
-        }
-      } finally {
-        if (!cancelled) setKindLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedKind, selectedSegment]);
+  // Filtro de formato + paginação da biblioteca unificada "Todos os conteúdos".
+  const [libFormat, setLibFormat] = useState<string>("todos");
+  const [libLimit, setLibLimit] = useState<number>(8);
 
   // Re-sync segment if onboarding changes after mount
   useEffect(() => {
@@ -934,48 +899,6 @@ function MarketplaceView({
       }, 100);
     }
   }, [showAllPopular]);
-
-  // Fetch format counts (one cheap call per kind, cached for the session)
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setFormatCountsLoading(true);
-      const counts: Record<string, number> = {};
-      await Promise.all(
-        FORMAT_KINDS.map(async (f) => {
-          try {
-            const res = await api.get<{
-              items: unknown[];
-              pagination?: { total?: number };
-              total?: number;
-            }>(`/api/content?kind=${encodeURIComponent(f.kind)}&limit=1`);
-            if (res.success && res.data) {
-              const total =
-                typeof res.data.pagination?.total === "number"
-                  ? res.data.pagination.total
-                  : typeof res.data.total === "number"
-                  ? res.data.total
-                  : Array.isArray(res.data.items)
-                  ? res.data.items.length
-                  : 0;
-              counts[f.kind] = total;
-            } else {
-              counts[f.kind] = 0;
-            }
-          } catch {
-            counts[f.kind] = 0;
-          }
-        })
-      );
-      // Curso count comes from local courses array (CMS-authored + legacy)
-      counts.curso = Math.max(counts.curso || 0, courses.length);
-      if (!cancelled) {
-        setFormatCounts(counts);
-        setFormatCountsLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [courses.length]);
 
   // Fetch curated bundles (filtered by selected segment when not "all")
   useEffect(() => {
@@ -1134,227 +1057,232 @@ function MarketplaceView({
   const displayedTotalPopular =
     selectedSegment === 'all' ? totalPopularCourses : segmentedPopularAll.length;
 
-  // Task #151 — Esconde formatos com count=0 (Áudios/Reels seedados como
-  // ícones-fantasma ficavam clicáveis e iam pra empty state). Mantém Cursos
-  // sempre visível porque ele opera como link de scroll, não como filtro.
-  const visibleFormatKinds = useMemo(
+  // Biblioteca unificada "Todos os conteúdos": funde cursos do segmento ativo
+  // com os conteúdos digitais (livro/áudio/vídeo/etc.) numa lista normalizada,
+  // mapeando cada item para o vocabulário de status do mockup.
+  const libraryItems = useMemo<LibItem[]>(() => {
+    const fromCourses: LibItem[] = segmentFilteredCourses.map((c: any) => {
+      const trailSlug: string | null = c?.trail_slug || null;
+      const isEnrolled = !!c?.isEnrolled;
+      const isPaid = Number(c?.price) > 0;
+      let status: LibStatus;
+      let statusLabel: string;
+      let actionLabel: string;
+      let actionVariant: LibItem["actionVariant"];
+      if (isEnrolled) {
+        status = "open"; statusLabel = "Adquirido"; actionLabel = "Continuar"; actionVariant = "soft";
+      } else if (trailSlug) {
+        status = "premium"; statusLabel = "Trilha"; actionLabel = "Ver trilha"; actionVariant = "primary";
+      } else if (isPaid) {
+        status = "soon"; statusLabel = "Em breve"; actionLabel = "Avise-me"; actionVariant = "soft";
+      } else {
+        status = "free"; statusLabel = "Gratuito"; actionLabel = "Acessar"; actionVariant = "outline";
+      }
+      return {
+        id: Number(c?.id),
+        kind: "curso",
+        title: c?.title ?? "",
+        author: c?.instructor ?? null,
+        cover: c?.thumbnail ?? null,
+        status, statusLabel, actionLabel, actionVariant,
+        trailSlug,
+        favType: "course",
+      };
+    });
+
+    const fromContent: LibItem[] = deepenProducts.map((it) => {
+      const isPaid = !!it.is_premium || Number(it.price) > 0;
+      let status: LibStatus;
+      let statusLabel: string;
+      let actionLabel: string;
+      let actionVariant: LibItem["actionVariant"];
+      if (it.kind === "livro") {
+        if (isPaid) {
+          status = "premium"; statusLabel = "Premium"; actionLabel = "Adquirir"; actionVariant = "primary";
+        } else {
+          status = "free"; statusLabel = "Gratuito"; actionLabel = "Ler"; actionVariant = "outline";
+        }
+      } else if (it.kind === "serie") {
+        status = "soon"; statusLabel = "Em breve"; actionLabel = "Avise-me"; actionVariant = "soft";
+      } else {
+        // video, audio, reels
+        status = "open"; statusLabel = "Acesso imediato"; actionLabel = "Assistir"; actionVariant = "soft";
+      }
+      return {
+        id: Number(it.id),
+        kind: it.kind,
+        title: it.title,
+        author: it.author ?? null,
+        cover: it.cover_url ?? null,
+        status, statusLabel, actionLabel, actionVariant,
+        trailSlug: null,
+        favType: favTypeFor(it.kind),
+      };
+    });
+
+    return [...fromCourses, ...fromContent];
+  }, [segmentFilteredCourses, deepenProducts]);
+
+  // Chips de formato da biblioteca: "Todos" + cada kind presente, com contagem.
+  const libFormatChips = useMemo(() => {
+    const counts: Record<string, number> = {};
+    libraryItems.forEach((it) => {
+      counts[it.kind] = (counts[it.kind] ?? 0) + 1;
+    });
+    const present = FORMAT_KINDS.filter((f) => (counts[f.kind] ?? 0) > 0).map(
+      (f) => ({ value: f.kind, label: f.label, count: counts[f.kind] ?? 0 }),
+    );
+    return [{ value: "todos", label: "Todos", count: libraryItems.length }, ...present];
+  }, [libraryItems]);
+
+  // Itens que batem com o filtro de formato atual.
+  const libMatched = useMemo(
     () =>
-      FORMAT_KINDS.filter(
-        (f) => f.kind === 'curso' || (formatCounts[f.kind] ?? 0) > 0,
-      ),
-    [formatCounts],
+      libFormat === "todos"
+        ? libraryItems
+        : libraryItems.filter((it) => it.kind === libFormat),
+    [libraryItems, libFormat],
+  );
+
+  // Se o formato selecionado some (mudança de segmento), volta pra "Todos".
+  useEffect(() => {
+    if (libFormat !== "todos" && !libFormatChips.some((c) => c.value === libFormat)) {
+      setLibFormat("todos");
+    }
+  }, [libFormatChips, libFormat]);
+
+  // Reseta a paginação ao trocar de segmento ou formato.
+  useEffect(() => {
+    setLibLimit(8);
+  }, [selectedSegment, libFormat]);
+
+  // Abre um item da biblioteca seguindo o contrato de roteamento por kind.
+  const openLibItem = useCallback(
+    (it: LibItem) => {
+      switch (it.kind) {
+        case "curso":
+          if (it.trailSlug) {
+            window.location.href = `/trilhas/${it.trailSlug}`;
+          } else {
+            setCurrentCourseId(it.id);
+            setIsInCourseDetail(true);
+          }
+          break;
+        case "livro":
+          setCurrentBookId(String(it.id));
+          setIsInBookDetail(true);
+          break;
+        case "video":
+        case "audio":
+        case "reels":
+          setCurrentVideoId(String(it.id));
+          setIsInVideoPage(true);
+          break;
+        case "serie":
+          toast.info("Página de séries em breve");
+          break;
+        default:
+          break;
+      }
+    },
+    [setCurrentCourseId, setIsInCourseDetail, setCurrentBookId, setIsInBookDetail, setCurrentVideoId, setIsInVideoPage],
   );
 
   return (
-    <div>
-      {/* HERO — Editorial RAYO */}
-      <section
-        className="relative overflow-hidden"
-        style={{ background: 'var(--rayo-sand-50)' }}
-      >
-        <div className="max-w-7xl mx-auto px-6 py-10 md:py-16">
-          <div className="grid md:grid-cols-2 gap-10 md:gap-12 items-center">
-            {/* Left — editorial copy + search */}
-            <div className="space-y-6 order-2 md:order-1">
-              <div>
-                <p
-                  className="font-display-serif italic text-[14px] mb-3"
-                  style={{ color: 'var(--rayo-terra-700)', letterSpacing: '0.02em' }}
-                >
-                  Conteúdo para a sua família
-                </p>
-                <h1
-                  className="font-display-serif"
-                  style={{
-                    fontSize: 'clamp(40px, 6vw, 64px)',
-                    lineHeight: 1.0,
-                    color: 'var(--rayo-forest-900)',
-                    letterSpacing: '-0.02em',
-                    fontWeight: 400,
-                  }}
-                >
-                  O que vocês{' '}
-                  <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
-                    vão construir
-                  </span>{' '}
-                  hoje?
-                </h1>
-                <p
-                  className="text-[16px] md:text-[17px] mt-5 leading-relaxed max-w-[480px]"
-                  style={{ color: 'var(--rayo-forest-900)', lineHeight: 1.65 }}
-                >
-                  Cursos, livros, áudios e trilhas pensados para cada momento — do solteiro aos pais — tudo em um só lugar.
-                </p>
-
-                {/* Secondary CTA + social proof */}
-                <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (userSegments.length > 0) {
-                        setSelectedSegment(userSegments[0]);
-                      }
-                      setTimeout(() => {
-                        allCoursesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }, 60);
-                    }}
-                    className="inline-flex items-center gap-2 h-[48px] px-5 rounded-full text-[15px] transition-all"
-                    style={{
-                      background: 'transparent',
-                      color: 'var(--rayo-forest-900)',
-                      border: '1.5px solid var(--rayo-forest-900)',
-                      fontWeight: 600,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--rayo-forest-900)';
-                      e.currentTarget.style.color = 'var(--rayo-sand-50)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = 'var(--rayo-forest-900)';
-                    }}
-                  >
-                    {userSegments.length > 0
-                      ? 'Ver coleção da minha fase'
-                      : 'Ver todas as coleções'}
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-
-                  <div
-                    className="flex items-center gap-2 text-[13px]"
-                    style={{ color: 'var(--rayo-ink-700)' }}
-                  >
-                    <span
-                      className="inline-block w-1.5 h-1.5 rounded-full"
-                      style={{ background: 'var(--rayo-terra-700)' }}
-                    />
-                    <span>
-                      Curadoria editorial · 5 fases da família · novos conteúdos toda semana
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Search */}
-              <div className="relative max-w-[520px]">
-                <Input
-                  placeholder='Busque por "comunicação", "filhos" ou "finanças"'
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-[56px] pl-6 pr-16 text-[16px] rounded-full border focus:ring-0"
-                  style={{
-                    fontSize: '16px',
-                    background: 'var(--rayo-sand-100)',
-                    borderColor: 'var(--rayo-sand-300)',
-                    color: 'var(--rayo-forest-900)',
-                  }}
-                />
-                <Button
-                  size="icon"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-[44px] w-[44px] rounded-full"
-                  style={{ background: 'var(--rayo-terra-500)' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--rayo-terra-700)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--rayo-terra-500)'; }}
-                  onClick={() => {
-                    if (allCoursesRef.current) {
-                      allCoursesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                  }}
-                  aria-label="Buscar"
-                >
-                  <Search className="w-5 h-5" style={{ color: '#FFFFFF' }} />
-                </Button>
-              </div>
-            </div>
-
-            {/* Right — editorial photo (visible on mobile too) */}
-            <div className="order-1 md:order-2">
-              <div
-                className="relative rounded-[24px] overflow-hidden shadow-lg"
-                style={{ aspectRatio: '4 / 3' }}
+    <div className="rt">
+      {/* HERO */}
+      <section style={{ background: 'var(--rayo-sand-50)' }}>
+        <div className="rt-hero">
+          <div>
+            <p className="rt-hero-eyebrow">Conteúdo para a sua família</p>
+            <h1 className="rt-hero-title">
+              O que vocês <span className="light">vão</span> construir hoje?
+            </h1>
+            <p className="rt-hero-sub">
+              Cursos, livros, áudios e trilhas pensados para cada momento — do
+              solteiro aos pais — tudo em um só lugar.
+            </p>
+            <div className="rt-hero-search">
+              <input
+                placeholder='Busque por "comunicação", "filhos" ou "finanças"'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Buscar"
+              />
+              <button
+                type="button"
+                className="rt-hero-search-btn"
+                aria-label="Buscar"
+                onClick={() =>
+                  allCoursesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
               >
-                <ImageWithFallback
-                  src={heroImage}
-                  alt="Família lendo junta em um banco de praça ao entardecer"
-                  className="w-full h-full object-cover"
-                />
-              </div>
+                <Search className="w-5 h-5" />
+              </button>
             </div>
           </div>
-
-          {/* Segment chips */}
-          <div className="mt-10 md:mt-12">
-            <div className="flex items-center gap-2 mb-3">
-              <span
-                className="text-[12px] uppercase tracking-wider"
-                style={{ color: 'var(--rayo-ink-700)', letterSpacing: '0.12em', fontWeight: 600 }}
-              >
-                Para o seu momento
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {[{ value: 'all', label: 'Todos' }, ...SEGMENTS].map((seg) => {
-                const isActive = selectedSegment === seg.value;
-                const isUserSegment = userSegments.includes(seg.value);
-                return (
-                  <button
-                    key={seg.value}
-                    type="button"
-                    onClick={() => setSelectedSegment(seg.value)}
-                    className="px-4 py-2 rounded-full text-[14px] transition-all"
-                    style={{
-                      background: isActive
-                        ? 'var(--rayo-forest-900)'
-                        : 'var(--rayo-sand-100)',
-                      color: isActive
-                        ? 'var(--rayo-sand-50)'
-                        : 'var(--rayo-forest-900)',
-                      border: `1px solid ${
-                        isActive ? 'var(--rayo-forest-900)' : 'var(--rayo-sand-300)'
-                      }`,
-                      fontWeight: isActive ? 600 : 500,
-                    }}
-                  >
-                    {seg.label}
-                    {isUserSegment && !isActive && (
-                      <span
-                        className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full align-middle"
-                        style={{ background: 'var(--rayo-terra-700)' }}
-                        aria-label="Seu perfil"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="rt-hero-imgwrap">
+            <ImageWithFallback
+              src={heroImage}
+              alt="Família lendo junta em um banco de praça ao entardecer"
+            />
           </div>
         </div>
       </section>
 
-      {/* MAIN CONTENT */}
-      <div className="max-w-7xl mx-auto px-6 py-12 space-y-16">
-        {/* Show search results if searching */}
-        {searchQuery.trim() ? (
-          <section>
-            <div className="mb-8">
-              <div className="flex items-start gap-3 mb-4 bg-muted/30 rounded-lg p-4 border border-border">
-                <Sparkles className="w-6 h-6 text-primary shrink-0 mt-1" />
-                <div>
-                  <h2
-                    className="text-[24px] mb-2"
-                    style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
-                  >
-                    {getSearchResultMessage(searchQuery, segmentFilteredCourses.length, courses)}
-                  </h2>
-                  <p className="text-[16px]" style={{ color: 'var(--rayo-ink-700)' }}>
-                    {segmentFilteredCourses.length}{' '}
-                    {segmentFilteredCourses.length === 1 ? 'curso encontrado' : 'cursos encontrados'}
-                    {selectedSegment !== 'all' && segmentLabel ? ` em ${segmentLabel}` : ''}
-                  </p>
-                </div>
-              </div>
-            </div>
+      {/* STICKY FILTER SPINE */}
+      <div className="rt-spine">
+        <div className="rt-filter-row">
+          <span className="rt-filter-label">Fase</span>
+          <div className="rt-phase-chips">
+            {[{ value: 'all', label: 'Todos' }, ...SEGMENTS].map((seg) => {
+              const isActive = selectedSegment === seg.value;
+              const isUserSegment = userSegments.includes(seg.value);
+              return (
+                <button
+                  key={seg.value}
+                  type="button"
+                  className={`rt-chip ${isActive ? 'active' : ''}`}
+                  onClick={() => setSelectedSegment(seg.value)}
+                >
+                  {seg.label}
+                  {isUserSegment && !isActive && <span className="rt-chip-dot" />}
+                </button>
+              );
+            })}
+          </div>
+          {(selectedSegment !== 'all' || libFormat !== 'todos') && (
+            <button
+              type="button"
+              className="rt-filter-clear"
+              onClick={() => {
+                setSelectedSegment('all');
+                setLibFormat('todos');
+              }}
+            >
+              Limpar filtros
+            </button>
+          )}
+        </div>
+      </div>
 
+      {/* CONTENT */}
+      <div className="rt-content">
+        {searchQuery.trim() ? (
+          <section className="rt-sec">
+            <div className="rt-sec-head">
+              <div>
+                <div className="rt-sec-eyebrow">Resultados da busca</div>
+                <h2 className="rt-sec-title">
+                  {getSearchResultMessage(searchQuery, segmentFilteredCourses.length, courses)}
+                </h2>
+              </div>
+              <span className="rt-sec-count">
+                {segmentFilteredCourses.length}{' '}
+                {segmentFilteredCourses.length === 1 ? 'curso' : 'cursos'}
+                {selectedSegment !== 'all' && segmentLabel ? ` · ${segmentLabel}` : ''}
+              </span>
+            </div>
             {segmentFilteredCourses.length === 0 ? (
               <EmptyMarketplaceState
                 title="Nenhum curso bate com essa busca"
@@ -1367,7 +1295,7 @@ function MarketplaceView({
                 onAction={selectedSegment !== 'all' ? () => setSelectedSegment('all') : undefined}
               />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+              <div className="rt-lib-grid">
                 {segmentFilteredCourses.map((course) => (
                   <CourseCard
                     key={course.id}
@@ -1384,37 +1312,21 @@ function MarketplaceView({
           </section>
         ) : (
           <>
-            {/* COMECE POR AQUI — ponto de entrada de baixo atrito */}
+            {/* COMECE POR AQUI */}
             {startHereCourse && (
-              <section>
-                <div className="mb-5 md:mb-6">
-                  <h2
-                    className="font-display-serif"
-                    style={{
-                      fontSize: 'clamp(26px, 3vw, 32px)',
-                      lineHeight: 1.1,
-                      color: 'var(--rayo-forest-900)',
-                      fontWeight: 400,
-                    }}
-                  >
-                    Comece por{' '}
-                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
-                      aqui
-                    </span>
-                  </h2>
-                  <p className="text-[15px] mt-2" style={{ color: 'var(--rayo-ink-700)' }}>
-                    {selectedSegment === 'all'
-                      ? 'Seu primeiro passo na jornada RAYO — sem complicação.'
-                      : `O melhor jeito de começar em ${segmentLabel}.`}
-                  </p>
+              <section className="rt-sec">
+                <div className="rt-sec-head">
+                  <div>
+                    <div className="rt-sec-eyebrow">Seu ponto de partida</div>
+                    <h2 className="rt-sec-title">
+                      Comece por <span className="light">aqui</span>
+                    </h2>
+                  </div>
                 </div>
                 <StartHereCard
                   course={startHereCourse}
                   segmentLabel={selectedSegment !== 'all' ? segmentLabel : undefined}
                   onOpen={() => {
-                    // Mesmo contrato do CourseCard: curso de trilha paga vai
-                    // pro detalhe da trilha (/trilhas/:slug, onde mora o
-                    // checkout); curso avulso abre o detalhe do curso.
                     if (startHereCourse.trail_slug) {
                       window.location.href = `/trilhas/${startHereCourse.trail_slug}`;
                     } else {
@@ -1426,32 +1338,21 @@ function MarketplaceView({
               </section>
             )}
 
-            {/* CURATED BUNDLES — trilhas */}
-            <section>
-              <div className="flex items-end justify-between gap-4 mb-6 md:mb-8">
+            {/* TRILHAS */}
+            <section className="rt-sec">
+              <div className="rt-sec-head">
                 <div>
-                  <h2
-                    className="font-display-serif"
-                    style={{
-                      fontSize: 'clamp(26px, 3vw, 32px)',
-                      lineHeight: 1.1,
-                      color: 'var(--rayo-forest-900)',
-                      fontWeight: 400,
-                    }}
-                  >
-                    Sua trilha{' '}
-                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
-                      completa
-                    </span>
+                  <div className="rt-sec-eyebrow">Jornadas curadas de ponta a ponta</div>
+                  <h2 className="rt-sec-title">
+                    Trilhas <span className="light">para a sua fase</span>
                   </h2>
-                  <p className="text-[15px] mt-2" style={{ color: 'var(--rayo-ink-700)' }}>
-                    {selectedSegment === 'all'
-                      ? 'Jornadas curadas de ponta a ponta para cada momento da família.'
-                      : `A jornada completa pensada para ${segmentLabel}.`}
-                  </p>
                 </div>
+                {!bundlesLoading && !bundlesError && bundles.length > 0 && (
+                  <span className="rt-sec-count">
+                    {bundles.length} {bundles.length === 1 ? 'trilha' : 'trilhas'}
+                  </span>
+                )}
               </div>
-
               {bundlesLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--rayo-terra-500)' }} />
@@ -1469,7 +1370,7 @@ function MarketplaceView({
                   onAction={() => setSelectedSegment('all')}
                 />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                <div className="rt-trail-grid">
                   {bundles.map((b) => (
                     <BundleCard
                       key={b.id}
@@ -1479,9 +1380,6 @@ function MarketplaceView({
                         setExpandedBundleId((curr) => (curr === b.id ? null : b.id))
                       }
                       onOpenItem={(it) => {
-                        // Task #264 — roteia o marco pelo tipo real (mesmo
-                        // contrato dos cards de formato): curso → detalhe de
-                        // curso; livro → leitor; vídeo/áudio/reels → player.
                         switch (it.kind) {
                           case 'livro':
                             setCurrentBookId(String(it.id));
@@ -1515,277 +1413,78 @@ function MarketplaceView({
               )}
             </section>
 
-            {/* APROFUNDE UM TEMA — grade mista: cursos + produtos digitais */}
-            <section ref={allCoursesRef}>
-              <div className="mb-6 md:mb-8 flex items-end justify-between gap-4 flex-wrap">
+            {/* CONTEÚDOS — biblioteca unificada */}
+            <section className="rt-sec" ref={allCoursesRef}>
+              <div className="rt-sec-head">
                 <div>
-                  <h2
-                    className="font-display-serif"
-                    style={{
-                      fontSize: 'clamp(26px, 3vw, 32px)',
-                      lineHeight: 1.1,
-                      color: 'var(--rayo-forest-900)',
-                      fontWeight: 400,
-                    }}
-                  >
-                    Aprofunde um{' '}
-                    <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
-                      tema
-                    </span>
-                    {selectedSegment !== 'all' && segmentLabel ? (
-                      <span style={{ color: 'var(--rayo-ink-700)', fontSize: '0.7em', fontStyle: 'normal' }}>
-                        {' '}· {segmentLabel}
-                      </span>
-                    ) : null}
+                  <div className="rt-sec-eyebrow">Biblioteca · acesso digital imediato</div>
+                  <h2 className="rt-sec-title">
+                    Todos os <span className="light">conteúdos</span>
                   </h2>
-                  <p className="text-[14px] mt-1" style={{ color: 'var(--rayo-ink-700)' }}>
-                    Cursos, livros, áudios e vídeos para ir além — acesso digital
-                    imediato.
-                  </p>
                 </div>
-                {selectedSegment !== 'all' && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSegment('all')}
-                    className="text-[14px] underline-offset-4 hover:underline"
-                    style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}
-                  >
-                    Ver todos os segmentos
-                  </button>
+                {libMatched.length > 0 && (
+                  <span className="rt-sec-count">
+                    {libMatched.length} {libMatched.length === 1 ? 'item' : 'itens'}
+                  </span>
                 )}
               </div>
 
-              {segmentFilteredCourses.length === 0 && deepenProducts.length === 0 ? (
-                deepenLoading ? (
-                  <div className="flex items-center justify-center py-16">
-                    <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--rayo-terra-500)' }} />
+              {libraryItems.length > 0 && (
+                <div className="rt-lib-controls">
+                  <div className="rt-format-chips">
+                    {libFormatChips.map((c) => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        className={`rt-format-chip ${libFormat === c.value ? 'active' : ''}`}
+                        onClick={() => setLibFormat(c.value)}
+                      >
+                        {c.label}
+                        <span className="ct">{c.count}</span>
+                      </button>
+                    ))}
                   </div>
-                ) : (
-                  <EmptyMarketplaceState
-                    title={`Sem conteúdos para ${segmentLabel || 'este segmento'} ainda`}
-                    description="Em breve novos materiais para este momento. Enquanto isso, explore os outros segmentos."
-                    actionLabel="Ver todos os segmentos"
-                    onAction={() => setSelectedSegment('all')}
-                  />
-                )
+                </div>
+              )}
+
+              {deepenLoading && libraryItems.length === 0 ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--rayo-terra-500)' }} />
+                </div>
+              ) : libMatched.length === 0 ? (
+                <EmptyMarketplaceState
+                  title={`Sem conteúdos para ${segmentLabel || 'este segmento'} ainda`}
+                  description="Em breve novos materiais para este momento. Enquanto isso, explore os outros segmentos."
+                  actionLabel={selectedSegment !== 'all' ? 'Ver todos os segmentos' : undefined}
+                  onAction={selectedSegment !== 'all' ? () => setSelectedSegment('all') : undefined}
+                />
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                  {segmentFilteredCourses.map((course) => (
-                    <CourseCard
-                      key={`curso-${course.id}`}
-                      course={course}
-                      onClick={() => {
-                        setCurrentCourseId(course.id);
-                        setIsInCourseDetail(true);
-                      }}
-                      enrollInCourse={enrollInCourse}
-                    />
-                  ))}
-                  {deepenProducts.map((it) => {
-                    // Roteia por kind (mesmo contrato do showcase de formato).
-                    const handleOpen = () => {
-                      switch (it.kind) {
-                        case 'livro':
-                          setCurrentBookId(String(it.id));
-                          setIsInBookDetail(true);
-                          break;
-                        case 'video':
-                        case 'audio':
-                        case 'reels':
-                          setCurrentVideoId(String(it.id));
-                          setIsInVideoPage(true);
-                          break;
-                        case 'serie':
-                          toast.info('Página de séries em breve');
-                          break;
-                        default:
-                          break;
-                      }
-                    };
-                    return (
-                      <ContentProductCard
+                <>
+                  <div className="rt-lib-grid">
+                    {libMatched.slice(0, libLimit).map((it) => (
+                      <LibraryCard
                         key={`${it.kind}-${it.id}`}
                         item={it}
-                        onOpen={handleOpen}
+                        onOpen={() => openLibItem(it)}
                       />
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-
-            {/* COMUNIDADE — upsell de pertencimento (caminho /comunidade) */}
-            <CommunityUpsell onJoin={() => navigate('/comunidade')} />
-
-            {/* FORMAT EXPLORER — 6 CMS kinds (demoted: explorar por formato) */}
-            <section>
-              <div className="mb-6 md:mb-8">
-                <h2
-                  className="font-display-serif"
-                  style={{
-                    fontSize: 'clamp(26px, 3vw, 32px)',
-                    lineHeight: 1.1,
-                    color: 'var(--rayo-forest-900)',
-                    fontWeight: 400,
-                  }}
-                >
-                  Explore por{' '}
-                  <span style={{ fontStyle: 'italic', color: 'var(--rayo-terra-700)' }}>
-                    formato
-                  </span>
-                </h2>
-                <p className="text-[15px] mt-2" style={{ color: 'var(--rayo-ink-700)' }}>
-                  Prefere navegar pelo tipo de conteúdo? Escolha como você quer
-                  consumir hoje.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-                {visibleFormatKinds.map((f) => {
-                  const count = formatCounts[f.kind] ?? 0;
-                  const Icon = f.Icon;
-                  const isActiveKind = selectedKind === f.kind;
-                  const handleClick = () => {
-                    if (f.kind === 'curso') {
-                      setSelectedKind(null);
-                      if (allCoursesRef.current) {
-                        allCoursesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }
-                    } else {
-                      setSelectedKind(f.kind);
-                      setTimeout(() => {
-                        kindShowcaseRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }, 60);
-                    }
-                  };
-                  return (
-                    <button
-                      key={f.kind}
-                      type="button"
-                      onClick={handleClick}
-                      className="text-left rounded-2xl p-4 md:p-5 transition-all hover:-translate-y-0.5"
-                      style={{
-                        background: 'var(--rayo-sand-50)',
-                        border: `1px solid ${isActiveKind ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)'}`,
-                        boxShadow: isActiveKind ? '0 0 0 3px rgba(201,144,86,0.18)' : undefined,
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'var(--rayo-terra-500)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = isActiveKind
-                          ? 'var(--rayo-terra-500)'
-                          : 'var(--rayo-sand-300)';
-                      }}
-                    >
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-                        style={{ background: 'var(--rayo-sand-50)' }}
-                      >
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="text-[15px]" style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
-                        {f.label}
-                      </div>
-                      <div className="text-[12px] mt-0.5" style={{ color: 'var(--rayo-ink-700)' }}>
-                        {f.description}
-                      </div>
-                      <div className="text-[12px] mt-2" style={{ color: 'var(--rayo-ink-400)' }}>
-                        {formatCountsLoading ? '—' : `${count} ${count === 1 ? 'item' : 'itens'}`}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Kind showcase — real items for the active non-curso format */}
-              {selectedKind && selectedKind !== 'curso' && (
-                <div ref={kindShowcaseRef} className="mt-8">
-                  <div className="flex items-end justify-between gap-4 mb-4">
-                    <div>
-                      <h3
-                        className="text-[20px] md:text-[22px]"
-                        style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}
-                      >
-                        {FORMAT_KINDS.find((k) => k.kind === selectedKind)?.label}
-                        {selectedSegment !== 'all' && segmentLabel ? ` para ${segmentLabel}` : ''}
-                      </h3>
-                      <p
-                        className="text-[13px] mt-1"
-                        style={{ color: 'var(--rayo-ink-700)' }}
-                      >
-                        {kindLoading
-                          ? 'Carregando…'
-                          : kindError
-                          ? kindError
-                          : `${kindItems.length} ${kindItems.length === 1 ? 'item' : 'itens'}`}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedKind(null)}
-                      className="text-[13px] underline"
-                      style={{ color: 'var(--rayo-ink-700)' }}
-                    >
-                      Limpar filtro
-                    </button>
+                    ))}
                   </div>
-
-                  {kindLoading ? (
-                    <div className="flex items-center justify-center py-10">
-                      <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--rayo-terra-500)' }} />
-                    </div>
-                  ) : kindItems.length === 0 ? (
-                    <EmptyMarketplaceState
-                      title={`Nenhum ${FORMAT_KINDS.find((k) => k.kind === selectedKind)?.label.toLowerCase()} disponível ainda`}
-                      description={
-                        selectedSegment !== 'all'
-                          ? `Tente outro segmento ou volte em breve — novos conteúdos chegam toda semana.`
-                          : 'Volte em breve — novos conteúdos chegam toda semana.'
-                      }
-                      actionLabel={selectedSegment !== 'all' ? 'Ver todos os segmentos' : undefined}
-                      onAction={selectedSegment !== 'all' ? () => setSelectedSegment('all') : undefined}
-                    />
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                      {kindItems.map((it) => {
-                        // Task #128 — roteia por kind (mesmo contrato de searchNavigate.ts).
-                        const handleOpen = () => {
-                          switch (selectedKind) {
-                            case 'livro':
-                              setCurrentBookId(String(it.id));
-                              setIsInBookDetail(true);
-                              break;
-                            case 'video':
-                            case 'audio':
-                            case 'reels':
-                              setCurrentVideoId(String(it.id));
-                              setIsInVideoPage(true);
-                              break;
-                            case 'serie':
-                              // Séries são content_items (não courses) e
-                              // ainda não têm página dedicada de detalhe.
-                              // Evitamos abrir CourseDetailPage com um id
-                              // de content_item (abriria turma errada/vazia).
-                              toast.info('Página de séries em breve');
-                              break;
-                            default:
-                              break;
-                          }
-                        };
-                        return (
-                          <ContentProductCard
-                            key={it.id}
-                            item={{ ...it, kind: selectedKind }}
-                            onOpen={handleOpen}
-                          />
-                        );
-                      })}
-                    </div>
+                  {libMatched.length > libLimit && (
+                    <button
+                      type="button"
+                      className="rt-show-more"
+                      onClick={() => setLibLimit((n) => n + 8)}
+                    >
+                      Ver mais
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
                   )}
-                </div>
+                </>
               )}
             </section>
+
+            {/* COMUNIDADE — upsell */}
+            <CommunityUpsell onJoin={() => navigate('/comunidade')} />
           </>
         )}
       </div>
@@ -1841,167 +1540,133 @@ function BundleCard({
   const accent = bundle.accent_color || 'var(--rayo-terra-500)';
   const segLabel = SEGMENTS.find((s) => s.value === bundle.segment)?.label || bundle.segment;
   const items = bundle.items || [];
+  const empty = bundle.item_count === 0;
 
   return (
-    <div
-      className="text-left rounded-2xl overflow-hidden transition-all"
-      style={{
-        background: 'var(--rayo-sand-50)',
-        border: `1px solid ${isExpanded ? 'var(--rayo-terra-500)' : 'var(--rayo-sand-300)'}`,
-        boxShadow: isExpanded ? '0 0 0 3px rgba(201,144,86,0.18)' : undefined,
-      }}
-    >
-    <button
-      type="button"
-      onClick={onToggle}
-      className="block w-full text-left transition-all hover:-translate-y-0.5 group"
-      aria-expanded={isExpanded}
-    >
-      <div
-        className="relative h-[120px] flex items-end p-5"
-        style={{
-          background: `linear-gradient(135deg, ${accent}, var(--rayo-forest-900))`,
-        }}
+    <div className={`rt-trail ${isExpanded ? 'expanded' : ''}`}>
+      <button
+        type="button"
+        className="rt-trail-head"
+        onClick={onToggle}
+        aria-expanded={isExpanded}
       >
-        <div
-          className="absolute top-4 right-4 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px]"
-          style={{
-            background: 'rgba(255,255,255,0.18)',
-            backdropFilter: 'blur(6px)',
-            color: '#FFFFFF',
-            fontWeight: 600,
-          }}
-        >
-          <Package className="w-3 h-3" />
-          {bundle.item_count} itens
+        <div className={`rt-trail-band ${bundle.segment}`}>
+          <span className="rt-trail-phase">{segLabel}</span>
+          <span className={`rt-trail-count ${empty ? 'soon' : ''}`}>
+            {empty ? (
+              'Em breve'
+            ) : (
+              <>
+                <Package className="w-3 h-3" />
+                {bundle.item_count} {bundle.item_count === 1 ? 'item' : 'itens'}
+              </>
+            )}
+          </span>
         </div>
-        <div
-          className="text-[11px] uppercase tracking-wider"
-          style={{ color: 'rgba(255,255,255,0.85)', letterSpacing: '0.12em', fontWeight: 600 }}
-        >
-          {segLabel}
-        </div>
-      </div>
-      <div className="p-5 space-y-2">
-        <h3
-          className="font-display-serif"
-          style={{
-            fontSize: '22px',
-            lineHeight: 1.15,
-            color: 'var(--rayo-forest-900)',
-            fontWeight: 400,
-          }}
-        >
-          {bundle.title}
-        </h3>
-        {bundle.subtitle && (
-          <p
-            className="text-[13px]"
-            style={{ color: 'var(--rayo-terra-700)', fontStyle: 'italic' }}
-          >
-            {bundle.subtitle}
-          </p>
-        )}
-        {bundle.description && (
-          <p
-            className="text-[14px] line-clamp-2"
-            style={{ color: 'var(--rayo-ink-700)', lineHeight: 1.55 }}
-          >
-            {bundle.description}
-          </p>
-        )}
-        {/* Task #264 — composição real da trilha: chips dos tipos de marco que
-            ela inclui (curso, livro, áudio, vídeo, série). Os tipos vêm direto
-            do backend, que agora agrega conteúdos não-curso. */}
-        {items.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {Array.from(new Set(items.map((it) => it.kind || 'curso'))).map((k) => (
-              <ProductTypeBadge key={k} kind={k} solid />
-            ))}
+        <div className="rt-trail-body">
+          <div className="rt-trail-title">{bundle.title}</div>
+          {bundle.subtitle && <div className="rt-trail-subtitle">{bundle.subtitle}</div>}
+          {bundle.description && <div className="rt-trail-desc">{bundle.description}</div>}
+          <div className="rt-trail-foot">
+            <span className="rt-trail-meta">
+              {bundle.item_count} {bundle.item_count === 1 ? 'item' : 'itens'}
+            </span>
+            <span className="rt-trail-action">
+              {isExpanded ? 'Ocultar' : 'Ver trilha'}
+              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+            </span>
           </div>
-        )}
-        <div
-          className="text-[13px] pt-2 inline-flex items-center gap-1.5"
-          style={{ color: 'var(--rayo-terra-500)', fontWeight: 600 }}
-        >
-          {isExpanded ? 'Ocultar trilha' : 'Ver trilha'}{' '}
-          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
         </div>
-      </div>
-    </button>
+      </button>
 
-    {isExpanded && (
-      <div
-        className="border-t px-5 py-4"
-        style={{ borderColor: 'var(--rayo-sand-300)' }}
-      >
-        {items.length === 0 ? (
-          <div className="text-[13px]" style={{ color: 'var(--rayo-ink-700)' }}>
-            Itens desta trilha serão publicados em breve.
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {items.map((it, i) => (
-              <li key={`${it.kind}-${it.id}`}>
-                <button
-                  type="button"
-                  onClick={() => onOpenItem(it)}
-                  className="w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors"
-                  style={{ background: 'transparent' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--rayo-sand-50)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                  }}
-                >
-                  <span
-                    className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] shrink-0"
-                    style={{
-                      background: accent,
-                      color: '#FFFFFF',
-                      fontWeight: 700,
-                    }}
+      {isExpanded && (
+        <div className="rt-trail-panel">
+          {items.length === 0 ? (
+            <div className="rt-trail-item-meta" style={{ padding: '8px' }}>
+              Itens desta trilha serão publicados em breve.
+            </div>
+          ) : (
+            items.map((it, i) => (
+              <button
+                type="button"
+                key={`${it.kind}-${it.id}`}
+                className="rt-trail-item"
+                onClick={() => onOpenItem(it)}
+              >
+                <span className="rt-trail-item-num" style={{ background: accent }}>
+                  {i + 1}
+                </span>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div
+                    className="rt-trail-item-title"
+                    style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                   >
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div
-                      className="text-[14px] truncate"
-                      style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}
-                    >
-                      {it.title}
-                    </div>
-                    <div
-                      className="text-[12px] truncate"
-                      style={{ color: 'var(--rayo-ink-700)' }}
-                    >
-                      {[it.instructor, it.duration, it.level].filter(Boolean).join(' · ')}
-                    </div>
+                    {it.title}
                   </div>
-                  {/* Task #264 — badge do tipo real do marco para que a jornada
-                      mostre a composição (curso/livro/áudio/vídeo). */}
-                  <ProductTypeBadge kind={it.kind || 'curso'} className="shrink-0" />
-                  <ArrowRight className="w-4 h-4 shrink-0" style={{ color: 'var(--rayo-ink-400)' }} />
-                </button>
-              </li>
-            ))}
-          </ul>
+                  <div className="rt-trail-item-meta">
+                    {[it.instructor, it.duration, it.level].filter(Boolean).join(' · ')}
+                  </div>
+                </div>
+                <ProductTypeBadge kind={it.kind || 'curso'} className="shrink-0" />
+              </button>
+            ))
+          )}
+          <button type="button" className="rt-trail-seeall" onClick={onSeeAllInSegment}>
+            Ver todos os cursos para {segLabel} →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Card unificado da biblioteca "Todos os conteúdos" (mockup .card). Recebe um
+// LibItem já normalizado (status/ação derivados) e roteia via onOpen.
+function LibraryCard({ item, onOpen }: { item: LibItem; onOpen: () => void }) {
+  const meta = PRODUCT_TYPE_META[item.kind] ?? PRODUCT_TYPE_META.curso;
+  const TypeIcon = meta.Icon;
+  const hasFav = Number.isFinite(item.id);
+  return (
+    <div
+      className="rt-card"
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={cardKeyHandler(onOpen)}
+      aria-label={`Abrir ${item.title}`}
+    >
+      <div className="rt-card-img">
+        {item.cover && <ImageWithFallback src={item.cover} alt={item.title} />}
+        <span className="rt-card-type">
+          <TypeIcon className="w-3 h-3" />
+          {meta.label}
+        </span>
+        {hasFav && (
+          <div className="rt-card-bookmark" onClick={(e) => e.stopPropagation()}>
+            <FavoriteIcon id={item.id} type={item.favType} />
+          </div>
         )}
-        <button
-          type="button"
-          onClick={onSeeAllInSegment}
-          className="mt-3 w-full text-[13px] py-2 rounded-lg transition-colors"
-          style={{
-            background: 'var(--rayo-sand-50)',
-            color: 'var(--rayo-terra-700)',
-            fontWeight: 600,
-          }}
-        >
-          Ver todos os cursos para {segLabel} →
-        </button>
       </div>
-    )}
+      <div className="rt-card-body">
+        <div className="rt-card-title">{item.title}</div>
+        {item.author && <div className="rt-card-author">{item.author}</div>}
+        <div className="rt-card-foot">
+          <span className={`rt-status ${item.status}`}>
+            <span className="dot" />
+            {item.statusLabel}
+          </span>
+          <button
+            type="button"
+            className={`rt-card-action ${item.actionVariant}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen();
+            }}
+          >
+            {item.actionLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2143,70 +1808,30 @@ function StartHereCard({
   const isFree = !(Number(course.price) > 0);
   return (
     <div
+      className="rt-start"
       role="button"
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={cardKeyHandler(onOpen)}
-      className="ra-card ra-card-hover overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rayo-terra-500)]"
-      style={{ padding: 0, cursor: "pointer" }}
       aria-label={`Começar ${course.title}`}
     >
-      <div className="grid md:grid-cols-2">
-        <div className="relative" style={{ minHeight: 220 }}>
-          <ImageWithFallback
-            src={course.thumbnail}
-            alt={course.title}
-            className="w-full h-full object-cover"
-            style={{ position: "absolute", inset: 0 }}
-          />
-          <div
-            className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[12px]"
-            style={{ background: "var(--rayo-sage-500)", color: "#FFFFFF", fontWeight: 600 }}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            {isFree ? "Comece grátis" : "Recomendado"}
-          </div>
+      <div className="rt-start-imgwrap">
+        {course.thumbnail && <ImageWithFallback src={course.thumbnail} alt={course.title} />}
+        <span className="rt-start-badge">
+          <Sparkles className="w-3 h-3" />
+          {isFree ? "Comece grátis" : "Recomendado"}
+        </span>
+      </div>
+      <div className="rt-start-body">
+        <div className="rt-start-eyebrow">
+          Seu primeiro passo{segmentLabel ? ` · ${segmentLabel}` : ""}
         </div>
-        <div className="p-6 md:p-8 flex flex-col justify-center gap-3">
-          <span
-            className="text-[12px] uppercase tracking-wider"
-            style={{ color: "var(--rayo-terra-700)", letterSpacing: "0.12em", fontWeight: 600 }}
-          >
-            Seu primeiro passo{segmentLabel ? ` · ${segmentLabel}` : ""}
-          </span>
-          <h3
-            className="font-display-serif"
-            style={{
-              fontSize: "clamp(22px, 2.4vw, 30px)",
-              lineHeight: 1.1,
-              color: "var(--rayo-forest-900)",
-              fontWeight: 400,
-            }}
-          >
-            {course.title}
-          </h3>
-          {course.description && (
-            <p
-              className="text-[14px] line-clamp-3"
-              style={{ color: "var(--rayo-ink-700)", lineHeight: 1.6 }}
-            >
-              {course.description}
-            </p>
-          )}
-          <div className="pt-2">
-            <span
-              className="inline-flex items-center gap-2 h-[46px] px-5 rounded-full text-[15px]"
-              style={{ background: "var(--rayo-terra-500)", color: "#FFFFFF", fontWeight: 600 }}
-            >
-              {course.isEnrolled
-                ? "Continuar"
-                : isFree
-                ? "Começar agora"
-                : "Ver detalhes"}
-              <ArrowRight className="w-4 h-4" />
-            </span>
-          </div>
-        </div>
+        <h3 className="rt-start-title">{course.title}</h3>
+        {course.description && <p className="rt-start-desc">{course.description}</p>}
+        <span className="rt-start-cta">
+          {course.isEnrolled ? "Continuar" : isFree ? "Começar agora" : "Ver detalhes"}
+          <ArrowRight className="w-4 h-4" />
+        </span>
       </div>
     </div>
   );
