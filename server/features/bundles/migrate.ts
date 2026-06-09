@@ -42,15 +42,81 @@ export async function migrateBundles(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_bundles_active ON marketplace_bundles(is_active)`
   );
 
-  // Join table: bundle ↔ course
+  // Join table: bundle ↔ item. Task #264 — uma trilha agora pode conter
+  // CURSOS (courses) E conteúdos não-curso (livros/áudios/vídeos/séries de
+  // content_items). Cada linha referencia exatamente UM dos dois.
+  // CREATE produz o schema novo pra bancos limpos; os ALTERs abaixo migram
+  // bancos antigos que ainda têm a PK composta (bundle_id, course_id) e
+  // course_id NOT NULL.
   await query(`
     CREATE TABLE IF NOT EXISTS marketplace_bundle_items (
+      id SERIAL PRIMARY KEY,
       bundle_id INTEGER NOT NULL REFERENCES marketplace_bundles(id) ON DELETE CASCADE,
-      course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-      sort_order INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (bundle_id, course_id)
+      course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+      content_item_id INTEGER REFERENCES content_items(id) ON DELETE CASCADE,
+      sort_order INTEGER NOT NULL DEFAULT 0
     )
   `);
+
+  // Upgrade de bancos antigos (idempotente, por coluna/constraint).
+  await query(
+    `ALTER TABLE marketplace_bundle_items ADD COLUMN IF NOT EXISTS content_item_id INTEGER REFERENCES content_items(id) ON DELETE CASCADE`
+  );
+  // Troca a PK composta legada por uma surrogate id (necessário pra permitir
+  // course_id NULL em linhas de conteúdo). A PK precisa cair ANTES do DROP NOT
+  // NULL — Postgres não permite afrouxar uma coluna que ainda compõe a PK.
+  await query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'marketplace_bundle_items_pkey'
+          AND conrelid = 'marketplace_bundle_items'::regclass
+      ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'marketplace_bundle_items' AND column_name = 'id'
+      ) THEN
+        ALTER TABLE marketplace_bundle_items DROP CONSTRAINT marketplace_bundle_items_pkey;
+      END IF;
+    END$$;
+  `);
+  await query(`ALTER TABLE marketplace_bundle_items ALTER COLUMN course_id DROP NOT NULL`);
+  await query(`ALTER TABLE marketplace_bundle_items ADD COLUMN IF NOT EXISTS id SERIAL`);
+  await query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'marketplace_bundle_items_pkey'
+          AND conrelid = 'marketplace_bundle_items'::regclass
+      ) THEN
+        ALTER TABLE marketplace_bundle_items ADD PRIMARY KEY (id);
+      END IF;
+    END$$;
+  `);
+  // Exatamente uma referência por linha (curso XOR conteúdo).
+  await query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'marketplace_bundle_items_one_ref_check'
+          AND conrelid = 'marketplace_bundle_items'::regclass
+      ) THEN
+        ALTER TABLE marketplace_bundle_items
+          ADD CONSTRAINT marketplace_bundle_items_one_ref_check
+          CHECK (
+            (course_id IS NOT NULL)::int + (content_item_id IS NOT NULL)::int = 1
+          );
+      END IF;
+    END$$;
+  `);
+  await query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS uniq_bundle_course ON marketplace_bundle_items(bundle_id, course_id) WHERE course_id IS NOT NULL`
+  );
+  await query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS uniq_bundle_content ON marketplace_bundle_items(bundle_id, content_item_id) WHERE content_item_id IS NOT NULL`
+  );
   await query(
     `CREATE INDEX IF NOT EXISTS idx_bundle_items_bundle ON marketplace_bundle_items(bundle_id, sort_order)`
   );
@@ -176,10 +242,16 @@ export async function migrateBundles(): Promise<void> {
     );
     let order = 0;
     for (const c of courseRows) {
+      // Guarded insert (em vez de ON CONFLICT) porque a unicidade agora vem
+      // de um índice parcial (WHERE course_id IS NOT NULL), que não é alvo
+      // estável de inferência de ON CONFLICT.
       await query(
         `INSERT INTO marketplace_bundle_items (bundle_id, course_id, sort_order)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (bundle_id, course_id) DO NOTHING`,
+         SELECT $1, $2, $3
+          WHERE NOT EXISTS (
+            SELECT 1 FROM marketplace_bundle_items
+             WHERE bundle_id = $1 AND course_id = $2
+          )`,
         [b.id, c.id, order++]
       );
     }
@@ -191,7 +263,7 @@ export async function migrateBundles(): Promise<void> {
        SET item_count = sub.c
       FROM (
         SELECT b2.id AS bundle_id,
-               COUNT(mbi.course_id)::int AS c
+               COUNT(mbi.bundle_id)::int AS c
           FROM marketplace_bundles b2
           LEFT JOIN marketplace_bundle_items mbi ON mbi.bundle_id = b2.id
          GROUP BY b2.id

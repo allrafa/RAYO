@@ -750,6 +750,9 @@ function ProductTypeBadge({
 
 interface BundleItemAPI {
   id: number;
+  // Task #264 — agora o backend devolve o tipo real de cada marco (curso,
+  // livro, áudio, vídeo, série, reels), não só curso.
+  kind: string;
   title: string;
   thumbnail: string | null;
   duration: string | null;
@@ -1475,9 +1478,30 @@ function MarketplaceView({
                       onToggle={() =>
                         setExpandedBundleId((curr) => (curr === b.id ? null : b.id))
                       }
-                      onOpenCourse={(courseId) => {
-                        setCurrentCourseId(courseId);
-                        setIsInCourseDetail(true);
+                      onOpenItem={(it) => {
+                        // Task #264 — roteia o marco pelo tipo real (mesmo
+                        // contrato dos cards de formato): curso → detalhe de
+                        // curso; livro → leitor; vídeo/áudio/reels → player.
+                        switch (it.kind) {
+                          case 'livro':
+                            setCurrentBookId(String(it.id));
+                            setIsInBookDetail(true);
+                            break;
+                          case 'video':
+                          case 'audio':
+                          case 'reels':
+                            setCurrentVideoId(String(it.id));
+                            setIsInVideoPage(true);
+                            break;
+                          case 'serie':
+                            toast.info('Página de séries em breve');
+                            break;
+                          case 'curso':
+                          default:
+                            setCurrentCourseId(it.id);
+                            setIsInCourseDetail(true);
+                            break;
+                        }
                       }}
                       onSeeAllInSegment={() => {
                         setSelectedSegment(b.segment);
@@ -1803,7 +1827,7 @@ interface BundleCardProps {
   bundle: BundleAPI;
   isExpanded: boolean;
   onToggle: () => void;
-  onOpenCourse: (courseId: number) => void;
+  onOpenItem: (item: BundleItemAPI) => void;
   onSeeAllInSegment: () => void;
 }
 
@@ -1811,7 +1835,7 @@ function BundleCard({
   bundle,
   isExpanded,
   onToggle,
-  onOpenCourse,
+  onOpenItem,
   onSeeAllInSegment,
 }: BundleCardProps) {
   const accent = bundle.accent_color || 'var(--rayo-terra-500)';
@@ -1886,15 +1910,13 @@ function BundleCard({
             {bundle.description}
           </p>
         )}
-        {/* Task #262 — composição da trilha: chips dos tipos de produto que
-            ela inclui. No modelo atual as trilhas só agregam cursos, então
-            mostramos os tipos reais (sem fabricar livros/áudios). */}
+        {/* Task #264 — composição real da trilha: chips dos tipos de marco que
+            ela inclui (curso, livro, áudio, vídeo, série). Os tipos vêm direto
+            do backend, que agora agrega conteúdos não-curso. */}
         {items.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
-            {Array.from(
-              new Set(items.map((it: any) => (it && it.kind) || 'curso')),
-            ).map((k) => (
-              <ProductTypeBadge key={k as string} kind={k as string} solid />
+            {Array.from(new Set(items.map((it) => it.kind || 'curso'))).map((k) => (
+              <ProductTypeBadge key={k} kind={k} solid />
             ))}
           </div>
         )}
@@ -1920,10 +1942,10 @@ function BundleCard({
         ) : (
           <ul className="space-y-2">
             {items.map((it, i) => (
-              <li key={it.id}>
+              <li key={`${it.kind}-${it.id}`}>
                 <button
                   type="button"
-                  onClick={() => onOpenCourse(it.id)}
+                  onClick={() => onOpenItem(it)}
                   className="w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors"
                   style={{ background: 'transparent' }}
                   onMouseEnter={(e) => {
@@ -1957,6 +1979,9 @@ function BundleCard({
                       {[it.instructor, it.duration, it.level].filter(Boolean).join(' · ')}
                     </div>
                   </div>
+                  {/* Task #264 — badge do tipo real do marco para que a jornada
+                      mostre a composição (curso/livro/áudio/vídeo). */}
+                  <ProductTypeBadge kind={it.kind || 'curso'} className="shrink-0" />
                   <ArrowRight className="w-4 h-4 shrink-0" style={{ color: 'var(--rayo-ink-400)' }} />
                 </button>
               </li>
