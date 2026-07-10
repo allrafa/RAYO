@@ -29,7 +29,7 @@ o lançamento é viável em poucas iterações.
 
 ## 3. Bloqueadores P0 (sem isto, não lançar)
 
-### B1 — Webhook Stripe nunca libera o acesso pago 🔴 (receita)
+### B1 — Webhook Stripe nunca libera o acesso pago ✅ CORRIGIDO (iteração 2)
 `processStripeWebhook` lê `result?.event` de `sync.processWebhook(...)`
 (`server/features/billing/webhookHandlers.ts:158-173`), mas a lib
 `stripe-replit-sync` retorna `Promise<void>` (`dist/index.d.ts:242`). `event` é
@@ -54,7 +54,7 @@ conteúdo que comprou. `TurmaShell` herda a limitação.
 `VideoPage.tsx:203`), suportando `bunny://` e URL direta; progresso derivado do
 tempo assistido chamando `PATCH /api/courses/lessons/:id/progress`.
 
-### B3 — Curso criado no CMS nasce quebrado 🔴 (produto)
+### B3 — Curso criado no CMS nasce quebrado ✅ CORRIGIDO (iteração 2)
 `createCourseFromCms` grava `total_lessons=0` (`server/features/cms/service.ts:1313`)
 e `createCourseLesson`/`update`/`delete` (`cms/service.ts:1453-1514`) nunca
 recalculam. `updateLessonProgress` divide por esse 0
@@ -72,7 +72,7 @@ remove do histórico: qualquer clone recupera com `git show fa377a4:CREDENTIALS.
 **Fix**: (a) **trocar a senha imediatamente** (ação manual do Rafael); (b) purgar
 o histórico com `git filter-repo`/BFG ou aceitar o risco pós-rotação.
 
-### B5 — E-mails silenciosamente desligados sem `resend_api_key` 🔴 (operação)
+### B5 — E-mails silenciosamente desligados sem `resend_api_key` ✅ CÓDIGO CORRIGIDO (iteração 2; resta a config manual)
 `server/lib/email.ts:42-45`: sem a env var, todo envio é **pulado sem erro** —
 verificação de conta, reset de senha e digests simplesmente não chegam, e nada
 alerta. Produção usa `nao-responda@rayo.app.br` (`.replit:100`), que exige
@@ -139,15 +139,25 @@ produção. **Fix (manual)**: configurar key + DNS antes do go-live.
 
 ## 6. Roadmap de execução (próximas iterações do loop)
 
-### Iteração 2 — "O dinheiro funciona" (P0 de código)
-1. **B1**: corrigir `processStripeWebhook` + interface `stripeClient.ts` +
-   mock de teste + novo teste de regressão que reproduz o bug.
-2. **B3**: recálculo de `total_lessons`/`duration` em `cms/service.ts` +
-   migração retroativa idempotente no boot.
-3. **B5 (código)**: erro logado/health degradado quando `resend_api_key`
-   ausente em produção.
-4. Fail-fast/alerta na init de billing (`server/index.ts:45-67`).
-5. Rodar suítes completas; validar zero regressão.
+### Iteração 2 — "O dinheiro funciona" (P0 de código) ✅ CONCLUÍDA (2026-07-10)
+1. ✅ **B1**: `processStripeWebhook` agora parseia o payload (já validado por
+   assinatura pela lib) em vez de depender de um retorno que não existe;
+   interface de `stripeClient.ts` corrigida para `Promise<void>`; mock de
+   teste espelha o contrato real — a suíte de webhook virou regressão do bug.
+2. ✅ **B3**: `recalculateCourseTotals()` em `cms/service.ts` chamado em
+   create/update/delete de lição e delete de módulo (atualiza também
+   `duration` e o snapshot de matrículas); backfill retroativo idempotente
+   no boot (`schema.ts`); novo spec
+   `tests/integration/cms/course-totals.test.ts` cobre o fluxo completo
+   (autoria CMS → matrícula → conclusão 100%).
+3. ✅ **B5 (código)**: `logger.error` em produção quando `resend_api_key`
+   ausente (por envio e no boot); `GET /api/health` expõe
+   `email: configured|not_configured`.
+4. ✅ Init de billing: erro alto em produção (antes: warning silencioso),
+   alerta quando o managed webhook não pode ser registrado, e status
+   `billing: initialized|error|not_initialized` no health check
+   (`server/lib/runtimeStatus.ts`).
+5. ✅ Suítes completas executadas — resultados na seção 2.
 
 ### Iteração 3 — "O aluno consome" (P0 de produto)
 1. **B2**: player de aula em `CourseDetailPage`/`TurmaShell` com

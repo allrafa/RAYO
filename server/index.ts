@@ -5,6 +5,8 @@ import { logger } from "./utils/logger.js";
 import { bootstrapAdminsFromEnv } from "./features/admin/bootstrap.js";
 import { UPLOAD_ROOT } from "./features/cms/upload.js";
 import { backfillLocalUploads } from "./lib/objectStorageBridge.js";
+import { isEmailConfigured } from "./lib/email.js";
+import { runtimeStatus } from "./lib/runtimeStatus.js";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
@@ -54,6 +56,10 @@ async function start() {
         || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}` : null);
       if (webhookBase) {
         await sync.findOrCreateManagedWebhook(`${webhookBase}/api/stripe/webhook`);
+      } else if (isProd) {
+        // Sem webhook registrado o Stripe nunca confirma pagamentos e a
+        // tabela subscriptions não é populada — cliente paga sem acesso.
+        logger.error("Stripe", "PUBLIC_SITE_URL/REPLIT_DOMAINS ausentes — managed webhook NÃO registrado; pagamentos não serão confirmados.");
       }
       // syncBackfill traz produtos/preços/customers/subscriptions existentes
       // pra schema stripe.*. Não-bloqueante porque pode demorar em contas
@@ -61,9 +67,20 @@ async function start() {
       void sync.syncBackfill().catch((err: Error) => {
         logger.warn("Stripe", `syncBackfill failed: ${err.message}`);
       });
+      runtimeStatus.billingInitialized = true;
       logger.info("Stripe", `Billing initialized (${isProd ? "production" : "development"} mode)`);
     } catch (err) {
-      logger.warn("Stripe", `Billing init skipped: ${(err as Error).message}`);
+      runtimeStatus.billingError = (err as Error).message;
+      if (process.env.REPLIT_DEPLOYMENT === "1" || process.env.NODE_ENV === "production") {
+        logger.error("Stripe", `Billing init FALHOU em produção — checkout e webhook indisponíveis: ${(err as Error).message}`);
+      } else {
+        logger.warn("Stripe", `Billing init skipped: ${(err as Error).message}`);
+      }
+    }
+
+    runtimeStatus.emailConfigured = isEmailConfigured();
+    if (!runtimeStatus.emailConfigured && process.env.NODE_ENV === "production") {
+      logger.error("Email", "resend_api_key ausente em produção — verificação de conta, reset de senha e notificações NÃO serão enviados.");
     }
 
     await bootstrapAdminsFromEnv();

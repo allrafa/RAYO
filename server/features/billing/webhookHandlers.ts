@@ -157,12 +157,21 @@ async function handleEvent(event: Stripe.Event): Promise<void> {
 
 export async function processStripeWebhook(payload: Buffer, signature: string): Promise<void> {
   const sync = await getStripeSync();
-  // 1. Sync oficial (valida assinatura, popula schema stripe.*, deduplica).
-  const result = await sync.processWebhook(payload, signature);
-  // 2. Atualiza nossa tabela subscriptions com base no evento.
-  // O evento já veio validado; reusamos o mesmo objeto.
-  const event = (result?.event ?? null) as Stripe.Event | null;
-  if (event) {
+  // 1. Sync oficial (valida assinatura via constructEventAsync — joga se
+  //    inválida —, popula schema stripe.* e deduplica). Retorna void: a lib
+  //    NÃO devolve o evento (Promise<void> em stripe-replit-sync).
+  await sync.processWebhook(payload, signature);
+  // 2. Atualiza nossa tabela subscriptions com base no mesmo evento. Como a
+  //    assinatura já foi validada acima (qualquer adulteração teria jogado),
+  //    o payload é confiável e podemos parseá-lo diretamente.
+  let event: Stripe.Event | null = null;
+  try {
+    event = JSON.parse(payload.toString("utf-8")) as Stripe.Event;
+  } catch {
+    console.error("[stripe webhook] payload inválido (não-JSON) após assinatura validada");
+    return;
+  }
+  if (event && typeof event === "object" && typeof event.type === "string") {
     try {
       await handleEvent(event);
     } catch (err) {

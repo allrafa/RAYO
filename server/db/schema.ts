@@ -1244,6 +1244,30 @@ export async function initializeSchema() {
   // Task #261 — EPUB: CFI do trecho selecionado (NULL pra notas em PDF).
   await query(`ALTER TABLE book_notes ADD COLUMN IF NOT EXISTS cfi TEXT`);
 
+  // Backfill: courses.total_lessons é derivado das lições, mas o CMS criava
+  // cursos com 0 e nunca recalculava — progresso do aluno ficava preso em 0%.
+  // O CMS agora recalcula a cada mutação (cms/service.ts); aqui corrigimos o
+  // legado. Idempotente: só toca linhas divergentes.
+  await query(`
+    UPDATE courses c
+       SET total_lessons = sub.real_total, updated_at = NOW()
+      FROM (
+        SELECT cm.course_id, COUNT(cl.id)::int AS real_total
+          FROM course_modules cm
+          LEFT JOIN course_lessons cl ON cl.module_id = cm.id
+         GROUP BY cm.course_id
+      ) sub
+     WHERE sub.course_id = c.id
+       AND c.total_lessons IS DISTINCT FROM sub.real_total
+  `);
+  await query(`
+    UPDATE user_course_progress ucp
+       SET total_lessons = c.total_lessons
+      FROM courses c
+     WHERE c.id = ucp.course_id
+       AND ucp.total_lessons IS DISTINCT FROM c.total_lessons
+  `);
+
   console.log("[DB] Schema initialized successfully.");
 }
 

@@ -40,7 +40,13 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendResult> 
   const client = getClient();
   const masked = maskEmail(options.to);
   if (!client) {
-    logger.warn("Email", `Resend API key not configured; skipping email to ${masked}`);
+    // Em produção isto significa verificação de conta/reset de senha mudos —
+    // erro alto e claro; em dev continua sendo um estado esperado.
+    if (process.env.NODE_ENV === "production") {
+      logger.error("Email", `resend_api_key AUSENTE em produção — e-mail para ${masked} NÃO enviado ("${options.subject}")`);
+    } else {
+      logger.warn("Email", `Resend API key not configured; skipping email to ${masked}`);
+    }
     return { sent: false, error: "RESEND_NOT_CONFIGURED" };
   }
   try {

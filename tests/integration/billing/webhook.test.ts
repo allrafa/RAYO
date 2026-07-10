@@ -1,8 +1,8 @@
 // Task #239 — POST /api/stripe/webhook.
 //
 // Stub `getStripeSync()` via `__setStripeSyncForTest` pra:
-//   * aceitar `signature !== "test_invalid_sig"` como válida e devolver o
-//     `event` parseado do payload JSON.
+//   * aceitar `signature !== "test_invalid_sig"` como válida e resolver
+//     void (contrato real da lib — o handler parseia o payload sozinho).
 //   * jogar erro pra signature inválida.
 // Stub `getUncachableStripeClient()` para `checkout.session.completed`
 // (que faz `subscriptions.retrieve`) e `charge.refunded`
