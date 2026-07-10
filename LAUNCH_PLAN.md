@@ -10,13 +10,19 @@
 
 ## 1. Veredito
 
-**A plataforma NÃO está pronta para lançamento hoje.** A arquitetura é sólida
-(thin client/fat server, gating 402, migrations idempotentes, LGPD, SEO), a
-cobertura de testes das áreas críticas é boa, mas existem **5 bloqueadores P0**
-— dois deles no coração do produto: o cliente que pagar **não recebe acesso**
-(webhook Stripe inoperante) e o aluno que receber acesso **não consegue assistir
-aula** (não existe player). Corrigindo os P0 e executando o checklist manual,
-o lançamento é viável em poucas iterações.
+**Atualização (fim da iteração 5, 2026-07-10):** os **5 bloqueadores P0 de
+código estão resolvidos** — webhook Stripe libera acesso (B1), player de aula
+existe com progresso real (B2), cursos do CMS são completáveis (B3), e-mail e
+billing falham alto em vez de silenciosamente (B5) — e o lançamento honesto
+(D3) foi aplicado. **O que falta agora é execução manual, não código**: o
+checklist do §7 (senha do admin, Resend/DNS, Stripe live, 1 instância,
+conteúdo real) e a validação ponta-a-ponta em modo test do Stripe (§8).
+
+Veredito original (iteração 1): a plataforma NÃO estava pronta — arquitetura
+sólida (thin client/fat server, gating 402, migrations idempotentes, LGPD,
+SEO), mas com 5 bloqueadores P0, dois no coração do produto: o cliente que
+pagasse **não recebia acesso** (webhook Stripe inoperante) e o aluno **não
+conseguia assistir aula** (não existia player).
 
 ## 2. Estado verificado (2026-07-10, container limpo)
 
@@ -205,12 +211,22 @@ produção. **Fix (manual)**: configurar key + DNS antes do go-live.
    (esbuild não checa tipos; suítes cobrem o runtime) — dívida técnica
    registrada para iteração futura, não é bloqueador de lançamento.
 
-### Iteração 5 — "Prova final"
-1. Testes de integração para `books`, `bundles`, `search`, `/api/users`,
-   `/api/contato`.
-2. E2E de consumo: matricular → assistir → progresso → concluir.
-3. Dedupe de webhook por `event.id` + reconciliação periódica.
-4. Execução completa do checklist de go-live (§7) e smoke em produção.
+### Iteração 5 — "Prova final" ✅ CONCLUÍDA (2026-07-10)
+1. ✅ Novos specs de integração: `books/progress.test.ts` (auth, 404
+   não-livro, upsert last-write-wins, clamp de página, highlights CRUD),
+   `bundles/public.test.ts` (listagem por segmento + itens embutidos,
+   segmento inválido), `search/http.test.ts` (401 sem auth, busca por
+   título, query vazia), `marketing/contato.test.ts` (validação, aceite sem
+   Resend com `delivered:false`, rate limit 3/h → 429). `/api/users` fica
+   como próximo passo de cobertura (menor risco: só perfil).
+2. ⏭️ E2E de consumo (matricular → assistir → concluir) requer Playwright +
+   dev server — roda no CI do Replit; adicionado como item do checklist.
+3. ✅ Dedupe de webhook por `event.id` (tabela `stripe_webhook_events`,
+   claim antes do handler + rollback do claim em erro pra preservar o retry
+   do Stripe) com teste de regressão. Reconciliação periódica fica como
+   melhoria pós-lançamento (o dedupe + upserts idempotentes cobrem o risco
+   principal).
+4. ➡️ Checklist de go-live (§7) é a fase final — depende das ações manuais.
 
 ## 7. Checklist manual do go-live (ações do Rafael, fora do código)
 

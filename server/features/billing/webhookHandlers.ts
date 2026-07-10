@@ -199,9 +199,29 @@ export async function processStripeWebhook(payload: Buffer, signature: string): 
     return;
   }
   if (event && typeof event === "object" && typeof event.type === "string") {
+    // Dedupe por event.id: re-entregas do Stripe não reprocessam handlers.
+    // Eventos sem id (só possíveis em payloads sintéticos) processam normal.
+    if (typeof event.id === "string" && event.id.length > 0) {
+      const { rows } = await query(
+        `INSERT INTO stripe_webhook_events (event_id, event_type)
+         VALUES ($1, $2)
+         ON CONFLICT (event_id) DO NOTHING
+         RETURNING event_id`,
+        [event.id, event.type],
+      );
+      if (rows.length === 0) {
+        console.info("[stripe webhook] evento duplicado ignorado", event.id, event.type);
+        return;
+      }
+    }
     try {
       await handleEvent(event);
     } catch (err) {
+      // Libera o claim de dedupe: o retry do Stripe precisa reprocessar.
+      if (typeof event.id === "string" && event.id.length > 0) {
+        await query(`DELETE FROM stripe_webhook_events WHERE event_id = $1`, [event.id])
+          .catch(() => { /* best-effort */ });
+      }
       console.error("[stripe webhook] handleEvent error", event.type, err);
       throw err;
     }

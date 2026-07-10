@@ -69,6 +69,7 @@ const TRUNCATE_ORDER: ReadonlyArray<string> = [
   "post_reactions",
   "post_saves",
   "posts",
+  "stripe_webhook_events",
   "subscriptions",
   "trail_courses",
   "trails",

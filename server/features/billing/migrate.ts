@@ -68,5 +68,16 @@ export async function migrateBilling(): Promise<void> {
   await query(`CREATE INDEX IF NOT EXISTS idx_subscriptions_trail ON subscriptions(trail_id)`);
   await query(`CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status)`);
 
+  // Dedupe de eventos do webhook por event.id — defesa em profundidade
+  // contra re-entregas do Stripe (os upserts já são idempotentes, mas
+  // handlers que fazem retrieve na API não precisam rodar duas vezes).
+  await query(`
+    CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+      event_id TEXT PRIMARY KEY,
+      event_type TEXT,
+      processed_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+
   console.log("[DB] Billing schema initialized.");
 }
