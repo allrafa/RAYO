@@ -1,1 +1,1 @@
-- [Course click routing contract](course-click-routing.md) — qualquer superfície que abre um curso deve replicar o roteamento por trilha do CourseCard (trail_slug → /trilhas/:slug), senão fura o paywall.
+- [Object Storage runtime env](object-storage-runtime-env.md) — OS config vars are runtime-injected into process.env (not the secret store); viewEnvVars returns empty. Sidecar signs at 127.0.0.1:1106; CI has neither.

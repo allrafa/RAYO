@@ -36,6 +36,15 @@ process.env.BUNNY_STREAM_API_KEY = process.env.BUNNY_STREAM_API_KEY ?? "test-key
 process.env.BUNNY_STREAM_CDN_HOSTNAME =
   process.env.BUNNY_STREAM_CDN_HOSTNAME ?? "vz-test.b-cdn.net";
 
+// A resolução `objstore://` → signed URL HTTPS depende do sidecar do
+// Object Storage (`PUBLIC_OBJECT_SEARCH_PATHS` + endpoint local de
+// assinatura), presente no Replit mas AUSENTE no GitHub Actions. Sem ele,
+// `resolveStoredMediaUrl` degrada graciosamente devolvendo o sentinel cru
+// (o servidor segue 200). Usamos a presença do env var como proxy: quando
+// o Object Storage está configurado, exigimos a URL assinada de verdade;
+// no CI (sem bucket) pulamos essa asserção específica.
+const OBJECT_STORAGE_CONFIGURED = Boolean(process.env.PUBLIC_OBJECT_SEARCH_PATHS);
+
 before(async () => { await ensureSchema(); });
 afterEach(async () => { await truncateAll(); });
 after(async () => { await closeDbPool(); });
@@ -98,7 +107,11 @@ describe("Public CMS detail — resolução de sentinels (Task #236)", () => {
     });
   });
 
-  it("objstore:// em media_url é resolvido pra signed URL HTTPS", async () => {
+  it("objstore:// em media_url é resolvido pra signed URL HTTPS", {
+    skip: OBJECT_STORAGE_CONFIGURED
+      ? false
+      : "Object Storage indisponível (sem sidecar/bucket, ex.: CI) — resolução assinada não é exercitável",
+  }, async () => {
     // Object Storage está INSTALLED no Replit (integration ativa). O
     // resolver `resolveStoredMediaUrl` chama `signPublicObjectUrl` que
     // posta no sidecar `/object-storage/signed-object-url` e devolve
