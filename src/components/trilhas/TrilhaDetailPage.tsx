@@ -35,7 +35,7 @@ const FAQ_ITEMS = (trialDays: number) => [
   },
   {
     q: "Por quanto tempo tenho acesso?",
-    a: "Enquanto a assinatura estiver ativa, todo o conteúdo da trilha fica liberado. As turmas são liberadas em sequência, no seu ritmo.",
+    a: "Enquanto a assinatura estiver ativa, todo o conteúdo da trilha fica liberado — você avança no seu ritmo.",
   },
   {
     q: "Funciona para quem tem pouco tempo?",
@@ -228,11 +228,10 @@ export function TrilhaDetailPage({ slug }: { slug: string }) {
             </div>
             <div className="ct-gains">
               {[
-                <><b>{courseCount === 1 ? "1 turma completa" : `${courseCount} turmas completas`}</b> liberadas em sequência, no seu ritmo</>,
+                <><b>{courseCount === 1 ? "1 turma completa" : `${courseCount} turmas completas`}</b> liberadas desde o primeiro dia, no seu ritmo</>,
                 <><b>Material de apoio</b> e exercícios práticos de cada turma</>,
                 <><b>Comunidade exclusiva</b> da trilha, com mediação</>,
-                <><b>Certificado</b> ao concluir cada turma</>,
-                <><b>Conselheiro IA</b> liberado para tirar dúvidas</>,
+                <><b>Acompanhamento de progresso</b> aula a aula</>,
                 <><b>Novos conteúdos</b> da trilha sem custo extra</>,
               ].map((txt, i) => (
                 <div className="ct-gain" key={i}>

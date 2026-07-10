@@ -177,12 +177,33 @@ produção. **Fix (manual)**: configurar key + DNS antes do go-live.
    timeout ("Pagamento em processamento") + CTAs de recarregar e
    `/contato` (`TrilhaSucessoPage.tsx`).
 
-### Iteração 4 — "Lançamento honesto e operável"
-1. D3 completo (certificados, depoimentos, conselheiro, copy, mocks da Home).
-2. E-mails transacionais de compra (confirmação/falha) via Resend.
-3. Graceful shutdown (SIGTERM), expurgo de `sessions`/códigos expirados,
-   `.env.example` completo (Bunny, Socket.IO, INTERNAL_API_KEY, contatos).
-4. Error monitoring (Sentry ou similar) no `errorHandler` + unhandled.
+### Iteração 4 — "Lançamento honesto e operável" ✅ CONCLUÍDA (2026-07-10)
+1. ✅ D3 completo: promessas de certificado removidas (CourseDetailPage FAQ/
+   features + TrilhaDetailPage); depoimentos hardcoded substituídos por
+   avaliações reais (`/api/courses/:id/reviews`) com estado vazio; bio fake
+   do instrutor removida; **Conselheiro IA atrás de flag**
+   (`VITE_CONSELHEIRO_ENABLED`, default off → página "Em breve" honesta com
+   CTAs para Academia/Comunidade — protótipo preservado pra quando houver
+   backend); copy "liberadas em sequência" corrigida; banner mock do YouTube
+   removido da Home; bullet "Conselheiro IA" do e-mail de boas-vindas trocado.
+2. ✅ E-mail de confirmação de compra (`sendTrailPurchaseEmail`, com variação
+   trial/ativa) disparado pelo webhook `checkout.session.completed`,
+   fire-and-forget. E-mail de falha de pagamento fica para o dashboard
+   Stripe (recibos/dunning nativos — item manual do checklist).
+3. ✅ Graceful shutdown (SIGTERM/SIGINT com dreno de 10s), handlers de
+   `unhandledRejection`/`uncaughtException` com log, expurgo de
+   `sessions`/`email_verification_codes`/`password_reset_tokens` expirados
+   (boot + a cada 6h), `.env.example` completo (Bunny, Stripe, Socket.IO,
+   contatos, INTERNAL_API_KEY, object storage, flag do Conselheiro).
+4. ⏭️ Error monitoring (Sentry) — requer conta/DSN e nova dependência:
+   movido para o checklist manual (§7). Os handlers de processo acima já
+   garantem que nenhum crash morre sem log.
+5. ⚠️ Typecheck restaurado (`ignoreDeprecations` nos dois tsconfigs — antes
+   o tsc abortava sem checar nada). Isso revelou **~270 erros de tipo
+   pré-existentes** no servidor (falta augmentação de `Request.user`) e a
+   ausência de `@types/react` no frontend. Não bloqueiam build/runtime
+   (esbuild não checa tipos; suítes cobrem o runtime) — dívida técnica
+   registrada para iteração futura, não é bloqueador de lançamento.
 
 ### Iteração 5 — "Prova final"
 1. Testes de integração para `books`, `bundles`, `search`, `/api/users`,
@@ -194,6 +215,8 @@ produção. **Fix (manual)**: configurar key + DNS antes do go-live.
 ## 7. Checklist manual do go-live (ações do Rafael, fora do código)
 
 - [ ] **Trocar a senha do admin AGORA** (exposta no histórico git — B4).
+- [ ] Error monitoring: criar projeto no Sentry (ou similar), definir o DSN
+      e pedir a integração no código (dependência nova — decisão sua).
 - [ ] Resend: criar/confirmar API key de produção + verificar domínio
       `rayo.app.br` (SPF/DKIM/DMARC) + testar recebimento real.
 - [ ] Stripe: ativar modo live no connector do Replit, conferir webhook

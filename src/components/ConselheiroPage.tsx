@@ -27,7 +27,54 @@ interface ActionButton {
   disabled?: boolean;
 }
 
+// Lançamento honesto (LAUNCH_PLAN.md D3): o chat abaixo é um protótipo com
+// respostas simuladas — não existe backend de IA. Em produção mostramos um
+// estado "em breve" real; o protótipo fica atrás de VITE_CONSELHEIRO_ENABLED
+// pra continuar evoluindo em dev sem enganar usuário.
+const CONSELHEIRO_ENABLED = import.meta.env.VITE_CONSELHEIRO_ENABLED === "true";
+
+function ConselheiroComingSoon() {
+  const { setCurrentTab } = useApp();
+  return (
+    <div className="min-h-[70vh] flex items-center justify-center px-4">
+      <Card className="max-w-md w-full text-center">
+        <CardContent className="p-8 space-y-4">
+          <div className="mx-auto w-20 h-20 rounded-full overflow-hidden">
+            <ImageWithFallback src={agentImage} alt="Conselheiro RAYO" className="w-full h-full object-cover" />
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <Sparkles className="w-5 h-5 text-[var(--rayo-ochre-500)]" />
+            <h1 className="font-display text-2xl font-bold">Conselheiro RAYO</h1>
+          </div>
+          <Badge variant="outline">Em breve</Badge>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Estamos preparando um conselheiro com inteligência artificial para
+            caminhar com você nas questões da sua família. Enquanto ele não
+            chega, as trilhas e a comunidade são os melhores lugares para
+            encontrar orientação.
+          </p>
+          <div className="flex flex-col gap-2 pt-2">
+            <Button onClick={() => setCurrentTab("academia")}>
+              Explorar a Academia
+            </Button>
+            <Button variant="outline" onClick={() => setCurrentTab("comunidade")}>
+              Ir para a Comunidade
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export function ConselheiroPage() {
+  if (!CONSELHEIRO_ENABLED) {
+    return <ConselheiroComingSoon />;
+  }
+  return <ConselheiroChatPrototype />;
+}
+
+function ConselheiroChatPrototype() {
   const { setCurrentTab, setActiveVideo } = useApp();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");

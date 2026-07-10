@@ -362,7 +362,7 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<Sen
       `Cursos, livros e áudios sobre <strong style="color:${T.forest900};">relacionamento, fé e propósito</strong>`,
       "Uma comunidade engajada de famílias como a sua",
       "Missões diárias para sustentar hábitos com leveza",
-      "Conselheiro IA para te apoiar nos momentos difíceis",
+      "Trilhas guiadas para crescer no seu ritmo",
     ]),
     quoteRow(
       `Cada manhã é um convite a recomeçar. <em style="color:${T.terra500};font-style:italic;font-weight:500;">Continue sua trilha</em> no seu tempo — sem pressa, sem barulho.`,
@@ -377,7 +377,55 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<Sen
     preheaderRight: "Comece no seu ritmo",
     cardBody,
   });
-  const text = `Olá, ${name}.\n\nQue bom te ver na RAYO. Sua jornada começa no seu ritmo.\n\nAqui você encontra:\n— Cursos, livros e áudios sobre relacionamento, fé e propósito\n— Uma comunidade engajada de famílias como a sua\n— Missões diárias para sustentar hábitos com leveza\n— Conselheiro IA para te apoiar nos momentos difíceis\n\nAcesse: ${APP_URL}`;
+  const text = `Olá, ${name}.\n\nQue bom te ver na RAYO. Sua jornada começa no seu ritmo.\n\nAqui você encontra:\n— Cursos, livros e áudios sobre relacionamento, fé e propósito\n— Uma comunidade engajada de famílias como a sua\n— Missões diárias para sustentar hábitos com leveza\n— Trilhas guiadas para crescer no seu ritmo\n\nAcesse: ${APP_URL}`;
+  return sendEmail({ to: email, subject, html, text });
+}
+
+// Confirmação de assinatura de trilha paga (LAUNCH_PLAN.md iteração 4).
+// Disparado pelo webhook `checkout.session.completed` — fire-and-forget,
+// nunca deve derrubar o processamento do webhook.
+export async function sendTrailPurchaseEmail(
+  email: string,
+  name: string,
+  opts: {
+    trailTitle: string;
+    trailSlug: string;
+    isTrial: boolean;
+    trialEndsAt?: Date | null;
+  },
+): Promise<SendResult> {
+  const trailUrl = `${APP_URL}/trilhas/${opts.trailSlug}`;
+  const trialEndStr = opts.trialEndsAt
+    ? opts.trialEndsAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
+    : null;
+  const subject = opts.isTrial
+    ? `Seu período grátis na trilha ${opts.trailTitle} começou`
+    : `Assinatura confirmada — ${opts.trailTitle}`;
+  const introHtml = opts.isTrial
+    ? `Seu período grátis na trilha <strong style="color:${T.forest900};">${escapeHtml(opts.trailTitle)}</strong> já está ativo.${trialEndStr ? ` Você tem acesso completo até <strong style="color:${T.forest900};">${trialEndStr}</strong> — só cobramos depois dessa data.` : " Você tem acesso completo durante o período grátis."} Cancele quando quiser pelo painel de assinatura.`
+    : `Sua assinatura da trilha <strong style="color:${T.forest900};">${escapeHtml(opts.trailTitle)}</strong> foi confirmada. Todo o conteúdo já está liberado pra você.`;
+  const cardBody = [
+    eyebrowRow(opts.isTrial ? "Período grátis ativo" : "Assinatura confirmada"),
+    headlineRow(`Olá, ${escapeHtml(name)}.`, "Bem-vindo(a) à trilha."),
+    paragraphRow(introHtml),
+    ctaRow("Começar agora", trailUrl, "32px 40px 16px"),
+    paragraphRow(
+      `<span style="color:${T.ink500};font-size:14px;">Você pode gerenciar (ou cancelar) sua assinatura a qualquer momento no painel de assinaturas, dentro do seu perfil.</span>`,
+      "8px 40px 36px",
+    ),
+  ].join("");
+  const html = editorialLayout({
+    title: `RAYO — ${subject}`,
+    preheaderHidden: opts.isTrial
+      ? "Seu acesso completo à trilha já está liberado."
+      : "Sua assinatura foi confirmada e o conteúdo está liberado.",
+    preheaderLeft: "RAYO · Trilhas",
+    preheaderRight: opts.isTrial ? "Período grátis" : "Assinatura ativa",
+    cardBody,
+  });
+  const text = opts.isTrial
+    ? `Olá, ${name}.\n\nSeu período grátis na trilha "${opts.trailTitle}" já está ativo.${trialEndStr ? ` Você tem acesso completo até ${trialEndStr} — só cobramos depois dessa data.` : ""}\nCancele quando quiser pelo painel de assinatura.\n\nComece agora: ${trailUrl}`
+    : `Olá, ${name}.\n\nSua assinatura da trilha "${opts.trailTitle}" foi confirmada. Todo o conteúdo já está liberado.\n\nComece agora: ${trailUrl}`;
   return sendEmail({ to: email, subject, html, text });
 }
 

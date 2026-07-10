@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { query } from "../../db/index.js";
 import { getUncachableStripeClient, getStripeSync } from "../../stripeClient.js";
 import { invalidateTrailLookupCache } from "./service.js";
+import { sendTrailPurchaseEmail } from "../../lib/email.js";
 
 // Task #130 — webhook handler do Stripe.
 //
@@ -64,6 +65,26 @@ async function upsertSubscriptionRow(sub: Stripe.Subscription): Promise<void> {
   invalidateTrailLookupCache();
 }
 
+async function sendPurchaseConfirmation(sub: Stripe.Subscription): Promise<void> {
+  const trailId = parseInt(String(sub.metadata?.rayo_trail_id ?? ""), 10);
+  const userId = parseInt(String(sub.metadata?.rayo_user_id ?? ""), 10);
+  if (!trailId || !userId) return;
+  const { rows } = await query(
+    `SELECT u.email, u.name, t.title, t.slug
+       FROM users u, trails t
+      WHERE u.id = $1 AND t.id = $2`,
+    [userId, trailId],
+  );
+  if (rows.length === 0) return;
+  const trialEnd = (sub as unknown as { trial_end?: number | null }).trial_end;
+  await sendTrailPurchaseEmail(rows[0].email, rows[0].name ?? "", {
+    trailTitle: rows[0].title,
+    trailSlug: rows[0].slug,
+    isTrial: sub.status === "trialing",
+    trialEndsAt: trialEnd ? new Date(trialEnd * 1000) : null,
+  });
+}
+
 async function handleEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
     case "checkout.session.completed": {
@@ -88,6 +109,12 @@ async function handleEvent(event: Stripe.Event): Promise<void> {
           const stripe = await getUncachableStripeClient();
           const sub = await stripe.subscriptions.retrieve(subscriptionId);
           await upsertSubscriptionRow(sub);
+          // Confirmação de compra por e-mail — fire-and-forget: falha de
+          // e-mail nunca pode falhar o webhook (o Stripe faria retry e o
+          // cliente receberia e-mails duplicados).
+          void sendPurchaseConfirmation(sub).catch((err) => {
+            console.error("[stripe webhook] purchase email failed", sub.id, err);
+          });
         } catch (err) {
           console.error("[stripe webhook] retrieve subscription failed", subscriptionId, err);
         }
