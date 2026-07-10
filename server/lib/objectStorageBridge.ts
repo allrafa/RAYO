@@ -163,14 +163,22 @@ export function normalizeStorageRef(
 
 // Convert a persisted reference into an external URL the client can
 // actually fetch. Returns:
-//   - null              if `stored` is null/empty
-//   - <input>           if `stored` is an absolute http(s) URL
-//   - signed GCS URL    if `stored` is `objstore://<key>` (always) or
-//                       `/uploads/<key>` (when the bucket has the key)
-//   - <input>           if `stored` is a legacy `/uploads/<key>` we
-//                       cannot find in the bucket — the express
-//                       `/uploads/*` shim will then attempt the local
-//                       disk fallback.
+//   - null   if `stored` is null/empty
+//   - <input> if `stored` is an absolute http(s) URL
+//   - signed GCS URL if `stored` is `objstore://<key>` (always) or
+//                   `/uploads/<key>` (when the bucket has the key)
+//   - <input> if `stored` is a legacy `/uploads/<key>` we
+//             cannot find in the bucket — the express
+//             `/uploads/*` shim will then attempt the local
+//             disk fallback.
+//
+// Object Storage may be unconfigured in some environments (e.g. CI, or a
+// fresh Replit workspace before the bucket + PUBLIC_OBJECT_SEARCH_PATHS
+// env var are provisioned). In that case signing throws. We must NOT let
+// that turn a serialization path into a 500 — instead we log once and
+// degrade gracefully by returning the persisted reference unchanged, so
+// the API keeps responding 200 (the media just won't be signed until the
+// bucket is configured on Replit).
 export async function resolveStoredMediaUrl(
   stored: string | null | undefined,
 ): Promise<string | null> {
@@ -179,7 +187,16 @@ export async function resolveStoredMediaUrl(
 
   if (stored.startsWith(STORAGE_PREFIX)) {
     const key = stored.slice(STORAGE_PREFIX.length);
-    return signPublicObjectUrl(key);
+    try {
+      return await signPublicObjectUrl(key);
+    } catch (err) {
+      logger.warn(
+        "ObjectStorage",
+        `resolveStoredMediaUrl: could not sign objstore ref (returning it unresolved); key=${key}:`,
+        err,
+      );
+      return stored;
+    }
   }
 
   if (stored.startsWith(LEGACY_URL_PREFIX)) {
