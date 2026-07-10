@@ -11,12 +11,17 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useApp } from "./AppContext";
 import { enhancedToast } from "./EnhancedToast";
 import { TrailPaywall } from "./trilhas/TrailPaywall";
+import { LessonPlayer } from "./LessonPlayer";
 
 interface DetailLesson {
   id: number;
   title: string;
   duration: string;
   duration_seconds: number;
+  content_type?: string | null;
+  video_url?: string | null;
+  video_embed_url?: string | null;
+  video_thumbnail_url?: string | null;
 }
 
 interface DetailModule {
@@ -44,9 +49,10 @@ interface CourseDetailPageProps {
 }
 
 export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
-  const { getCourseById, enrollInCourse, startCourse, completeLessonOnServer, userData } = useApp();
+  const { getCourseById, enrollInCourse, completeLessonOnServer } = useApp();
   const [isLoading, setIsLoading] = useState(false);
   const [completingLessonId, setCompletingLessonId] = useState<number | null>(null);
+  const [activeLessonId, setActiveLessonId] = useState<number | null>(null);
   
   const course = getCourseById(courseId);
   
@@ -77,10 +83,16 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
   };
 
   const handleStart = () => {
-    startCourse(courseId);
+    // Continua da primeira aula não concluída (ou recomeça da primeira).
+    const next = allLessons.find((l) => lessonProgressMap[l.id] !== "completed") ?? allLessons[0];
+    if (!next) {
+      enhancedToast.info({ title: "Este curso ainda não tem aulas publicadas." });
+      return;
+    }
+    openLesson(next.id);
     enhancedToast.success({
-      title: "Curso iniciado!",
-      description: "Vamos começar sua jornada de aprendizado",
+      title: course.progress > 0 ? "Continuando de onde você parou" : "Curso iniciado!",
+      description: next.title,
       haptic: true
     });
   };
@@ -110,6 +122,20 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
   // Task #137 — status da trilha vinculada (se houver) pra renderizar o
   // <TrailPaywall> inline em vez de exibir "Matricular" + redirect.
   const [trailGate, setTrailGate] = useState<{ trail_id: number | null; has_trail_access: boolean } | null>(null);
+
+  const allLessons = modules.flatMap((m) => m.lessonList || []);
+  const activeLesson = allLessons.find((l) => l.id === activeLessonId) ?? null;
+
+  const scrollToPlayer = () => {
+    requestAnimationFrame(() => {
+      document.getElementById("lesson-player")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const openLesson = (lessonId: number) => {
+    setActiveLessonId(lessonId);
+    scrollToPlayer();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -182,6 +208,8 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
     try { sessionStorage.removeItem("rayo-pending-lesson"); } catch { /* ignore */ }
     const lessonExists = modules.some((m) => (m.lessonList || []).some((l) => String(l.id) === pending));
     if (!lessonExists) return;
+    // Além de destacar a linha, abre a aula no player do herói.
+    setActiveLessonId(Number(pending));
     // Aguarda 1 frame pro DOM estar pintado.
     requestAnimationFrame(() => {
       const node = document.querySelector<HTMLElement>(`[data-lesson-id="${pending}"]`);
@@ -195,6 +223,17 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
       window.setTimeout(() => node.classList.remove("rayo-comment-highlight"), 2200);
     });
   }, [modules]);
+
+  // Matriculado com aulas carregadas: seleciona a primeira aula não
+  // concluída pra o herói já abrir como player (sem autoplay). Só na
+  // primeira carga — depois quem manda é o clique do aluno.
+  useEffect(() => {
+    if (!course.isEnrolled || activeLessonId !== null || modules.length === 0) return;
+    const flat = modules.flatMap((m) => m.lessonList || []);
+    const next = flat.find((l) => lessonProgressMap[l.id] !== "completed") ?? flat[0];
+    if (next) setActiveLessonId(next.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course.isEnrolled, modules, lessonProgressMap]);
 
   const instructor = {
     name: course.instructor || "RAYO Academy",
@@ -255,39 +294,55 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
       <div className="max-w-6xl mx-auto p-4 space-y-8">
         {/* Hero Section */}
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Video/Image */}
-          <div className="lg:col-span-2">
-            <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[var(--rayo-forest-700)] to-[var(--rayo-forest-900)]">
-              <ImageWithFallback
-                src={course.thumbnail}
-                alt={course.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                <Button 
-                  size="lg"
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                  variant="outline"
-                >
-                  <Play className="w-6 h-6 mr-2" />
-                  Preview do Curso
-                </Button>
+          {/* Player da aula ativa (matriculado) ou capa do curso */}
+          <div className="lg:col-span-2" id="lesson-player">
+            {course.isEnrolled && activeLesson ? (
+              <div className="space-y-3">
+                <LessonPlayer
+                  lesson={activeLesson}
+                  isCompleted={lessonProgressMap[activeLesson.id] === "completed"}
+                  coverUrl={course.thumbnail}
+                  onAutoComplete={handleCompleteLesson}
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Assistindo agora</p>
+                    <h3 className="font-medium truncate">{activeLesson.title}</h3>
+                  </div>
+                  {lessonProgressMap[activeLesson.id] === "completed" ? (
+                    <Badge className="bg-[var(--rayo-forest-700)] text-white shrink-0">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Concluída
+                    </Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0"
+                      disabled={completingLessonId === activeLesson.id}
+                      onClick={() => handleCompleteLesson(activeLesson.id)}
+                    >
+                      {completingLessonId === activeLesson.id ? "Salvando..." : "Concluir aula"}
+                    </Button>
+                  )}
+                </div>
               </div>
-              
-              {/* Course badges */}
-              <div className="absolute top-4 left-4 flex flex-col gap-2">
-                <Badge className="bg-[var(--rayo-forest-700)] text-white">
-                  <Award className="w-3 h-3 mr-1" />
-                  Certificado
-                </Badge>
+            ) : (
+              <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[var(--rayo-forest-700)] to-[var(--rayo-forest-900)]">
+                <ImageWithFallback
+                  src={course.thumbnail}
+                  alt={course.title}
+                  className="w-full h-full object-cover"
+                />
                 {course.isPremium && (
-                  <Badge className="bg-[var(--rayo-ochre-500)] text-white">
-                    ⭐ Premium
-                  </Badge>
+                  <div className="absolute top-4 left-4">
+                    <Badge className="bg-[var(--rayo-ochre-500)] text-white">
+                      ⭐ Premium
+                    </Badge>
+                  </div>
                 )}
               </div>
-
-            </div>
+            )}
           </div>
 
           {/* Course Info & CTA */}
@@ -500,8 +555,13 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                           </div>
                         </div>
                       </div>
-                      {course.isEnrolled && (
-                        <Button variant="ghost" size="sm">
+                      {course.isEnrolled && modLessons.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openLesson((modLessons.find((l) => lessonProgressMap[l.id] !== 'completed') ?? modLessons[0]).id)}
+                          aria-label={`Assistir ${module.title}`}
+                        >
                           <Play className="w-4 h-4" />
                         </Button>
                       )}
@@ -512,19 +572,24 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                           const lessonStatus = lessonProgressMap[lesson.id];
                           const isLessonCompleted = lessonStatus === 'completed';
                           const isCompleting = completingLessonId === lesson.id;
+                          const isActive = activeLessonId === lesson.id;
                           return (
                             <div
                               key={lesson.id}
                               data-lesson-id={lesson.id}
-                              className="flex items-center justify-between text-sm py-1.5 px-2 -mx-2 rounded-md transition-colors"
+                              className={`flex items-center justify-between text-sm py-1.5 px-2 -mx-2 rounded-md transition-colors cursor-pointer hover:bg-accent ${isActive ? 'bg-accent' : ''}`}
+                              onClick={() => openLesson(lesson.id)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLesson(lesson.id); } }}
                             >
                               <div className="flex items-center gap-2 flex-1">
                                 {isLessonCompleted ? (
                                   <CheckCircle className="w-4 h-4 text-[var(--rayo-forest-700)] shrink-0" />
                                 ) : (
-                                  <Play className="w-4 h-4 text-muted-foreground shrink-0" />
+                                  <Play className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--rayo-forest-700)]' : 'text-muted-foreground'}`} />
                                 )}
-                                <span className={isLessonCompleted ? 'text-muted-foreground line-through' : ''}>
+                                <span className={isLessonCompleted ? 'text-muted-foreground line-through' : isActive ? 'font-medium' : ''}>
                                   {lesson.title}
                                 </span>
                               </div>
@@ -535,7 +600,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                                     variant="ghost"
                                     size="sm"
                                     disabled={isCompleting}
-                                    onClick={() => handleCompleteLesson(lesson.id)}
+                                    onClick={(e) => { e.stopPropagation(); handleCompleteLesson(lesson.id); }}
                                     className="h-7 px-2 text-xs"
                                   >
                                     {isCompleting ? "..." : "Concluir"}

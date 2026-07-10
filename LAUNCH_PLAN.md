@@ -44,7 +44,7 @@ mão em `server/stripeClient.ts:21-25`.
 signature, secret)` e chamar `handleEvent` a partir dele; corrigir o mock para
 o contrato real; adicionar teste que falharia com o bug atual.
 
-### B2 — Não existe player de aula 🔴 (produto)
+### B2 — Não existe player de aula ✅ CORRIGIDO (iteração 3)
 `CourseDetailPage` descarta `video_url` (interface `DetailLesson`,
 `src/components/CourseDetailPage.tsx:15-20`), o botão "Iniciar Curso" chama
 `startCourse`, que é **função vazia** (`src/components/AppContext.tsx:512-513`),
@@ -159,13 +159,23 @@ produção. **Fix (manual)**: configurar key + DNS antes do go-live.
    (`server/lib/runtimeStatus.ts`).
 5. ✅ Suítes completas executadas — resultados na seção 2.
 
-### Iteração 3 — "O aluno consome" (P0 de produto)
-1. **B2**: player de aula em `CourseDetailPage`/`TurmaShell` com
-   `RayoVideoPlayer` (bunny:// + URL), progresso por tempo assistido.
-2. Seletor de vídeo por aula a partir de `content_items` processados no Bunny
-   (caminho mais curto que upload dedicado por aula).
-3. UX de sucesso/erro do checkout: timeout do polling em
-   `TrilhaSucessoPage.tsx:38-55` com CTA de suporte.
+### Iteração 3 — "O aluno consome" (P0 de produto) ✅ CONCLUÍDA (2026-07-10)
+1. ✅ **B2**: novo `src/components/LessonPlayer.tsx` integrado ao
+   `CourseDetailPage` (e ao `TurmaShell`, que o reusa): o herói vira player
+   quando matriculado, aulas são clicáveis, "Iniciar/Continuar Curso" abre a
+   primeira aula não concluída, deep-link de aula abre no player. O servidor
+   resolve sentinels `bunny://` das lições em embed URLs
+   (`academia/service.ts getCourseDetail`). Progresso: `in_progress` ao abrir
+   a aula, `progress_seconds` a cada 30s e auto-conclusão a ≥90%/fim para
+   arquivos diretos (mp4/mp3/…); embeds (Bunny/YouTube/Vimeo) mantêm o botão
+   "Concluir aula" (iframes não expõem tempo sem SDK — melhoria futura).
+   De quebra: badge/promessa de "Certificado" removida do herói (D3).
+2. ⏭️ Seletor de vídeo por aula a partir de `content_items` do Bunny —
+   ADIADO para a iteração 4. Workaround já funcional: colar o sentinel
+   `bunny://<lib>/<guid>` ou URL direta no campo de vídeo da lição.
+3. ✅ UX de sucesso do checkout: polling estendido para ~30s com estado de
+   timeout ("Pagamento em processamento") + CTAs de recarregar e
+   `/contato` (`TrilhaSucessoPage.tsx`).
 
 ### Iteração 4 — "Lançamento honesto e operável"
 1. D3 completo (certificados, depoimentos, conselheiro, copy, mocks da Home).

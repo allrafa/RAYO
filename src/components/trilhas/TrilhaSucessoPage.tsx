@@ -26,6 +26,10 @@ export function TrilhaSucessoPage() {
   // em segundos. Não bloqueia a UI; mostramos a mensagem genérica enquanto
   // não chega.
   const [sub, setSub] = useState<UserSubscription | null>(null);
+  // Polling esgotado sem a assinatura aparecer: em vez de deixar o cliente
+  // preso na mensagem otimista, mostramos um estado claro com CTA de suporte
+  // (o pagamento pode ter sido aprovado e a sincronização atrasado).
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -34,7 +38,7 @@ export function TrilhaSucessoPage() {
 
     let cancelled = false;
     let attempts = 0;
-    const maxAttempts = 8;
+    const maxAttempts = 20; // ~30s no total
     async function poll() {
       if (cancelled) return;
       attempts += 1;
@@ -45,11 +49,16 @@ export function TrilhaSucessoPage() {
           : r.data.subscriptions[0];
         if (match) {
           setSub(match);
+          setTimedOut(false);
           return;
         }
       }
-      if (!cancelled && attempts < maxAttempts) {
-        setTimeout(poll, 1500);
+      if (!cancelled) {
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 1500);
+        } else {
+          setTimedOut(true);
+        }
       }
     }
     void poll();
@@ -77,15 +86,40 @@ export function TrilhaSucessoPage() {
           </svg>
         </div>
         <h1 className="text-xl mb-2" style={{ color: "var(--rayo-ink-900)" }}>
-          {isTrial ? "Seu período grátis começou!" : "Assinatura confirmada!"}
+          {timedOut && !sub
+            ? "Pagamento em processamento"
+            : isTrial
+              ? "Seu período grátis começou!"
+              : "Assinatura confirmada!"}
         </h1>
         <p className="text-sm mb-6" style={{ color: "var(--rayo-ink-500)" }}>
-          {isTrial
-            ? trialEnd
-              ? `Você tem acesso completo até ${trialEnd}. Só vamos cobrar depois dessa data — cancele quando quiser pelo painel de assinatura.`
-              : "Você tem acesso completo durante o período grátis. Cancele quando quiser pelo painel de assinatura, sem cobrança."
-            : "Em alguns segundos sua trilha estará liberada. Recebemos a confirmação direto do Stripe e estamos sincronizando seu acesso."}
+          {timedOut && !sub
+            ? "Seu pagamento foi recebido, mas a liberação está demorando mais que o normal. Aguarde alguns minutos e recarregue esta página — se o acesso não aparecer, fale com a gente que resolvemos."
+            : isTrial
+              ? trialEnd
+                ? `Você tem acesso completo até ${trialEnd}. Só vamos cobrar depois dessa data — cancele quando quiser pelo painel de assinatura.`
+                : "Você tem acesso completo durante o período grátis. Cancele quando quiser pelo painel de assinatura, sem cobrança."
+              : "Em alguns segundos sua trilha estará liberada. Recebemos a confirmação direto do Stripe e estamos sincronizando seu acesso."}
         </p>
+        {timedOut && !sub && (
+          <div className="flex flex-col gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-xl py-3 text-sm border"
+              style={{ borderColor: "var(--rayo-mist-300)", color: "var(--rayo-ink-900)" }}
+            >
+              Recarregar página
+            </button>
+            <a
+              href="/contato"
+              className="rounded-xl py-3 text-sm border"
+              style={{ borderColor: "var(--rayo-mist-300)", color: "var(--rayo-ink-900)" }}
+            >
+              Falar com o suporte
+            </a>
+          </div>
+        )}
         <div className="flex flex-col gap-2">
           {slug ? (
             <a
