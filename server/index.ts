@@ -5,6 +5,9 @@ import { logger } from "./utils/logger.js";
 import { bootstrapAdminsFromEnv } from "./features/admin/bootstrap.js";
 import { UPLOAD_ROOT } from "./features/cms/upload.js";
 import { backfillLocalUploads } from "./lib/objectStorageBridge.js";
+import { isEmailConfigured } from "./lib/email.js";
+import { runtimeStatus } from "./lib/runtimeStatus.js";
+import { query, closeDb } from "./db/index.js";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import fs from "fs/promises";
@@ -54,6 +57,10 @@ async function start() {
         || (process.env.REPLIT_DOMAINS ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}` : null);
       if (webhookBase) {
         await sync.findOrCreateManagedWebhook(`${webhookBase}/api/stripe/webhook`);
+      } else if (isProd) {
+        // Sem webhook registrado o Stripe nunca confirma pagamentos e a
+        // tabela subscriptions não é populada — cliente paga sem acesso.
+        logger.error("Stripe", "PUBLIC_SITE_URL/REPLIT_DOMAINS ausentes — managed webhook NÃO registrado; pagamentos não serão confirmados.");
       }
       // syncBackfill traz produtos/preços/customers/subscriptions existentes
       // pra schema stripe.*. Não-bloqueante porque pode demorar em contas
@@ -61,10 +68,38 @@ async function start() {
       void sync.syncBackfill().catch((err: Error) => {
         logger.warn("Stripe", `syncBackfill failed: ${err.message}`);
       });
+      runtimeStatus.billingInitialized = true;
       logger.info("Stripe", `Billing initialized (${isProd ? "production" : "development"} mode)`);
     } catch (err) {
-      logger.warn("Stripe", `Billing init skipped: ${(err as Error).message}`);
+      runtimeStatus.billingError = (err as Error).message;
+      if (process.env.REPLIT_DEPLOYMENT === "1" || process.env.NODE_ENV === "production") {
+        logger.error("Stripe", `Billing init FALHOU em produção — checkout e webhook indisponíveis: ${(err as Error).message}`);
+      } else {
+        logger.warn("Stripe", `Billing init skipped: ${(err as Error).message}`);
+      }
     }
+
+    runtimeStatus.emailConfigured = isEmailConfigured();
+    if (!runtimeStatus.emailConfigured && process.env.NODE_ENV === "production") {
+      logger.error("Email", "resend_api_key ausente em produção — verificação de conta, reset de senha e notificações NÃO serão enviados.");
+    }
+
+    // Expurgo de artefatos de auth expirados (sessions, códigos de
+    // verificação, tokens de reset) — sem isto as tabelas crescem pra
+    // sempre. Roda no boot e a cada 6h; falha só loga (não-crítico).
+    const purgeExpiredAuthArtifacts = async () => {
+      try {
+        const r1 = await query(`DELETE FROM sessions WHERE expires_at < NOW()`);
+        const r2 = await query(`DELETE FROM email_verification_codes WHERE expires_at < NOW()`);
+        const r3 = await query(`DELETE FROM password_reset_tokens WHERE expires_at < NOW()`);
+        const total = (r1.rowCount ?? 0) + (r2.rowCount ?? 0) + (r3.rowCount ?? 0);
+        if (total > 0) logger.info("Server", `Expurgo de expirados: ${total} registros removidos.`);
+      } catch (err) {
+        logger.warn("Server", `Expurgo de expirados falhou: ${(err as Error).message}`);
+      }
+    };
+    void purgeExpiredAuthArtifacts();
+    setInterval(purgeExpiredAuthArtifacts, 6 * 60 * 60 * 1000).unref();
 
     await bootstrapAdminsFromEnv();
 
@@ -291,10 +326,45 @@ async function start() {
     httpServer.listen(PORT, "0.0.0.0", () => {
       logger.info("Server", `RAYO server running on port ${PORT}`);
     });
+
+    // Graceful shutdown: deploys autoscale mandam SIGTERM — sem isto,
+    // requests em voo eram cortados no meio. Fecha o listener (para de
+    // aceitar conexões novas), espera as em andamento e encerra o pool.
+    let shuttingDown = false;
+    const shutdown = (signal: string) => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      logger.info("Server", `${signal} recebido — encerrando graciosamente...`);
+      const forceExit = setTimeout(() => {
+        logger.warn("Server", "Shutdown demorou >10s; encerrando à força.");
+        process.exit(0);
+      }, 10_000);
+      forceExit.unref();
+      httpServer.close(() => {
+        void closeDb().finally(() => {
+          logger.info("Server", "Shutdown completo.");
+          process.exit(0);
+        });
+      });
+    };
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
   } catch (err) {
     logger.error("Server", "Failed to start server:", err);
     process.exit(1);
   }
 }
+
+// Visibilidade de erros não tratados — sem isto um crash assíncrono morria
+// sem stack no log. Não damos exit em unhandledRejection (comportamento
+// legado do Node preservado); uncaughtException loga e deixa o processo
+// morrer como antes, mas com o erro registrado.
+process.on("unhandledRejection", (reason) => {
+  logger.error("Server", "unhandledRejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  logger.error("Server", "uncaughtException:", err);
+  process.exit(1);
+});
 
 start();

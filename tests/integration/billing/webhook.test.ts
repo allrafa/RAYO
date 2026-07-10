@@ -1,8 +1,8 @@
 // Task #239 — POST /api/stripe/webhook.
 //
 // Stub `getStripeSync()` via `__setStripeSyncForTest` pra:
-//   * aceitar `signature !== "test_invalid_sig"` como válida e devolver o
-//     `event` parseado do payload JSON.
+//   * aceitar `signature !== "test_invalid_sig"` como válida e resolver
+//     void (contrato real da lib — o handler parseia o payload sozinho).
 //   * jogar erro pra signature inválida.
 // Stub `getUncachableStripeClient()` para `checkout.session.completed`
 // (que faz `subscriptions.retrieve`) e `charge.refunded`
@@ -173,6 +173,13 @@ describe("Billing / Stripe webhook (Task #239)", () => {
       [subId],
     );
     assert.equal(rows[0].c, 1, "3 webhooks com mesmo sub.id devem produzir 1 row");
+
+    // Dedupe por event.id (defesa em profundidade): o mesmo evento entra
+    // uma única vez na tabela de processados.
+    const { rows: evRows } = await getPool().query<{ c: number }>(
+      `SELECT COUNT(*)::int AS c FROM stripe_webhook_events WHERE event_id = 'evt_test_2'`,
+    );
+    assert.equal(evRows[0].c, 1, "mesmo event.id deve registrar 1 linha de dedupe");
   });
 
   it("customer.subscription.updated → atualiza status / cancel_at_period_end", async () => {

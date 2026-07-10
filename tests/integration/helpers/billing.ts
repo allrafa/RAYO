@@ -214,16 +214,18 @@ export function createMockStripe(config: MockStripeConfig = {}): {
 // ─────────────────────── Mock stripe-replit-sync ───────────────────────
 //
 // Em vez de stripe.webhooks.constructEvent (HMAC), `processStripeWebhook`
-// delega tudo ao `stripe-replit-sync.processWebhook(payload, signature)`.
-// O stub:
+// delega a validação ao `stripe-replit-sync.processWebhook(payload,
+// signature)`. Contrato REAL da lib: `Promise<void>` — ela valida a
+// assinatura (joga se inválida) e NÃO devolve o evento; quem precisa do
+// evento parseia o payload depois que a chamada sucede. O stub espelha
+// exatamente isso:
 //   * `signature === "test_invalid_sig"` → joga (assinatura inválida).
-//   * caso contrário, parsea `payload` como JSON e devolve `{ event }`.
-// Isso permite os specs montarem `event.type` à vontade sem precisar
-// gerar HMAC real.
+//   * caso contrário, valida que o payload é JSON, loga e resolve void.
+// Isso permite os specs montarem `event.type` à vontade sem gerar HMAC real.
 
 export function createMockStripeSync(): {
   sync: {
-    processWebhook: (payload: Buffer, signature: string) => Promise<{ event: unknown }>;
+    processWebhook: (payload: Buffer, signature: string) => Promise<void>;
     runMigrations?: () => Promise<void>;
     syncBackfill?: () => Promise<void>;
   };
@@ -231,7 +233,7 @@ export function createMockStripeSync(): {
 } {
   const callLog: Array<{ signature: string; eventType: string | null }> = [];
   const sync = {
-    processWebhook: async (payload: Buffer, signature: string) => {
+    processWebhook: async (payload: Buffer, signature: string): Promise<void> => {
       if (signature === "test_invalid_sig") {
         throw new Error("Invalid signature");
       }
@@ -245,7 +247,6 @@ export function createMockStripeSync(): {
         signature,
         eventType: (event as { type?: string } | null)?.type ?? null,
       });
-      return { event };
     },
   };
   return { sync, callLog };

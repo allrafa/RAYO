@@ -21,7 +21,6 @@ import { RailCarousel } from "./home/RailCarousel";
 import { useYouTubeData } from "./hooks/useYouTubeData";
 import { YouTubeShortCard } from "./youtube/YouTubeShortCard";
 import { YouTubePlayerWithPlaylist } from "./youtube/YouTubePlayerWithPlaylist";
-import { YouTubeMockBanner } from "./youtube/YouTubeMockBanner";
 import { YouTubePlaylistModal } from "./youtube/YouTubePlaylistModal";
 import { YouTubeVideo, YouTubePlaylist, YouTubeShort } from "./youtube/YouTubeTypes";
 import { fetchPlaylistVideos } from "./youtube/YouTubeService";
@@ -837,8 +836,6 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
         }}
         loading={loadingPlaylist}
       />
-
-      <YouTubeMockBanner />
 
 
       {/* isLoading state suppressed in JSX (PullToRefresh handles its own indicator) */}

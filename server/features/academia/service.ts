@@ -4,6 +4,7 @@ import { trackEvent } from "../analytics/service.js";
 import { createNotification } from "../notifications/service.js";
 import { sendClassInterestDigestEmail } from "../../lib/email.js";
 import { logger } from "../../utils/logger.js";
+import { BUNNY_PREFIX, resolveBunnyVideo } from "../../lib/bunnyStream.js";
 
 const APP_URL =
   process.env.APP_URL ||
@@ -113,9 +114,26 @@ export async function getCourseDetail(courseId: number) {
     lessons = lessonRows as DBLesson[];
   }
 
+  // video_url pode ser um sentinel `bunny://<lib>/<guid>` (vídeo hospedado
+  // no Bunny Stream) ou uma URL direta (YouTube/Vimeo/MP4). O sentinel não é
+  // reproduzível pelo cliente — resolvemos aqui pra embed URL, mantendo o
+  // sentinel fora da resposta.
+  const withVideo = (l: DBLesson) => {
+    if (l.video_url && l.video_url.startsWith(BUNNY_PREFIX)) {
+      const resolved = resolveBunnyVideo(l.video_url);
+      return {
+        ...l,
+        video_url: null,
+        video_embed_url: resolved?.embed_url ?? null,
+        video_thumbnail_url: resolved?.thumbnail_url ?? null,
+      };
+    }
+    return { ...l, video_embed_url: null, video_thumbnail_url: null };
+  };
+
   const modulesWithLessons = modules.map((mod) => ({
     ...mod,
-    lessons: lessons.filter((l) => l.module_id === mod.id),
+    lessons: lessons.filter((l) => l.module_id === mod.id).map(withVideo),
   }));
 
   return {

@@ -19,10 +19,10 @@ interface StripeSyncCtor {
 }
 
 interface StripeSyncInstance {
-  processWebhook(payload: Buffer, signature: string): Promise<{
-    event?: unknown;
-    [key: string]: unknown;
-  }>;
+  // Contrato REAL da lib (stripe-replit-sync/dist/index.d.ts): Promise<void>.
+  // A lib valida a assinatura (joga se inválida) e NÃO devolve o evento —
+  // quem precisa do evento parseia o payload após esta chamada suceder.
+  processWebhook(payload: Buffer, signature: string): Promise<void>;
   runMigrations?(): Promise<void>;
   syncBackfill?(): Promise<void>;
   findOrCreateManagedWebhook?(opts: { url: string; events?: string[] }): Promise<unknown>;

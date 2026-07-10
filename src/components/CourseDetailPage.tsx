@@ -11,12 +11,17 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useApp } from "./AppContext";
 import { enhancedToast } from "./EnhancedToast";
 import { TrailPaywall } from "./trilhas/TrailPaywall";
+import { LessonPlayer } from "./LessonPlayer";
 
 interface DetailLesson {
   id: number;
   title: string;
   duration: string;
   duration_seconds: number;
+  content_type?: string | null;
+  video_url?: string | null;
+  video_embed_url?: string | null;
+  video_thumbnail_url?: string | null;
 }
 
 interface DetailModule {
@@ -32,6 +37,15 @@ interface DetailLessonProgress {
   status: string;
 }
 
+interface CourseReview {
+  id: number;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  user_name: string;
+  user_avatar: string | null;
+}
+
 interface APIDetailCourseModule {
   id: number;
   title: string;
@@ -44,9 +58,10 @@ interface CourseDetailPageProps {
 }
 
 export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
-  const { getCourseById, enrollInCourse, startCourse, completeLessonOnServer, userData } = useApp();
+  const { getCourseById, enrollInCourse, completeLessonOnServer } = useApp();
   const [isLoading, setIsLoading] = useState(false);
   const [completingLessonId, setCompletingLessonId] = useState<number | null>(null);
+  const [activeLessonId, setActiveLessonId] = useState<number | null>(null);
   
   const course = getCourseById(courseId);
   
@@ -77,10 +92,16 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
   };
 
   const handleStart = () => {
-    startCourse(courseId);
+    // Continua da primeira aula não concluída (ou recomeça da primeira).
+    const next = allLessons.find((l) => lessonProgressMap[l.id] !== "completed") ?? allLessons[0];
+    if (!next) {
+      enhancedToast.info({ title: "Este curso ainda não tem aulas publicadas." });
+      return;
+    }
+    openLesson(next.id);
     enhancedToast.success({
-      title: "Curso iniciado!",
-      description: "Vamos começar sua jornada de aprendizado",
+      title: course.progress > 0 ? "Continuando de onde você parou" : "Curso iniciado!",
+      description: next.title,
       haptic: true
     });
   };
@@ -110,6 +131,36 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
   // Task #137 — status da trilha vinculada (se houver) pra renderizar o
   // <TrailPaywall> inline em vez de exibir "Matricular" + redirect.
   const [trailGate, setTrailGate] = useState<{ trail_id: number | null; has_trail_access: boolean } | null>(null);
+  // Avaliações reais (course_reviews) — substituem os depoimentos que eram
+  // hardcoded nesta página (lançamento honesto, LAUNCH_PLAN.md D3).
+  const [reviews, setReviews] = useState<CourseReview[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await api.get<{ reviews: CourseReview[] }>(`/api/courses/${courseId}/reviews`);
+        if (!cancelled && r.success && r.data) setReviews(r.data.reviews || []);
+      } catch (err) {
+        console.error("[CourseDetail] Failed to load reviews:", err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [courseId]);
+
+  const allLessons = modules.flatMap((m) => m.lessonList || []);
+  const activeLesson = allLessons.find((l) => l.id === activeLessonId) ?? null;
+
+  const scrollToPlayer = () => {
+    requestAnimationFrame(() => {
+      document.getElementById("lesson-player")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const openLesson = (lessonId: number) => {
+    setActiveLessonId(lessonId);
+    scrollToPlayer();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -182,6 +233,8 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
     try { sessionStorage.removeItem("rayo-pending-lesson"); } catch { /* ignore */ }
     const lessonExists = modules.some((m) => (m.lessonList || []).some((l) => String(l.id) === pending));
     if (!lessonExists) return;
+    // Além de destacar a linha, abre a aula no player do herói.
+    setActiveLessonId(Number(pending));
     // Aguarda 1 frame pro DOM estar pintado.
     requestAnimationFrame(() => {
       const node = document.querySelector<HTMLElement>(`[data-lesson-id="${pending}"]`);
@@ -196,33 +249,23 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
     });
   }, [modules]);
 
+  // Matriculado com aulas carregadas: seleciona a primeira aula não
+  // concluída pra o herói já abrir como player (sem autoplay). Só na
+  // primeira carga — depois quem manda é o clique do aluno.
+  useEffect(() => {
+    if (!course.isEnrolled || activeLessonId !== null || modules.length === 0) return;
+    const flat = modules.flatMap((m) => m.lessonList || []);
+    const next = flat.find((l) => lessonProgressMap[l.id] !== "completed") ?? flat[0];
+    if (next) setActiveLessonId(next.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course.isEnrolled, modules, lessonProgressMap]);
+
   const instructor = {
     name: course.instructor || "RAYO Academy",
     title: "Especialista",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-    experience: "15+ anos",
-    students: `${course.students?.toLocaleString() || '0'}+`,
-    rating: course.rating || 4.9
+    students: `${course.students?.toLocaleString() || '0'}`,
+    rating: course.rating || 0
   };
-
-  const testimonials = [
-    {
-      id: 1,
-      name: "Ana Carolina",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b5c7d113?w=50&h=50&fit=crop&crop=face",
-      rating: 5,
-      comment: "Este curso transformou completamente nosso relacionamento. As técnicas são práticas e realmente funcionam!",
-      time: "há 2 semanas"
-    },
-    {
-      id: 2,
-      name: "João Silva",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face",
-      rating: 5,
-      comment: "Conteúdo incrível e apresentação clara. Recomendo para todos os casais.",
-      time: "há 1 mês"
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -255,39 +298,55 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
       <div className="max-w-6xl mx-auto p-4 space-y-8">
         {/* Hero Section */}
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Video/Image */}
-          <div className="lg:col-span-2">
-            <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[var(--rayo-forest-700)] to-[var(--rayo-forest-900)]">
-              <ImageWithFallback
-                src={course.thumbnail}
-                alt={course.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                <Button 
-                  size="lg"
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                  variant="outline"
-                >
-                  <Play className="w-6 h-6 mr-2" />
-                  Preview do Curso
-                </Button>
+          {/* Player da aula ativa (matriculado) ou capa do curso */}
+          <div className="lg:col-span-2" id="lesson-player">
+            {course.isEnrolled && activeLesson ? (
+              <div className="space-y-3">
+                <LessonPlayer
+                  lesson={activeLesson}
+                  isCompleted={lessonProgressMap[activeLesson.id] === "completed"}
+                  coverUrl={course.thumbnail}
+                  onAutoComplete={handleCompleteLesson}
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">Assistindo agora</p>
+                    <h3 className="font-medium truncate">{activeLesson.title}</h3>
+                  </div>
+                  {lessonProgressMap[activeLesson.id] === "completed" ? (
+                    <Badge className="bg-[var(--rayo-forest-700)] text-white shrink-0">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Concluída
+                    </Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0"
+                      disabled={completingLessonId === activeLesson.id}
+                      onClick={() => handleCompleteLesson(activeLesson.id)}
+                    >
+                      {completingLessonId === activeLesson.id ? "Salvando..." : "Concluir aula"}
+                    </Button>
+                  )}
+                </div>
               </div>
-              
-              {/* Course badges */}
-              <div className="absolute top-4 left-4 flex flex-col gap-2">
-                <Badge className="bg-[var(--rayo-forest-700)] text-white">
-                  <Award className="w-3 h-3 mr-1" />
-                  Certificado
-                </Badge>
+            ) : (
+              <div className="relative aspect-video rounded-xl overflow-hidden bg-gradient-to-br from-[var(--rayo-forest-700)] to-[var(--rayo-forest-900)]">
+                <ImageWithFallback
+                  src={course.thumbnail}
+                  alt={course.title}
+                  className="w-full h-full object-cover"
+                />
                 {course.isPremium && (
-                  <Badge className="bg-[var(--rayo-ochre-500)] text-white">
-                    ⭐ Premium
-                  </Badge>
+                  <div className="absolute top-4 left-4">
+                    <Badge className="bg-[var(--rayo-ochre-500)] text-white">
+                      ⭐ Premium
+                    </Badge>
+                  </div>
                 )}
               </div>
-
-            </div>
+            )}
           </div>
 
           {/* Course Info & CTA */}
@@ -435,10 +494,6 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <CheckCircle className="w-4 h-4 text-[var(--rayo-forest-700)]" />
-                      <span>Certificado de conclusão</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 text-[var(--rayo-forest-700)]" />
                       <span>Suporte da comunidade</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
@@ -500,8 +555,13 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                           </div>
                         </div>
                       </div>
-                      {course.isEnrolled && (
-                        <Button variant="ghost" size="sm">
+                      {course.isEnrolled && modLessons.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openLesson((modLessons.find((l) => lessonProgressMap[l.id] !== 'completed') ?? modLessons[0]).id)}
+                          aria-label={`Assistir ${module.title}`}
+                        >
                           <Play className="w-4 h-4" />
                         </Button>
                       )}
@@ -512,19 +572,24 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                           const lessonStatus = lessonProgressMap[lesson.id];
                           const isLessonCompleted = lessonStatus === 'completed';
                           const isCompleting = completingLessonId === lesson.id;
+                          const isActive = activeLessonId === lesson.id;
                           return (
                             <div
                               key={lesson.id}
                               data-lesson-id={lesson.id}
-                              className="flex items-center justify-between text-sm py-1.5 px-2 -mx-2 rounded-md transition-colors"
+                              className={`flex items-center justify-between text-sm py-1.5 px-2 -mx-2 rounded-md transition-colors cursor-pointer hover:bg-accent ${isActive ? 'bg-accent' : ''}`}
+                              onClick={() => openLesson(lesson.id)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLesson(lesson.id); } }}
                             >
                               <div className="flex items-center gap-2 flex-1">
                                 {isLessonCompleted ? (
                                   <CheckCircle className="w-4 h-4 text-[var(--rayo-forest-700)] shrink-0" />
                                 ) : (
-                                  <Play className="w-4 h-4 text-muted-foreground shrink-0" />
+                                  <Play className={`w-4 h-4 shrink-0 ${isActive ? 'text-[var(--rayo-forest-700)]' : 'text-muted-foreground'}`} />
                                 )}
-                                <span className={isLessonCompleted ? 'text-muted-foreground line-through' : ''}>
+                                <span className={isLessonCompleted ? 'text-muted-foreground line-through' : isActive ? 'font-medium' : ''}>
                                   {lesson.title}
                                 </span>
                               </div>
@@ -535,7 +600,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                                     variant="ghost"
                                     size="sm"
                                     disabled={isCompleting}
-                                    onClick={() => handleCompleteLesson(lesson.id)}
+                                    onClick={(e) => { e.stopPropagation(); handleCompleteLesson(lesson.id); }}
                                     className="h-7 px-2 text-xs"
                                   >
                                     {isCompleting ? "..." : "Concluir"}
@@ -559,31 +624,23 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <Avatar className="w-16 h-16">
-                    <AvatarImage src={instructor.avatar} alt={instructor.name} />
                     <AvatarFallback>{instructor.name[0]}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <h3 className="font-display text-xl font-semibold">{instructor.name}</h3>
                     <p className="text-muted-foreground">{instructor.title}</p>
                     <div className="flex items-center gap-4 mt-2 text-sm">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-[var(--rayo-ochre-500)] fill-current" />
-                        <span>{instructor.rating} avaliação</span>
-                      </div>
+                      {instructor.rating > 0 && (
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-[var(--rayo-ochre-500)] fill-current" />
+                          <span>{instructor.rating} avaliação</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1">
                         <Users className="w-4 h-4 text-muted-foreground" />
                         <span>{instructor.students} alunos</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Award className="w-4 h-4 text-muted-foreground" />
-                        <span>{instructor.experience} experiência</span>
-                      </div>
                     </div>
-                    <p className="mt-4 text-sm leading-relaxed">
-                      Dr. Rafael Santos é um terapeuta especializado em relacionamentos com mais de 15 anos de experiência. 
-                      Formado em Psicologia pela USP e pós-graduado em Terapia de Casais, já ajudou milhares de famílias 
-                      a construírem relacionamentos mais saudáveis e duradouros.
-                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -596,26 +653,34 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                 <CardTitle>Avaliações dos Alunos</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {testimonials.map((testimonial) => (
-                  <div key={testimonial.id} className="border-b border-border pb-4 last:border-b-0">
+                {reviews.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Este curso ainda não tem avaliações. Seja o primeiro a avaliar depois de concluir uma aula!
+                  </p>
+                ) : reviews.map((review) => (
+                  <div key={review.id} className="border-b border-border pb-4 last:border-b-0">
                     <div className="flex items-start gap-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarImage src={testimonial.avatar} alt={testimonial.name} />
-                        <AvatarFallback>{testimonial.name[0]}</AvatarFallback>
+                        {review.user_avatar ? <AvatarImage src={review.user_avatar} alt={review.user_name} /> : null}
+                        <AvatarFallback>{review.user_name?.[0] ?? "?"}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium">{testimonial.name}</h4>
+                          <h4 className="font-medium">{review.user_name}</h4>
                           <div className="flex">
-                            {[...Array(testimonial.rating)].map((_, i) => (
+                            {[...Array(Math.max(0, Math.min(5, review.rating)))].map((_, i) => (
                               <Star key={i} className="w-3 h-3 text-[var(--rayo-ochre-500)] fill-current" />
                             ))}
                           </div>
-                          <span className="text-xs text-muted-foreground">{testimonial.time}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(review.created_at).toLocaleDateString("pt-BR")}
+                          </span>
                         </div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {testimonial.comment}
-                        </p>
+                        {review.comment && (
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {review.comment}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -635,12 +700,6 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                     <h4 className="font-medium mb-2">Por quanto tempo tenho acesso ao curso?</h4>
                     <p className="text-sm text-muted-foreground">
                       Você tem acesso vitalício ao curso, podendo assistir quantas vezes quiser, no seu ritmo.
-                    </p>
-                  </div>
-                  <div className="border border-border rounded-lg p-4">
-                    <h4 className="font-medium mb-2">Existe certificado de conclusão?</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Sim! Ao completar 100% do curso, você receberá um certificado digital de conclusão.
                     </p>
                   </div>
                   <div className="border border-border rounded-lg p-4">

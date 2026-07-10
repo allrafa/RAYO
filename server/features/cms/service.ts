@@ -1439,6 +1439,7 @@ export async function deleteCourseModule(courseId: number, moduleId: number) {
     [moduleId, courseId]
   );
   if (rows.length === 0) throw new CmsError("Módulo não encontrado", "MODULE_NOT_FOUND", 404);
+  await recalculateCourseTotals(courseId);
   return { id: rows[0].id };
 }
 
@@ -1448,6 +1449,46 @@ async function assertModuleBelongsToCourse(courseId: number, moduleId: number) {
     [moduleId, courseId]
   );
   if (rows.length === 0) throw new CmsError("Módulo não encontrado", "MODULE_NOT_FOUND", 404);
+}
+
+function formatCourseDuration(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.round((totalSeconds % 3600) / 60);
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  return `${m}m`;
+}
+
+// courses.total_lessons e courses.duration são colunas derivadas das lições.
+// updateLessonProgress (academia) divide por courses.total_lessons — se ela
+// ficar em 0, o progresso do aluno congela em 0% e o curso nunca completa.
+// Toda mutação de lição/módulo precisa passar por aqui.
+async function recalculateCourseTotals(courseId: number): Promise<void> {
+  const { rows } = await query(
+    `SELECT COUNT(*)::int AS total, COALESCE(SUM(cl.duration_seconds), 0)::int AS seconds
+       FROM course_lessons cl
+       JOIN course_modules cm ON cm.id = cl.module_id
+      WHERE cm.course_id = $1`,
+    [courseId]
+  );
+  const total = rows[0]?.total ?? 0;
+  const seconds = rows[0]?.seconds ?? 0;
+  if (seconds > 0) {
+    await query(
+      `UPDATE courses SET total_lessons = $1, duration = $2, updated_at = NOW() WHERE id = $3`,
+      [total, formatCourseDuration(seconds), courseId]
+    );
+  } else {
+    // Sem duration_seconds informado nas lições, preserva a duration manual.
+    await query(
+      `UPDATE courses SET total_lessons = $1, updated_at = NOW() WHERE id = $2`,
+      [total, courseId]
+    );
+  }
+  // Snapshot copiado no enroll — mantém coerente com o novo denominador.
+  await query(
+    `UPDATE user_course_progress SET total_lessons = $1 WHERE course_id = $2`,
+    [total, courseId]
+  );
 }
 
 export async function createCourseLesson(courseId: number, moduleId: number, input: CourseLessonInput) {
@@ -1469,6 +1510,7 @@ export async function createCourseLesson(courseId: number, moduleId: number, inp
       input.sort_order ?? 0, !!input.is_free_preview,
     ]
   );
+  await recalculateCourseTotals(courseId);
   return rows[0];
 }
 
@@ -1500,6 +1542,9 @@ export async function updateCourseLesson(
       lessonId,
     ]
   );
+  if (input.duration_seconds !== undefined) {
+    await recalculateCourseTotals(courseId);
+  }
   return rows[0];
 }
 
@@ -1510,5 +1555,6 @@ export async function deleteCourseLesson(courseId: number, moduleId: number, les
     [lessonId, moduleId]
   );
   if (rows.length === 0) throw new CmsError("Lição não encontrada", "LESSON_NOT_FOUND", 404);
+  await recalculateCourseTotals(courseId);
   return { id: rows[0].id };
 }

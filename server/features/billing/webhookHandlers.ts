@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { query } from "../../db/index.js";
 import { getUncachableStripeClient, getStripeSync } from "../../stripeClient.js";
 import { invalidateTrailLookupCache } from "./service.js";
+import { sendTrailPurchaseEmail } from "../../lib/email.js";
 
 // Task #130 — webhook handler do Stripe.
 //
@@ -64,6 +65,26 @@ async function upsertSubscriptionRow(sub: Stripe.Subscription): Promise<void> {
   invalidateTrailLookupCache();
 }
 
+async function sendPurchaseConfirmation(sub: Stripe.Subscription): Promise<void> {
+  const trailId = parseInt(String(sub.metadata?.rayo_trail_id ?? ""), 10);
+  const userId = parseInt(String(sub.metadata?.rayo_user_id ?? ""), 10);
+  if (!trailId || !userId) return;
+  const { rows } = await query(
+    `SELECT u.email, u.name, t.title, t.slug
+       FROM users u, trails t
+      WHERE u.id = $1 AND t.id = $2`,
+    [userId, trailId],
+  );
+  if (rows.length === 0) return;
+  const trialEnd = (sub as unknown as { trial_end?: number | null }).trial_end;
+  await sendTrailPurchaseEmail(rows[0].email, rows[0].name ?? "", {
+    trailTitle: rows[0].title,
+    trailSlug: rows[0].slug,
+    isTrial: sub.status === "trialing",
+    trialEndsAt: trialEnd ? new Date(trialEnd * 1000) : null,
+  });
+}
+
 async function handleEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
     case "checkout.session.completed": {
@@ -88,6 +109,12 @@ async function handleEvent(event: Stripe.Event): Promise<void> {
           const stripe = await getUncachableStripeClient();
           const sub = await stripe.subscriptions.retrieve(subscriptionId);
           await upsertSubscriptionRow(sub);
+          // Confirmação de compra por e-mail — fire-and-forget: falha de
+          // e-mail nunca pode falhar o webhook (o Stripe faria retry e o
+          // cliente receberia e-mails duplicados).
+          void sendPurchaseConfirmation(sub).catch((err) => {
+            console.error("[stripe webhook] purchase email failed", sub.id, err);
+          });
         } catch (err) {
           console.error("[stripe webhook] retrieve subscription failed", subscriptionId, err);
         }
@@ -157,15 +184,44 @@ async function handleEvent(event: Stripe.Event): Promise<void> {
 
 export async function processStripeWebhook(payload: Buffer, signature: string): Promise<void> {
   const sync = await getStripeSync();
-  // 1. Sync oficial (valida assinatura, popula schema stripe.*, deduplica).
-  const result = await sync.processWebhook(payload, signature);
-  // 2. Atualiza nossa tabela subscriptions com base no evento.
-  // O evento já veio validado; reusamos o mesmo objeto.
-  const event = (result?.event ?? null) as Stripe.Event | null;
-  if (event) {
+  // 1. Sync oficial (valida assinatura via constructEventAsync — joga se
+  //    inválida —, popula schema stripe.* e deduplica). Retorna void: a lib
+  //    NÃO devolve o evento (Promise<void> em stripe-replit-sync).
+  await sync.processWebhook(payload, signature);
+  // 2. Atualiza nossa tabela subscriptions com base no mesmo evento. Como a
+  //    assinatura já foi validada acima (qualquer adulteração teria jogado),
+  //    o payload é confiável e podemos parseá-lo diretamente.
+  let event: Stripe.Event | null = null;
+  try {
+    event = JSON.parse(payload.toString("utf-8")) as Stripe.Event;
+  } catch {
+    console.error("[stripe webhook] payload inválido (não-JSON) após assinatura validada");
+    return;
+  }
+  if (event && typeof event === "object" && typeof event.type === "string") {
+    // Dedupe por event.id: re-entregas do Stripe não reprocessam handlers.
+    // Eventos sem id (só possíveis em payloads sintéticos) processam normal.
+    if (typeof event.id === "string" && event.id.length > 0) {
+      const { rows } = await query(
+        `INSERT INTO stripe_webhook_events (event_id, event_type)
+         VALUES ($1, $2)
+         ON CONFLICT (event_id) DO NOTHING
+         RETURNING event_id`,
+        [event.id, event.type],
+      );
+      if (rows.length === 0) {
+        console.info("[stripe webhook] evento duplicado ignorado", event.id, event.type);
+        return;
+      }
+    }
     try {
       await handleEvent(event);
     } catch (err) {
+      // Libera o claim de dedupe: o retry do Stripe precisa reprocessar.
+      if (typeof event.id === "string" && event.id.length > 0) {
+        await query(`DELETE FROM stripe_webhook_events WHERE event_id = $1`, [event.id])
+          .catch(() => { /* best-effort */ });
+      }
       console.error("[stripe webhook] handleEvent error", event.type, err);
       throw err;
     }
