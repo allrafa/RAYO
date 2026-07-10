@@ -1,0 +1,16 @@
+Contexto para o Agent do Replit:
+Acabei de mergear o PR #1 (claude/github-recent-commits-lw3ry6) na branch main do GitHub (allrafa/RAYO). O merge criou o commit 419c2ef na main. O origin deste workspace já aponta para https://github.com/allrafa/RAYO, então esses commits agora estão disponíveis para você via git pull origin main.
+Os 5 commits que chegaram são: 92dd343 (plano de lançamento / análise), 66a87af (correções P0 de billing, cursos e observabilidade), 834cecf (player de aula e UX pós-checkout), 8cba5fa (lançamento honesto e operabilidade) e 466641f (dedupe de webhook e cobertura das features órfãs).
+Atenção — possível conflito: a main local deste workspace está no commit ea37590 ("Remove arquivo de credenciais do versionamento"), que divergiu da main do GitHub. Ao rodar git pull origin main pode haver conflito. Se houver, rode git status para ver os arquivos conflitantes, resolva os trechos <<<<<<< / >>>>>>>, e finalize com git add . e git commit.
+O problema que precisa ser resolvido dentro do Replit (não é resolvível por código puro): Os testes de integração de backend do CI do GitHub estão falhando porque a variável de ambiente PUBLIC_OBJECT_SEARCH_PATHS (integração de Object Storage do Replit) não existe no ambiente do GitHub Actions. Sem ela, ObjectStorageService.getPublicObjectSearchPaths() (em server/replit_integrations/object_storage/objectStorage.ts:57) lança exceção, que sobe por resolveStoredMediaUrl() em server/lib/objectStorageBridge.ts e vira HTTP 500. Isso derruba as suítes de teste: CMS sentinels (tests/integration/cms/sentinels.test.ts), Community/Comments, Community/Forums e Community/Posts.
+O teste sentinels.test.ts foi escrito assumindo explicitamente o ambiente Replit — ele exige que o sentinel objstore:// seja resolvido para uma URL https:// assinada de verdade pelo sidecar do Replit (/object-storage/signed-object-url), então não dá para "consertar" só com fallback de código sem descaracterizar o teste.
+O que eu preciso que você (Replit) faça:
+
+Provisionar/confirmar o bucket de Object Storage no workspace e garantir que PUBLIC_OBJECT_SEARCH_PATHS e PRIVATE_OBJECT_DIR estejam definidas (formato /<bucket>/<root>), tanto em runtime quanto onde os testes rodam.
+Confirmar que o sidecar de Object Storage (http://127.0.0.1:1106) está ativo, para a assinatura de URLs funcionar.
+Reiniciar a aplicação (workflow "Start application") para carregar o código novo; as migrações de boot idempotentes rodam sozinhas no restart.
+Rodar os testes de integração de backend e validar que as suítes de CMS sentinels e Community voltam a passar com a mídia sendo realmente assinada.
+Se quiser manter o CI do GitHub Actions verde sem depender do sidecar do Replit, avaliar mockar/stubar o Object Storage nesses testes (mudança nos arquivos de teste, não no objectStorageBridge.ts).
+
+Não altere o arquivo gerado server/replit_integrations/object_storage/objectStorage.ts.
+Observação: existe um commit meu na main (84ef41f, "fix(objectStorage): degrade gracefully...") que foi apenas um paliativo e não resolve o CI — pode ignorá-lo ou reverter se preferir; a solução correta é a configuração do Object Storage acima.
