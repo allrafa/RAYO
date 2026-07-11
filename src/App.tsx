@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { BrowserRouter, useLocation, useNavigate } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
+import { MobileSearchPage } from "./components/MobileSearchPage";
 import { DesktopSidebar } from "./components/DesktopSidebar";
 import { TopNavbar } from "./components/TopNavbar";
 import { MobileTopBar } from "./components/MobileTopBar";
@@ -291,6 +292,8 @@ function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const currentTab = tabFromPath(location.pathname);
+  // UX_PLAN.md J1 — busca global no mobile (item "Buscar" da bottom nav).
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const setCurrentTab = useCallback(
     (tab: string) => {
       // "privacy" não é uma aba real — é overlay. Mantemos o nome legado
@@ -881,8 +884,15 @@ function AppContent() {
         <Navigation
           currentTab={currentTab}
           onTabChange={setCurrentTab}
+          onOpenSearch={() => setMobileSearchOpen(true)}
         />
       )}
+
+      <MobileSearchPage
+        open={mobileSearchOpen}
+        onClose={() => setMobileSearchOpen(false)}
+        onTabChange={setCurrentTab}
+      />
 
       {/* Task #168 — overlay global do player interno de vídeo/áudio.
           Diversos fluxos (busca, "Hoje no RAYO" interno, cards de

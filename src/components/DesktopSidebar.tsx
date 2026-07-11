@@ -41,7 +41,7 @@ export function DesktopSidebar({
 
   const baseItems: MenuItem[] = [
     { id: "home", label: "Início", icon: Home },
-    { id: "academia", label: "Turmas", icon: GraduationCap },
+    { id: "academia", label: "Aprender", icon: GraduationCap },
     // Logo RAYO customizada (mark "R" forest-900 + ochre dot)
     { id: "conselheiro", label: "Conselheiro", icon: null, isSpecial: true },
     { id: "comunidade", label: "Comunidade", icon: Users, badge: unreadCommunity },

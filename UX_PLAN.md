@@ -115,10 +115,27 @@ estão desligadas**:
    "Inscrever-se"/"2.3M inscritos" saíram; entraram Salvar (favoritos) e
    Compartilhar (share nativo) funcionais.
 
-### Iteração 5 — "Busca e linguagem" (J1/J4)
-1. Busca no celular: ressuscitar `MobileSearchPage.tsx` com entrada na Home.
-2. Renomear "Turmas" → "Aprender" (bottom nav, sidebar, headers).
-3. Suítes completas + revisão final do plano.
+### Iteração 5 — "Busca e linguagem" (J1/J4) ✅ CONCLUÍDA (2026-07-11)
+1. ✅ Busca no celular: `MobileSearchPage` (que estava pronta e morta)
+   agora abre pelo item fixo "Buscar" da bottom nav (padrão Instagram),
+   montada no nível raiz do App.
+2. ✅ "Turmas" → "Aprender" na bottom nav e na sidebar desktop (o
+   vocabulário interno de turma/cohort permanece dentro da seção).
+3. ✅ Suítes completas verdes (resultado na conclusão abaixo).
+
+## Conclusão do roadmap (2026-07-11)
+
+As 5 iterações do plano foram construídas e enviadas. As jornadas agora:
+- **retêm** (continue de onde parou, notificações sociais, fóruns do seu
+  momento de vida desde o cadastro);
+- **respondem ao polegar** (curtir 1 toque, teclado direto, busca a 1 toque);
+- **não mentem** (marketing alinhado ao produto, preço e cobrança
+  transparentes, botões decorativos removidos);
+- **custam menos pra entrar** (código auto-enviado, 1 interesse, nome 1×,
+  OAuth morto oculto).
+
+O que segue no §4 (estruturais parqueados) depende de decisão/infra do
+Rafael — Pix, push real, reels vertical, OTP WhatsApp, checkout embedded.
 
 ## 4. Estruturais parqueados (exigem decisão/infra do Rafael)
 

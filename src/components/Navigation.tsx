@@ -1,4 +1,4 @@
-import { Home, GraduationCap, Users, User } from "lucide-react";
+import { Home, GraduationCap, Search, Users, User } from "lucide-react";
 import { dispatchScrollTop } from "../lib/scrollTop";
 import { preloadTab } from "../lib/routePreload";
 import { useUnreadBySection } from "./hooks/useUnreadBySection";
@@ -6,13 +6,17 @@ import { useUnreadBySection } from "./hooks/useUnreadBySection";
 interface NavigationProps {
   currentTab: string;
   onTabChange: (tab: string) => void;
+  // UX_PLAN.md J1 — a busca ganhou lugar fixo na bottom nav (padrão
+  // Instagram). Não é uma aba: abre o overlay de busca global.
+  onOpenSearch?: () => void;
 }
 
 type Tab = { id: string; icon: typeof Home; label: string };
 
 const TABS: Tab[] = [
   { id: "home", icon: Home, label: "Início" },
-  { id: "academia", icon: GraduationCap, label: "Turmas" },
+  { id: "buscar", icon: Search, label: "Buscar" },
+  { id: "academia", icon: GraduationCap, label: "Aprender" },
   { id: "comunidade", icon: Users, label: "Comunidade" },
   { id: "perfil", icon: User, label: "Perfil" },
 ];
@@ -22,7 +26,7 @@ function formatBadge(n: number): string {
   return n > 99 ? "99+" : String(n);
 }
 
-export function Navigation({ currentTab, onTabChange }: NavigationProps) {
+export function Navigation({ currentTab, onTabChange, onOpenSearch }: NavigationProps) {
   // Task #129 — IA mobile (decidida na Task #41): a bottom nav tem 4
   // abas fixas (home/academia/comunidade/perfil) e Mensagens vive
   // DENTRO da Comunidade como uma view (pílula "Mensagens" no header).
@@ -53,8 +57,10 @@ export function Navigation({ currentTab, onTabChange }: NavigationProps) {
               type="button"
               className={`rn-bottom-item ${isActive ? "active" : ""}`}
               onClick={() => {
-                // Task #115 — re-tap na aba ativa volta ao topo (sem trocar tab).
-                if (isActive) {
+                if (tab.id === "buscar") {
+                  onOpenSearch?.();
+                } else if (isActive) {
+                  // Task #115 — re-tap na aba ativa volta ao topo (sem trocar tab).
                   dispatchScrollTop(tab.id);
                 } else {
                   onTabChange(tab.id);
