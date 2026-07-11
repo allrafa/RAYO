@@ -92,7 +92,16 @@ test.describe("Login social não pede confirmação de e-mail (Task #206)", () =
     await api.dispose();
   });
 
+  // Gate de ambiente (mesmo padrão da Task #267 em cms/sentinels.test.ts):
+  // este fluxo cria a comunidade PELA UI, e o modal exige capa obrigatória
+  // — a capa passa por crop + upload no Object Storage (sentinel objstore://).
+  // Sem Object Storage (CI), não dá pra concluir o upload e habilitar o
+  // submit. O comportamento de gating por e-mail já é coberto via API no
+  // teste ":44 recém-criado consegue criar comunidade direto". Roda de fato
+  // no Replit, onde o Object Storage está disponível.
+  const OBJECT_STORAGE_CONFIGURED = Boolean(process.env.PUBLIC_OBJECT_SEARCH_PATHS);
   test("usuário sem confirmar e-mail vê painel inline, confirma código e comunidade é criada na sequência", async ({ browser, baseURL }) => {
+    test.skip(!OBJECT_STORAGE_CONFIGURED, "Requer Object Storage (capa da comunidade) — indisponível no CI");
     expect(baseURL).toBeTruthy();
 
     // Registra user mas remove a verified row → estado "cadastrou por
