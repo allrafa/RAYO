@@ -235,9 +235,9 @@ test.describe("Auth — logout via UI + re-login (Task #241)", () => {
     await logoutBtn.scrollIntoViewIfNeeded().catch(() => { /* noop */ });
     await logoutBtn.click();
 
-    // Após logout, App redireciona pra /login (ou raiz com tela de auth).
-    await page.waitForURL((url) => /\/(login|)$/.test(url.pathname), { timeout: 15_000 });
-    await expect(page.locator("#login-email")).toBeVisible({ timeout: 10_000 });
+    // Após logout, o App mostra a tela de auth como gate (derivada do estado,
+    // sem trocar a URL). O sinal observável é o formulário de login aparecer.
+    await expect(page.locator("#login-email")).toBeVisible({ timeout: 15_000 });
 
     // Re-login via mesmo form.
     await page.locator("#login-email").fill(user.email);
