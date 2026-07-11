@@ -80,11 +80,24 @@ apagar). Também falta transformar marcos em **momentos de celebração**.
    (`onEngaged` → reload do dashboard).
 4. ~~Microinteração do Amém~~ (antecipada — saiu na iteração 2).
 
-### Iteração 4 — "Polimento e prova"
-1. Revisão visual dos novos elementos (dark mode, mobile-first, tokens
-   `--rayo-*`), estados vazios/erro.
-2. Testes de integração (verse/amen) + suítes completas verdes.
-3. Atualização final deste plano.
+### Iteração 4 — "Polimento e prova" ✅ CONSTRUÍDA
+1. ✅ Revisão visual por screenshot (mobile 390px e desktop 1280px, claro
+   e escuro): versículo com `max-w-2xl` pra linha legível no desktop;
+   régua da semana limitada a 520px centralizada (7 pontos esticados por
+   1200px ficavam esparsos); overlay com `aria-modal`. A Home usa tokens
+   `--rayo-*` fixos por design (estilo editorial claro) — o modo escuro
+   do app não a afeta, e os novos elementos seguem a mesma decisão.
+2. ✅ Prova: suíte de integração completa 267/268 pass (1 skip por
+   env-gate), unit 33/33, build ok, 5 specs E2E da Home locais verdes.
+3. ✅ Este plano atualizado (status final abaixo).
+
+## Status final do loop (2026-07-11)
+
+As quatro decisões E1–E4 estão construídas e testadas. O amém ganhou um
+papel além do planejado: mantém a chama acesa (`updateStreak`) — o toque
+diário de menor fricção preserva a sequência de quem não tem tempo pro
+conteúdo naquele dia. Level-ups que antes passavam em silêncio (aula,
+missão) agora celebram em qualquer tela.
 
 ## 5. Estruturais parqueados (dependem de decisão/infra)
 

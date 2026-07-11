@@ -80,6 +80,7 @@ export function CelebrationOverlay() {
       className="fixed inset-0 z-[90] flex items-center justify-center"
       style={{ background: "rgba(20, 28, 24, 0.45)", backdropFilter: "blur(2px)" }}
       role="dialog"
+      aria-modal="true"
       aria-label={msg.title}
       onClick={dismiss}
     >

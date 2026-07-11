@@ -95,7 +95,7 @@ export function PalavraDoDia({ onEngaged }: { onEngaged?: () => void } = {}) {
           Palavra do dia · {verse.theme}
         </div>
         <blockquote
-          className="text-[19px] sm:text-[22px] leading-relaxed mb-2"
+          className="text-[19px] sm:text-[22px] leading-relaxed mb-2 max-w-2xl"
           style={{ fontWeight: 500 }}
         >
           “{verse.text}”

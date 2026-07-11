@@ -80,7 +80,9 @@ export function SemanaViva({ refreshKey = 0 }: { refreshKey?: number | string })
           border: "1px solid var(--rayo-sand-300)",
         }}
       >
-        <div className="flex items-center justify-between gap-2">
+        {/* No desktop, 7 pontos esticados por 1200px ficam esparsos —
+            limita a régua e centraliza; no mobile o cap não morde. */}
+        <div className="flex items-center justify-between gap-2 mx-auto" style={{ maxWidth: 520 }}>
           {week.map((d) => (
             <div key={d.date} className="flex flex-col items-center gap-1.5 flex-1">
               <span
