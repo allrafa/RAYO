@@ -1,1 +1,2 @@
 - [Object Storage runtime env](object-storage-runtime-env.md) — OS config vars are runtime-injected into process.env (not the secret store); viewEnvVars returns empty. Sidecar signs at 127.0.0.1:1106; CI has neither.
+- [Env-coupled integration tests](env-coupled-integration-tests.md) — tests asserting "integration off" behavior fail in Replit (integrations ARE configured); gate assertions on the same env var the server reads.

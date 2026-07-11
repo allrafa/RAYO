@@ -11,6 +11,12 @@ import { createTestApp } from "../helpers/app.js";
 import { withServer, request } from "../helpers/http.js";
 import { closeDbPool, ensureSchema, truncateAll } from "../helpers/db.js";
 
+// Espelha o gate do servidor (server/lib/email.ts): quando a chave existe, o
+// e-mail é realmente enviado (delivered=true). Sem chave (ex.: CI), a rota
+// aceita a mensagem mas pula o envio (delivered=false). O teste precisa valer
+// nos dois ambientes.
+const RESEND_CONFIGURED = Boolean(process.env.resend_api_key || process.env.RESEND_API_KEY);
+
 before(async () => { await ensureSchema(); });
 after(async () => { await truncateAll(); await closeDbPool(); });
 
@@ -41,7 +47,13 @@ describe("Marketing / POST /api/contato", () => {
         });
         assert.equal(ok.status, 200, ok.rawBody);
         assert.equal(ok.body.data.ok, true);
-        assert.equal(ok.body.data.delivered, false, "sem Resend configurado, delivered deve ser false");
+        assert.equal(
+          ok.body.data.delivered,
+          RESEND_CONFIGURED,
+          RESEND_CONFIGURED
+            ? "com Resend configurado, delivered deve ser true"
+            : "sem Resend configurado, delivered deve ser false",
+        );
       }
 
       // 4ª: estoura o limite de 3/h por IP.
