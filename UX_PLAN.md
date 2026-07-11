@@ -81,17 +81,20 @@ estão desligadas**:
    do seu segmento + Geral (`autoSubscribeCommunities` em
    `auth/service.ts`, best-effort).
 
-### Iteração 3 — "Cadastro sem atrito" (J5)
-1. Auto-submit do código ao 6º dígito (`AuthPage.tsx:438-453`); copy
-   "Cheque seu inbox" → "Olha seu e-mail" e revisão de jargões.
-2. Interesses: mínimo 3 → 1 (`Onboarding.tsx:247-248,513-533`).
-3. Não repetir o campo Nome no cadastro quando veio do onboarding
-   (`AuthPage.tsx:877-893`).
-4. `EMAIL_EXISTS` (409) → trocar automaticamente para login com e-mail
-   preenchido (`AuthPage.tsx:306-323`).
-5. OAuth não configurado → esconder botão em vez de "Em breve" cinza
-   (`AuthPage.tsx:104-106`); quando ativo, SocialRow no topo.
-6. Remover código morto `EmailVerification.tsx`.
+### Iteração 3 — "Cadastro sem atrito" (J5) ✅ CONCLUÍDA (2026-07-11)
+1. ✅ Código verifica sozinho ao digitar/colar o 6º dígito (com guarda de
+   duplo-submit); copy do passo virou "Olha seu e-mail" com aviso de que o
+   código entra sozinho.
+2. ✅ Interesses: mínimo 3 → 1, com copy convidativa ("Toque em pelo menos
+   1 tema que fala com você").
+3. ✅ Nome vindo do onboarding não é pedido de novo — vira saudação
+   "Olá, {nome}!" com link "trocar nome".
+4. ✅ `EMAIL_EXISTS` no cadastro troca automaticamente para o login com o
+   e-mail preenchido e mensagem gentil (AuthContext agora repassa o
+   `code` do erro).
+5. ✅ OAuth não configurado fica oculto (nada de botão cinza "Em breve");
+   o divisor "ou ..." também some quando não há nenhum provedor.
+6. ✅ Código morto `EmailVerification.tsx` removido.
 
 ### Iteração 4 — "Confiança na compra" (J3)
 1. Remover promessas falsas: "Pix e boleto" (`FaqPage.tsx:51`), "Sem cartão

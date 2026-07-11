@@ -89,12 +89,15 @@ function SocialButton({
   enabled: boolean | undefined;
   ready: boolean;
 }) {
-  const disabled = !ready || !enabled;
+  // UX_PLAN.md J5 — provedor não configurado fica OCULTO (um botão cinza
+  // "Em breve" passa sensação de app quebrado pro persona). Enquanto os
+  // providers carregam (`!ready`), renderiza desabilitado pra evitar salto.
+  if (ready && !enabled) return null;
   return (
     <button
       type="button"
       className="ra-auth-social-btn"
-      disabled={disabled}
+      disabled={!ready}
       onClick={() => {
         if (enabled) window.location.href = `/api/auth/${provider}`;
       }}
@@ -102,31 +105,38 @@ function SocialButton({
     >
       {icon}
       <span>{label}</span>
-      {ready && !enabled && <span className="soon">Em breve</span>}
     </button>
   );
 }
 
-function SocialRow() {
+function SocialRow({ dividerLabel }: { dividerLabel: string }) {
   const providers = useOAuthProviders();
   const ready = providers !== null;
+  // Nenhum provedor configurado → sem botões e sem divisor "ou ...":
+  // o formulário de e-mail vira o caminho único, sem ruído.
+  if (ready && !providers?.google && !providers?.facebook) return null;
   return (
-    <div className="ra-auth-social-row">
-      <SocialButton
-        provider="google"
-        label="Google"
-        icon={<GoogleGlyph />}
-        enabled={providers?.google}
-        ready={ready}
-      />
-      <SocialButton
-        provider="facebook"
-        label="Facebook"
-        icon={<FacebookGlyph />}
-        enabled={providers?.facebook}
-        ready={ready}
-      />
-    </div>
+    <>
+      <div className="ra-auth-social-row">
+        <SocialButton
+          provider="google"
+          label="Google"
+          icon={<GoogleGlyph />}
+          enabled={providers?.google}
+          ready={ready}
+        />
+        <SocialButton
+          provider="facebook"
+          label="Facebook"
+          icon={<FacebookGlyph />}
+          enabled={providers?.facebook}
+          ready={ready}
+        />
+      </div>
+      <div className="ra-auth-divider">
+        <span>{dividerLabel}</span>
+      </div>
+    </>
   );
 }
 
@@ -275,6 +285,9 @@ export function AuthPage({
   const [registerStep, setRegisterStep] = useState<RegisterStep>("form");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  // UX_PLAN J5 — nome veio do onboarding: mostra saudação em vez de repetir
+  // o campo; "trocar nome" reabre o input.
+  const [editingName, setEditingName] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const [name, setName] = useState(prefillName || "");
@@ -312,6 +325,11 @@ export function AuthPage({
         setRegisterStep("verify");
         setResendTimer(60);
         setTimeout(() => codeInputRefs.current[0]?.focus(), 100);
+      } else if ((result as { code?: string }).code === "EMAIL_EXISTS") {
+        // UX_PLAN J5 — já tem conta: leva direto pro login com o e-mail
+        // preenchido, em vez de mostrar o erro cru no cadastro.
+        setMode("login");
+        setError("Você já tem uma conta com esse e-mail. É só entrar com a sua senha.");
       } else {
         setError(result.error || "Erro ao enviar código");
       }
@@ -322,9 +340,9 @@ export function AuthPage({
     }
   };
 
-  const handleVerifyCode = async () => {
-    const code = verificationCode.join("");
-    if (code.length !== 6) return;
+  const handleVerifyCode = async (codeArg?: string) => {
+    const code = codeArg ?? verificationCode.join("");
+    if (code.length !== 6 || isSubmitting) return;
     setError("");
     setIsSubmitting(true);
     try {
@@ -444,12 +462,20 @@ export function AuthPage({
       setVerificationCode(newCode);
       const nextEmpty = newCode.findIndex((d) => d === "");
       if (nextEmpty >= 0) codeInputRefs.current[nextEmpty]?.focus();
-      else codeInputRefs.current[5]?.focus();
+      else {
+        codeInputRefs.current[5]?.focus();
+        // UX_PLAN J5 — colou/auto-preencheu os 6 dígitos: verifica sozinho.
+        void handleVerifyCode(newCode.join(""));
+      }
       return;
     }
     newCode[index] = value;
     setVerificationCode(newCode);
     if (value && index < 5) codeInputRefs.current[index + 1]?.focus();
+    // Digitou o 6º dígito: verifica sozinho, sem exigir mais um toque.
+    if (value && newCode.every((d) => d !== "")) {
+      void handleVerifyCode(newCode.join(""));
+    }
   };
 
   const handleCodeKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -511,10 +537,7 @@ export function AuthPage({
             .
           </p>
 
-          <SocialRow />
-          <div className="ra-auth-divider">
-            <span>ou continue com email</span>
-          </div>
+          <SocialRow dividerLabel="ou continue com email" />
 
           <form onSubmit={handleLogin}>
             <div className="ra-auth-field">
@@ -869,28 +892,37 @@ export function AuthPage({
             .
           </p>
 
-          <SocialRow />
-          <div className="ra-auth-divider">
-            <span>ou cadastre seu email</span>
-          </div>
+          <SocialRow dividerLabel="ou cadastre seu email" />
 
-          <div className="ra-auth-field">
-            <label className="ra-auth-field-label" htmlFor="register-name">
-              <span>Nome</span>
-            </label>
-            <div className="ra-auth-input-wrap">
-              <input
-                id="register-name"
-                className="ra-auth-input"
-                type="text"
-                placeholder="Como prefere ser chamado(a)"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoComplete="name"
-                autoFocus
-              />
+          {prefillName && !editingName ? (
+            // Nome já veio do onboarding — não pedir de novo (UX_PLAN J5).
+            <div className="ra-auth-field">
+              <div className="ra-auth-input-wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span style={{ fontWeight: 600 }}>Olá, {name}!</span>
+                <button type="button" className="linklike" onClick={() => setEditingName(true)}>
+                  trocar nome
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="ra-auth-field">
+              <label className="ra-auth-field-label" htmlFor="register-name">
+                <span>Nome</span>
+              </label>
+              <div className="ra-auth-input-wrap">
+                <input
+                  id="register-name"
+                  className="ra-auth-input"
+                  type="text"
+                  placeholder="Como prefere ser chamado(a)"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoComplete="name"
+                  autoFocus
+                />
+              </div>
+            </div>
+          )}
 
           <div className="ra-auth-field">
             <label className="ra-auth-field-label" htmlFor="register-email">
@@ -952,15 +984,16 @@ export function AuthPage({
           <div className="ra-auth-medal">
             <Mail size={22} />
           </div>
-          <div className="ra-auth-form-eyebrow">Verificar email</div>
+          <div className="ra-auth-form-eyebrow">Confirmar email</div>
           <h2 className="ra-auth-form-title">
-            Cheque
+            Olha
             <br />
-            <span className="light">seu inbox.</span>
+            <span className="light">seu e-mail.</span>
           </h2>
           <p className="ra-auth-form-sub">
-            Enviamos um código de 6 dígitos para{" "}
+            Mandamos um código de 6 números para{" "}
             <strong style={{ color: "var(--rayo-forest-900)" }}>{email}</strong>.
+            Ele entra sozinho quando você digita o último número.
           </p>
 
           <div
@@ -992,7 +1025,7 @@ export function AuthPage({
           <button
             type="button"
             className="ra-auth-submit"
-            onClick={handleVerifyCode}
+            onClick={() => void handleVerifyCode()}
             disabled={isSubmitting || !codeComplete}
           >
             {isSubmitting ? (

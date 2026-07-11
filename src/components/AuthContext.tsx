@@ -71,7 +71,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (email: string, password: string, name: string, options?: RegisterOptions) => Promise<{ success: boolean; error?: string }>;
-  sendVerificationCode: (email: string) => Promise<{ success: boolean; error?: string }>;
+  sendVerificationCode: (email: string) => Promise<{ success: boolean; error?: string; code?: string }>;
   verifyEmailCode: (email: string, code: string) => Promise<{ success: boolean; error?: string }>;
   requestPasswordReset: (email: string) => Promise<{ success: boolean; message?: string; error?: string }>;
   resetPassword: (token: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -145,7 +145,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (res.success) {
       return { success: true };
     }
-    return { success: false, error: res.error?.message || "Erro ao enviar código" };
+    // `code` permite o AuthPage tratar EMAIL_EXISTS com carinho (vira login)
+    // em vez de exibir o erro cru.
+    return {
+      success: false,
+      error: res.error?.message || "Erro ao enviar código",
+      code: res.error?.code,
+    };
   }, []);
 
   const verifyEmailCode = useCallback(async (email: string, code: string) => {
