@@ -413,3 +413,61 @@ export async function getStreakCalendar(
     days,
   };
 }
+
+// ── Palavra do dia (ENGAGEMENT_PLAN.md E1) ─────────────────────────────
+// Versículo global determinístico por dia + amém comunitário (1/dia por
+// usuário, +5 XP no primeiro). O contador é o social proof espiritual:
+// "você e mais N pessoas disseram amém hoje".
+
+const VERSE_AMEN_XP = 5;
+
+export async function getVerseOfDay(userId: number) {
+  const { verseForDate } = await import("./verses.js");
+  const verse = verseForDate(new Date());
+  const { rows } = await query<{ total: string; mine: string }>(
+    `SELECT COUNT(*)::text AS total,
+            COUNT(*) FILTER (WHERE user_id = $1)::text AS mine
+       FROM verse_amens
+      WHERE amen_date = CURRENT_DATE`,
+    [userId],
+  );
+  return {
+    ref: verse.ref,
+    text: verse.text,
+    theme: verse.theme,
+    amens: parseInt(rows[0]?.total ?? "0", 10),
+    amened: parseInt(rows[0]?.mine ?? "0", 10) > 0,
+  };
+}
+
+export async function amenVerseOfDay(userId: number) {
+  const { verseForDate } = await import("./verses.js");
+  const verse = verseForDate(new Date());
+  const { rows: inserted } = await query<{ id: number }>(
+    `INSERT INTO verse_amens (user_id, amen_date, verse_ref)
+     VALUES ($1, CURRENT_DATE, $2)
+     ON CONFLICT (user_id, amen_date) DO NOTHING
+     RETURNING id`,
+    [userId, verse.ref],
+  );
+  let xpAwarded = 0;
+  let leveledUp = false;
+  let newLevel: number | undefined;
+  if (inserted.length > 0) {
+    const xp = await addXP(userId, VERSE_AMEN_XP, "verse_amen");
+    xpAwarded = VERSE_AMEN_XP;
+    leveledUp = xp.leveledUp;
+    newLevel = xp.newLevel;
+  }
+  const { rows } = await query<{ total: string }>(
+    `SELECT COUNT(*)::text AS total FROM verse_amens WHERE amen_date = CURRENT_DATE`,
+  );
+  return {
+    amened: true,
+    alreadyAmened: inserted.length === 0,
+    amens: parseInt(rows[0]?.total ?? "0", 10),
+    xpAwarded,
+    leveledUp,
+    newLevel,
+  };
+}

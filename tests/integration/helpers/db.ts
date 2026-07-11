@@ -98,6 +98,7 @@ const TRUNCATE_ORDER: ReadonlyArray<string> = [
   "xp_log",
   "user_xp",
   "push_subscriptions",
+  "verse_amens",
   "password_reset_tokens",
   "email_verification_codes",
   "sessions",

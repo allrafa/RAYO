@@ -19,6 +19,8 @@ import { PlaylistsExpandedPage } from "./PlaylistsExpandedPage";
 import { HojeNoRaio } from "./home/HojeNoRaio";
 import { RailCarousel } from "./home/RailCarousel";
 import { UnifiedContinue } from "./home/UnifiedContinue";
+import { PalavraDoDia } from "./home/PalavraDoDia";
+import { StreakChip } from "./home/StreakChip";
 import { PushPrompt } from "./PushPrompt";
 import { useYouTubeData } from "./hooks/useYouTubeData";
 import { YouTubeShortCard } from "./youtube/YouTubeShortCard";
@@ -343,6 +345,18 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
       <div className="rh-root">
         <div className="rh-content">
 
+          {/* ── PALAVRA DO DIA + CHAMA (ENGAGEMENT_PLAN E1/E2) ── */}
+          {authUser && (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <div className="rh-sec-eyebrow" style={{ marginBottom: 0 }}>
+                  Hoje com Deus
+                </div>
+                <StreakChip streak={dashboard?.gamification.streak ?? 0} />
+              </div>
+              <PalavraDoDia />
+            </>
+          )}
 
           {/* ── HOJE NO RAYO ────────────────────────────────── */}
           {/* Mantém HojeNoRaio SEMPRE montado pra preservar lifecycle

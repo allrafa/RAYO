@@ -1249,6 +1249,20 @@ export async function initializeSchema() {
   // Task #261 — EPUB: CFI do trecho selecionado (NULL pra notas em PDF).
   await query(`ALTER TABLE book_notes ADD COLUMN IF NOT EXISTS cfi TEXT`);
 
+  // ENGAGEMENT_PLAN.md E1 — Palavra do dia: 1 amém por usuário por dia.
+  // O contador comunitário do dia é COUNT(*) WHERE amen_date = hoje.
+  await query(`
+    CREATE TABLE IF NOT EXISTS verse_amens (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      amen_date DATE NOT NULL,
+      verse_ref VARCHAR(60) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, amen_date)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_verse_amens_date ON verse_amens(amen_date)`);
+
   // UX_PLAN.md estrutural — Web Push: uma linha por dispositivo inscrito.
   // endpoint é único por navegador/dispositivo; p256dh/auth são as chaves
   // de criptografia do payload (padrão Web Push/VAPID).

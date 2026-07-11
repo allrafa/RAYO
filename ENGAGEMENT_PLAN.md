@@ -48,21 +48,27 @@ apagar). Também falta transformar marcos em **momentos de celebração**.
 
 ## 4. Roadmap (iterações do loop)
 
-### Iteração 2 — "A Palavra e a chama"
-1. Backend `/api/home/verse`: rotação determinística por dia sobre lista
-   curada (~60 versículos ARC com tema); `POST /api/home/verse/amen`
-   (idempotente por dia, +5 XP, devolve contagem global de améns do dia;
-   tabela `verse_amens (user_id, day, verse_ref)`).
-2. Card "Palavra do dia" no topo da Home: versículo + referência, botão
-   Amém 🙏 (animação + contador) e Compartilhar (`NativeShare`).
-3. Chip de streak 🔥 no header da Home (abre `StatsModals` do calendário).
+### Iteração 2 — "A Palavra e a chama" ✅ CONSTRUÍDA
+1. ✅ Backend `/api/home/verse`: rotação determinística por dia sobre lista
+   curada (61 versículos ARC com tema em `server/features/home/verses.ts`);
+   `POST /api/home/verse/amen` (idempotente por dia via UNIQUE(user_id,
+   amen_date), +5 XP no primeiro, devolve contagem global de améns do dia;
+   tabela `verse_amens`).
+2. ✅ Card "Palavra do dia" no topo da Home (`PalavraDoDia.tsx`): versículo
+   + referência + tema, botão Amém 🙏 (burst de emojis + haptics + contador
+   comunitário otimista) e Compartilhar (`NativeShare`). O burst do Amém
+   (previsto pra iteração 3) já saiu nesta.
+3. ✅ Chip de streak 🔥 (`StreakChip.tsx`) ao lado do eyebrow "Hoje com
+   Deus" (abre `StreakCalendarModal` que já existia).
+4. ✅ Testes: `tests/integration/home/verse.test.ts` (4 cenários — 401,
+   determinismo global, idempotência do XP, contador comunitário).
 
 ### Iteração 3 — "Semana viva + celebração"
 1. Linha semanal seg→dom (dias ativos) no topo da Home.
 2. `CelebrationOverlay` global: confetti + mensagem quando uma resposta
    de completion retorna `leveledUp` ou streak atinge 7/30/90 — ligado ao
    Hoje, ao `LessonPlayer` e às missões.
-3. Microinteração do Amém (burst de 🙏 subindo do botão).
+3. ~~Microinteração do Amém~~ (antecipada — saiu na iteração 2).
 
 ### Iteração 4 — "Polimento e prova"
 1. Revisão visual dos novos elementos (dark mode, mobile-first, tokens
