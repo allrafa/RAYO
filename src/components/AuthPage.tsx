@@ -112,9 +112,12 @@ function SocialButton({
 function SocialRow({ dividerLabel }: { dividerLabel: string }) {
   const providers = useOAuthProviders();
   const ready = providers !== null;
-  // Nenhum provedor configurado → sem botões e sem divisor "ou ...":
-  // o formulário de e-mail vira o caminho único, sem ruído.
-  if (ready && !providers?.google && !providers?.facebook) return null;
+  // Enquanto carrega (!ready) OU quando nenhum provedor está configurado,
+  // renderiza null. Não mostrar os botões durante o loading evita o "pulo"
+  // de layout (SocialRow aparece→some) que deixava o botão de e-mail
+  // instável para cliques logo após o mount — sem OAuth (dev/CI) o form de
+  // e-mail é o caminho único, sem ruído.
+  if (!ready || (!providers?.google && !providers?.facebook)) return null;
   return (
     <>
       <div className="ra-auth-social-row">

@@ -92,6 +92,9 @@ test.describe("Auth — registro via UI com código de verificação (Task #241)
     const ctx = await browser.newContext({ ...MOBILE_CTX });
     const page = await ctx.newPage();
     await page.goto("/login", { waitUntil: "domcontentloaded" });
+    // Dispensa o banner de cookies (overlay fixo no rodapé que, no mobile,
+    // intercepta o clique no botão "Enviar código").
+    try { await page.getByRole("button", { name: /^Aceitar$/ }).click({ timeout: 3_000 }); } catch { /* sem banner */ }
 
     // Troca pra modo registro (botão "Criar conta" na sub-copy do login).
     await page.getByRole("button", { name: /^Criar conta$/ }).first().click();
@@ -117,7 +120,11 @@ test.describe("Auth — registro via UI com código de verificação (Task #241)
     const digit0 = page.getByLabel(/D[íi]gito 1 de 6/);
     await expect(digit0).toBeVisible({ timeout: 10_000 });
     await digit0.fill(code);
-    await page.getByRole("button", { name: /Verificar c[óo]digo/i }).click();
+    // UX_PLAN J5 — ao completar o 6º dígito a verificação dispara sozinha.
+    // O clique manual em "Verificar código" é só um fallback caso o
+    // auto-submit ainda não tenha avançado (por isso tolerante a timeout).
+    await page.getByRole("button", { name: /Verificar c[óo]digo/i })
+      .click({ timeout: 3_000 }).catch(() => { /* auto-submit já avançou */ });
 
     // Etapa "password" do registro.
     const pwd = page.locator("#register-password");

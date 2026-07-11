@@ -495,6 +495,15 @@ function AppContent() {
   // mas não tem UI de seleção de aula ainda — o lesson_id fica estacionado
   // em sessionStorage `rayo-pending-lesson` pra um futuro "scroll-to-lesson"
   // dentro de CourseDetailPage. Marca atual: course-level URL.
+  // UX_PLAN J1 — troca de rota volta ao topo (padrão de app social: cada
+  // "aba" abre no começo). Antes, só o re-tap da aba ativa resetava o
+  // scroll; navegar Home→Comunidade preservava a rolagem do meio.
+  useEffect(() => {
+    try {
+      window.scrollTo(0, 0);
+    } catch { /* ambientes sem window */ }
+  }, [location.pathname]);
+
   useEffect(() => {
     if (!appContext) return;
     const p = location.pathname.replace(/\/+$/, "") || "/";
