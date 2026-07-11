@@ -453,11 +453,17 @@ export async function amenVerseOfDay(userId: number) {
   let xpAwarded = 0;
   let leveledUp = false;
   let newLevel: number | undefined;
+  let currentStreak: number | undefined;
   if (inserted.length > 0) {
     const xp = await addXP(userId, VERSE_AMEN_XP, "verse_amen");
     xpAwarded = VERSE_AMEN_XP;
     leveledUp = xp.leveledUp;
     newLevel = xp.newLevel;
+    // O amém do dia mantém a chama acesa (ENGAGEMENT_PLAN.md E2/E3):
+    // é o toque diário de menor fricção — mesmo sem tempo pro conteúdo,
+    // o versículo preserva a sequência. Idempotente por dia.
+    const streak = await updateStreak(userId);
+    currentStreak = streak.currentStreak;
   }
   const { rows } = await query<{ total: string }>(
     `SELECT COUNT(*)::text AS total FROM verse_amens WHERE amen_date = CURRENT_DATE`,
@@ -469,5 +475,6 @@ export async function amenVerseOfDay(userId: number) {
     xpAwarded,
     leveledUp,
     newLevel,
+    currentStreak,
   };
 }

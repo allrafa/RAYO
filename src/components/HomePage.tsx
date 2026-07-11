@@ -20,6 +20,7 @@ import { HojeNoRaio } from "./home/HojeNoRaio";
 import { RailCarousel } from "./home/RailCarousel";
 import { UnifiedContinue } from "./home/UnifiedContinue";
 import { PalavraDoDia } from "./home/PalavraDoDia";
+import { SemanaViva } from "./home/SemanaViva";
 import { StreakChip } from "./home/StreakChip";
 import { PushPrompt } from "./PushPrompt";
 import { useYouTubeData } from "./hooks/useYouTubeData";
@@ -345,17 +346,21 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
       <div className="rh-root">
         <div className="rh-content">
 
-          {/* ── PALAVRA DO DIA + CHAMA (ENGAGEMENT_PLAN E1/E2) ── */}
+          {/* ── HOJE COM DEUS (ENGAGEMENT_PLAN E1/E2/E4) ──────────
+              Cluster espiritual do topo: eyebrow + chama de sequência,
+              Palavra do dia e semana viva — uma section só pra que o
+              gap de 36px do rh-content não desconecte as peças. */}
           {authUser && (
-            <>
-              <div className="flex items-center justify-between mb-3">
+            <section className="rh-sec" style={{ gap: 14 }} aria-label="Hoje com Deus">
+              <div className="flex items-center justify-between">
                 <div className="rh-sec-eyebrow" style={{ marginBottom: 0 }}>
                   Hoje com Deus
                 </div>
                 <StreakChip streak={dashboard?.gamification.streak ?? 0} />
               </div>
-              <PalavraDoDia />
-            </>
+              <PalavraDoDia onEngaged={() => { void loadDashboard(); }} />
+              <SemanaViva refreshKey={dashboard?.gamification.xp ?? 0} />
+            </section>
           )}
 
           {/* ── HOJE NO RAYO ────────────────────────────────── */}

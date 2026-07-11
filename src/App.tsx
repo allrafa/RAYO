@@ -124,6 +124,7 @@ import {
 } from "./lib/cardClickTargets";
 import { migrateLegacyStorage } from "./lib/storageMigration";
 import { enhancedToast } from "./components/EnhancedToast";
+import { CelebrationOverlay } from "./components/CelebrationOverlay";
 import { EmailVerificationInline } from "./components/EmailVerificationInline";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./components/ui/dialog";
 
@@ -1060,6 +1061,7 @@ export default function App() {
                     <AudioPlayerProvider>
                       <AppContent />
                       <GlobalAudioPlayer />
+                      <CelebrationOverlay />
                       <Toaster />
                     </AudioPlayerProvider>
                   </UnreadBySectionProvider>

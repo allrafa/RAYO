@@ -37,6 +37,7 @@ interface AmenOk {
     amens: number;
     xpAwarded: number;
     leveledUp: boolean;
+    currentStreak?: number;
   };
   error: null;
 }
@@ -87,6 +88,8 @@ describe("Home / Palavra do dia (ENGAGEMENT_PLAN E1)", () => {
       assert.equal(a1.body.data.alreadyAmened, false);
       assert.equal(a1.body.data.xpAwarded, 5);
       assert.equal(a1.body.data.amens, 1);
+      // O amém mantém a chama acesa: primeira atividade do dia → streak 1.
+      assert.equal(a1.body.data.currentStreak, 1);
 
       const a2 = await request<AmenOk>(base, {
         method: "POST",

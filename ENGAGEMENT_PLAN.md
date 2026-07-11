@@ -63,12 +63,22 @@ apagar). Também falta transformar marcos em **momentos de celebração**.
 4. ✅ Testes: `tests/integration/home/verse.test.ts` (4 cenários — 401,
    determinismo global, idempotência do XP, contador comunitário).
 
-### Iteração 3 — "Semana viva + celebração"
-1. Linha semanal seg→dom (dias ativos) no topo da Home.
-2. `CelebrationOverlay` global: confetti + mensagem quando uma resposta
-   de completion retorna `leveledUp` ou streak atinge 7/30/90 — ligado ao
-   Hoje, ao `LessonPlayer` e às missões.
-3. ~~Microinteração do Amém~~ (antecipada — saiu na iteração 2).
+### Iteração 3 — "Semana viva + celebração" ✅ CONSTRUÍDA
+1. ✅ Semana viva (`SemanaViva.tsx`): linha seg→dom com dias ativos
+   preenchidos (dados de `/api/home/streak-calendar?days=7`, ancorada no
+   "hoje" do servidor pra não divergir de fuso); toque abre o calendário.
+   Agrupada com eyebrow + chip + Palavra numa section "Hoje com Deus".
+2. ✅ `CelebrationOverlay` global (montado no App): react-confetti (lib
+   que o Hoje já usava) + mensagem central + haptics quando uma conclusão
+   retorna `leveledUp` ou streak atinge 7/30/90 (dedupe por dia em
+   localStorage). Ligado ao Hoje, aula/curso (`AppContext`), resgate de
+   missão (`PerfilPage`) e amém. Backend passou a propagar
+   `leveledUp/newLevel` na conclusão de aula e no claim de missão (antes
+   descartava o retorno do addXP).
+3. ✅ Bônus: o amém agora chama `updateStreak` — o toque de menor fricção
+   do app mantém a chama acesa e acende o dia na semana viva na hora
+   (`onEngaged` → reload do dashboard).
+4. ~~Microinteração do Amém~~ (antecipada — saiu na iteração 2).
 
 ### Iteração 4 — "Polimento e prova"
 1. Revisão visual dos novos elementos (dark mode, mobile-first, tokens

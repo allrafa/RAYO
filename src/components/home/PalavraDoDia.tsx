@@ -3,6 +3,7 @@ import { Share2 } from "lucide-react";
 import { api } from "../../lib/api";
 import { NativeShare } from "../NativeShare";
 import { enhancedToast } from "../EnhancedToast";
+import { celebrateFromCompletion } from "../../lib/celebrate";
 
 // Palavra do dia (ENGAGEMENT_PLAN.md E1) — a âncora espiritual diária da
 // Home. Versículo global determinístico (mesmo pra todo mundo, o que dá
@@ -22,9 +23,12 @@ interface AmenResp {
   alreadyAmened: boolean;
   amens: number;
   xpAwarded: number;
+  leveledUp?: boolean;
+  newLevel?: number;
+  currentStreak?: number;
 }
 
-export function PalavraDoDia() {
+export function PalavraDoDia({ onEngaged }: { onEngaged?: () => void } = {}) {
   const [verse, setVerse] = useState<Verse | null>(null);
   const [busy, setBusy] = useState(false);
   const [bursts, setBursts] = useState<number[]>([]);
@@ -59,7 +63,12 @@ export function PalavraDoDia() {
         setVerse((v) => (v ? { ...v, amened: true, amens: r.data!.amens } : v));
         if (r.data.xpAwarded > 0) {
           enhancedToast.success({ title: `Amém! +${r.data.xpAwarded} XP`, haptic: true });
+          // O amém mantém a chama: avisa o pai pra recarregar dashboard
+          // (chip de streak + semana viva acendem na hora).
+          onEngaged?.();
         }
+        // ENGAGEMENT_PLAN.md E3 — level-up ou marco de streak vira festa.
+        celebrateFromCompletion(r.data);
       }
     } finally {
       setBusy(false);
@@ -68,10 +77,12 @@ export function PalavraDoDia() {
 
   const othersToday = Math.max(0, verse.amens - (verse.amened ? 1 : 0));
 
+  // Sem wrapper de section — o HomePage agrupa este card com o chip de
+  // streak e a semana viva numa única section "Hoje com Deus".
   return (
-    <section className="rh-sec" aria-label="Palavra do dia">
       <div
         className="relative overflow-hidden rounded-2xl p-5 sm:p-6"
+        aria-label="Palavra do dia"
         style={{
           background: "linear-gradient(135deg, var(--rayo-forest-900) 0%, var(--rayo-forest-700) 100%)",
           color: "var(--rayo-sand-50)",
@@ -166,6 +177,5 @@ export function PalavraDoDia() {
           }
         `}</style>
       </div>
-    </section>
   );
 }

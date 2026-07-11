@@ -261,10 +261,19 @@ export async function updateLessonProgress(
     [completedLessons, progressPercentage, lessonId, courseCompleted, userId, courseId]
   );
 
+  // ENGAGEMENT_PLAN.md E3 — propaga o resultado do XP (leveledUp/newLevel/
+  // currentStreak) pro frontend disparar a celebração global. Antes o
+  // retorno do addXP era descartado e o level-up passava em silêncio.
+  let xpAwarded = 0;
+  let leveledUp = false;
+  let newLevel: number | undefined;
+
   if (isFirstCompletion) {
     trackEvent(userId, "lesson_completed", { lesson_id: lessonId, course_id: courseId });
     try {
-      await addXP(userId, 10, "watch_lesson");
+      const xp = await addXP(userId, 10, "watch_lesson");
+      xpAwarded += 10;
+      if (xp.leveledUp) { leveledUp = true; newLevel = xp.newLevel; }
       await checkMissionProgress(userId, "watch_lesson");
     } catch (err) {
       console.error("[Academia] Gamification error (non-blocking):", err);
@@ -274,7 +283,9 @@ export async function updateLessonProgress(
   if (isFirstCourseCompletion) {
     trackEvent(userId, "course_completed", { course_id: courseId });
     try {
-      await addXP(userId, 50, "complete_course");
+      const xp = await addXP(userId, 50, "complete_course");
+      xpAwarded += 50;
+      if (xp.leveledUp) { leveledUp = true; newLevel = xp.newLevel; }
       const { rows: completedCourseCount } = await query(
         `SELECT COUNT(*) as count FROM user_course_progress WHERE user_id = $1 AND completed_at IS NOT NULL`,
         [userId]
@@ -293,6 +304,9 @@ export async function updateLessonProgress(
     totalLessons,
     progressPercentage,
     courseCompleted,
+    xpAwarded,
+    leveledUp,
+    newLevel,
   };
 }
 

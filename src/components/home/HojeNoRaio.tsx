@@ -11,6 +11,7 @@ import { CheckCircle2, ExternalLink, SkipForward } from "lucide-react";
 import { api } from "../../lib/api";
 import { enhancedToast } from "../EnhancedToast";
 import { cardKeyHandler, stopBubble } from "../../lib/cardClickTargets";
+import { celebrateFromCompletion } from "../../lib/celebrate";
 import { useApp } from "../AppContext";
 
 interface TodayItem {
@@ -153,6 +154,8 @@ export function HojeNoRaio({
             : "Hoje no RAYO completo.",
           haptic: true,
         });
+        // ENGAGEMENT_PLAN.md E3 — level-up / marco de streak vira festa.
+        celebrateFromCompletion(data);
       } else {
         enhancedToast.info({ title: "Você já completou o Hoje no RAYO" });
       }
