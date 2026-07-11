@@ -1263,6 +1263,42 @@ export async function initializeSchema() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_verse_amens_date ON verse_amens(amen_date)`);
 
+  // ALIANCA_PLAN.md — Aliança (Modo Casal). UNIQUE em user_a e user_b
+  // garante no máximo um vínculo ativo por pessoa; CHECK (user_a < user_b)
+  // é a ordem canônica que impede a dupla invertida.
+  await query(`
+    CREATE TABLE IF NOT EXISTS couples (
+      id SERIAL PRIMARY KEY,
+      user_a INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      user_b INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      CHECK (user_a < user_b)
+    )
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS couple_invites (
+      id SERIAL PRIMARY KEY,
+      inviter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code VARCHAR(12) NOT NULL UNIQUE,
+      status VARCHAR(12) NOT NULL DEFAULT 'pending',
+      accepted_by INTEGER REFERENCES users(id),
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMP NOT NULL DEFAULT NOW() + INTERVAL '7 days'
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_couple_invites_inviter ON couple_invites(inviter_id)`);
+  // 1 oração por dia por direção — a restrição é o que dá peso ao gesto.
+  await query(`
+    CREATE TABLE IF NOT EXISTS couple_prayers (
+      id SERIAL PRIMARY KEY,
+      couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+      from_user INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      prayed_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (couple_id, from_user, prayed_date)
+    )
+  `);
+
   // UX_PLAN.md estrutural — Web Push: uma linha por dispositivo inscrito.
   // endpoint é único por navegador/dispositivo; p256dh/auth são as chaves
   // de criptografia do payload (padrão Web Push/VAPID).

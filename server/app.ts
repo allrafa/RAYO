@@ -27,6 +27,7 @@ import lgpdRoutes from "./features/lgpd/routes.js";
 import messagesRoutes from "./features/messages/routes.js";
 import notificationsRoutes from "./features/notifications/routes.js";
 import pushRoutes from "./features/push/routes.js";
+import aliancaRoutes from "./features/alianca/routes.js";
 import adminRoutes from "./features/admin/routes.js";
 import { adminCmsRouter, publicCmsRouter } from "./features/cms/routes.js";
 import { adminHomeFeedRouter, publicHomeFeedRouter } from "./features/home-feed/routes.js";
@@ -148,6 +149,7 @@ export function createApp(opts: CreateAppOptions = {}): Express {
   app.use("/api/messages", optionalAuth, rateLimiter(600, 15 * 60 * 1000, { keyByUser: true }), messagesRoutes);
   app.use("/api/notifications", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), notificationsRoutes);
   app.use("/api/push", optionalAuth, rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }), pushRoutes);
+  app.use("/api/alianca", optionalAuth, rateLimiter(120, 15 * 60 * 1000, { keyByUser: true }), aliancaRoutes);
   app.use("/api/admin", optionalAuth, rateLimiter(240, 15 * 60 * 1000, { keyByUser: true }), adminRoutes);
   app.use("/api/admin/community", optionalAuth, rateLimiter(300, 15 * 60 * 1000, { keyByUser: true }), communityAdminRoutes);
   app.use("/api/admin/cms", optionalAuth, rateLimiter(300, 15 * 60 * 1000, { keyByUser: true }), adminCmsRouter);
