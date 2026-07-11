@@ -102,6 +102,13 @@ test.describe("Auth — registro via UI com código de verificação (Task #241)
     await page.locator("#register-email").fill(email);
     await page.getByRole("button", { name: /Enviar c[óo]digo por email/i }).click();
 
+    // Só depois que a tela "Verificar email" renderiza (setRegisterStep
+    // ="verify") é que o send-code terminou o round-trip e gravou a row.
+    // Sem esta espera, a query ao DB corria antes do INSERT no CI (mais
+    // lento, 4 workers) e voltava 0 rows.
+    const digit0 = page.getByLabel(/D[íi]gito 1 de 6/);
+    await expect(digit0).toBeVisible({ timeout: 15_000 });
+
     // Backend inseriu o código em email_verification_codes (mesmo se Resend
     // falhar, em dev o código é logado e a rota responde 200).
     const codeRow = await authPool.query<{ code: string }>(
@@ -114,11 +121,8 @@ test.describe("Auth — registro via UI com código de verificação (Task #241)
     const code = codeRow.rows[0].code;
     expect(code).toMatch(/^\d{6}$/);
 
-    // Tela "Verificar email" — preenche os 6 dígitos. O input idx=0
-    // aceita paste completo (maxLength=6); preencher só ele dispara o
-    // split entre os 6 inputs via handleCodeInput.
-    const digit0 = page.getByLabel(/D[íi]gito 1 de 6/);
-    await expect(digit0).toBeVisible({ timeout: 10_000 });
+    // Preenche os 6 dígitos. O input idx=0 aceita paste completo
+    // (maxLength=6); preencher só ele dispara o split via handleCodeInput.
     await digit0.fill(code);
     // UX_PLAN J5 — ao completar o 6º dígito a verificação dispara sozinha.
     // O clique manual em "Verificar código" é só um fallback caso o

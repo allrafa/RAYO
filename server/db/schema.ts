@@ -544,6 +544,11 @@ export async function initializeSchema() {
   // exibido e o real. Idempotente (DROP IF EXISTS).
   await query(`ALTER TABLE forums DROP COLUMN IF EXISTS member_count`);
   await query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb`);
+  // view_count de posts: o handler de realtime (server/realtime/community.ts)
+  // incrementa esta coluna ao ver um post, mas ela nunca existiu na tabela
+  // `posts` (só em content_items) — a contagem falhava em silêncio. Adiciona
+  // idempotente pra o tracking de views funcionar de fato.
+  await query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS view_count INTEGER NOT NULL DEFAULT 0`);
 
   // Backfill de slug para forums já existentes (idempotente: só roda em
   // linhas com slug NULL/vazio). Slugify simples sem dependência externa.
