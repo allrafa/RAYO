@@ -1565,10 +1565,20 @@ async function seedForumsAndPosts() {
 
   const forumIds: Record<string, number> = {};
   for (const f of forumsData) {
+    // Slug já na criação: o backfill de slug roda ANTES deste seed no boot,
+    // então banco novo ficava com slug NULL até o segundo boot — quebrando
+    // /c/<slug> e o "Comunidade não encontrada" no primeiro uso.
+    const slug = f.name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60);
     const { rows: fRows } = await query(
-      `INSERT INTO forums (name, description, icon, life_context, category, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [f.name, f.description, f.icon, f.life_context, f.category, f.sort_order]
+      `INSERT INTO forums (name, slug, description, icon, life_context, category, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [f.name, slug, f.description, f.icon, f.life_context, f.category, f.sort_order]
     );
     forumIds[f.name] = fRows[0].id;
   }

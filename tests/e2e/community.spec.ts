@@ -162,25 +162,22 @@ test.describe("Comunidade — reagir em post (Task #241)", () => {
       window.dispatchEvent(new CustomEvent("rayo:open-community", { detail: { slug } }));
     }, post.forumSlug);
 
-    // Aguarda o card do POST RECÉM-CRIADO aparecer e escopamos toda
-    // ação dentro do <article> dele — feeds seedados podem ter outros
-    // posts com o mesmo trigger global "Reagir ao post" (review #241).
-    // PostCard root é uma <div className="ra-card ra-card-hover" role="button"
-    // aria-label="Abrir discussão da publicação de X">; o título aparece como
-    // texto visível dentro. Escopamos pelo .ra-card que contém o título.
-    const postArticle = page.locator(".ra-card", { hasText: postTitle }).first();
-    await expect(postArticle).toBeVisible({ timeout: 20_000 });
+    // A página da comunidade lista posts em formato compacto; o picker de
+    // reação completo vive na DiscussionPage. Abrimos a discussão do post
+    // recém-criado tocando no item da lista.
+    const postItem = page.getByRole("button", { name: new RegExp(postTitle) }).first();
+    await expect(postItem).toBeVisible({ timeout: 20_000 });
+    await postItem.click();
 
     // UX_PLAN.md J1 — curtir agora é 1 toque: o botão "Curtir" aplica ❤️
     // direto (o leque de emojis fica no long-press/hover).
-    const likeBtn = postArticle.getByRole("button", { name: /^Curtir$/ });
-    await expect(likeBtn).toBeVisible({ timeout: 10_000 });
+    const likeBtn = page.getByRole("button", { name: /^Curtir$/ }).first();
+    await expect(likeBtn).toBeVisible({ timeout: 20_000 });
     await likeBtn.click();
 
-    // Chip agregado aparece DENTRO do mesmo article (re-escopado). O botão
-    // principal também troca o aria-label pra "Remover reação ❤️" — por
-    // isso o .first() (dois matches no mesmo card são esperados).
-    await expect(postArticle.getByRole("button", { name: /Remover reação ❤️/ }).first())
+    // O botão troca o aria-label pra "Remover reação ❤️" e o chip agregado
+    // aparece — .first() cobre os dois matches esperados.
+    await expect(page.getByRole("button", { name: /Remover reação ❤️/ }).first())
       .toBeVisible({ timeout: 10_000 });
 
     await ctx.close();
@@ -214,9 +211,13 @@ test.describe("Comunidade — seguir/parar de seguir fórum (Task #241)", () => 
     await page.getByRole("button", { name: /^Comunidade(,|$)/ }).first().waitFor({ timeout: 20_000 });
     try { await page.getByRole("button", { name: /^Aceitar$/ }).click({ timeout: 2_000 }); } catch { /* noop */ }
 
-    // Navega pro fórum seed "solteiros-preparacao".
+    // Navega pro fórum seed "financas-familiares" — precisa ser um fórum
+    // FORA do segmento do usuário e diferente de "Geral": desde o UX_PLAN J2
+    // o cadastro auto-inscreve o usuário no fórum do seu contexto de vida
+    // (solteiro → solteiros-preparacao) + Geral, então esses já nascem
+    // "Inscrito".
     await page.evaluate(() => {
-      const slug = "solteiros-preparacao";
+      const slug = "financas-familiares";
       try { sessionStorage.setItem("rayo-pending-community-slug", slug); } catch { /* noop */ }
       window.dispatchEvent(new CustomEvent("rayo:open-community", { detail: { slug } }));
     });

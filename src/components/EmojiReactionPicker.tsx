@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { Heart, SmilePlus } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "./ui/popover";
 import { api } from "../lib/api";
 import { enhancedToast } from "./EnhancedToast";
 
@@ -68,7 +68,6 @@ export function EmojiReactionPicker({
   const [busy, setBusy] = useState(false);
   // Long-press/hover do modo "full": timers vivem em refs pra não re-render.
   const pressTimerRef = useRef<number | null>(null);
-  const hoverTimerRef = useRef<number | null>(null);
   const longPressedRef = useRef(false);
 
   const send = useCallback(
@@ -194,7 +193,10 @@ export function EmojiReactionPicker({
   const total = totalReactionCount(reactions);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      {/* PopoverAnchor (não PopoverTrigger): só posiciona o popover, sem
+          capturar o clique. Assim o clique é 100% nosso — curtir direto —
+          e o leque só abre no long-press/hover (UX_PLAN J1). */}
+      <PopoverAnchor asChild>
         <button
           type="button"
           className={`flex items-center gap-2 transition-all duration-200 ${className}`}
@@ -203,10 +205,7 @@ export function EmojiReactionPicker({
           }}
           aria-label={userReaction ? `Remover reação ${userReaction}` : "Curtir"}
           disabled={busy}
-          onClick={(e) => {
-            // preventDefault impede o Radix de abrir o popover no clique —
-            // clique é curtir; o popover abre só no long-press/hover.
-            e.preventDefault();
+          onClick={() => {
             if (longPressedRef.current) {
               longPressedRef.current = false;
               return;
@@ -230,13 +229,6 @@ export function EmojiReactionPicker({
           onPointerLeave={() => {
             if (pressTimerRef.current) window.clearTimeout(pressTimerRef.current);
           }}
-          onMouseEnter={() => {
-            if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
-            hoverTimerRef.current = window.setTimeout(() => setOpen(true), 550);
-          }}
-          onMouseLeave={() => {
-            if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
-          }}
           onContextMenu={(e) => e.preventDefault()}
         >
           {userReaction ? (
@@ -248,7 +240,7 @@ export function EmojiReactionPicker({
             {total > 0 ? total : "Curtir"}
           </span>
         </button>
-      </PopoverTrigger>
+      </PopoverAnchor>
       <PopoverContent
         className="w-auto p-2 bg-card/95 backdrop-blur-sm border shadow-lg"
         align="start"

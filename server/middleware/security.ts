@@ -25,6 +25,19 @@ const allowedOrigins = (() => {
   return fromEnv;
 })();
 
+// Em dev, requests same-origin (POST/PUT/DELETE mandam header Origin) de
+// localhost precisam passar — senão toda escrita via UI toma 403 no dev
+// local e nos testes E2E do CI (que sobem o app em http://localhost:5000).
+// Restrito a isDev: produção continua só com a allowlist canônica.
+function isLocalhostOrigin(origin: string): boolean {
+  try {
+    const hostname = new URL(origin).hostname;
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
 function isReplitOrigin(origin: string): boolean {
   try {
     const hostname = new URL(origin).hostname;
@@ -55,6 +68,11 @@ export const corsMiddleware = cors({
     }
 
     if (isReplitOrigin(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    if (isDev && isLocalhostOrigin(origin)) {
       callback(null, true);
       return;
     }
