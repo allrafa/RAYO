@@ -1379,6 +1379,10 @@ async function seedBadgesAndMissions() {
     { title: 'Completar 3 aulas', description: 'Assista 3 aulas esta semana', type: 'weekly', action_type: 'watch_lesson', action_count: 3, xp_reward: 75 },
     { title: 'Explorador de conteúdo', description: 'Acesse 3 áreas diferentes da plataforma', type: 'weekly', action_type: 'explore_areas', action_count: 3, xp_reward: 50 },
     { title: 'Engajamento comunitário', description: 'Faça 5 interações na comunidade', type: 'weekly', action_type: 'community_interact', action_count: 5, xp_reward: 100 },
+    // ALIANCA_PLAN.md §5 — missões a dois: o progresso continua por
+    // usuário (engine intacto), mas o gatilho é conjunto e credita ambos.
+    { title: 'Améns em aliança', description: 'Vocês dois digam amém na Palavra do dia 3x nesta semana', type: 'weekly', action_type: 'couple_amen_day', action_count: 3, xp_reward: 60 },
+    { title: 'Oração mútua', description: 'Orem um pelo outro no mesmo dia 3x nesta semana', type: 'weekly', action_type: 'couple_prayer_day', action_count: 3, xp_reward: 60 },
   ];
 
   for (const m of missions) {

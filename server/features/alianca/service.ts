@@ -182,6 +182,23 @@ export async function prayForPartner(
     link: "/",
     payload: { from_user: userId },
   });
+  // ALIANCA_PLAN.md §5 — se a outra direção também orou hoje, o dia de
+  // oração mútua se completa: credita a missão pros DOIS. O INSERT acima
+  // é idempotente por direção, então isso dispara no máximo 1x/dia.
+  try {
+    const { rows: mutual } = await query(
+      `SELECT 1 FROM couple_prayers
+        WHERE couple_id = $1 AND from_user = $2 AND prayed_date = CURRENT_DATE`,
+      [couple.id, couple.partnerId],
+    );
+    if (mutual.length > 0) {
+      const { recordMissionProgress } = await import("../gamification/service.js");
+      await recordMissionProgress(userId, "couple_prayer_day");
+      await recordMissionProgress(couple.partnerId, "couple_prayer_day");
+    }
+  } catch (err) {
+    console.error("[Alianca] couple_prayer_day (non-blocking):", err);
+  }
   return { prayed: true, alreadyPrayedToday: false, xpAwarded: PRAYER_XP };
 }
 

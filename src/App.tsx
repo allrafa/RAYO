@@ -123,6 +123,9 @@ import {
   RAYO_OPEN_COMMUNITY,
 } from "./lib/cardClickTargets";
 import { migrateLegacyStorage } from "./lib/storageMigration";
+import { api } from "./lib/api";
+import { celebrate } from "./lib/celebrate";
+import { ALIANCA_CHANGED_EVENT } from "./components/home/AliancaCard";
 import { enhancedToast } from "./components/EnhancedToast";
 import { CelebrationOverlay } from "./components/CelebrationOverlay";
 import { EmailVerificationInline } from "./components/EmailVerificationInline";
@@ -283,6 +286,49 @@ function AppContent() {
       setTheme(pref);
     }
   }, [user, setTheme]);
+
+  // ALIANCA_PLAN.md §4 — convite de casal via link (/?convite=CODE).
+  // Captura o código na chegada (logado ou não) e guarda; some da URL
+  // pra não vazar em shares/históricos.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("convite");
+      if (code && code.trim()) {
+        localStorage.setItem("rayo_alianca_convite", code.trim().toUpperCase());
+        params.delete("convite");
+        const qs = params.toString();
+        window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+      }
+    } catch { /* private mode */ }
+  }, []);
+
+  // Redime o convite guardado no primeiro boot autenticado — cobre tanto
+  // quem já tinha conta quanto quem acabou de se cadastrar pelo link.
+  useEffect(() => {
+    if (!user) return;
+    let code: string | null = null;
+    try { code = localStorage.getItem("rayo_alianca_convite"); } catch { /* noop */ }
+    if (!code) return;
+    (async () => {
+      const r = await api.post<{ partner: { id: number; name: string } }>(
+        "/api/alianca/accept",
+        { code },
+      );
+      try { localStorage.removeItem("rayo_alianca_convite"); } catch { /* noop */ }
+      if (r.success && r.data) {
+        celebrate({ kind: "paired", value: 0 });
+        window.dispatchEvent(new Event(ALIANCA_CHANGED_EVENT));
+      } else if (r.error) {
+        enhancedToast.error({
+          title: "Convite de aliança não aceito",
+          description: r.error.message,
+        });
+      }
+    })();
+    // user?.id: redime uma vez por sessão autenticada, não a cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Task #176 — currentTab é DERIVADO da URL (useLocation). Não tem mais
   // useState próprio — qualquer mudança de aba passa pelo navigate, e o

@@ -464,6 +464,26 @@ export async function amenVerseOfDay(userId: number) {
     // o versículo preserva a sequência. Idempotente por dia.
     const streak = await updateStreak(userId);
     currentStreak = streak.currentStreak;
+    // ALIANCA_PLAN.md §5 — se o cônjuge também já disse amém hoje, este
+    // é o 2º amém do casal no dia: credita a missão "Améns em aliança"
+    // pros DOIS (o INSERT acima é idempotente, então só dispara 1x/dia).
+    try {
+      const { getCouple } = await import("../alianca/service.js");
+      const couple = await getCouple(userId);
+      if (couple) {
+        const { rows: partnerAmen } = await query(
+          `SELECT 1 FROM verse_amens WHERE user_id = $1 AND amen_date = CURRENT_DATE`,
+          [couple.partnerId],
+        );
+        if (partnerAmen.length > 0) {
+          const { recordMissionProgress } = await import("../gamification/service.js");
+          await recordMissionProgress(userId, "couple_amen_day");
+          await recordMissionProgress(couple.partnerId, "couple_amen_day");
+        }
+      }
+    } catch (err) {
+      console.error("[Alianca] couple_amen_day (non-blocking):", err);
+    }
   }
   const { rows } = await query<{ total: string }>(
     `SELECT COUNT(*)::text AS total FROM verse_amens WHERE amen_date = CURRENT_DATE`,

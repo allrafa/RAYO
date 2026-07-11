@@ -312,6 +312,49 @@ describe("Aliança / oração e estado do dia", () => {
     });
   });
 
+  it("missões a dois: gatilho conjunto credita os DOIS (amém e oração mútua)", async () => {
+    const ana = await makeUser();
+    const beto = await makeUser();
+    await withServer(createTestApp(), async (base) => {
+      await pairUp(base, ana, beto);
+
+      async function progress(userId: number, actionType: string): Promise<number> {
+        const { rows } = await getPool().query(
+          `SELECT COALESCE(MAX(ump.current_progress), 0)::int AS p
+             FROM user_mission_progress ump
+             JOIN missions m ON m.id = ump.mission_id
+            WHERE ump.user_id = $1 AND m.action_type = $2`,
+          [userId, actionType],
+        );
+        return rows[0].p;
+      }
+
+      // Amém só da ana → ninguém credita ainda.
+      await request(base, {
+        method: "POST", path: "/api/home/verse/amen", cookie: ana.sessionCookie, body: {},
+      });
+      assert.equal(await progress(ana.id, "couple_amen_day"), 0);
+
+      // Beto também diz amém → o dia do casal se completa e credita os DOIS.
+      await request(base, {
+        method: "POST", path: "/api/home/verse/amen", cookie: beto.sessionCookie, body: {},
+      });
+      assert.equal(await progress(ana.id, "couple_amen_day"), 1);
+      assert.equal(await progress(beto.id, "couple_amen_day"), 1);
+
+      // Oração: uma direção não credita; a mútua credita os dois.
+      await request(base, {
+        method: "POST", path: "/api/alianca/pray", cookie: ana.sessionCookie, body: {},
+      });
+      assert.equal(await progress(ana.id, "couple_prayer_day"), 0);
+      await request(base, {
+        method: "POST", path: "/api/alianca/pray", cookie: beto.sessionCookie, body: {},
+      });
+      assert.equal(await progress(ana.id, "couple_prayer_day"), 1);
+      assert.equal(await progress(beto.id, "couple_prayer_day"), 1);
+    });
+  });
+
   it("LGPD: exclusão de conta desfaz o vínculo e o cônjuge volta pra none", async () => {
     const ana = await makeUser();
     const beto = await makeUser();

@@ -114,15 +114,23 @@ truque é o TRIGGER ser conjunto e creditar os dois:
 
 ## 7. Roadmap (iterações do loop)
 
-### Iteração 2 — "O vínculo"
-Backend completo: tabelas, os 5 endpoints, oração com notificação+push,
-chama do casal, XP; limpeza LGPD; testes de integração (pareamento feliz,
-bordas 400/409/410, idempotência da oração, chama com 2 users ativos).
+### Iteração 2 — "O vínculo" ✅ CONSTRUÍDA
+Backend completo: tabelas, os 6 endpoints (incl. /invite/revoke), oração
+com notificação+push, chama do casal, XP; limpeza LGPD (que de quebra
+fechou lacunas antigas: verse_amens e push_subscriptions não eram limpos
+na exclusão); 10 testes de integração (pareamento feliz, bordas
+400/404/409/410, corrida de accepts, idempotência da oração, chama com
+2 users ativos, unpair em cascata, LGPD liberta o cônjuge).
 
-### Iteração 3 — "O rosto da aliança"
-`AliancaCard` (3 estados) + redenção do convite no boot + compartilhar
-WhatsApp; celebração de pareamento; missões a dois (seed + triggers
-conjuntos); screenshots mobile.
+### Iteração 3 — "O rosto da aliança" ✅ CONSTRUÍDA
+`AliancaCard` (3 estados) no cluster "Hoje com Deus"; redenção do
+convite `/?convite=CODE` no boot (logado ou pós-cadastro, código some da
+URL e sobrevive em localStorage); compartilhar via NativeShare ("Enviar
+pro seu amor"); celebração "Aliança firmada! 🤍" no CelebrationOverlay;
+missões a dois seedadas + gatilhos conjuntos no amém e na oração
+(crédito pros DOIS só quando o dia do casal se completa — testado).
+Fluxo validado de ponta a ponta por screenshot: convite → link → 
+celebração → card pareado com chama do casal.
 
 ### Iteração 4 — "Polimento e prova"
 Revisão visual (mobile/desktop), estados de erro, suítes completas,

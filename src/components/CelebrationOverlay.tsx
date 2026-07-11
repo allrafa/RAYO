@@ -19,6 +19,13 @@ const CONFETTI_COLORS = [
 ];
 
 function messageFor(c: Celebration): { emoji: string; title: string; subtitle: string } {
+  if (c.kind === "paired") {
+    return {
+      emoji: "🤍",
+      title: "Aliança firmada!",
+      subtitle: "Vocês agora caminham juntos no RAYO. Que Deus guarde essa jornada a dois.",
+    };
+  }
   if (c.kind === "levelup") {
     return {
       emoji: "🌟",
