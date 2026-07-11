@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, MoreVertical, ThumbsUp, ThumbsDown, Share, Plus, Eye, Clock, Loader2 } from "lucide-react";
+import { ArrowLeft, Eye, Clock, Loader2 } from "lucide-react";
+import { FavoriteButton } from "./FavoriteButton";
+import { NativeShare } from "./NativeShare";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -230,11 +232,24 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
                   </div>
                 </div>
 
+                {/* UX_PLAN.md J3 — ações REAIS no lugar dos botões decorativos
+                    (like/dislike/share sem onClick confundiam). Salvar usa
+                    favoritos; Compartilhar usa o share nativo do celular. */}
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="gap-2"><ThumbsUp className="w-4 h-4" />{currentVideo.likes}</Button>
-                  <Button variant="outline" size="sm"><ThumbsDown className="w-4 h-4" /></Button>
-                  <Button variant="outline" size="sm"><Share className="w-4 h-4" /></Button>
-                  <Button variant="outline" size="sm"><MoreVertical className="w-4 h-4" /></Button>
+                  <FavoriteButton
+                    id={Number(currentVideo.id)}
+                    type="video"
+                    variant="outline"
+                    showLabel
+                  />
+                  <NativeShare
+                    data={{
+                      title: currentVideo.title,
+                      text: `Assista "${currentVideo.title}" no RAYO`,
+                      url: typeof window !== "undefined" ? window.location.href : "",
+                    }}
+                    variant="button"
+                  />
                 </div>
               </div>
             </div>
@@ -250,16 +265,9 @@ export function VideoPage({ videoId, onBack }: VideoPageProps) {
                   </div>
 
                   <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>{currentVideo.channel}</h3>
-                        <p className="text-sm" style={{ color: 'var(--rayo-ink-400)' }}>{currentVideo.subscribers} inscritos</p>
-                      </div>
-                      <Button className="transition-all" style={{ background: 'var(--rayo-terra-500)', color: '#FFFFFF' }}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Inscrever-se
-                      </Button>
-                    </div>
+                    {/* Sem "Inscrever-se"/"X inscritos" fake (UX_PLAN J3) —
+                        aqui é conteúdo do RAYO, não um canal de YouTube. */}
+                    <h3 style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>{currentVideo.channel}</h3>
 
                     <div className="mt-3">
                       <p className="text-sm leading-relaxed">

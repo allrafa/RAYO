@@ -96,20 +96,24 @@ estão desligadas**:
    o divisor "ou ..." também some quando não há nenhum provedor.
 6. ✅ Código morto `EmailVerification.tsx` removido.
 
-### Iteração 4 — "Confiança na compra" (J3)
-1. Remover promessas falsas: "Pix e boleto" (`FaqPage.tsx:51`), "Sem cartão
-   de crédito" (`LandingPage.tsx:171,650`), "12x" (`CourseDetailPage.tsx:420`,
-   `QuizPage.tsx:440`), planos Free/Premium/Família
-   (`LandingPage.tsx:400-489`, `FaqPage.tsx:48`).
-2. Unificar a garantia em UM número (7 dias grátis) em todas as superfícies.
-3. Mostrar data da 1ª cobrança + "renova automaticamente — cancele quando
-   quiser" ANTES de pagar (`TrilhaDetailPage.tsx:376-401`).
-4. Consertar links mortos `/planos`/`/status` e o caminho de cancelamento
-   descrito no FAQ (real: Perfil → Minhas assinaturas → Gerenciar).
-5. WhatsApp de suporte no card de compra (env `VITE_SUPPORT_WHATSAPP_URL`).
-6. VideoPage: remover like/dislike/"Inscrever-se"/"2.3M" decorativos
-   (`VideoPage.tsx:233-262`) e colocar Salvar (`FavoriteButton`) +
-   Compartilhar (`NativeShare`) funcionais.
+### Iteração 4 — "Confiança na compra" (J3) ✅ CONCLUÍDA (2026-07-11)
+1. ✅ Promessas falsas removidas: FAQ de pagamento reescrito para o produto
+   real (assinatura por trilha, cartão, 7 dias grátis, "Pix em breve" como
+   promessa honesta de roadmap); "Sem cartão de crédito" fora da landing;
+   "12x" removido do curso e do quiz; cards Free/Premium R$49 da landing
+   viraram "Conta gratuita" + "Trilhas guiadas" (CTAs levam a /trilhas).
+2. ✅ Garantia unificada: 7 dias grátis + "cancele quando quiser" em todas
+   as superfícies (fora o reembolso de 14 dias e a garantia de 30).
+3. ✅ Data exata da 1ª cobrança + "renova todo mês/ano · cancele quando
+   quiser" exibidas no card de compra ANTES do checkout.
+4. ✅ Links mortos: `/planos` removido (FAQ aponta para `/trilhas`) e card
+   de "/status" removido; caminho de cancelamento corrigido no FAQ
+   (Perfil → Minhas assinaturas → Gerenciar).
+5. ✅ WhatsApp de suporte no card de compra da trilha (aparece quando
+   `VITE_SUPPORT_WHATSAPP_URL` está configurada).
+6. ✅ VideoPage sem teatro: like/dislike/menu decorativos e o bloco
+   "Inscrever-se"/"2.3M inscritos" saíram; entraram Salvar (favoritos) e
+   Compartilhar (share nativo) funcionais.
 
 ### Iteração 5 — "Busca e linguagem" (J1/J4)
 1. Busca no celular: ressuscitar `MobileSearchPage.tsx` com entrada na Home.

@@ -416,9 +416,6 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                         <div className="text-3xl font-bold text-[var(--rayo-forest-700)]">
                           R$ {displayPrice.toFixed(2).replace('.', ',')}
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          ou 12x de R$ {(displayPrice / 12).toFixed(2).replace('.', ',')}
-                        </div>
                       </div>
                     ) : (
                       <div className="text-center">
@@ -478,7 +475,7 @@ export function CourseDetailPage({ courseId, onBack }: CourseDetailPageProps) {
                         {course.price > 0 && (
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground">
-                              30 dias de garantia
+                              Cancele quando quiser, sem multa
                             </p>
                           </div>
                         )}

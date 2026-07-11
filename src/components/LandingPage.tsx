@@ -62,7 +62,9 @@ export function LandingPage({
 
   const handleStartPremium = () => {
     trackCTAClick('hero', 'premium');
-    onStartPremium?.();
+    // Destino honesto: o catálogo público de trilhas (o produto pago real),
+    // não um "plano Premium" que não existe.
+    window.location.href = "/trilhas";
   };
 
   return (
@@ -149,7 +151,7 @@ export function LandingPage({
               className="w-full sm:w-auto bg-[var(--rayo-terra-500)] hover:bg-[var(--rayo-terra-700)] text-[var(--rayo-sand-50)] shadow-[0 4px 10px rgba(12,59,46,0.08)] min-w-[200px]"
             >
               <Zap className="w-5 h-5 mr-2" />
-              Começar Premium
+              Conhecer as trilhas
             </Button>
             <Button
               size="lg"
@@ -390,10 +392,11 @@ export function LandingPage({
             className="text-center mb-12"
           >
             <h2 className="text-[var(--rayo-forest-900)] mb-4">
-              Escolha seu plano
+              Comece grátis, avance no seu ritmo
             </h2>
             <p className="text-[var(--rayo-ink-700)] max-w-2xl mx-auto">
-              Comece grátis e faça upgrade quando quiser. Sem compromisso.
+              A conta é gratuita. Quando quiser ir mais fundo, assine a trilha
+              da sua fase de vida — com 7 dias grátis e cancelamento fácil.
             </p>
           </motion.div>
 
@@ -408,11 +411,11 @@ export function LandingPage({
                 <CardContent className="p-6 lg:p-8">
                   <div className="mb-6">
                     <h3 className="text-[var(--rayo-forest-900)] mb-2">
-                      Gratuito
+                      Conta gratuita
                     </h3>
                     <div className="flex items-baseline gap-2 mb-1">
                       <span className="text-[var(--rayo-forest-900)]">R$ 0</span>
-                      <span className="text-[var(--rayo-ink-400)] text-sm">/mês</span>
+                      <span className="text-[var(--rayo-ink-400)] text-sm">para sempre</span>
                     </div>
                     <p className="text-[var(--rayo-ink-700)] text-sm">
                       Para explorar a plataforma
@@ -421,10 +424,10 @@ export function LandingPage({
 
                   <ul className="space-y-3 mb-8">
                     {[
-                      'Acesso a conteúdo introdutório',
-                      'Conselheiro IA (limitado)',
-                      'Participação na comunidade',
-                      'Gamificação básica'
+                      'Comunidade com famílias como a sua',
+                      'Missões diárias e sequências',
+                      'Conteúdos abertos (áudios, vídeos e artigos)',
+                      'Acompanhamento do seu progresso'
                     ].map((feature) => (
                       <li key={feature} className="flex items-start text-sm">
                         <Check className="w-4 h-4 mr-2 mt-0.5 text-[var(--rayo-sage-500)] flex-shrink-0" />
@@ -462,27 +465,26 @@ export function LandingPage({
                 <CardContent className="p-6 lg:p-8">
                   <div className="mb-6">
                     <h3 className="text-[var(--rayo-forest-900)] mb-2">
-                      Premium
+                      Trilhas guiadas
                     </h3>
                     <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-[var(--rayo-forest-900)]">R$ 49</span>
-                      <span className="text-[var(--rayo-ink-400)] text-sm">/mês</span>
+                      <span className="text-[var(--rayo-forest-900)]">7 dias grátis</span>
+                      <span className="text-[var(--rayo-ink-400)] text-sm">na primeira assinatura</span>
                     </div>
                     <p className="text-[var(--rayo-ink-700)] text-sm">
-                      Acesso completo e ilimitado
+                      Assinatura por trilha, mensal ou anual — o preço de cada
+                      trilha está na página dela
                     </p>
                   </div>
 
                   <ul className="space-y-3 mb-8">
                     {[
-                      'Todos os cursos e livros',
-                      'Conselheiro IA ilimitado',
-                      'Comunidades exclusivas',
-                      'Gamificação completa',
-                      'Certificados profissionais',
-                      'Conteúdo sincronizado (áudio + texto)',
-                      'Suporte prioritário',
-                      '7 dias grátis'
+                      'Turmas completas, com aulas passo a passo',
+                      'Material de apoio e exercícios práticos',
+                      'Comunidade exclusiva da trilha',
+                      'Progresso acompanhado aula a aula',
+                      'Novos conteúdos sem custo extra',
+                      'Cancele quando quiser, sem multa'
                     ].map((feature) => (
                       <li key={feature} className="flex items-start text-sm">
                         <Check className="w-4 h-4 mr-2 mt-0.5 text-[var(--rayo-terra-500)] flex-shrink-0" />
@@ -496,7 +498,7 @@ export function LandingPage({
                     onClick={handleStartPremium}
                   >
                     <Zap className="w-4 h-4 mr-2" />
-                    Começar Premium
+                    Conhecer as trilhas
                   </Button>
 
                   <p className="text-center text-[var(--rayo-ink-400)] text-xs mt-4">
@@ -647,7 +649,7 @@ export function LandingPage({
             </div>
 
             <p className="text-[var(--rayo-ink-400)] mt-6 text-sm">
-              7 dias grátis • Cancele quando quiser • Sem cartão de crédito
+              Conta gratuita • Trilhas com 7 dias grátis • Cancele quando quiser
             </p>
           </div>
         </motion.div>

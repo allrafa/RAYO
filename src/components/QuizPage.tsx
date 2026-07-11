@@ -437,7 +437,6 @@ export function QuizPage({ quizType, onBack, onComplete }: QuizPageProps) {
                       <div className="flex items-center justify-between">
                         <div>
                           <span className="text-2xl font-bold text-rayo-coral-600">{result.recommendedCourse.price}</span>
-                          <span className="text-sm text-rayo-forest-600 ml-2">ou 12x sem juros</span>
                         </div>
                         
                         <Button
