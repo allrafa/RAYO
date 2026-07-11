@@ -142,8 +142,15 @@ Rafael — Pix, push real, reels vertical, OTP WhatsApp, checkout embedded.
 - **Pix**: o bloqueio não é flag — `mode:"subscription"` não suporta Pix.
   Caminho recomendado: plano anual à vista via `mode:"payment"` +
   concessão de acesso por 12 meses no webhook. Decisão de negócio.
-- **Push real** (service worker + VAPID + tabela de subscriptions) — o
-  maior multiplicador do J2 depois das notificações in-app.
+- ✅ **Push real** — CONSTRUÍDO (2026-07-11, pós-aprovação do plano):
+  tabela `push_subscriptions`, `server/lib/push.ts` (web-push/VAPID, envio
+  fire-and-forget acoplado ao `createNotification`, limpeza de
+  subscriptions mortas), rotas `/api/push/*`, service worker `public/sw.js`
+  e banner de ativação na Home (`PushPrompt`). Dependência nova:
+  `web-push` (+ types). **Ativação manual**: gerar chaves com
+  `npx web-push generate-vapid-keys` e definir `VAPID_PUBLIC_KEY`,
+  `VAPID_PRIVATE_KEY` e `VAPID_SUBJECT` nas envs — sem elas o push fica
+  desligado de forma limpa.
 - **Reels vertical 9:16 com swipe** (hoje reels abrem em player 16:9).
 - **Hold-to-record no áudio da DM + reply/quote** estilo WhatsApp.
 - **Cadastro por magic link (sem senha) ou OTP por WhatsApp** — a infra de

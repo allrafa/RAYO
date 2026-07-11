@@ -19,6 +19,7 @@ import { PlaylistsExpandedPage } from "./PlaylistsExpandedPage";
 import { HojeNoRaio } from "./home/HojeNoRaio";
 import { RailCarousel } from "./home/RailCarousel";
 import { UnifiedContinue } from "./home/UnifiedContinue";
+import { PushPrompt } from "./PushPrompt";
 import { useYouTubeData } from "./hooks/useYouTubeData";
 import { YouTubeShortCard } from "./youtube/YouTubeShortCard";
 import { YouTubePlayerWithPlaylist } from "./youtube/YouTubePlayerWithPlaylist";
@@ -406,6 +407,9 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
               </div>
             </section>
           )}
+
+          {/* ── ATIVAR NOTIFICAÇÕES (push) ──────────────────── */}
+          <PushPrompt />
 
           {/* ── CONTINUE DE ONDE PAROU (UX_PLAN.md J1) ──────── */}
           <UnifiedContinue onOpenAcademia={() => onNavigate?.("academia")} />

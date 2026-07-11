@@ -1244,6 +1244,21 @@ export async function initializeSchema() {
   // Task #261 — EPUB: CFI do trecho selecionado (NULL pra notas em PDF).
   await query(`ALTER TABLE book_notes ADD COLUMN IF NOT EXISTS cfi TEXT`);
 
+  // UX_PLAN.md estrutural — Web Push: uma linha por dispositivo inscrito.
+  // endpoint é único por navegador/dispositivo; p256dh/auth são as chaves
+  // de criptografia do payload (padrão Web Push/VAPID).
+  await query(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      endpoint TEXT UNIQUE NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id)`);
+
   // Backfill: courses.total_lessons é derivado das lições, mas o CMS criava
   // cursos com 0 e nunca recalculava — progresso do aluno ficava preso em 0%.
   // O CMS agora recalcula a cada mutação (cms/service.ts); aqui corrigimos o
