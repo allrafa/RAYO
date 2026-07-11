@@ -74,6 +74,9 @@ test.describe("Login social não pede confirmação de e-mail (Task #206)", () =
         description: "Criada direto após login social.",
         icon: "💬",
         category: "Outros",
+        // Capa é obrigatória na criação (COVER_REQUIRED); a API aceita só
+        // sentinels objstore://forums/* e degrada a resolução com elegância.
+        cover_url: "objstore://forums/e2e-test-cover.jpg",
       },
     });
 

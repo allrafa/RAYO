@@ -452,7 +452,7 @@ export async function createContentItem(input: {
     `INSERT INTO content_items
        (kind, title, slug, short_description, long_description, status, published_at, created_by, segments)
      VALUES ($1, $2, $3, $4, $5, $6,
-             CASE WHEN $6 = 'published' THEN NOW() ELSE NULL END,
+             CASE WHEN $6::text = 'published' THEN NOW() ELSE NULL END,
              $7, ARRAY[]::text[])
      RETURNING id`,
     [kind, title, slug, body.slice(0, 200), body, status, input.createdBy ?? null],

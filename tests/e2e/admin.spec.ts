@@ -106,7 +106,7 @@ test.describe("Admin — moderar post (Task #241)", () => {
 
   test.afterEach(async () => {
     if (postId) {
-      await pool.query(`DELETE FROM community_posts WHERE id = $1`, [postId]).catch(() => {});
+      await pool.query(`DELETE FROM posts WHERE id = $1`, [postId]).catch(() => {});
       postId = null;
     }
     const ids = [admin?.id, author?.id].filter((v): v is number => typeof v === "number");
@@ -166,7 +166,7 @@ test.describe("Admin — moderar post (Task #241)", () => {
     await expect.poll(
       async () => {
         const { rows } = await pool.query<{ is_hidden: boolean }>(
-          `SELECT is_hidden FROM community_posts WHERE id = $1`, [postId!],
+          `SELECT is_hidden FROM posts WHERE id = $1`, [postId!],
         );
         return rows[0]?.is_hidden ?? null;
       },

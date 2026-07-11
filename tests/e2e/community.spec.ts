@@ -171,18 +171,16 @@ test.describe("Comunidade — reagir em post (Task #241)", () => {
     const postArticle = page.locator(".ra-card", { hasText: postTitle }).first();
     await expect(postArticle).toBeVisible({ timeout: 20_000 });
 
-    const picker = postArticle.getByRole("button", { name: /Reagir ao post/ });
-    await expect(picker).toBeVisible({ timeout: 10_000 });
-    await picker.click();
+    // UX_PLAN.md J1 — curtir agora é 1 toque: o botão "Curtir" aplica ❤️
+    // direto (o leque de emojis fica no long-press/hover).
+    const likeBtn = postArticle.getByRole("button", { name: /^Curtir$/ });
+    await expect(likeBtn).toBeVisible({ timeout: 10_000 });
+    await likeBtn.click();
 
-    // Menu popover do picker — escolhe ❤️ (popover é portal global,
-    // então fica fora do article; mas só um picker está aberto por vez).
-    const heart = page.getByRole("button", { name: /Reagir com ❤️/ }).first();
-    await expect(heart).toBeVisible({ timeout: 5_000 });
-    await heart.click();
-
-    // Chip agregado aparece DENTRO do mesmo article (re-escopado).
-    await expect(postArticle.getByRole("button", { name: /Remover reação ❤️/ }))
+    // Chip agregado aparece DENTRO do mesmo article (re-escopado). O botão
+    // principal também troca o aria-label pra "Remover reação ❤️" — por
+    // isso o .first() (dois matches no mesmo card são esperados).
+    await expect(postArticle.getByRole("button", { name: /Remover reação ❤️/ }).first())
       .toBeVisible({ timeout: 10_000 });
 
     await ctx.close();

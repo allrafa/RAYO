@@ -76,6 +76,9 @@ jobs:
       PUBLIC_SITE_URL: http://localhost:5000
       APP_URL: http://localhost:5000
       PLAYWRIGHT_BASE_URL: http://localhost:5000
+      # 4 workers Playwright registram dezenas de usuários do mesmo IP —
+      # estouraria o limite 20/15min de /api/auth. Gate só vale fora de prod.
+      RATE_LIMIT_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

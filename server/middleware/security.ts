@@ -110,6 +110,12 @@ export function rateLimiter(
   }, 60000).unref?.();
 
   return (req: Request, res: Response, next: NextFunction) => {
+    // Escape hatch para suítes E2E (CI roda 4 workers em paralelo contra o
+    // mesmo IP e estoura o limite de /api/auth ao criar usuários de teste).
+    // NUNCA setar em produção — o gate exige NODE_ENV != production.
+    if (process.env.RATE_LIMIT_DISABLED === "1" && process.env.NODE_ENV !== "production") {
+      return next();
+    }
     if (skip && skip(req)) return next();
 
     let key: string;
