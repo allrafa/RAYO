@@ -91,6 +91,11 @@ export const COMMUNITY_NOTIFICATION_KINDS = [
   "class_post",
   "class_interest",
   "post_moderated",
+  // UX_PLAN.md J2 — loop social: interações no seu conteúdo.
+  "post_comment",
+  "comment_reply",
+  "post_reaction",
+  "comment_reaction",
 ] as const;
 
 export interface UnreadBySection {

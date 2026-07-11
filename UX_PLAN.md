@@ -60,20 +60,26 @@ estão desligadas**:
 
 ## 3. Roadmap de construção (iterações do loop)
 
-### Iteração 2 — "O retorno e o toque" (maior alavanca / menor esforço)
-1. Montar `UnifiedContinue` no topo da Home (após "Hoje no RAYO") — também
-   resolve o estado vazio de conta nova (`HomePage.tsx:~343`).
-2. Notificar comentário e reação no servidor: `createNotification` em
-   `addComment` e `togglePostReaction`/`toggleCommentReaction`
-   (`community/service.ts:1149,1224,1299`) + kinds em
-   `notifications/service.ts:90-94`. Com dedupe básico anti-spam.
-3. Curtir de 1 toque: tap = ❤️; long-press/hover abre o picker
-   (`EmojiReactionPicker.tsx`, handler em `ComunidadePage.tsx:1972`).
-4. Auto-focar o input de comentário no mobile
-   (`ComunidadePage.tsx:2299-2304`).
-5. Sugerir fóruns pelo segmento do usuário: ordenar `listForums` com match
-   de `life_context`×`user.segments` + destacar no empty state; auto-
-   inscrever no fórum do segmento + Geral no registro.
+### Iteração 2 — "O retorno e o toque" ✅ CONCLUÍDA (2026-07-11)
+1. ✅ `UnifiedContinue` montado no topo da Home (após "Hoje no RAYO") —
+   inclui o empty state acolhedor para conta nova.
+2. ✅ Loop social fechado: `notifyCommunityActivity()` em
+   `community/service.ts` dispara notificação em comentário no post
+   (`post_comment`), resposta a comentário (`comment_reply`) e reação em
+   post/comentário (`post_reaction`/`comment_reaction`), com dedupe por
+   (destinatário, kind, alvo, ator) para reações e nunca notificando a si
+   mesmo. Kinds adicionados ao badge de Comunidade. Regressão:
+   `tests/integration/notifications/social-loop.test.ts` (3 specs).
+3. ✅ Curtir de 1 toque no PostCard: tap = ❤️ (ou remove a reação atual);
+   long-press (450ms) ou hover (550ms) abre o leque de 6 emojis; rótulo
+   "Curtir" quando sem reações.
+4. ✅ Input de comentário auto-focado também no mobile (teclado já aberto,
+   padrão Instagram).
+5. ✅ Fóruns do contexto de vida do usuário vêm primeiro no Explorar
+   (`listForums` ordena por match `life_context`×`segments`, com
+   `noivos`→`namoro`) e o registro auto-inscreve o novo usuário no fórum
+   do seu segmento + Geral (`autoSubscribeCommunities` em
+   `auth/service.ts`, best-effort).
 
 ### Iteração 3 — "Cadastro sem atrito" (J5)
 1. Auto-submit do código ao 6º dígito (`AuthPage.tsx:438-453`); copy

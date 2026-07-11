@@ -18,6 +18,7 @@ import { MusicPage } from "./MusicPage";
 import { PlaylistsExpandedPage } from "./PlaylistsExpandedPage";
 import { HojeNoRaio } from "./home/HojeNoRaio";
 import { RailCarousel } from "./home/RailCarousel";
+import { UnifiedContinue } from "./home/UnifiedContinue";
 import { useYouTubeData } from "./hooks/useYouTubeData";
 import { YouTubeShortCard } from "./youtube/YouTubeShortCard";
 import { YouTubePlayerWithPlaylist } from "./youtube/YouTubePlayerWithPlaylist";
@@ -405,6 +406,9 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
               </div>
             </section>
           )}
+
+          {/* ── CONTINUE DE ONDE PAROU (UX_PLAN.md J1) ──────── */}
+          <UnifiedContinue onOpenAcademia={() => onNavigate?.("academia")} />
 
           {/* ── RECOMENDADO ─────────────────────────────────── */}
           {recommendedCourses.length > 0 && (
