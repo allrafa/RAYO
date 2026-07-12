@@ -111,7 +111,10 @@ test.describe("CMS Producer — criar / listar / arquivar (Task #242)", () => {
     await page.getByRole("button", { name: /^Conteúdo$/ }).first().click();
     await expect(page.getByText(renamedTitle, { exact: false }).first())
       .toBeVisible({ timeout: 15_000 });
-    await expect(page.getByRole("heading", { level: 3, name: originalTitle }))
+    // exact: true — o título editado ("... EDITADO") CONTÉM o original como
+    // substring; sem exact, o match por substring acharia o heading renomeado
+    // e o count nunca zeraria.
+    await expect(page.getByRole("heading", { level: 3, name: originalTitle, exact: true }))
       .toHaveCount(0);
 
     await ctx.close();

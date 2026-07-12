@@ -217,6 +217,19 @@ export async function deleteUserData(userId: number): Promise<void> {
     await client.query(`DELETE FROM user_badges WHERE user_id = $1`, [userId]);
     await client.query(`DELETE FROM xp_log WHERE user_id = $1`, [userId]);
 
+    // ALIANCA_PLAN.md §6 — a anonimização mantém a linha do user, então o
+    // vínculo de casal precisa de limpeza explícita: o cônjuge volta ao
+    // estado sem aliança (orações caem em cascata com o casal).
+    await client.query(`DELETE FROM couples WHERE user_a = $1 OR user_b = $1`, [userId]);
+    await client.query(
+      `DELETE FROM couple_invites WHERE inviter_id = $1 OR accepted_by = $1`,
+      [userId]
+    );
+    // Lacunas da mesma natureza detectadas na revisão: améns e inscrições
+    // de push também são dados do titular e a linha do user não é deletada.
+    await client.query(`DELETE FROM verse_amens WHERE user_id = $1`, [userId]);
+    await client.query(`DELETE FROM push_subscriptions WHERE user_id = $1`, [userId]);
+
     await client.query(
       `UPDATE analytics_events SET user_id = NULL WHERE user_id = $1`,
       [userId]

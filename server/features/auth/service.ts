@@ -360,8 +360,30 @@ export async function registerUser(input: RegisterInput): Promise<{ user: SafeUs
   trackEvent(user.id, "user_registered", { method: "email" });
 
   void sendWelcomeEmail(user.email, user.name);
+  void autoSubscribeCommunities(user.id, segments);
 
   return { user, token };
+}
+
+// UX_PLAN.md J2 — o novo usuário já entra seguindo o fórum do seu contexto
+// de vida + o Geral, pra "Minhas comunidades" e o feed não nascerem vazios.
+// Best-effort: falha aqui nunca bloqueia o cadastro. Import dinâmico evita
+// ciclo auth ↔ community.
+async function autoSubscribeCommunities(userId: number, segments: string[]): Promise<void> {
+  try {
+    const { segmentsToLifeContexts } = await import("../community/service.js");
+    const contexts = segmentsToLifeContexts(segments);
+    await query(
+      `INSERT INTO forum_subscriptions (forum_id, user_id)
+       SELECT f.id, $1 FROM forums f
+        WHERE f.is_active = TRUE
+          AND (f.life_context = ANY($2::text[]) OR f.name = 'Geral')
+       ON CONFLICT DO NOTHING`,
+      [userId, contexts],
+    );
+  } catch (err) {
+    logger.warn("Auth", `auto-subscribe de comunidades falhou para user ${userId}: ${(err as Error).message}`);
+  }
 }
 
 export async function loginUser(input: LoginInput, ip?: string, userAgent?: string): Promise<{ user: SafeUser; token: string }> {

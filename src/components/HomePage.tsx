@@ -18,6 +18,12 @@ import { MusicPage } from "./MusicPage";
 import { PlaylistsExpandedPage } from "./PlaylistsExpandedPage";
 import { HojeNoRaio } from "./home/HojeNoRaio";
 import { RailCarousel } from "./home/RailCarousel";
+import { UnifiedContinue } from "./home/UnifiedContinue";
+import { PalavraDoDia } from "./home/PalavraDoDia";
+import { SemanaViva } from "./home/SemanaViva";
+import { AliancaCard } from "./home/AliancaCard";
+import { StreakChip } from "./home/StreakChip";
+import { PushPrompt } from "./PushPrompt";
 import { useYouTubeData } from "./hooks/useYouTubeData";
 import { YouTubeShortCard } from "./youtube/YouTubeShortCard";
 import { YouTubePlayerWithPlaylist } from "./youtube/YouTubePlayerWithPlaylist";
@@ -341,6 +347,23 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
       <div className="rh-root">
         <div className="rh-content">
 
+          {/* ── HOJE COM DEUS (ENGAGEMENT_PLAN E1/E2/E4) ──────────
+              Cluster espiritual do topo: eyebrow + chama de sequência,
+              Palavra do dia e semana viva — uma section só pra que o
+              gap de 36px do rh-content não desconecte as peças. */}
+          {authUser && (
+            <section className="rh-sec" style={{ gap: 14 }} aria-label="Hoje com Deus">
+              <div className="flex items-center justify-between">
+                <div className="rh-sec-eyebrow" style={{ marginBottom: 0 }}>
+                  Hoje com Deus
+                </div>
+                <StreakChip streak={dashboard?.gamification.streak ?? 0} />
+              </div>
+              <PalavraDoDia onEngaged={() => { void loadDashboard(); }} />
+              <SemanaViva refreshKey={dashboard?.gamification.xp ?? 0} />
+              <AliancaCard refreshKey={dashboard?.gamification.xp ?? 0} />
+            </section>
+          )}
 
           {/* ── HOJE NO RAYO ────────────────────────────────── */}
           {/* Mantém HojeNoRaio SEMPRE montado pra preservar lifecycle
@@ -405,6 +428,12 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
               </div>
             </section>
           )}
+
+          {/* ── ATIVAR NOTIFICAÇÕES (push) ──────────────────── */}
+          <PushPrompt />
+
+          {/* ── CONTINUE DE ONDE PAROU (UX_PLAN.md J1) ──────── */}
+          <UnifiedContinue onOpenAcademia={() => onNavigate?.("academia")} />
 
           {/* ── RECOMENDADO ─────────────────────────────────── */}
           {recommendedCourses.length > 0 && (

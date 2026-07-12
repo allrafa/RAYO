@@ -245,7 +245,7 @@ router.post("/forums", requireAuth, forumCreateLimiter, async (req, res, next) =
 
 router.get("/forums", async (req, res, next) => {
   try {
-    const forums = await listForums(req.user?.id);
+    const forums = await listForums(req.user?.id, req.user?.segments);
     success(res, { forums });
   } catch (err) {
     next(err);

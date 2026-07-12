@@ -2290,17 +2290,15 @@ function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComme
     return () => { document.body.style.overflow = prev; };
   }, []);
 
-  // Task #115 — foco inicial: no desktop (pointer:fine), foca o input
-  // pra usuário poder digitar imediatamente; no mobile, foca o botão de
-  // fechar (não força abertura de teclado, mas mantém Tab/Esc utilizáveis).
+  // UX_PLAN.md J1 (revisa Task #115) — foco inicial SEMPRE no input, também
+  // no mobile: quem abre comentários veio comentar, e o padrão do persona
+  // (Instagram/WhatsApp) é o teclado já aberto. Esc/swipe-down continuam
+  // fechando o sheet.
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const sheetRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    const isDesktop = typeof window !== "undefined"
-      && window.matchMedia?.("(pointer: fine)").matches;
-    if (isDesktop) inputRef.current?.focus();
-    else closeBtnRef.current?.focus();
+    inputRef.current?.focus();
   }, []);
 
   // Task #115 — Esc fecha + focus-trap simples (Tab cycle entre elementos

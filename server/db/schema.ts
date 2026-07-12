@@ -544,6 +544,11 @@ export async function initializeSchema() {
   // exibido e o real. Idempotente (DROP IF EXISTS).
   await query(`ALTER TABLE forums DROP COLUMN IF EXISTS member_count`);
   await query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS images JSONB NOT NULL DEFAULT '[]'::jsonb`);
+  // view_count de posts: o handler de realtime (server/realtime/community.ts)
+  // incrementa esta coluna ao ver um post, mas ela nunca existiu na tabela
+  // `posts` (só em content_items) — a contagem falhava em silêncio. Adiciona
+  // idempotente pra o tracking de views funcionar de fato.
+  await query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS view_count INTEGER NOT NULL DEFAULT 0`);
 
   // Backfill de slug para forums já existentes (idempotente: só roda em
   // linhas com slug NULL/vazio). Slugify simples sem dependência externa.
@@ -1244,6 +1249,71 @@ export async function initializeSchema() {
   // Task #261 — EPUB: CFI do trecho selecionado (NULL pra notas em PDF).
   await query(`ALTER TABLE book_notes ADD COLUMN IF NOT EXISTS cfi TEXT`);
 
+  // ENGAGEMENT_PLAN.md E1 — Palavra do dia: 1 amém por usuário por dia.
+  // O contador comunitário do dia é COUNT(*) WHERE amen_date = hoje.
+  await query(`
+    CREATE TABLE IF NOT EXISTS verse_amens (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      amen_date DATE NOT NULL,
+      verse_ref VARCHAR(60) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, amen_date)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_verse_amens_date ON verse_amens(amen_date)`);
+
+  // ALIANCA_PLAN.md — Aliança (Modo Casal). UNIQUE em user_a e user_b
+  // garante no máximo um vínculo ativo por pessoa; CHECK (user_a < user_b)
+  // é a ordem canônica que impede a dupla invertida.
+  await query(`
+    CREATE TABLE IF NOT EXISTS couples (
+      id SERIAL PRIMARY KEY,
+      user_a INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      user_b INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      CHECK (user_a < user_b)
+    )
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS couple_invites (
+      id SERIAL PRIMARY KEY,
+      inviter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      code VARCHAR(12) NOT NULL UNIQUE,
+      status VARCHAR(12) NOT NULL DEFAULT 'pending',
+      accepted_by INTEGER REFERENCES users(id),
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      expires_at TIMESTAMP NOT NULL DEFAULT NOW() + INTERVAL '7 days'
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_couple_invites_inviter ON couple_invites(inviter_id)`);
+  // 1 oração por dia por direção — a restrição é o que dá peso ao gesto.
+  await query(`
+    CREATE TABLE IF NOT EXISTS couple_prayers (
+      id SERIAL PRIMARY KEY,
+      couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+      from_user INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      prayed_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (couple_id, from_user, prayed_date)
+    )
+  `);
+
+  // UX_PLAN.md estrutural — Web Push: uma linha por dispositivo inscrito.
+  // endpoint é único por navegador/dispositivo; p256dh/auth são as chaves
+  // de criptografia do payload (padrão Web Push/VAPID).
+  await query(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      endpoint TEXT UNIQUE NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_push_subs_user ON push_subscriptions(user_id)`);
+
   // Backfill: courses.total_lessons é derivado das lições, mas o CMS criava
   // cursos com 0 e nunca recalculava — progresso do aluno ficava preso em 0%.
   // O CMS agora recalcula a cada mutação (cms/service.ts); aqui corrigimos o
@@ -1309,6 +1379,10 @@ async function seedBadgesAndMissions() {
     { title: 'Completar 3 aulas', description: 'Assista 3 aulas esta semana', type: 'weekly', action_type: 'watch_lesson', action_count: 3, xp_reward: 75 },
     { title: 'Explorador de conteúdo', description: 'Acesse 3 áreas diferentes da plataforma', type: 'weekly', action_type: 'explore_areas', action_count: 3, xp_reward: 50 },
     { title: 'Engajamento comunitário', description: 'Faça 5 interações na comunidade', type: 'weekly', action_type: 'community_interact', action_count: 5, xp_reward: 100 },
+    // ALIANCA_PLAN.md §5 — missões a dois: o progresso continua por
+    // usuário (engine intacto), mas o gatilho é conjunto e credita ambos.
+    { title: 'Améns em aliança', description: 'Vocês dois digam amém na Palavra do dia 3x nesta semana', type: 'weekly', action_type: 'couple_amen_day', action_count: 3, xp_reward: 60 },
+    { title: 'Oração mútua', description: 'Orem um pelo outro no mesmo dia 3x nesta semana', type: 'weekly', action_type: 'couple_prayer_day', action_count: 3, xp_reward: 60 },
   ];
 
   for (const m of missions) {
@@ -1550,10 +1624,20 @@ async function seedForumsAndPosts() {
 
   const forumIds: Record<string, number> = {};
   for (const f of forumsData) {
+    // Slug já na criação: o backfill de slug roda ANTES deste seed no boot,
+    // então banco novo ficava com slug NULL até o segundo boot — quebrando
+    // /c/<slug> e o "Comunidade não encontrada" no primeiro uso.
+    const slug = f.name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60);
     const { rows: fRows } = await query(
-      `INSERT INTO forums (name, description, icon, life_context, category, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [f.name, f.description, f.icon, f.life_context, f.category, f.sort_order]
+      `INSERT INTO forums (name, slug, description, icon, life_context, category, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [f.name, slug, f.description, f.icon, f.life_context, f.category, f.sort_order]
     );
     forumIds[f.name] = fRows[0].id;
   }

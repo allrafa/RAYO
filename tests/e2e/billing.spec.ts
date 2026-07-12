@@ -102,11 +102,18 @@ test.describe("Billing — gating 402 + acesso após assinatura mockada (Task #2
         ),
         cta.click(),
       ]);
-      // 200 (com URL Stripe) ou 4xx (config faltando) — ambos OK pra prova
-      // de fluxo. Só não pode ser 404 (rota errada) ou 5xx (bug servidor).
+      // 200 (com URL Stripe) ou 4xx (config faltando) provam o fluxo. Só não
+      // pode ser 404 (rota errada). Em CI/dev a trilha de teste não tem
+      // stripe_price_*_id, então o checkout devolve 503 PRICE_NOT_CONFIGURED
+      // — estado de config conhecido (mesmo gate de ambiente da Task #267),
+      // aceito aqui; qualquer OUTRO 5xx é bug de servidor e reprova.
       const status = checkoutResp.status();
       expect(status).not.toBe(404);
-      expect(status).toBeLessThan(500);
+      if (status >= 500) {
+        const bodyText = await checkoutResp.text().catch(() => "");
+        expect(bodyText, `5xx inesperado no checkout: ${status} ${bodyText}`)
+          .toContain("PRICE_NOT_CONFIGURED");
+      }
     }
 
     await ctx.close();

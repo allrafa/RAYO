@@ -17,6 +17,7 @@ import { useAuth, userHasRole } from "./AuthContext";
 import { useTheme } from "./ThemeProvider";
 import { toast } from "sonner@2.0.3";
 import { api } from "../lib/api";
+import { celebrateFromCompletion } from "../lib/celebrate";
 import { EditProfileModal, ChangePasswordModal, LanguageModal } from "./perfil/PerfilModals";
 import { MinhasAssinaturasCard } from "./perfil/MinhasAssinaturasCard";
 import { UserProfilePage } from "./UserProfilePage";
@@ -160,12 +161,19 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
   const handleClaimMission = useCallback(
     async (missionId: number) => {
       setClaimingMissionId(missionId);
-      const res = await api.post<{ success: boolean; xpAwarded: number }>(
+      const res = await api.post<{
+        success: boolean;
+        xpAwarded: number;
+        leveledUp?: boolean;
+        newLevel?: number;
+      }>(
         `/api/gamification/missions/${missionId}/claim`,
       );
       setClaimingMissionId(null);
       if (res.success && res.data) {
         toast.success(`+${res.data.xpAwarded} XP!`);
+        // ENGAGEMENT_PLAN.md E3 — level-up ao resgatar missão vira festa.
+        celebrateFromCompletion(res.data);
         await reloadMissions();
       } else {
         toast.error(res.error?.message || "Recompensa indisponível");

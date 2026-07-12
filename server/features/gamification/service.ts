@@ -350,7 +350,7 @@ export const checkMissionProgress = recordMissionProgress;
 export async function claimMissionReward(
   userId: number,
   missionId: number
-): Promise<{ success: boolean; xpAwarded: number }> {
+): Promise<{ success: boolean; xpAwarded: number; leveledUp?: boolean; newLevel?: number }> {
   const today = new Date().toISOString().split("T")[0];
   const startOfWeek = getStartOfWeek();
   const client = await getClient();
@@ -376,10 +376,11 @@ export async function claimMissionReward(
     }
 
     const xpAwarded = rows[0].xp_reward;
-    await addXPWithClient(client, userId, xpAwarded, `${rows[0].type}_mission`);
+    // ENGAGEMENT_PLAN.md E3 — propaga leveledUp/newLevel pra celebração.
+    const xp = await addXPWithClient(client, userId, xpAwarded, `${rows[0].type}_mission`);
 
     await client.query("COMMIT");
-    return { success: true, xpAwarded };
+    return { success: true, xpAwarded, leveledUp: xp.leveledUp, newLevel: xp.newLevel };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;

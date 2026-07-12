@@ -150,14 +150,33 @@ async function hydratePostsRows<T extends Record<string, any>>(
   );
 }
 
-export async function listForums(userId?: number) {
-  const params: Array<number> = [];
+// UX_PLAN.md J1/J2 — o segmento do onboarding (solteiro/namoro/noivos/
+// casados/pais) casa 1:1 com forums.life_context; "noivos" não tem fórum
+// próprio e herda o de namoro.
+export function segmentsToLifeContexts(segments: string[] | null | undefined): string[] {
+  const out = new Set<string>();
+  for (const s of segments ?? []) {
+    out.add(s === "noivos" ? "namoro" : s);
+  }
+  return [...out];
+}
+
+export async function listForums(userId?: number, userSegments?: string[]) {
+  const params: Array<number | string[]> = [];
   let subscribedExpr = "false AS is_subscribed";
   let isModExpr = "false AS is_moderator";
   if (userId) {
     params.push(userId);
     subscribedExpr = `EXISTS(SELECT 1 FROM forum_subscriptions fs WHERE fs.forum_id = f.id AND fs.user_id = $1) AS is_subscribed`;
     isModExpr = `EXISTS(SELECT 1 FROM forum_moderators fm WHERE fm.forum_id = f.id AND fm.user_id = $1) AS is_moderator`;
+  }
+  // Fóruns do contexto de vida do usuário vêm primeiro — é a "sugestão"
+  // mais barata possível: a grade Explorar abre com o que é dele.
+  const contexts = segmentsToLifeContexts(userSegments);
+  let orderExpr = "f.sort_order";
+  if (contexts.length > 0) {
+    params.push(contexts);
+    orderExpr = `(f.life_context = ANY($${params.length}::text[])) DESC NULLS LAST, f.sort_order`;
   }
   const { rows } = await query(
     `SELECT f.id, f.name, f.slug, f.description, f.icon, f.life_context, f.category,
@@ -168,7 +187,7 @@ export async function listForums(userId?: number) {
        ${isModExpr}
      FROM forums f
      WHERE f.is_active = true
-     ORDER BY f.sort_order`,
+     ORDER BY ${orderExpr}`,
     params,
   );
   // Cover_url precisa virar URL real (sentinels objstore:// → signed URL).
@@ -1146,6 +1165,65 @@ async function assertCanInteractWithClassPost(classId: number | null | undefined
 // preservando o significado de engajamento usado em trending/karma.
 // Mantemos post_likes legado em sincronia (INSERT/DELETE espelhando o
 // flag user_liked) pra não quebrar consultas/joins ainda não migrados.
+// UX_PLAN.md J2 — fecha o loop social: quem interage com seu conteúdo te
+// chama de volta pelo sino. Fire-and-forget: falha aqui nunca quebra a ação.
+// Reações têm dedupe por (destinatário, kind, alvo, ator) — toggles
+// repetidos não spammam (padrão Facebook: "fulano reagiu" avisa uma vez).
+async function notifyCommunityActivity(opts: {
+  recipientId: number;
+  actorId: number;
+  kind: "post_comment" | "comment_reply" | "post_reaction" | "comment_reaction";
+  postId: number;
+  targetId: number;
+  emoji?: string;
+  excerpt?: string | null;
+  dedupe?: boolean;
+}): Promise<void> {
+  if (opts.recipientId === opts.actorId) return;
+  try {
+    if (opts.dedupe) {
+      const { rows: dup } = await query(
+        `SELECT 1 FROM notifications
+          WHERE user_id = $1 AND kind = $2
+            AND payload->>'target_id' = $3 AND payload->>'actor_id' = $4
+          LIMIT 1`,
+        [opts.recipientId, opts.kind, String(opts.targetId), String(opts.actorId)],
+      );
+      if (dup.length > 0) return;
+    }
+    const { rows: actorRows } = await query<{ name: string }>(
+      `SELECT name FROM users WHERE id = $1`,
+      [opts.actorId],
+    );
+    const actorName = actorRows[0]?.name || "Alguém";
+    const { rows: linkRows } = await query<{ slug: string }>(
+      `SELECT f.slug FROM posts p JOIN forums f ON f.id = p.forum_id WHERE p.id = $1`,
+      [opts.postId],
+    );
+    const link = linkRows[0]?.slug ? `/c/${linkRows[0].slug}/p/${opts.postId}` : null;
+    const title =
+      opts.kind === "post_comment" ? `${actorName} comentou no seu post`
+      : opts.kind === "comment_reply" ? `${actorName} respondeu seu comentário`
+      : opts.kind === "post_reaction" ? `${actorName} reagiu ${opts.emoji ?? "❤️"} ao seu post`
+      : `${actorName} reagiu ${opts.emoji ?? "❤️"} ao seu comentário`;
+    await createNotification({
+      userId: opts.recipientId,
+      kind: opts.kind,
+      title,
+      body: opts.excerpt ?? null,
+      link,
+      payload: {
+        post_id: opts.postId,
+        target_id: opts.targetId,
+        actor_id: opts.actorId,
+        emoji: opts.emoji ?? null,
+      },
+    });
+  } catch {
+    /* best-effort */
+  }
+}
+
 export async function togglePostReaction(
   postId: number,
   userId: number,
@@ -1153,7 +1231,7 @@ export async function togglePostReaction(
 ) {
   assertValidReactionEmoji(emoji);
   const { rows: postCheck } = await query(
-    `SELECT id, class_id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
+    `SELECT id, class_id, user_id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
     [postId],
   );
   if (postCheck.length === 0) {
@@ -1179,6 +1257,15 @@ export async function togglePostReaction(
       [postId, userId],
     );
     userReaction = emoji;
+    void notifyCommunityActivity({
+      recipientId: postCheck[0].user_id,
+      actorId: userId,
+      kind: "post_reaction",
+      postId,
+      targetId: postId,
+      emoji,
+      dedupe: true,
+    });
   } else if (existing[0].emoji === emoji) {
     await query(`DELETE FROM post_reactions WHERE post_id = $1 AND user_id = $2`, [postId, userId]);
     await query(`UPDATE posts SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, [postId]);
@@ -1227,8 +1314,8 @@ export async function toggleCommentReaction(
   emoji: string,
 ) {
   assertValidReactionEmoji(emoji);
-  const { rows: commentCheck } = await query<{ post_id: number }>(
-    `SELECT post_id FROM comments WHERE id = $1 AND is_hidden = FALSE`,
+  const { rows: commentCheck } = await query<{ post_id: number; user_id: number }>(
+    `SELECT post_id, user_id FROM comments WHERE id = $1 AND is_hidden = FALSE`,
     [commentId],
   );
   if (commentCheck.length === 0) {
@@ -1259,6 +1346,15 @@ export async function toggleCommentReaction(
       [commentId, userId],
     );
     userReaction = emoji;
+    void notifyCommunityActivity({
+      recipientId: commentCheck[0].user_id,
+      actorId: userId,
+      kind: "comment_reaction",
+      postId: commentCheck[0].post_id,
+      targetId: commentId,
+      emoji,
+      dedupe: true,
+    });
   } else if (existing[0].emoji === emoji) {
     await query(`DELETE FROM comment_reactions WHERE comment_id = $1 AND user_id = $2`, [commentId, userId]);
     await query(`UPDATE comments SET like_count = GREATEST(like_count - 1, 0) WHERE id = $1`, [commentId]);
@@ -1305,7 +1401,7 @@ export async function addComment(postId: number, userId: number, content: string
   }
 
   const { rows: postCheck } = await query(
-    `SELECT id, class_id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
+    `SELECT id, class_id, user_id FROM posts WHERE id = $1 AND is_hidden = FALSE`,
     [postId],
   );
   if (postCheck.length === 0) {
@@ -1314,14 +1410,16 @@ export async function addComment(postId: number, userId: number, content: string
   // Task #99 — comentar em post de turma exige matrícula (ou moderator+).
   await assertCanInteractWithClassPost(postCheck[0].class_id, userId);
 
+  let parentAuthorId: number | null = null;
   if (parentId) {
-    const { rows: parentCheck } = await query(
-      `SELECT id FROM comments WHERE id = $1 AND post_id = $2 AND is_hidden = FALSE`,
+    const { rows: parentCheck } = await query<{ id: number; user_id: number }>(
+      `SELECT id, user_id FROM comments WHERE id = $1 AND post_id = $2 AND is_hidden = FALSE`,
       [parentId, postId],
     );
     if (parentCheck.length === 0) {
       throw new AppError("Comentário pai não encontrado", "PARENT_NOT_FOUND", 404);
     }
+    parentAuthorId = parentCheck[0].user_id;
   }
 
   const { rows } = await query(
@@ -1344,6 +1442,28 @@ export async function addComment(postId: number, userId: number, content: string
   comment.user_liked = false;
 
   trackEvent(userId, "comment_created", { post_id: postId, comment_id: comment.id });
+
+  // UX_PLAN.md J2 — comentário no seu post te chama de volta (todo
+  // comentário notifica; resposta notifica o autor do comentário pai).
+  const excerpt = content.trim().slice(0, 90);
+  void notifyCommunityActivity({
+    recipientId: postCheck[0].user_id,
+    actorId: userId,
+    kind: "post_comment",
+    postId,
+    targetId: comment.id,
+    excerpt,
+  });
+  if (parentAuthorId !== null && parentAuthorId !== postCheck[0].user_id) {
+    void notifyCommunityActivity({
+      recipientId: parentAuthorId,
+      actorId: userId,
+      kind: "comment_reply",
+      postId,
+      targetId: comment.id,
+      excerpt,
+    });
+  }
 
   // Task #223 — fan-out na sala do post (DiscussionPage). Também sinaliza
   // pra sala do fórum que o comment_count subiu (cards do feed

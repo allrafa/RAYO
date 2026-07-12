@@ -245,7 +245,9 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       case 2:
         return userData.segments.length > 0;
       case 3:
-        return userData.interests.length >= 3;
+        // UX_PLAN J5 — 1 interesse já personaliza; exigir 3 era trava
+        // artificial ("Faltam 2 para continuar") que derruba leigos.
+        return userData.interests.length >= 1;
       default:
         return false;
     }
@@ -510,15 +512,15 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               </motion.div>
 
               <div className="space-y-4">
-                {userData.interests.length < 3 && (
+                {userData.interests.length === 0 && (
                   <motion.p
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="text-center text-[13px] tracking-[0.04em]"
                     style={{ color: "var(--rayo-ink-700)" }}
                   >
-                    Faltam <strong style={{ color: "var(--rayo-terra-700)", fontWeight: 600 }}>{3 - userData.interests.length}</strong>{" "}
-                    para continuar
+                    Toque em pelo menos <strong style={{ color: "var(--rayo-terra-700)", fontWeight: 600 }}>1 tema</strong>{" "}
+                    que fala com você
                   </motion.p>
                 )}
 
@@ -527,9 +529,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                     onClick={handleNext}
                     disabled={!canContinue()}
                   >
-                    {userData.interests.length >= 3
-                      ? "Finalizar"
-                      : `Selecione ${3 - userData.interests.length} ${3 - userData.interests.length === 1 ? "tema" : "temas"}`}
+                    {userData.interests.length >= 1 ? "Finalizar" : "Escolha 1 tema"}
                     <Star className="w-4 h-4" />
                   </PrimaryButton>
                 </div>

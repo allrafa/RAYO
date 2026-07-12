@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
-import { SmilePlus } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { useState, useCallback, useRef } from "react";
+import { Heart, SmilePlus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from "./ui/popover";
 import { api } from "../lib/api";
 import { enhancedToast } from "./EnhancedToast";
 
@@ -66,6 +66,9 @@ export function EmojiReactionPicker({
     [openProp, onOpenChange],
   );
   const [busy, setBusy] = useState(false);
+  // Long-press/hover do modo "full": timers vivem em refs pra não re-render.
+  const pressTimerRef = useRef<number | null>(null);
+  const longPressedRef = useRef(false);
 
   const send = useCallback(
     async (emoji: string) => {
@@ -182,33 +185,62 @@ export function EmojiReactionPicker({
     );
   }
 
-  // Modo "full" (PostCard) — botão único que mostra reação do usuário (ou
-  // "Reagir") + total. Ao tocar abre o picker. Os chips agregados são
+  // Modo "full" (PostCard) — padrão Facebook (UX_PLAN.md J1): o TOQUE é
+  // curtir ❤️ em 1 ação (ou remover a reação atual); SEGURAR (long-press)
+  // ou pousar o mouse abre o leque de 6 emojis. Os chips agregados são
   // renderizados ABAIXO da action row pelo PostCard (não aqui), pra não
   // poluir o alinhamento horizontal das ações.
   const total = totalReactionCount(reactions);
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      {/* PopoverAnchor (não PopoverTrigger): só posiciona o popover, sem
+          capturar o clique. Assim o clique é 100% nosso — curtir direto —
+          e o leque só abre no long-press/hover (UX_PLAN J1). */}
+      <PopoverAnchor asChild>
         <button
           type="button"
           className={`flex items-center gap-2 transition-all duration-200 ${className}`}
           style={{
             color: userReaction ? "var(--rayo-terra-500)" : "var(--rayo-ink-400)",
           }}
-          aria-label={userReaction ? `Reação atual: ${userReaction}` : "Reagir ao post"}
+          aria-label={userReaction ? `Remover reação ${userReaction}` : "Curtir"}
           disabled={busy}
+          onClick={() => {
+            if (longPressedRef.current) {
+              longPressedRef.current = false;
+              return;
+            }
+            void send(userReaction ?? "❤️");
+          }}
+          onPointerDown={() => {
+            longPressedRef.current = false;
+            if (pressTimerRef.current) window.clearTimeout(pressTimerRef.current);
+            pressTimerRef.current = window.setTimeout(() => {
+              longPressedRef.current = true;
+              setOpen(true);
+            }, 450);
+          }}
+          onPointerUp={() => {
+            if (pressTimerRef.current) window.clearTimeout(pressTimerRef.current);
+          }}
+          onPointerCancel={() => {
+            if (pressTimerRef.current) window.clearTimeout(pressTimerRef.current);
+          }}
+          onPointerLeave={() => {
+            if (pressTimerRef.current) window.clearTimeout(pressTimerRef.current);
+          }}
+          onContextMenu={(e) => e.preventDefault()}
         >
           {userReaction ? (
             <span className="text-base">{userReaction}</span>
           ) : (
-            <SmilePlus className="w-4 h-4" />
+            <Heart className="w-4 h-4" />
           )}
           <span className="text-[13px]" style={{ fontWeight: 500 }}>
-            {total > 0 ? total : ""}
+            {total > 0 ? total : "Curtir"}
           </span>
         </button>
-      </PopoverTrigger>
+      </PopoverAnchor>
       <PopoverContent
         className="w-auto p-2 bg-card/95 backdrop-blur-sm border shadow-lg"
         align="start"

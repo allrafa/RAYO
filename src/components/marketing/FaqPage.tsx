@@ -10,7 +10,7 @@ const SECTIONS: Section[] = [
     title: <>Conta &amp; <span className="light">Cadastro</span></>,
     intro: "Como criar conta, fazer login, recuperar senha e gerenciar seus dados básicos.",
     qas: [
-      { q: "Preciso pagar para criar conta?", a: <p>Não. A criação de conta é gratuita e dá acesso à primeira trilha completa, missões diárias e à Comunidade. Os planos pagos liberam toda a Academia, modo casal e funcionalidades premium.</p> },
+      { q: "Preciso pagar para criar conta?", a: <p>Não. A criação de conta é gratuita e dá acesso à Comunidade, às missões diárias e a vários conteúdos abertos. As trilhas guiadas são assinaturas à parte, cada uma com 7 dias grátis.</p> },
       { q: "Posso usar o RAYO sem informar minha fase de vida?", a: <p>Pode, mas a recomendação fica genérica. As 5 perguntas iniciais existem para a curadoria fazer sentido para você desde o primeiro dia. Você pode pular e responder depois.</p> },
       { q: "Como mudo minha fase quando algo na vida muda?", a: <p>É só ir em Perfil → Editar fase. Você pode mudar quantas vezes quiser. As trilhas em andamento continuam acessíveis no histórico, e as próximas recomendações se ajustam à nova fase.</p> },
       { q: "Esqueci minha senha. Como recupero?", a: <p>Na tela de login, toque em "Esqueci minha senha" e informe seu e-mail. Você recebe um link em até 5 minutos. Se não chegar, confira a caixa de spam ou fale com a gente em suporte@rayo.app.br.</p> },
@@ -43,13 +43,12 @@ const SECTIONS: Section[] = [
   {
     num: "CATEGORIA 04",
     title: <>Planos &amp; <span className="light">Pagamento</span></>,
-    intro: "Quanto custa, formas de pagamento, cancelamento, reembolso e mudança de plano.",
+    intro: "Quanto custa, formas de pagamento, cancelamento e período grátis.",
     qas: [
-      { q: "Quais são os planos do RAYO?", a: <p>Temos três planos: Free (gratuito, com 1 trilha completa e missões diárias), Premium (Academia inteira, podcasts ilimitados e Modo Casal) e Família (até 4 perfis e Modo Família). A página de <a href="/planos">Planos</a> tem o comparativo completo e os preços atuais.</p> },
-      { q: "Posso cancelar quando quiser?", a: <p>Sim. Você cancela em Perfil → Assinatura → Cancelar. O acesso continua até o fim do período já pago. Não há multa, taxa ou renovação automática depois do cancelamento.</p> },
-      { q: "Tem reembolso se eu não gostar?", a: <p>Sim. Se você cancelar nos primeiros 14 dias da assinatura, devolvemos 100% do valor — sem perguntas. Basta pedir em suporte@rayo.app.br.</p> },
-      { q: "Quais formas de pagamento vocês aceitam?", a: <p>Cartão de crédito (Visa, Mastercard, Elo, Amex), Pix e boleto. Pelo app da Apple ou Google, o pagamento é processado pela loja correspondente.</p> },
-      { q: "Posso mudar de plano no meio do mês?", a: <p>Pode. Se você fizer upgrade, cobramos a diferença proporcional ao tempo restante. Se fizer downgrade, a mudança acontece no início do próximo ciclo.</p> },
+      { q: "Como funciona a assinatura?", a: <p>Grande parte do RAYO é gratuita: comunidade, missões diárias e vários conteúdos abertos. As <a href="/trilhas">trilhas guiadas</a> são pagas por assinatura (mensal ou anual), cada uma com seu preço — você assina só a trilha que faz sentido pra sua fase de vida.</p> },
+      { q: "Tem período grátis?", a: <p>Sim. Cada trilha vem com 7 dias grátis na primeira assinatura. Você só é cobrado depois desses 7 dias. Se cancelar dentro do período grátis, não paga nada.</p> },
+      { q: "Posso cancelar quando quiser?", a: <p>Sim. Você cancela em Perfil → Minhas assinaturas → Gerenciar, quantas vezes quiser e sem multa. O acesso continua até o fim do período já pago.</p> },
+      { q: "Quais formas de pagamento vocês aceitam?", a: <p>Hoje aceitamos cartão de crédito (Visa, Mastercard, Elo, Amex), com pagamento processado de forma segura e criptografada. Estamos trabalhando para aceitar Pix em breve.</p> },
     ],
   },
   {
@@ -127,7 +126,6 @@ export function FaqPage() {
           <div className="help-grid">
             <div className="help-card"><h4>Falar com suporte</h4><p>Resposta em até 1 dia útil, de seg a sex. Para dúvidas técnicas, conta, planos ou bugs.</p><a href="/contato" className="link">Abrir contato →</a></div>
             <div className="help-card"><h4>Comunidade do RAYO</h4><p>Pergunte para outras famílias que já passaram pelo que você está passando. Curadoria ativa.</p><a href="/cadastro" className="link">Entrar na Comunidade →</a></div>
-            <div className="help-card"><h4>Status do serviço</h4><p>Veja em tempo real se há instabilidade no app, no streaming ou no pagamento.</p><a href="/status" className="link">Ver status →</a></div>
           </div>
         </div>
       </section>

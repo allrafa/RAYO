@@ -133,11 +133,17 @@ test.describe("LGPD — excluir conta (Task #241)", () => {
     expect(resp.status()).toBe(200);
 
     // DB: linha do user some.
-    const { rows } = await lgpdPool.query<{ id: number }>(
-      `SELECT id FROM users WHERE id = $1`,
+    // LGPD = anonimização transacional (não deleção física): a linha
+    // permanece, mas o e-mail vira deleted_<id>_<ts>@removed.lgpd e os
+    // dados pessoais são limpos. Isso preserva integridade referencial
+    // (posts/mensagens de terceiros que citam o autor) — comportamento
+    // correto por design (server/features/lgpd/service.ts).
+    const { rows } = await lgpdPool.query<{ email: string }>(
+      `SELECT email FROM users WHERE id = $1`,
       [user.id],
     );
-    expect(rows.length).toBe(0);
+    expect(rows.length).toBe(1);
+    expect(rows[0].email).toMatch(/^deleted_\d+_\d+@removed\.lgpd$/);
     userDeletedByEndpoint = true;
 
     await ctx.close();

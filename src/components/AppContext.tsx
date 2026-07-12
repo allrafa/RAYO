@@ -3,6 +3,7 @@ import { enhancedToast } from './EnhancedToast';
 import { Book } from './types/BookTypes';
 import { useAuth } from './AuthContext';
 import { api } from '../lib/api';
+import { celebrateFromCompletion } from '../lib/celebrate';
 
 // Maps a CMS content_item (kind='livro') row into the rich Book shape used
 // across the Biblioteca UI. Reading state (currentPage / progress / notes /
@@ -528,6 +529,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       totalLessons: number;
       progressPercentage: number;
       courseCompleted: boolean;
+      xpAwarded?: number;
+      leveledUp?: boolean;
+      newLevel?: number;
     }>(`/api/courses/lessons/${lessonId}/progress`, { status: "completed" });
 
     if (res.success && res.data) {
@@ -539,6 +543,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           haptic: true,
         });
       }
+      // ENGAGEMENT_PLAN.md E3 — level-up ao concluir aula/curso vira festa.
+      celebrateFromCompletion(res.data);
     }
     return { success: res.success };
   };

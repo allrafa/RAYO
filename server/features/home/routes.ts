@@ -7,11 +7,33 @@ import {
   getContinueItems,
   getXPHistory,
   getStreakCalendar,
+  getVerseOfDay,
+  amenVerseOfDay,
 } from "./service.js";
 
 const router = Router();
 
 router.use(requireAuth);
+
+// Palavra do dia (ENGAGEMENT_PLAN.md E1): versículo global do dia +
+// amém comunitário.
+router.get("/verse", async (req, res, next) => {
+  try {
+    const verse = await getVerseOfDay(req.user!.id);
+    success(res, { verse });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/verse/amen", async (req, res, next) => {
+  try {
+    const result = await amenVerseOfDay(req.user!.id);
+    success(res, result);
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get("/today", async (req, res, next) => {
   try {

@@ -451,11 +451,10 @@ export async function createContentItem(input: {
   const { rows } = await getPool().query<{ id: number }>(
     `INSERT INTO content_items
        (kind, title, slug, short_description, long_description, status, published_at, created_by, segments)
-     VALUES ($1, $2, $3, $4, $5, $6,
-             CASE WHEN $6 = 'published' THEN NOW() ELSE NULL END,
-             $7, ARRAY[]::text[])
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, ARRAY[]::text[])
      RETURNING id`,
-    [kind, title, slug, body.slice(0, 200), body, status, input.createdBy ?? null],
+    [kind, title, slug, body.slice(0, 200), body, status,
+     status === "published" ? new Date() : null, input.createdBy ?? null],
   );
   return { id: rows[0].id, slug };
 }
@@ -481,7 +480,7 @@ export async function startConversationWithMessage(
   });
   if (!loginRes.ok()) throw new Error(`login falhou: ${loginRes.status()} ${await loginRes.text()}`);
   const convRes = await api.post("/api/messages/conversations", {
-    data: { other_user_id: recipient.id },
+    data: { user_id: recipient.id },
   });
   if (!convRes.ok()) throw new Error(`createConv falhou: ${convRes.status()} ${await convRes.text()}`);
   const conv = (await convRes.json())?.data?.conversation;

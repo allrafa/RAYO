@@ -1,5 +1,6 @@
 import { query } from "../../db/index.js";
 import { publishToUser } from "../messages/events.js";
+import { sendPushToUser } from "../../lib/push.js";
 
 export interface NotificationRow {
   id: number;
@@ -38,6 +39,13 @@ export async function createNotification(input: CreateNotificationInput): Promis
   const notif = rows[0];
   // Real-time push so the bell can update without waiting for the next poll.
   publishToUser(input.userId, "notification:new", notif);
+  // Web Push (fire-and-forget): faz o celular tocar mesmo com o app fechado.
+  // No-op quando VAPID não está configurado.
+  void sendPushToUser(input.userId, {
+    title: notif.title,
+    body: notif.body,
+    link: notif.link,
+  });
   // Also broadcast new unread count so the badge updates atomically.
   void getUnreadCount(input.userId)
     .then((unread) => publishToUser(input.userId, "notification:unread", { unread }))
@@ -91,6 +99,11 @@ export const COMMUNITY_NOTIFICATION_KINDS = [
   "class_post",
   "class_interest",
   "post_moderated",
+  // UX_PLAN.md J2 — loop social: interações no seu conteúdo.
+  "post_comment",
+  "comment_reply",
+  "post_reaction",
+  "comment_reaction",
 ] as const;
 
 export interface UnreadBySection {

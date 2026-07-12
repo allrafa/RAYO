@@ -1,0 +1,309 @@
+// Aliança (Modo Casal) — ALIANCA_PLAN.md.
+//
+// Princípio: encorajamento, não vigilância. O cônjuge vê apenas
+// atividade sim/não, chama do casal, améns e orações — nunca qual
+// conteúdo ou quanto tempo. Toda a mecânica roda sobre infraestrutura
+// existente: notifications (com web push), XP e xp_log (mesma fonte do
+// streak-calendar individual).
+import crypto from "node:crypto";
+import { query } from "../../db/index.js";
+import { addXP } from "../gamification/service.js";
+import { createNotification } from "../notifications/service.js";
+
+const PAIR_XP = 25;
+const PRAYER_XP = 3;
+
+// Sem 0/O/1/I/L — o código precisa sobreviver a ser ditado por telefone.
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+function generateCode(): string {
+  const bytes = crypto.randomBytes(8);
+  let code = "";
+  for (let i = 0; i < 8; i++) code += CODE_ALPHABET[bytes[i] % CODE_ALPHABET.length];
+  return code;
+}
+
+interface CoupleRow {
+  id: number;
+  user_a: number;
+  user_b: number;
+}
+
+export async function getCouple(
+  userId: number,
+): Promise<{ id: number; partnerId: number } | null> {
+  const { rows } = await query<CoupleRow>(
+    `SELECT id, user_a, user_b FROM couples WHERE user_a = $1 OR user_b = $1`,
+    [userId],
+  );
+  if (rows.length === 0) return null;
+  const c = rows[0];
+  return { id: c.id, partnerId: c.user_a === userId ? c.user_b : c.user_a };
+}
+
+// ── Convite ──────────────────────────────────────────────────────────
+
+export async function createInvite(
+  userId: number,
+): Promise<{ code: string; expiresAt: string } | { error: "ALREADY_PAIRED" }> {
+  if (await getCouple(userId)) return { error: "ALREADY_PAIRED" };
+  const code = generateCode();
+  // Renova o pendente em vez de acumular convites vivos.
+  const { rows: renewed } = await query<{ code: string; expires_at: string }>(
+    `UPDATE couple_invites
+        SET code = $2, expires_at = NOW() + INTERVAL '7 days', created_at = NOW()
+      WHERE inviter_id = $1 AND status = 'pending'
+      RETURNING code, expires_at`,
+    [userId, code],
+  );
+  if (renewed.length > 0) {
+    return { code: renewed[0].code, expiresAt: renewed[0].expires_at };
+  }
+  const { rows } = await query<{ code: string; expires_at: string }>(
+    `INSERT INTO couple_invites (inviter_id, code)
+     VALUES ($1, $2)
+     RETURNING code, expires_at`,
+    [userId, code],
+  );
+  return { code: rows[0].code, expiresAt: rows[0].expires_at };
+}
+
+export async function revokeInvite(userId: number): Promise<{ revoked: boolean }> {
+  const { rows } = await query(
+    `UPDATE couple_invites SET status = 'revoked'
+      WHERE inviter_id = $1 AND status = 'pending'
+      RETURNING id`,
+    [userId],
+  );
+  return { revoked: rows.length > 0 };
+}
+
+export type AcceptError =
+  | "INVALID_CODE"
+  | "INVITE_EXPIRED"
+  | "OWN_CODE"
+  | "ALREADY_PAIRED";
+
+export async function acceptInvite(
+  userId: number,
+  rawCode: string,
+): Promise<{ partner: { id: number; name: string } } | { error: AcceptError }> {
+  const code = rawCode.trim().toUpperCase();
+  const { rows: invites } = await query<{
+    id: number;
+    inviter_id: number;
+    status: string;
+    expired: boolean;
+  }>(
+    `SELECT id, inviter_id, status, (expires_at < NOW()) AS expired
+       FROM couple_invites WHERE code = $1`,
+    [code],
+  );
+  if (invites.length === 0) return { error: "INVALID_CODE" };
+  const invite = invites[0];
+  if (invite.inviter_id === userId) return { error: "OWN_CODE" };
+  if (invite.status !== "pending" || invite.expired) return { error: "INVITE_EXPIRED" };
+  if (await getCouple(userId)) return { error: "ALREADY_PAIRED" };
+  if (await getCouple(invite.inviter_id)) return { error: "ALREADY_PAIRED" };
+
+  const [a, b] =
+    invite.inviter_id < userId ? [invite.inviter_id, userId] : [userId, invite.inviter_id];
+  try {
+    await query(`INSERT INTO couples (user_a, user_b) VALUES ($1, $2)`, [a, b]);
+  } catch (err) {
+    // UNIQUE(user_a)/UNIQUE(user_b): corrida entre dois accepts simultâneos.
+    if ((err as { code?: string }).code === "23505") return { error: "ALREADY_PAIRED" };
+    throw err;
+  }
+  await query(
+    `UPDATE couple_invites SET status = 'accepted', accepted_by = $2 WHERE id = $1`,
+    [invite.id, userId],
+  );
+
+  const { rows: people } = await query<{ id: number; name: string }>(
+    `SELECT id, name FROM users WHERE id = ANY($1::int[])`,
+    [[invite.inviter_id, userId]],
+  );
+  const inviter = people.find((p) => p.id === invite.inviter_id)!;
+  const acceptor = people.find((p) => p.id === userId)!;
+
+  await addXP(invite.inviter_id, PAIR_XP, "couple_paired");
+  await addXP(userId, PAIR_XP, "couple_paired");
+  await createNotification({
+    userId: invite.inviter_id,
+    kind: "couple_paired",
+    title: `${acceptor.name} aceitou seu convite 🤍`,
+    body: "Vocês agora caminham juntos no RAYO.",
+    link: "/",
+    payload: { partner_id: userId },
+  });
+  await createNotification({
+    userId,
+    kind: "couple_paired",
+    title: `Você e ${inviter.name} agora caminham juntos 🤍`,
+    body: "A Aliança de vocês está firmada no RAYO.",
+    link: "/",
+    payload: { partner_id: invite.inviter_id },
+  });
+
+  return { partner: { id: inviter.id, name: inviter.name } };
+}
+
+// ── Oração pelo outro ────────────────────────────────────────────────
+
+export async function prayForPartner(
+  userId: number,
+): Promise<
+  | { prayed: true; alreadyPrayedToday: boolean; xpAwarded: number }
+  | { error: "NOT_PAIRED" }
+> {
+  const couple = await getCouple(userId);
+  if (!couple) return { error: "NOT_PAIRED" };
+  const { rows: inserted } = await query<{ id: number }>(
+    `INSERT INTO couple_prayers (couple_id, from_user)
+     VALUES ($1, $2)
+     ON CONFLICT (couple_id, from_user, prayed_date) DO NOTHING
+     RETURNING id`,
+    [couple.id, userId],
+  );
+  if (inserted.length === 0) {
+    return { prayed: true, alreadyPrayedToday: true, xpAwarded: 0 };
+  }
+  await addXP(userId, PRAYER_XP, "couple_prayer");
+  const { rows: me } = await query<{ name: string }>(
+    `SELECT name FROM users WHERE id = $1`,
+    [userId],
+  );
+  await createNotification({
+    userId: couple.partnerId,
+    kind: "couple_prayer",
+    title: `${me[0]?.name ?? "Seu cônjuge"} orou por você agora 🙏`,
+    body: "Você não caminha só.",
+    link: "/",
+    payload: { from_user: userId },
+  });
+  // ALIANCA_PLAN.md §5 — se a outra direção também orou hoje, o dia de
+  // oração mútua se completa: credita a missão pros DOIS. O INSERT acima
+  // é idempotente por direção, então isso dispara no máximo 1x/dia.
+  try {
+    const { rows: mutual } = await query(
+      `SELECT 1 FROM couple_prayers
+        WHERE couple_id = $1 AND from_user = $2 AND prayed_date = CURRENT_DATE`,
+      [couple.id, couple.partnerId],
+    );
+    if (mutual.length > 0) {
+      const { recordMissionProgress } = await import("../gamification/service.js");
+      await recordMissionProgress(userId, "couple_prayer_day");
+      await recordMissionProgress(couple.partnerId, "couple_prayer_day");
+    }
+  } catch (err) {
+    console.error("[Alianca] couple_prayer_day (non-blocking):", err);
+  }
+  return { prayed: true, alreadyPrayedToday: false, xpAwarded: PRAYER_XP };
+}
+
+// ── Desfazer o vínculo ───────────────────────────────────────────────
+// Unilateral e silencioso (sem notificação) — por dignidade. As orações
+// caem em cascata junto com a linha do casal.
+
+export async function unpair(userId: number): Promise<{ unpaired: boolean }> {
+  const { rows } = await query(
+    `DELETE FROM couples WHERE user_a = $1 OR user_b = $1 RETURNING id`,
+    [userId],
+  );
+  return { unpaired: rows.length > 0 };
+}
+
+// ── Estado agregado (o que o AliancaCard consome) ────────────────────
+
+export interface AliancaPaired {
+  status: "paired";
+  partner: { id: number; name: string };
+  coupleStreak: number;
+  partnerActiveToday: boolean;
+  prayedByMeToday: boolean;
+  prayedByPartnerToday: boolean;
+  amensToday: { mine: boolean; partner: boolean };
+}
+
+export type AliancaState =
+  | { status: "none" }
+  | { status: "invited"; code: string; expiresAt: string }
+  | AliancaPaired;
+
+// Dias consecutivos (terminando hoje ou ontem) em que AMBOS têm registro
+// no xp_log — a mesma fonte de "dia ativo" do streak-calendar individual.
+async function coupleStreak(userA: number, userB: number): Promise<number> {
+  const { rows } = await query<{ day: string }>(
+    `SELECT date_trunc('day', created_at)::date::text AS day
+       FROM xp_log
+      WHERE user_id IN ($1, $2)
+        AND created_at >= CURRENT_DATE - INTERVAL '90 days'
+      GROUP BY 1
+     HAVING COUNT(DISTINCT user_id) = 2`,
+    [userA, userB],
+  );
+  const both = new Set(rows.map((r) => r.day));
+  let streak = 0;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  // Hoje ainda pode não ter atividade dos dois — começa em ontem sem quebrar.
+  if (!both.has(cursor.toISOString().slice(0, 10))) cursor.setDate(cursor.getDate() - 1);
+  while (both.has(cursor.toISOString().slice(0, 10))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+export async function getAliancaState(userId: number): Promise<AliancaState> {
+  const couple = await getCouple(userId);
+  if (!couple) {
+    const { rows: invites } = await query<{ code: string; expires_at: string }>(
+      `SELECT code, expires_at FROM couple_invites
+        WHERE inviter_id = $1 AND status = 'pending' AND expires_at >= NOW()`,
+      [userId],
+    );
+    if (invites.length > 0) {
+      return { status: "invited", code: invites[0].code, expiresAt: invites[0].expires_at };
+    }
+    return { status: "none" };
+  }
+
+  const [partnerRows, activityRows, prayerRows, amenRows, streak] = await Promise.all([
+    query<{ id: number; name: string }>(`SELECT id, name FROM users WHERE id = $1`, [
+      couple.partnerId,
+    ]),
+    query<{ ok: boolean }>(
+      `SELECT EXISTS(
+         SELECT 1 FROM xp_log
+          WHERE user_id = $1 AND created_at >= CURRENT_DATE
+       ) AS ok`,
+      [couple.partnerId],
+    ),
+    query<{ from_user: number }>(
+      `SELECT from_user FROM couple_prayers
+        WHERE couple_id = $1 AND prayed_date = CURRENT_DATE`,
+      [couple.id],
+    ),
+    query<{ user_id: number }>(
+      `SELECT user_id FROM verse_amens
+        WHERE user_id IN ($1, $2) AND amen_date = CURRENT_DATE`,
+      [userId, couple.partnerId],
+    ),
+    coupleStreak(userId, couple.partnerId),
+  ]);
+
+  const prayers = new Set(prayerRows.rows.map((r) => r.from_user));
+  const amens = new Set(amenRows.rows.map((r) => r.user_id));
+
+  return {
+    status: "paired",
+    partner: { id: partnerRows.rows[0].id, name: partnerRows.rows[0].name },
+    coupleStreak: streak,
+    partnerActiveToday: activityRows.rows[0]?.ok ?? false,
+    prayedByMeToday: prayers.has(userId),
+    prayedByPartnerToday: prayers.has(couple.partnerId),
+    amensToday: { mine: amens.has(userId), partner: amens.has(couple.partnerId) },
+  };
+}

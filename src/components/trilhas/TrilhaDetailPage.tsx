@@ -141,6 +141,10 @@ export function TrilhaDetailPage({ slug }: { slug: string }) {
   const totalLabel = interval === "year"
     ? `${formatBRL(yearly)}/ano`
     : `${formatBRL(monthly)}/mês`;
+  // Data exata da 1ª cobrança (hoje + dias de trial) — mostrada antes de
+  // pagar pra eliminar o medo de "cobrança escondida" (UX_PLAN.md J3).
+  const firstChargeDate = new Date(Date.now() + trail.trial_days * 24 * 60 * 60 * 1000)
+    .toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
   const faqItems = FAQ_ITEMS(trail.trial_days);
 
@@ -378,6 +382,13 @@ export function TrilhaDetailPage({ slug }: { slug: string }) {
                     <span className="ct-buy-total-lbl">{trialActive ? "Depois do período grátis" : "Total hoje"}</span>
                     <span className="ct-buy-total-val">{totalLabel}</span>
                   </div>
+                  {/* UX_PLAN.md J3 — transparência ANTES de pagar: data exata da
+                      1ª cobrança e recorrência explícita, sem letra miúda. */}
+                  <p className="ct-buy-secure" style={{ marginTop: 4 }}>
+                    {trialActive
+                      ? `1ª cobrança em ${firstChargeDate} · renova ${interval === "year" ? "todo ano" : "todo mês"} · cancele quando quiser`
+                      : `Renova automaticamente ${interval === "year" ? "todo ano" : "todo mês"} · cancele quando quiser`}
+                  </p>
                   <button
                     type="button"
                     className="ct-buy-cta"
@@ -427,6 +438,21 @@ export function TrilhaDetailPage({ slug }: { slug: string }) {
               </div>
               <div className="ct-trust-txt"><b>Acesso imediato.</b> Comece a primeira aula hoje.</div>
             </div>
+            {/* UX_PLAN.md J3 — suporte humano no ponto da decisão de compra. */}
+            {import.meta.env.VITE_SUPPORT_WHATSAPP_URL && (
+              <a
+                className="ct-trust-row"
+                href={import.meta.env.VITE_SUPPORT_WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none", color: "inherit" }}
+              >
+                <div className="ct-trust-icon">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M8 2a6 6 0 0 0-5.2 9L2 14l3.1-.8A6 6 0 1 0 8 2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" /></svg>
+                </div>
+                <div className="ct-trust-txt"><b>Ficou com dúvida?</b> Chama a gente no WhatsApp.</div>
+              </a>
+            )}
           </div>
         </aside>
       </div>

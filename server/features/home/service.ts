@@ -413,3 +413,88 @@ export async function getStreakCalendar(
     days,
   };
 }
+
+// ── Palavra do dia (ENGAGEMENT_PLAN.md E1) ─────────────────────────────
+// Versículo global determinístico por dia + amém comunitário (1/dia por
+// usuário, +5 XP no primeiro). O contador é o social proof espiritual:
+// "você e mais N pessoas disseram amém hoje".
+
+const VERSE_AMEN_XP = 5;
+
+export async function getVerseOfDay(userId: number) {
+  const { verseForDate } = await import("./verses.js");
+  const verse = verseForDate(new Date());
+  const { rows } = await query<{ total: string; mine: string }>(
+    `SELECT COUNT(*)::text AS total,
+            COUNT(*) FILTER (WHERE user_id = $1)::text AS mine
+       FROM verse_amens
+      WHERE amen_date = CURRENT_DATE`,
+    [userId],
+  );
+  return {
+    ref: verse.ref,
+    text: verse.text,
+    theme: verse.theme,
+    amens: parseInt(rows[0]?.total ?? "0", 10),
+    amened: parseInt(rows[0]?.mine ?? "0", 10) > 0,
+  };
+}
+
+export async function amenVerseOfDay(userId: number) {
+  const { verseForDate } = await import("./verses.js");
+  const verse = verseForDate(new Date());
+  const { rows: inserted } = await query<{ id: number }>(
+    `INSERT INTO verse_amens (user_id, amen_date, verse_ref)
+     VALUES ($1, CURRENT_DATE, $2)
+     ON CONFLICT (user_id, amen_date) DO NOTHING
+     RETURNING id`,
+    [userId, verse.ref],
+  );
+  let xpAwarded = 0;
+  let leveledUp = false;
+  let newLevel: number | undefined;
+  let currentStreak: number | undefined;
+  if (inserted.length > 0) {
+    const xp = await addXP(userId, VERSE_AMEN_XP, "verse_amen");
+    xpAwarded = VERSE_AMEN_XP;
+    leveledUp = xp.leveledUp;
+    newLevel = xp.newLevel;
+    // O amém do dia mantém a chama acesa (ENGAGEMENT_PLAN.md E2/E3):
+    // é o toque diário de menor fricção — mesmo sem tempo pro conteúdo,
+    // o versículo preserva a sequência. Idempotente por dia.
+    const streak = await updateStreak(userId);
+    currentStreak = streak.currentStreak;
+    // ALIANCA_PLAN.md §5 — se o cônjuge também já disse amém hoje, este
+    // é o 2º amém do casal no dia: credita a missão "Améns em aliança"
+    // pros DOIS (o INSERT acima é idempotente, então só dispara 1x/dia).
+    try {
+      const { getCouple } = await import("../alianca/service.js");
+      const couple = await getCouple(userId);
+      if (couple) {
+        const { rows: partnerAmen } = await query(
+          `SELECT 1 FROM verse_amens WHERE user_id = $1 AND amen_date = CURRENT_DATE`,
+          [couple.partnerId],
+        );
+        if (partnerAmen.length > 0) {
+          const { recordMissionProgress } = await import("../gamification/service.js");
+          await recordMissionProgress(userId, "couple_amen_day");
+          await recordMissionProgress(couple.partnerId, "couple_amen_day");
+        }
+      }
+    } catch (err) {
+      console.error("[Alianca] couple_amen_day (non-blocking):", err);
+    }
+  }
+  const { rows } = await query<{ total: string }>(
+    `SELECT COUNT(*)::text AS total FROM verse_amens WHERE amen_date = CURRENT_DATE`,
+  );
+  return {
+    amened: true,
+    alreadyAmened: inserted.length === 0,
+    amens: parseInt(rows[0]?.total ?? "0", 10),
+    xpAwarded,
+    leveledUp,
+    newLevel,
+    currentStreak,
+  };
+}
