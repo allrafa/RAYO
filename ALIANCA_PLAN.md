@@ -132,9 +132,23 @@ missões a dois seedadas + gatilhos conjuntos no amém e na oração
 Fluxo validado de ponta a ponta por screenshot: convite → link → 
 celebração → card pareado com chama do casal.
 
-### Iteração 4 — "Polimento e prova"
-Revisão visual (mobile/desktop), estados de erro, suítes completas,
-fechamento deste plano.
+### Iteração 4 — "Polimento e prova" ✅ CONSTRUÍDA
+Revisão visual mobile (390px) e desktop (1280px) por screenshot — card
+pareado com chama, selo de oração recebida e sino notificado; suíte de
+integração completa verde; CI do PR #2 verde (Unit/Integration/E2E) em
+todas as iterações.
+
+## Status final do loop (2026-07-12)
+
+A Aliança está construída de ponta a ponta: convite → link → cadastro/
+login → celebração → card pareado → oração diária → missões a dois →
+LGPD. O RAYO deixou de ser um app de hábito individual: agora o casal
+se vê, ora um pelo outro e mantém uma chama compartilhada.
+
+Próximos passos naturais (fora deste loop, aguardando decisão):
+- Devocional do casal (conteúdo dedicado a dois).
+- Push diário da Palavra + scheduler de e-mails (ENGAGEMENT_PLAN §5).
+- Grupos/células — o próximo patamar relacional depois do casal.
 
 ## 8. Parqueados (fora deste loop)
 
