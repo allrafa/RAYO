@@ -138,8 +138,23 @@ de qualidade" que o casal compartilha — 3 a 5 minutos, no ritmo diário:
    `notifications.email`/`weekly_digest` com 2 toggles novos no Perfil;
    só e-mail verificado recebe; 6 testes de integração (fuso, janelas,
    dedup, opt-out, sem-conteúdo, carta de domingo).
-4. **Iteração 5 — "Polimento e prova"**: revisão visual, suítes
-   completas, fechamento deste plano.
+4. **Iteração 5 — "Polimento e prova"** ✅ CONSTRUÍDA: revisão visual
+   por screenshot (devocional colapsado/expandido/completo com toast
+   "+10 XP", toggles de e-mail no Perfil), suíte de integração completa
+   verde, CI verde no PR #4.
+
+## Status final do loop (2026-07-15)
+
+As três frentes estão entregues:
+- **F3** na main desde o PR #3 (navegação IG/X + bugs de título/reações
+  no feed corrigidos).
+- **F1 + F2** no PR #4: o ritmo diário do casal (devocional com
+  pergunta pra conversar) e o canal de reengajamento (Missão do Dia +
+  Carta Semanal por e-mail, opt-in/opt-out LGPD).
+
+Go-live do F2 (checklist manual): configurar RESEND_API_KEY e
+EMAIL_SCHEDULER_ENABLED=1 no deploy. Sem as duas, o scheduler é no-op
+explícito nos logs.
 
 ## Riscos e parqueados
 
