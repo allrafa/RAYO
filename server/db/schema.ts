@@ -1281,10 +1281,18 @@ export async function initializeSchema() {
       inviter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       code VARCHAR(12) NOT NULL UNIQUE,
       status VARCHAR(12) NOT NULL DEFAULT 'pending',
-      accepted_by INTEGER REFERENCES users(id),
+      accepted_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
       created_at TIMESTAMP NOT NULL DEFAULT NOW(),
       expires_at TIMESTAMP NOT NULL DEFAULT NOW() + INTERVAL '7 days'
     )
+  `);
+  // Migração idempotente: bases que criaram accepted_by sem ON DELETE
+  // (primeira versão) travavam a exclusão dura de usuários (purge/admin).
+  await query(`ALTER TABLE couple_invites DROP CONSTRAINT IF EXISTS couple_invites_accepted_by_fkey`);
+  await query(`
+    ALTER TABLE couple_invites
+      ADD CONSTRAINT couple_invites_accepted_by_fkey
+      FOREIGN KEY (accepted_by) REFERENCES users(id) ON DELETE SET NULL
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_couple_invites_inviter ON couple_invites(inviter_id)`);
   // 1 oração por dia por direção — a restrição é o que dá peso ao gesto.

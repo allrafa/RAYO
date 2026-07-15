@@ -109,9 +109,16 @@ de qualidade" que o casal compartilha — 3 a 5 minutos, no ritmo diário:
 
 ## Roadmap (iterações do loop, mediante aprovação)
 
-1. **Iteração 2 — "Um toque, um destino" (F3)**: unificação da
-   navegação de posts + fix do teclado + back nativo + spec e2e de
-   click-targets mobile. (Primeiro porque é a dor ativa do usuário.)
+1. **Iteração 2 — "Um toque, um destino" (F3)** ✅ CONSTRUÍDA:
+   navegação unificada (toda origem → DiscussionPage com URL canônica),
+   teclado só no botão Comentar (com `focusComposer`), destaque de
+   comentário de notificação dentro da página, back nativo,
+   CommentsPanel removido, spec e2e `click-targets.spec.ts` (2 cenários)
+   travando o contrato. Bugs reais achados no caminho: `mapAPIPost`
+   descartava `title` (posts sem título no feed) e `reactions`
+   (prova social zerada nos cards); `Textarea` sem forwardRef (focus
+   programático era no-op); FK `couple_invites.accepted_by` sem
+   ON DELETE (migração idempotente adicionada).
 2. **Iteração 3 — "O devocional" (F1)**: conteúdo curado + backend +
    card expandível + missão "Devocional a dois" + testes.
 3. **Iteração 4 — "As cartas" (F2)**: scheduler + email_sends +

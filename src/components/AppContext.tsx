@@ -112,6 +112,9 @@ interface Post {
   author: string;
   avatar: string;
   time: string;
+  // RITMO_PLAN.md F3 — title existia na API mas era descartado no
+  // mapeamento: posts com título apareciam sem ele no feed.
+  title?: string | null;
   content: string;
   category: string;
   likes: number;
@@ -131,6 +134,10 @@ interface Post {
   forum_icon?: string;
   author_id?: number;
   is_saved?: boolean;
+  // Task #122 (fix) — reações agregadas vinham na API e também eram
+  // descartadas: cards do feed começavam sempre com "Curtir 0".
+  reactions?: Array<{ emoji: string; count: number }>;
+  user_reaction?: string | null;
 }
 
 interface Product {
@@ -584,6 +591,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     image_refs?: string[];
     user_liked: boolean;
     is_saved?: boolean;
+    reactions?: Array<{ emoji: string; count: number }>;
+    user_reaction?: string | null;
   }
 
   function mapAPIPost(p: APIPost): Post {
@@ -592,6 +601,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       author: p.author_name ?? "Usuário",
       avatar: p.author_avatar || "/placeholder-avatar.jpg",
       time: formatRelativeTime(p.created_at),
+      title: p.title ?? null,
       content: p.content,
       category: p.category || "",
       likes: p.like_count,
@@ -608,6 +618,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       forum_icon: p.forum_icon,
       author_id: p.author_id ?? undefined,
       is_saved: !!p.is_saved,
+      reactions: Array.isArray(p.reactions) ? p.reactions : [],
+      user_reaction: p.user_reaction ?? null,
     };
   }
 

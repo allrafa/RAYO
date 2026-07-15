@@ -70,6 +70,12 @@ interface DiscussionPageProps {
   // History-aware back: ComunidadePage decide se chama history.back()
   // ou faz fallback (deep-link sem histórico). DiscussionPage só dispara.
   onBack: () => void;
+  // RITMO_PLAN.md F3 — teclado é opt-in (padrão IG/X): só o botão
+  // "Comentar" chega com focusComposer. Toque no corpo do post NUNCA
+  // levanta o teclado.
+  focusComposer?: boolean;
+  // Notificações (comment_reply etc.) rolam até o comentário destacado.
+  highlightCommentId?: number | null;
 }
 
 function formatTime(dateStr: string): string {
@@ -85,7 +91,13 @@ function formatTime(dateStr: string): string {
   return d.toLocaleDateString("pt-BR");
 }
 
-export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
+export function DiscussionPage({
+  postId,
+  slug,
+  onBack,
+  focusComposer = false,
+  highlightCommentId = null,
+}: DiscussionPageProps) {
   const { user: viewer } = useAuth();
   const [loading, setLoading] = useState(true);
   const [post, setPost] = useState<PostDetailData | null>(null);
@@ -275,6 +287,29 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
     });
     return () => { active = false; };
   }, [loadDiscussion]);
+
+  // RITMO_PLAN.md F3 — pós-carregamento: ou rola até o comentário
+  // destacado (vindo de notificação), ou foca o composer (vindo do botão
+  // "Comentar"). Nunca os dois; corpo do post não passa por aqui.
+  const postLoadIntentDone = useRef(false);
+  useEffect(() => {
+    if (loading || postLoadIntentDone.current) return;
+    postLoadIntentDone.current = true;
+    if (highlightCommentId != null) {
+      const el = document.getElementById(`disc-comment-${highlightCommentId}`);
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        el.style.transition = "background-color 0.4s ease";
+        el.style.backgroundColor = "var(--rayo-terra-100)";
+        window.setTimeout(() => { el.style.backgroundColor = "transparent"; }, 1800);
+      }
+      return;
+    }
+    if (focusComposer) {
+      composerRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      composerRef.current?.focus();
+    }
+  }, [loading, highlightCommentId, focusComposer]);
 
   const handleBack = () => {
     if (composer.trim().length > 0) {
@@ -506,7 +541,7 @@ export function DiscussionPage({ postId, slug, onBack }: DiscussionPageProps) {
         ) : (
           <ul className="space-y-4">
             {comments.map((c) => (
-              <li key={c.id} className="flex gap-3">
+              <li key={c.id} id={`disc-comment-${c.id}`} className="flex gap-3 rounded-lg">
                 {c.author_id ? (
                   <button
                     type="button"

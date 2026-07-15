@@ -308,9 +308,10 @@ export function UserProfilePage({ userId, onClose, onNavigateToCommunity, active
     onNavigateToCommunity?.();
   };
 
-  // Task #115 — cards de Posts/Comentários/Salvos clicáveis abrem o post na
-  // Comunidade. `highlightCommentId` (opcional) é entregue via sessionStorage
-  // pra que o CommentsPanel role/destaque o comentário ao montar.
+  // Task #115 (revisada no RITMO_PLAN.md F3) — cards de Posts/Comentários/
+  // Salvos clicáveis abrem a DiscussionPage do post na Comunidade.
+  // `highlightCommentId` (opcional) viaja via sessionStorage pra rolar e
+  // destacar o comentário dentro da página.
   const openPost = (postId: number, highlightCommentId?: number) => {
     openPostById(postId, highlightCommentId);
     onClose?.();
