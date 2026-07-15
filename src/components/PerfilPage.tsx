@@ -6,7 +6,7 @@ import {
   Shield, MessageSquare,
   Target, Share2, CheckCircle2,
   Download, Trash2,
-  ShieldAlert
+  ShieldAlert, Mail
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -111,6 +111,35 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       const res = await updatePreferences({ notifications: { push: checked } });
       if (res.success) {
         toast.success(checked ? "Notificações ativadas" : "Notificações desativadas");
+      } else {
+        toast.error(res.error || "Erro ao salvar preferência");
+      }
+    },
+    [updatePreferences],
+  );
+
+  // RITMO_PLAN.md F2 — e-mails devocionais. Ausente = opt-in (default
+  // suave); o scheduler lê as mesmas chaves no servidor.
+  const emailMissaoEnabled =
+    user?.notification_preferences?.notifications?.email ?? true;
+  const emailCartaEnabled =
+    user?.notification_preferences?.notifications?.weekly_digest ?? true;
+  const handleToggleEmailMissao = useCallback(
+    async (checked: boolean) => {
+      const res = await updatePreferences({ notifications: { email: checked } });
+      if (res.success) {
+        toast.success(checked ? "Missão do Dia por e-mail ativada" : "Você não receberá mais a Missão do Dia por e-mail");
+      } else {
+        toast.error(res.error || "Erro ao salvar preferência");
+      }
+    },
+    [updatePreferences],
+  );
+  const handleToggleEmailCarta = useCallback(
+    async (checked: boolean) => {
+      const res = await updatePreferences({ notifications: { weekly_digest: checked } });
+      if (res.success) {
+        toast.success(checked ? "Carta Semanal ativada" : "Você não receberá mais a Carta Semanal");
       } else {
         toast.error(res.error || "Erro ao salvar preferência");
       }
@@ -330,6 +359,22 @@ export function PerfilPage({ onNavigate }: PerfilPageProps = {}) {
       title: "Preferências",
       items: [
         { icon: theme === 'dark' ? Moon : Sun, label: "Modo Escuro", hasSwitch: true, switchValue: theme === 'dark', onSwitchChange: handleToggleTheme },
+        // RITMO_PLAN.md F2 — opt-in/opt-out dos e-mails devocionais
+        // (LGPD). Chaves já aceitas pelo PATCH /api/users/preferences.
+        {
+          icon: Mail,
+          label: "E-mail: Missão do Dia",
+          hasSwitch: true,
+          switchValue: emailMissaoEnabled,
+          onSwitchChange: handleToggleEmailMissao,
+        },
+        {
+          icon: Mail,
+          label: "E-mail: Carta Semanal",
+          hasSwitch: true,
+          switchValue: emailCartaEnabled,
+          onSwitchChange: handleToggleEmailCarta,
+        },
         {
           icon: Globe,
           label: "Idioma",
