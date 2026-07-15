@@ -6,6 +6,7 @@ import { bootstrapAdminsFromEnv } from "./features/admin/bootstrap.js";
 import { UPLOAD_ROOT } from "./features/cms/upload.js";
 import { backfillLocalUploads } from "./lib/objectStorageBridge.js";
 import { isEmailConfigured } from "./lib/email.js";
+import { startEmailScheduler, stopEmailScheduler } from "./lib/emailScheduler.js";
 import { runtimeStatus } from "./lib/runtimeStatus.js";
 import { query, closeDb } from "./db/index.js";
 import { createServer as createViteServer } from "vite";
@@ -327,6 +328,10 @@ async function start() {
       logger.info("Server", `RAYO server running on port ${PORT}`);
     });
 
+    // RITMO_PLAN.md F2 — e-mails devocionais agendados (no-op sem
+    // EMAIL_SCHEDULER_ENABLED=1; dedup atômico em email_sends).
+    startEmailScheduler();
+
     // Graceful shutdown: deploys autoscale mandam SIGTERM — sem isto,
     // requests em voo eram cortados no meio. Fecha o listener (para de
     // aceitar conexões novas), espera as em andamento e encerra o pool.
@@ -335,6 +340,7 @@ async function start() {
       if (shuttingDown) return;
       shuttingDown = true;
       logger.info("Server", `${signal} recebido — encerrando graciosamente...`);
+      stopEmailScheduler();
       const forceExit = setTimeout(() => {
         logger.warn("Server", "Shutdown demorou >10s; encerrando à força.");
         process.exit(0);

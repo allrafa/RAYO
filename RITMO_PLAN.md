@@ -127,9 +127,17 @@ de qualidade" que o casal compartilha — 3 a 5 minutos, no ritmo diário:
    (missão "Devocional a dois" creditada pros DOIS + notificação de
    ritual completo); card expandível `DevocionalCasal.tsx` no cluster
    Hoje com Deus (some quando não pareado); 3 testes de integração.
-3. **Iteração 4 — "As cartas" (F2)**: scheduler + email_sends +
-   preferências no Perfil + testes de integração (janela, dedup,
-   opt-out).
+3. **Iteração 4 — "As cartas" (F2)** ✅ CONSTRUÍDA: scheduler
+   in-process (`server/lib/emailScheduler.ts`, tick 5 min, gated por
+   `EMAIL_SCHEDULER_ENABLED=1`, para no shutdown); Missão do Dia
+   (7h–11h59 SP, reusa o item determinístico do Hoje no RAYO) e Carta
+   Semanal (domingo 8h–11h59, 10 edições curadas em
+   `server/lib/cartas.ts`); dedup atômico `email_sends`; claim é
+   liberado se o envio falhar (retry no próximo tick), mantido quando o
+   Resend não está configurado; opt-in/opt-out nas chaves já existentes
+   `notifications.email`/`weekly_digest` com 2 toggles novos no Perfil;
+   só e-mail verificado recebe; 6 testes de integração (fuso, janelas,
+   dedup, opt-out, sem-conteúdo, carta de domingo).
 4. **Iteração 5 — "Polimento e prova"**: revisão visual, suítes
    completas, fechamento deste plano.
 

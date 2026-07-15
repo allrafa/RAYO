@@ -1306,6 +1306,21 @@ export async function initializeSchema() {
       UNIQUE (couple_id, from_user, prayed_date)
     )
   `);
+  // RITMO_PLAN.md F2 — dedup de e-mails agendados. O INSERT com UNIQUE é
+  // o lock: reinício do servidor não reenvia e N instâncias não duplicam.
+  // send_date usa o dia LOCAL de America/Sao_Paulo (calculado no app).
+  await query(`
+    CREATE TABLE IF NOT EXISTS email_sends (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind VARCHAR(30) NOT NULL,
+      send_date DATE NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, kind, send_date)
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_email_sends_kind_date ON email_sends(kind, send_date)`);
+
   // RITMO_PLAN.md F1 — Devocional do casal: cada cônjuge confirma o
   // "Fizemos juntos" 1x/dia; quando as duas confirmações do dia existem,
   // o dia devocional do casal se completa (XP + missão pros dois).
