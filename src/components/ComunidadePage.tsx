@@ -13,7 +13,6 @@ import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { onScrollTop } from "../lib/scrollTop";
 import { useScrollRestore } from "../lib/scrollRestore";
 import { DiscardDraftDialog } from "./DiscardDraftDialog";
@@ -62,28 +61,14 @@ interface Forum {
   created_at?: string | null;
 }
 
-interface CommentData {
-  id: number;
-  content: string;
-  parent_id: number | null;
-  like_count: number;
-  created_at: string;
-  author_name: string;
-  author_id: number;
-  user_liked: boolean;
-  // Task #122 — reações multi-emoji por comentário.
-  reactions: ReactionAggregate[];
-  user_reaction: string | null;
-}
-
 // Task #122 — onNavigate vem de App.tsx pra suportar back-to-home da
 // DiscussionPage quando o usuário chegou via deep-link `/c/<slug>/p/<id>`
 // ou pelo card de Discussões da Home.
 export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => void } = {}) {
+  // RITMO_PLAN.md F3 — selectedPost sobrevive só pro modal de share;
+  // showComments/newComment morreram junto com o CommentsPanel.
   const [selectedPost, setSelectedPost] = useState<any>(null);
-  const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [newComment, setNewComment] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
   // Task #93 — modal de edição reusa o CreatePostModal com `editingPost`.
@@ -241,14 +226,47 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     if (!Number.isFinite(id) || id <= 0) return null;
     return { postId: id, slug: m[1].toLowerCase() };
   };
+  // RITMO_PLAN.md F3 — a discussão carrega intenção: focusComposer (veio
+  // do botão Comentar → teclado) e highlightCommentId (veio de
+  // notificação → rola até o comentário). `pushed` diz se a URL entrou
+  // no histórico (pushState) — decide se o back é history.back() ou só
+  // limpar o estado.
   const [activeDiscussion, setActiveDiscussion] = useState<
-    { postId: number; slug: string | null } | null
+    {
+      postId: number;
+      slug: string | null;
+      focusComposer?: boolean;
+      highlightCommentId?: number | null;
+      pushed?: boolean;
+    } | null
   >(parseDiscussionFromPath);
 
-  // Task #117 — restaura scrollY do feed quando o usuário fecha o painel
-  // de comentários OU sai da página de uma comunidade. Sem isso ele cai
+  // RITMO_PLAN.md F3 — destino ÚNICO pra abrir um post (padrão IG/X):
+  // DiscussionPage com URL canônica `/c/<slug>/p/<id>` e back nativo.
+  // Toda origem (feed, busca, notificação, perfil, Home) passa por aqui.
+  const openDiscussionFor = useCallback(
+    (
+      postId: number,
+      slug: string | null,
+      opts?: { focusComposer?: boolean; highlightCommentId?: number | null },
+    ) => {
+      let pushed = false;
+      if (slug) {
+        try {
+          window.history.pushState({}, "", `/c/${slug}/p/${postId}`);
+          pushed = true;
+        } catch { /* noop */ }
+      }
+      setActiveCommunitySlug(null);
+      setActiveDiscussion({ postId, slug, pushed, ...opts });
+    },
+    [],
+  );
+
+  // Task #117 — restaura scrollY do feed quando o usuário volta da
+  // discussão OU sai da página de uma comunidade. Sem isso ele cai
   // no topo da lista e perde o contexto de onde estava.
-  useScrollRestore("comunidade-feed", showComments || !!activeCommunitySlug);
+  useScrollRestore("comunidade-feed", !!activeDiscussion || !!activeCommunitySlug);
   
   // Task #122 — likePost removido daqui; reações vivem no PostCard via
   // EmojiReactionPicker (que dispara o endpoint multi-emoji direto).
@@ -273,104 +291,25 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
   const [forums, setForums] = useState<Forum[]>([]);
   const [forumsLoading, setForumsLoading] = useState(true);
   const [forumsError, setForumsError] = useState<string | null>(null);
-  const [postComments, setPostComments] = useState<CommentData[]>([]);
-  const [loadingComments, setLoadingComments] = useState(false);
-  // Task #115 — quando o post é aberto a partir de um card de comentário no
-  // perfil, este id pede pro CommentsPanel rolar até esse comentário e
-  // destacá-lo brevemente. Limpado no fechar do painel.
-  const [highlightCommentId, setHighlightCommentId] = useState<number | null>(null);
-
-  // Task #115 — declarado ANTES de openPostById porque este último o usa
-  // como dependência do useCallback (TDZ-safe).
-  const loadPostComments = useCallback(async (postId: number) => {
-    setLoadingComments(true);
-    try {
-      const res = await api.get<{ post: { comments: CommentData[] } }>(`/api/community/posts/${postId}`);
-      if (res.success && res.data) {
-        setPostComments(res.data.post.comments);
-      }
-    } catch (err) {
-      console.error("Error loading comments:", err);
-    } finally {
-      setLoadingComments(false);
-    }
-  }, []);
-
-  // Task #44 — deep-link de busca: quando um resultado de busca de
-  // post é clicado, recebemos o id por CustomEvent. Tentamos abrir o
-  // post da memória; se não estiver carregado, buscamos via
-  // /api/community/posts/:id e abrimos do mesmo jeito.
+  // Task #44 (revisada no RITMO_PLAN.md F3) — deep-link de busca,
+  // notificação, perfil e Home: recebemos o id por CustomEvent e abrimos
+  // a DiscussionPage (destino único). O slug vem do post em memória; se
+  // não estiver carregado, buscamos só o necessário via API.
   const openPostById = useCallback(
     async (id: number, highlight_comment_id?: number) => {
-      // Task #115 — pré-seta o id de destaque ANTES do post entrar em
-      // tela; CommentsPanel lê esse valor pra rolar quando os comments
-      // carregarem. Se vier 0/undefined, limpa pra evitar carry-over.
-      setHighlightCommentId(highlight_comment_id ?? null);
-      const cached = posts.find((p) => p.id === id);
-      if (cached) {
-        setSelectedPost(cached);
-        setShowComments(true);
-        // Task #115 — sem isso o painel abre vazio quando vindo do perfil
-        // (deep-link/search também). loadPostComments hidrata o painel.
-        void loadPostComments(id);
-        return;
+      let slug: string | null =
+        posts.find((p) => p.id === id)?.forum_slug ?? null;
+      if (!slug) {
+        const res = await api.get<{ post: { forum_slug?: string | null } }>(
+          `/api/community/posts/${id}`,
+        );
+        slug = res.success ? res.data?.post?.forum_slug ?? null : null;
       }
-      const res = await api.get<{
-        post: {
-          id: number;
-          author_name: string;
-          author_avatar?: string | null;
-          content: string;
-          category: string;
-          like_count: number;
-          comment_count: number;
-          share_count: number;
-          is_pinned: boolean;
-          user_liked: boolean;
-          forum_id: number;
-          forum_name?: string;
-          forum_slug?: string;
-          forum_icon?: string;
-          author_id: number;
-          created_at: string;
-          title: string | null;
-          images?: string[];
-          // Task #122 — getPostDetail hidrata reações multi-emoji.
-          reactions?: ReactionAggregate[];
-          user_reaction?: string | null;
-        };
-      }>(`/api/community/posts/${id}`);
-      if (res.success && res.data) {
-        const p = res.data.post;
-        setSelectedPost({
-          id: p.id,
-          author: p.author_name,
-          avatar: p.author_avatar || "/placeholder-avatar.jpg",
-          time: new Date(p.created_at).toLocaleDateString("pt-BR"),
-          content: p.content,
-          category: p.category || "",
-          likes: p.like_count,
-          comments: p.comment_count,
-          shares: p.share_count,
-          isPinned: p.is_pinned,
-          userReacted: p.user_liked,
-          visibility: "comunidade",
-          forum_id: p.forum_id,
-          forum_name: p.forum_name,
-          forum_slug: p.forum_slug,
-          forum_icon: p.forum_icon,
-          author_id: p.author_id,
-          images: Array.isArray(p.images) ? p.images : [],
-          image_refs: [],
-          is_saved: false,
-          reactions: Array.isArray(p.reactions) ? p.reactions : [],
-          user_reaction: p.user_reaction ?? null,
-        });
-        setShowComments(true);
-        void loadPostComments(p.id);
-      }
+      openDiscussionFor(id, slug, {
+        highlightCommentId: highlight_comment_id ?? null,
+      });
     },
-    [posts, loadPostComments],
+    [posts, openDiscussionFor],
   );
 
   useEffect(() => {
@@ -519,43 +458,9 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
     if (!authUser && feedScope !== "geral") setFeedScope("geral");
   }, [authUser, feedScope, setFeedScope]);
 
-  const submitComment = useCallback(async (postId: number, content: string) => {
-    const res = await api.post<{ comment: Omit<CommentData, "reactions" | "user_reaction"> & { reactions?: ReactionAggregate[]; user_reaction?: string | null } }>(`/api/community/posts/${postId}/comments`, { content });
-    if (res.success && res.data) {
-      // Task #122 — comentário recém-criado nunca tem reações ainda.
-      const c = res.data!.comment;
-      setPostComments(prev => [...prev, {
-        ...c,
-        reactions: Array.isArray(c.reactions) ? c.reactions : [],
-        user_reaction: c.user_reaction ?? null,
-      }]);
-      await reloadFeed();
-      return true;
-    }
-    return false;
-  }, [reloadFeed]);
-
-  // Task #122 — atualiza reações de um comentário no estado local. O
-  // EmojiReactionPicker faz a requisição; aqui só sincronizamos o
-  // CommentsPanel sem refetch (otimista, mas usando dados do server).
-  const updateCommentReactions = useCallback(
-    (commentId: number, next: { reactions: ReactionAggregate[]; userReaction: string | null }) => {
-      setPostComments(prev =>
-        prev.map(c =>
-          c.id === commentId
-            ? {
-                ...c,
-                reactions: next.reactions,
-                user_reaction: next.userReaction,
-                like_count: next.reactions.reduce((acc, r) => acc + r.count, 0),
-                user_liked: next.userReaction === "❤️",
-              }
-            : c,
-        ),
-      );
-    },
-    [],
-  );
+  // RITMO_PLAN.md F3 — submitComment/updateCommentReactions removidos:
+  // comentar agora acontece SEMPRE dentro da DiscussionPage (que tem seu
+  // próprio composer e estado), destino único de qualquer post.
 
   const handleRefresh = async () => {
     setIsLoading(true);
@@ -639,11 +544,19 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
         <DiscussionPage
           postId={activeDiscussion.postId}
           slug={activeDiscussion.slug}
+          focusComposer={activeDiscussion.focusComposer ?? false}
+          highlightCommentId={activeDiscussion.highlightCommentId ?? null}
           onBack={() => {
             // History-aware: se tem entrada anterior, usa back nativo
             // (popstate sincroniza activeDiscussion via URL). Se for
             // deep-link puro (history.length === 1), fallback pra Home.
             if (typeof window === "undefined") return;
+            // RITMO_PLAN.md F3 — entrada sem pushState (post raro sem
+            // slug): não há URL pra desfazer, só limpa o estado.
+            if (activeDiscussion.pushed === false) {
+              setActiveDiscussion(null);
+              return;
+            }
             if (window.history.length > 1) {
               window.history.back();
             } else {
@@ -878,12 +791,16 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
             <CommunitySearchResults q={urlQ} tab={urlTab} onTabChange={setSearchTab} />
           )}
           {!isSearching && currentView === "feed" && (
-            <FeedView 
+            <FeedView
               posts={posts}
+              onOpen={(post) => {
+                // RITMO_PLAN.md F3 — toque no post abre a página do post
+                // (padrão IG/X), SEM teclado.
+                openDiscussionFor(post.id, post.forum_slug ?? null);
+              }}
               onComment={(post) => {
-                setSelectedPost(post);
-                setShowComments(true);
-                loadPostComments(post.id);
+                // Botão "Comentar" → mesma página, com o composer focado.
+                openDiscussionFor(post.id, post.forum_slug ?? null, { focusComposer: true });
               }}
               onShare={(post) => {
                 setSelectedPost(post);
@@ -918,18 +835,8 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
           )}
         </div>
 
-        {/* Comments Panel */}
-        {showComments && selectedPost && (
-          <CommentsPanel
-            post={selectedPost}
-            comments={postComments}
-            loadingComments={loadingComments}
-            onClose={() => { setShowComments(false); setSelectedPost(null); setPostComments([]); setHighlightCommentId(null); }}
-            onSubmitComment={(content) => submitComment(selectedPost.id, content)}
-            onCommentReactionsChange={updateCommentReactions}
-            highlightCommentId={highlightCommentId}
-          />
-        )}
+        {/* RITMO_PLAN.md F3 — CommentsPanel removido: post abre SEMPRE a
+            DiscussionPage (destino único, URL própria, back nativo). */}
 
         {/* Task #198 — Create Community Modal */}
         <CreateCommunityModal
@@ -962,6 +869,10 @@ export function ComunidadePage({ onNavigate }: { onNavigate?: (tab: string) => v
 // FEED VIEW
 interface FeedViewProps {
   posts: any[];
+  // RITMO_PLAN.md F3 — onOpen: toque no corpo/timestamp (abre o post,
+  // sem teclado). onComment: botão Comentar (abre o post COM composer
+  // focado). Destinos idênticos; a intenção viaja separada.
+  onOpen: (post: any) => void;
   onComment: (post: any) => void;
   onShare: (post: any) => void;
   trendingTopics: any[];
@@ -975,7 +886,7 @@ interface FeedViewProps {
   onOpenComunidades: () => void;
 }
 
-function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit, feedScope, onScopeChange, isAuthenticated, hasSubscriptions, onOpenComunidades }: FeedViewProps) {
+function FeedView({ posts, onOpen, onComment, onShare, trendingTopics, onMutated, onEdit, feedScope, onScopeChange, isAuthenticated, hasSubscriptions, onOpenComunidades }: FeedViewProps) {
   // Task #197 — pílulas pra alternar escopo. Só renderiza "Minhas comunidades"
   // pra usuários logados (anônimo não tem assinaturas).
   const scopePillStyle = (active: boolean): React.CSSProperties => ({
@@ -1094,9 +1005,10 @@ function FeedView({ posts, onComment, onShare, trendingTopics, onMutated, onEdit
           </div>
         ) : (
           posts.map((post) => (
-            <PostCard 
-              key={post.id} 
+            <PostCard
+              key={post.id}
               post={post}
+              onOpen={() => onOpen(post)}
               onComment={() => onComment(post)}
               onShare={() => onShare(post)}
               onMutated={onMutated}
@@ -1590,6 +1502,10 @@ function renderHighlighted(text: string | null | undefined, term: string | null 
 // POST CARD COMPONENT
 interface PostCardProps {
   post: any;
+  // RITMO_PLAN.md F3 — onOpen: toque no corpo/timestamp (post SEM
+  // teclado). Opcional pra compatibilidade com contextos escopados
+  // (TurmaCommunityTab): quando ausente, cai no onComment.
+  onOpen?: () => void;
   onComment: () => void;
   onShare: () => void;
   // Task #93 — recarregar lista após delete; abrir modal de edição.
@@ -1601,7 +1517,7 @@ interface PostCardProps {
 
 // Task #99 — exportado pra ser reusado em contextos escopados (ex.:
 // TurmaCommunityTab). Requer AppProvider/AuthProvider no ascendente.
-export function PostCard({ post, onComment, onShare, onMutated, onEdit, highlightTerm }: PostCardProps) {
+export function PostCard({ post, onOpen, onComment, onShare, onMutated, onEdit, highlightTerm }: PostCardProps) {
   // Task #122 — estado local de reações; hidratado a partir do que veio
   // no payload (`/api/community/posts*` agora devolve `reactions[]` e
   // `user_reaction`). EmojiReactionPicker faz a request e devolve o novo
@@ -1685,13 +1601,14 @@ export function PostCard({ post, onComment, onShare, onMutated, onEdit, highligh
     onMutated?.();
   };
 
-  // Task #164 — Click targets padrão Facebook. Wrapper do card abre a
-  // discussão (mesmo destino do botão "Comentar"); avatar/nome → perfil
-  // do autor; imagens → lightbox; c/<slug> → comunidade. Botões internos
+  // Task #164 + RITMO_PLAN.md F3 — Click targets padrão IG/X. Wrapper do
+  // card abre a PÁGINA do post (sem teclado); botão "Comentar" abre a
+  // mesma página com o composer focado; avatar/nome → perfil do autor;
+  // imagens → lightbox; c/<slug> → comunidade. Botões internos
   // (reagir/comentar/compartilhar/menu/save) usam stopBubble pra não
   // disparar o clique do card.
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const openDiscussion = () => onComment();
+  const openDiscussion = () => (onOpen ?? onComment)();
   const openAuthorProfile = () => openProfileById(post.author_id);
   const openForum = () => openCommunityBySlug(post.forum_slug ?? null);
 
@@ -2256,257 +2173,7 @@ function CommunityCard({ group, context = "explorar" }: CommunityCardProps) {
   );
 }
 
-interface CommentsPanelProps {
-  post: any;
-  comments: CommentData[];
-  loadingComments: boolean;
-  onClose: () => void;
-  onSubmitComment: (content: string) => Promise<boolean>;
-  // Task #122 — reações multi-emoji por comentário; o pai sincroniza
-  // o estado quando o picker recebe a resposta do servidor.
-  onCommentReactionsChange: (
-    commentId: number,
-    next: { reactions: ReactionAggregate[]; userReaction: string | null },
-  ) => void;
-  highlightCommentId?: number | null;
-}
-
-function CommentsPanel({ post, comments, loadingComments, onClose, onSubmitComment, onCommentReactionsChange, highlightCommentId }: CommentsPanelProps) {
-  const [commentText, setCommentText] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  // Task #117 — confirma descarte se houver rascunho não enviado.
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
-  const requestClose = useCallback(() => {
-    if (commentText.trim().length > 0) setConfirmDiscard(true);
-    else onClose();
-  }, [commentText, onClose]);
-
-  // Task #115 — body-scroll-lock enquanto o painel está aberto. Sem isso a
-  // página de fundo rola atrás do overlay no mobile e os 80vh de altura
-  // ficam confusos.
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
-  // UX_PLAN.md J1 (revisa Task #115) — foco inicial SEMPRE no input, também
-  // no mobile: quem abre comentários veio comentar, e o padrão do persona
-  // (Instagram/WhatsApp) é o teclado já aberto. Esc/swipe-down continuam
-  // fechando o sheet.
-  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const sheetRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  // Task #115 — Esc fecha + focus-trap simples (Tab cycle entre elementos
-  // focáveis dentro do sheet). Evita que Tab vaze pro fundo enquanto o
-  // dialog está aberto.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { requestClose(); return; }
-      if (e.key !== "Tab" || !sheetRef.current) return;
-      const focusables = sheetRef.current.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
-      if (focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [requestClose]);
-
-  // Task #115 — swipe-down pra fechar o sheet no mobile. Arrasta a partir
-  // do header (não da lista de comentários, que precisa rolar). Threshold:
-  // > 80px OU velocidade > 0.5 px/ms = fecha. Animamos translateY durante
-  // o gesto pra dar feedback tátil.
-  const [dragY, setDragY] = useState(0);
-  const dragStateRef = useRef<{ startY: number; startT: number } | null>(null);
-  const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    dragStateRef.current = { startY: e.touches[0].clientY, startT: Date.now() };
-  };
-  const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!dragStateRef.current) return;
-    const dy = e.touches[0].clientY - dragStateRef.current.startY;
-    if (dy > 0) setDragY(dy);
-  };
-  const onTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!dragStateRef.current) return;
-    const dy = e.changedTouches[0].clientY - dragStateRef.current.startY;
-    const dt = Math.max(1, Date.now() - dragStateRef.current.startT);
-    const velocity = dy / dt;
-    dragStateRef.current = null;
-    if (dy > 80 || velocity > 0.5) requestClose();
-    else setDragY(0);
-  };
-
-  // Task #115 — quando o painel abre por um clique em "Comentários" no
-  // perfil, rolamos até o comentário-alvo e aplicamos a classe
-  // `rayo-comment-highlight` (animação CSS de 2s). Roda quando a lista
-  // de comentários termina de carregar.
-  useEffect(() => {
-    if (loadingComments || !highlightCommentId) return;
-    const node = document.querySelector<HTMLElement>(
-      `[data-comment-id="${highlightCommentId}"]`,
-    );
-    if (!node) return;
-    // Pequeno delay garante que o painel já fez layout antes do scroll.
-    const t = window.setTimeout(() => {
-      node.scrollIntoView({ behavior: "smooth", block: "center" });
-      node.classList.add("rayo-comment-highlight");
-      window.setTimeout(() => node.classList.remove("rayo-comment-highlight"), 2200);
-    }, 120);
-    return () => window.clearTimeout(t);
-  }, [loadingComments, highlightCommentId, comments.length]);
-
-  const handleSubmit = async () => {
-    if (!commentText.trim() || submitting) return;
-    setSubmitting(true);
-    const ok = await onSubmitComment(commentText.trim());
-    if (ok) setCommentText("");
-    setSubmitting(false);
-  };
-
-  function formatTime(dateStr: string): string {
-    const now = Date.now();
-    const then = new Date(dateStr).getTime();
-    const mins = Math.floor((now - then) / 60000);
-    if (mins < 1) return "Agora";
-    if (mins < 60) return `${mins}m`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h`;
-    return `${Math.floor(hours / 24)}d`;
-  }
-
-  // Task #115 — Renderizado via portal pra escapar do `transform: translateY`
-  // que `PullToRefresh` aplica no wrapper de conteúdo. Um ancestral com
-  // `transform` quebra `position: fixed` em descendentes (a fixed passa a
-  // ser relativa ao ancestral transformado), e por isso o painel aparecia
-  // "fora da viewport" no mobile.
-  if (typeof document === "undefined") return null;
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center"
-      style={{ background: 'rgba(0,0,0,0.5)' }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Comentários"
-      onClick={(e) => { if (e.target === e.currentTarget) requestClose(); }}
-    >
-      <div
-        ref={sheetRef}
-        className="w-full max-w-lg rounded-t-2xl max-h-[80vh] flex flex-col"
-        style={{
-          background: 'var(--rayo-sand-100)',
-          transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-          transition: dragY > 0 ? 'none' : 'transform 200ms ease-out',
-        }}
-      >
-        <div
-          className="flex items-center justify-between p-4 border-b touch-none"
-          style={{ borderColor: 'var(--rayo-sand-300)' }}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          <h3 className="text-[16px]" style={{ fontWeight: 700, color: 'var(--rayo-forest-900)' }}>
-            Comentários ({post.comments})
-          </h3>
-          <Button
-            ref={closeBtnRef}
-            variant="ghost"
-            size="icon"
-            onClick={requestClose}
-            aria-label="Fechar comentários"
-          >
-            <X className="w-5 h-5" style={{ color: 'var(--rayo-ink-400)' }} />
-          </Button>
-        </div>
-        <DiscardDraftDialog
-          open={confirmDiscard}
-          onOpenChange={setConfirmDiscard}
-          onConfirm={() => { setConfirmDiscard(false); setCommentText(""); onClose(); }}
-          description="Você tem um comentário em rascunho. Se sair agora, vai perdê-lo."
-        />
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {loadingComments ? (
-            <div className="text-center py-8" style={{ color: 'var(--rayo-ink-400)' }}>Carregando...</div>
-          ) : comments.length === 0 ? (
-            <div className="text-center py-8" style={{ color: 'var(--rayo-ink-400)' }}>
-              Nenhum comentário ainda. Seja o primeiro!
-            </div>
-          ) : (
-            comments.map((c) => (
-              <div key={c.id} data-comment-id={c.id} className="flex gap-3 rounded-md p-1 -mx-1 transition-colors">
-                <Avatar className="w-8 h-8 flex-shrink-0">
-                  <AvatarFallback style={{ background: 'var(--rayo-terra-100)', color: 'var(--rayo-terra-500)', fontSize: '12px' }}>
-                    {(c.author_name ?? 'U').charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px]" style={{ fontWeight: 600, color: 'var(--rayo-forest-900)' }}>
-                      {c.author_name ?? 'Usuário'}
-                    </span>
-                    <span className="text-[11px]" style={{ color: 'var(--rayo-ink-400)' }}>
-                      {formatTime(c.created_at)}
-                    </span>
-                  </div>
-                  <p className="text-[13px] mt-1" style={{ color: 'var(--rayo-ink-700)' }}>
-                    {c.content}
-                  </p>
-                  {/* Task #122 — reações multi-emoji em comentários
-                      (variant compact). Sem botão Heart legado. */}
-                  <div className="mt-1">
-                    <EmojiReactionPicker
-                      targetType="comment"
-                      targetId={c.id}
-                      reactions={c.reactions}
-                      userReaction={c.user_reaction}
-                      onChange={(next) => onCommentReactionsChange(c.id, next)}
-                      variant="compact"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div
-          className="p-4 border-t flex flex-shrink-0 items-center gap-2"
-          style={{
-            borderColor: 'var(--rayo-sand-300)',
-            paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))',
-          }}
-        >
-          <Input
-            ref={inputRef}
-            placeholder="Escreva um comentário..."
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); } }}
-            className="flex-1"
-            style={{ background: 'var(--rayo-sand-50)', color: 'var(--rayo-forest-900)' }}
-          />
-          <Button
-            size="icon"
-            onClick={handleSubmit}
-            disabled={!commentText.trim() || submitting}
-            style={{ background: 'var(--rayo-terra-500)', color: '#fff' }}
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
+// RITMO_PLAN.md F3 — CommentsPanel (sheet de comentários do feed) foi
+// removido: tocar num post abre SEMPRE a DiscussionPage (URL própria,
+// back nativo, teclado só no botão Comentar) — padrão IG/X, um único
+// destino pra o mesmo conceito.
