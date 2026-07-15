@@ -256,6 +256,109 @@ async function coupleStreak(userA: number, userB: number): Promise<number> {
   return streak;
 }
 
+// ── Devocional do casal (RITMO_PLAN.md F1) ───────────────────────────
+// Um devocional global por dia (mesma rotação determinística da Palavra
+// do dia). Cada cônjuge confirma "Fizemos juntos" 1x/dia; na SEGUNDA
+// confirmação do dia o ritual se completa: +10 XP pros dois via missão
+// e celebração no cliente.
+
+const DEVOTIONAL_XP = 10;
+
+export async function getCoupleDevotional(userId: number) {
+  const couple = await getCouple(userId);
+  if (!couple) return { paired: false as const };
+  const { devotionalForDate } = await import("./devotionals.js");
+  const devotional = devotionalForDate(new Date());
+  const { rows } = await query<{ user_id: number }>(
+    `SELECT user_id FROM couple_devotional_completions
+      WHERE couple_id = $1 AND devo_date = CURRENT_DATE`,
+    [couple.id],
+  );
+  const done = new Set(rows.map((r) => r.user_id));
+  const { rows: partner } = await query<{ name: string }>(
+    `SELECT name FROM users WHERE id = $1`,
+    [couple.partnerId],
+  );
+  return {
+    paired: true as const,
+    devotional,
+    myDone: done.has(userId),
+    partnerDone: done.has(couple.partnerId),
+    partnerName: partner[0]?.name ?? "",
+  };
+}
+
+export async function completeCoupleDevotional(userId: number) {
+  const couple = await getCouple(userId);
+  if (!couple) return { error: "NOT_PAIRED" as const };
+  const { rows: inserted } = await query<{ id: number }>(
+    `INSERT INTO couple_devotional_completions (couple_id, user_id)
+     VALUES ($1, $2)
+     ON CONFLICT (couple_id, user_id, devo_date) DO NOTHING
+     RETURNING id`,
+    [couple.id, userId],
+  );
+  const alreadyDone = inserted.length === 0;
+  let xpAwarded = 0;
+  let bothDone = false;
+  let leveledUp = false;
+  let newLevel: number | undefined;
+  if (!alreadyDone) {
+    const xp = await addXP(userId, DEVOTIONAL_XP, "couple_devotional");
+    xpAwarded = DEVOTIONAL_XP;
+    leveledUp = xp.leveledUp;
+    newLevel = xp.newLevel;
+    const { rows: all } = await query<{ user_id: number }>(
+      `SELECT user_id FROM couple_devotional_completions
+        WHERE couple_id = $1 AND devo_date = CURRENT_DATE`,
+      [couple.id],
+    );
+    bothDone = all.length >= 2;
+    const { rows: me } = await query<{ name: string }>(
+      `SELECT name FROM users WHERE id = $1`,
+      [userId],
+    );
+    const myName = me[0]?.name ?? "Seu cônjuge";
+    if (bothDone) {
+      // Dia devocional do casal completo: missão pros DOIS (gatilho
+      // conjunto — dispara no máximo 1x/dia porque o INSERT é UNIQUE).
+      try {
+        const { recordMissionProgress } = await import("../gamification/service.js");
+        await recordMissionProgress(userId, "couple_devotional_day");
+        await recordMissionProgress(couple.partnerId, "couple_devotional_day");
+      } catch (err) {
+        console.error("[Alianca] couple_devotional_day (non-blocking):", err);
+      }
+      await createNotification({
+        userId: couple.partnerId,
+        kind: "couple_devotional",
+        title: "Vocês dois fizeram o devocional de hoje 🙌",
+        body: "O ritual do dia está completo. Conversem sobre a pergunta!",
+        link: "/",
+        payload: { from_user: userId },
+      });
+    } else {
+      // Convite suave, não cobrança — o primeiro a fazer chama o outro.
+      await createNotification({
+        userId: couple.partnerId,
+        kind: "couple_devotional",
+        title: `${myName} fez o devocional de hoje 🤍`,
+        body: "Reserve um momento pra fazer a sua parte — e conversem sobre a pergunta do dia.",
+        link: "/",
+        payload: { from_user: userId },
+      });
+    }
+  } else {
+    const { rows: all } = await query<{ user_id: number }>(
+      `SELECT user_id FROM couple_devotional_completions
+        WHERE couple_id = $1 AND devo_date = CURRENT_DATE`,
+      [couple.id],
+    );
+    bothDone = all.length >= 2;
+  }
+  return { done: true, alreadyDone, bothDone, xpAwarded, leveledUp, newLevel };
+}
+
 export async function getAliancaState(userId: number): Promise<AliancaState> {
   const couple = await getCouple(userId);
   if (!couple) {

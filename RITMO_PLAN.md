@@ -119,8 +119,14 @@ de qualidade" que o casal compartilha — 3 a 5 minutos, no ritmo diário:
    (prova social zerada nos cards); `Textarea` sem forwardRef (focus
    programático era no-op); FK `couple_invites.accepted_by` sem
    ON DELETE (migração idempotente adicionada).
-2. **Iteração 3 — "O devocional" (F1)**: conteúdo curado + backend +
-   card expandível + missão "Devocional a dois" + testes.
+2. **Iteração 3 — "O devocional" (F1)** ✅ CONSTRUÍDA: 30 devocionais
+   curados (`server/features/alianca/devotionals.ts` — versículo ARC +
+   reflexão + pergunta pra conversar + oração), rotação global diária;
+   `couple_devotional_completions` + GET/POST `/api/alianca/devocional`;
+   1ª confirmação +10 XP e convite suave ao cônjuge; 2ª completa o dia
+   (missão "Devocional a dois" creditada pros DOIS + notificação de
+   ritual completo); card expandível `DevocionalCasal.tsx` no cluster
+   Hoje com Deus (some quando não pareado); 3 testes de integração.
 3. **Iteração 4 — "As cartas" (F2)**: scheduler + email_sends +
    preferências no Perfil + testes de integração (janela, dedup,
    opt-out).

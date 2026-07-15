@@ -9,6 +9,8 @@ import {
   acceptInvite,
   prayForPartner,
   unpair,
+  getCoupleDevotional,
+  completeCoupleDevotional,
 } from "./service.js";
 
 const router = Router();
@@ -91,6 +93,28 @@ router.post("/pray", async (req, res, next) => {
 router.delete("/", async (req, res, next) => {
   try {
     success(res, await unpair(req.user!.id));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// RITMO_PLAN.md F1 — Devocional do casal.
+router.get("/devocional", async (req, res, next) => {
+  try {
+    success(res, await getCoupleDevotional(req.user!.id));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/devocional/complete", async (req, res, next) => {
+  try {
+    const result = await completeCoupleDevotional(req.user!.id);
+    if ("error" in result) {
+      sendError(res, "Você não está em uma aliança", "NOT_PAIRED", 409);
+      return;
+    }
+    success(res, result);
   } catch (err) {
     next(err);
   }

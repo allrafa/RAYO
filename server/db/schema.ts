@@ -1306,6 +1306,19 @@ export async function initializeSchema() {
       UNIQUE (couple_id, from_user, prayed_date)
     )
   `);
+  // RITMO_PLAN.md F1 — Devocional do casal: cada cônjuge confirma o
+  // "Fizemos juntos" 1x/dia; quando as duas confirmações do dia existem,
+  // o dia devocional do casal se completa (XP + missão pros dois).
+  await query(`
+    CREATE TABLE IF NOT EXISTS couple_devotional_completions (
+      id SERIAL PRIMARY KEY,
+      couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      devo_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (couple_id, user_id, devo_date)
+    )
+  `);
 
   // UX_PLAN.md estrutural — Web Push: uma linha por dispositivo inscrito.
   // endpoint é único por navegador/dispositivo; p256dh/auth são as chaves
@@ -1391,6 +1404,8 @@ async function seedBadgesAndMissions() {
     // usuário (engine intacto), mas o gatilho é conjunto e credita ambos.
     { title: 'Améns em aliança', description: 'Vocês dois digam amém na Palavra do dia 3x nesta semana', type: 'weekly', action_type: 'couple_amen_day', action_count: 3, xp_reward: 60 },
     { title: 'Oração mútua', description: 'Orem um pelo outro no mesmo dia 3x nesta semana', type: 'weekly', action_type: 'couple_prayer_day', action_count: 3, xp_reward: 60 },
+    // RITMO_PLAN.md F1 — devocional a dois (gatilho conjunto, credita ambos).
+    { title: 'Devocional a dois', description: 'Façam o devocional do casal juntos 3x nesta semana', type: 'weekly', action_type: 'couple_devotional_day', action_count: 3, xp_reward: 80 },
   ];
 
   for (const m of missions) {
