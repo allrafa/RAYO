@@ -36,9 +36,18 @@ import type { Server as IOServer, Namespace, Socket } from "socket.io";
 import cookie from "cookie";
 import { validateSession } from "../features/auth/service.js";
 import { logger } from "../utils/logger.js";
+import { spNowParts } from "../lib/emailScheduler.js";
 
 type AuthedSocket = Socket & {
-  data: { userId: number; forumSlugs: Set<string>; postIds: Set<number> };
+  data: {
+    userId: number;
+    forumSlugs: Set<string>;
+    postIds: Set<number>;
+    // DIFERENCIAL_PLAN.md D3 — sala do Momento RAYO em que o socket
+    // está (nome completo `momento:<data SP>`), pra broadcast do
+    // contador no leave/disconnect.
+    momentoRoom?: string;
+  };
 };
 
 let communityNs: Namespace | null = null;
@@ -171,6 +180,52 @@ export function attachCommunityNamespace(io: IOServer): void {
       },
     );
 
+    // ── Momento RAYO (DIFERENCIAL_PLAN.md D3) ────────────────────────
+    // Sala diária de oração síncrona. O NOME da sala vem do servidor
+    // (data SP) — o cliente não escolhe a sala. Contador broadcast em
+    // join/leave/disconnect; améns flutuantes re-broadcast na sala.
+    const momentoRoomName = () => `momento:${spNowParts(new Date()).date}`;
+    const broadcastMomentoCount = (room: string) => {
+      const count = communityNs?.adapter.rooms.get(room)?.size ?? 0;
+      communityNs?.to(room).emit("momento:count", { count });
+    };
+
+    socket.on("momento:join", async (_payload: unknown, ack?: (ok: boolean, count?: number) => void) => {
+      try {
+        if (!takeToken(userId, "join")) return ack?.(false);
+        const room = momentoRoomName();
+        authed.data.momentoRoom = room;
+        await socket.join(room);
+        broadcastMomentoCount(room);
+        ack?.(true, communityNs?.adapter.rooms.get(room)?.size ?? 0);
+      } catch {
+        ack?.(false);
+      }
+    });
+
+    socket.on("momento:leave", async (_payload: unknown, ack?: (ok: boolean) => void) => {
+      const room = authed.data.momentoRoom;
+      authed.data.momentoRoom = undefined;
+      if (room) {
+        await socket.leave(room);
+        broadcastMomentoCount(room);
+      }
+      ack?.(true);
+    });
+
+    socket.on("momento:amen", (_payload: unknown, ack?: (ok: boolean) => void) => {
+      try {
+        // Mesmo bucket do typing: alguns por segundo, sem flood.
+        if (!takeToken(userId, "typing")) return ack?.(false);
+        const room = authed.data.momentoRoom;
+        if (!room) return ack?.(false);
+        communityNs?.to(room).emit("momento:amen", { user_id: userId });
+        ack?.(true);
+      } catch {
+        ack?.(false);
+      }
+    });
+
     socket.on("disconnect", () => {
       // Limpa contadores de presence pra cada post em que estava.
       authed.data.postIds.forEach((postId) => {
@@ -178,6 +233,11 @@ export function attachCommunityNamespace(io: IOServer): void {
         schedulePresenceEmit(postId);
       });
       authed.data.postIds.clear();
+      // Momento: o socket já saiu da sala; só re-anuncia a contagem.
+      if (authed.data.momentoRoom) {
+        broadcastMomentoCount(authed.data.momentoRoom);
+        authed.data.momentoRoom = undefined;
+      }
     });
 
     socket.on(

@@ -90,6 +90,14 @@ export interface PostPresenceEvent {
   viewers: number;
 }
 
+// DIFERENCIAL_PLAN.md D3 — Momento RAYO.
+export interface MomentoCountEvent {
+  count: number;
+}
+export interface MomentoAmenEvent {
+  user_id: number;
+}
+
 export type CommunityEventMap = {
   "post:new": PostNewEvent;
   "post:updated": PostUpdatedEvent;
@@ -99,6 +107,8 @@ export type CommunityEventMap = {
   "comment:updated": CommentUpdatedEvent;
   "comment:reaction": CommentReactionEvent;
   "comment:typing": CommentTypingEvent;
+  "momento:count": MomentoCountEvent;
+  "momento:amen": MomentoAmenEvent;
 };
 
 type EventHandler<E extends keyof CommunityEventMap> = (payload: CommunityEventMap[E]) => void;
@@ -121,11 +131,18 @@ export interface UseCommunitySocket {
   emitCommentTyping: (postId: number) => void;
   /** Sinaliza visualização do post (idempotente por sessão de socket, throttled). */
   reportView: (postId: number) => void;
+  /** D3 — entra na sala do Momento RAYO do dia (o servidor nomeia a sala). */
+  joinMomento: () => void;
+  /** D3 — sai da sala do Momento. */
+  leaveMomento: () => void;
+  /** D3 — amém flutuante broadcast pra sala inteira. */
+  emitMomentoAmen: () => void;
 }
 
 export function useCommunitySocket(): UseCommunitySocket {
   const forumsRef = useRef<Set<string>>(new Set());
   const postsRef = useRef<Set<number>>(new Set());
+  const inMomentoRef = useRef(false);
   // Handlers ativos por evento — pra cleanup determinístico no unmount.
   const handlersRef = useRef<Map<string, Set<AnyHandler>>>(new Map());
   const reconnectCbsRef = useRef<Set<() => void>>(new Set());
@@ -144,6 +161,9 @@ export function useCommunitySocket(): UseCommunitySocket {
       postsRef.current.forEach((postId) => {
         void emitCommunityWithAck("post:join", { post_id: postId });
       });
+      if (inMomentoRef.current) {
+        void emitCommunityWithAck("momento:join", {});
+      }
       // Dispara reconnect callbacks só nos `connect` subsequentes.
       if (hasConnectedRef.current) {
         reconnectCbsRef.current.forEach((cb) => {
@@ -164,6 +184,10 @@ export function useCommunitySocket(): UseCommunitySocket {
       postsRef.current.forEach((postId) => {
         void emitCommunityWithAck("post:leave", { post_id: postId });
       });
+      if (inMomentoRef.current) {
+        inMomentoRef.current = false;
+        void emitCommunityWithAck("momento:leave", {});
+      }
       forumsRef.current.clear();
       postsRef.current.clear();
       handlersRef.current.forEach((set, event) => {
@@ -229,6 +253,20 @@ export function useCommunitySocket(): UseCommunitySocket {
       reportView: (postId: number) => {
         if (!Number.isFinite(postId)) return;
         void emitCommunityWithAck("post:view", { post_id: postId });
+      },
+      joinMomento: () => {
+        if (inMomentoRef.current) return;
+        inMomentoRef.current = true;
+        void emitCommunityWithAck("momento:join", {});
+      },
+      leaveMomento: () => {
+        if (!inMomentoRef.current) return;
+        inMomentoRef.current = false;
+        void emitCommunityWithAck("momento:leave", {});
+      },
+      emitMomentoAmen: () => {
+        if (!inMomentoRef.current) return;
+        void emitCommunityWithAck("momento:amen", {});
       },
     };
   }, []);

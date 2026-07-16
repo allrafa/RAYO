@@ -30,10 +30,11 @@ const TICK_MS = 5 * 60 * 1000;
 const BATCH_PER_TICK = 50;
 const SEND_SPACING_MS = 150;
 
-interface SpNow {
+export interface SpNow {
   /** YYYY-MM-DD no fuso de São Paulo — chave de dedup do dia. */
   date: string;
   hour: number;
+  minute: number;
   /** 0=domingo … 6=sábado. */
   weekday: number;
   /** "Terça · 15 julho" — usado nos templates. */
@@ -53,6 +54,7 @@ export function spNowParts(now: Date): SpNow {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
+    minute: "2-digit",
     hour12: false,
     weekday: "short",
   });
@@ -70,6 +72,7 @@ export function spNowParts(now: Date): SpNow {
   return {
     date: `${parts.year}-${parts.month}-${parts.day}`,
     hour,
+    minute: parseInt(parts.minute, 10) || 0,
     weekday,
     dateLabel: `${WEEKDAYS_PT[weekday]} · ${day} ${MONTHS_PT[month - 1]}`,
   };
@@ -306,16 +309,61 @@ export async function tickVersePush(
   return sent;
 }
 
+/** D3 — lembrete do Momento RAYO (20h50–20h59 SP): "às 21h o Brasil ora
+ *  junto". Mesmo padrão do verse_push: só quem tem push ativo. */
+export async function tickMomentoReminder(
+  sp: SpNow,
+  sender: (userId: number, payload: PushPayload) => Promise<void> = sendPushToUser,
+  pushReady: () => boolean = isPushConfigured,
+): Promise<number> {
+  if (!pushReady()) return 0;
+  const { rows: users } = await query<{ id: number }>(
+    `SELECT u.id
+       FROM users u
+      WHERE u.email NOT LIKE 'deleted_%'
+        AND COALESCE(
+              (u.notification_preferences -> 'notifications' ->> 'push')::boolean,
+              TRUE
+            )
+        AND EXISTS (SELECT 1 FROM push_subscriptions ps WHERE ps.user_id = u.id)
+        AND NOT EXISTS (
+              SELECT 1 FROM email_sends es
+               WHERE es.user_id = u.id AND es.kind = 'momento_reminder' AND es.send_date = $1::date
+            )
+      ORDER BY u.id
+      LIMIT ${BATCH_PER_TICK}`,
+    [sp.date],
+  );
+  let sent = 0;
+  for (const u of users) {
+    if (!(await claimSend(u.id, "momento_reminder", sp.date))) continue;
+    try {
+      await sender(u.id, {
+        title: "Momento RAYO às 21h 🕯️",
+        body: "Hoje o Brasil ora junto. Reserve 3 minutos com a gente.",
+        link: "/",
+      });
+      sent++;
+      await sleep(SEND_SPACING_MS);
+    } catch (err) {
+      await releaseClaim(u.id, "momento_reminder", sp.date).catch(() => {});
+      logger.warn("EmailScheduler", `momento_reminder falhou pra user ${u.id}: ${(err as Error).message}`);
+    }
+  }
+  return sent;
+}
+
 /** Um tick do scheduler — exportado pra ser chamado direto nos testes
  *  (sem setInterval). Devolve contadores por tipo. */
 export async function runEmailSchedulerTick(
   now: Date = new Date(),
-): Promise<{ missao: number; carta: number; versePost: boolean; versePush: number }> {
+): Promise<{ missao: number; carta: number; versePost: boolean; versePush: number; momentoReminder: number }> {
   const sp = spNowParts(now);
   let missao = 0;
   let carta = 0;
   let versePost = false;
   let versePush = 0;
+  let momentoReminder = 0;
   // Janela da manhã: depois das 12h local não faz sentido "missão do dia".
   if (sp.hour >= 7 && sp.hour < 12) {
     missao = await tickMissaoDoDia(sp);
@@ -330,7 +378,11 @@ export async function runEmailSchedulerTick(
     versePost = post.created;
     versePush = await tickVersePush(sp, now, post.postId);
   }
-  return { missao, carta, versePost, versePush };
+  // D3 — 10 minutos antes do Momento das 21h.
+  if (sp.hour === 20 && sp.minute >= 50) {
+    momentoReminder = await tickMomentoReminder(sp);
+  }
+  return { missao, carta, versePost, versePush, momentoReminder };
 }
 
 let interval: ReturnType<typeof setInterval> | null = null;

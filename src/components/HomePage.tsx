@@ -23,6 +23,7 @@ import { PalavraDoDia } from "./home/PalavraDoDia";
 import { SemanaViva } from "./home/SemanaViva";
 import { AliancaCard } from "./home/AliancaCard";
 import { DevocionalCasal } from "./home/DevocionalCasal";
+import { MomentoRayo } from "./home/MomentoRayo";
 import { StreakChip } from "./home/StreakChip";
 import { PushPrompt } from "./PushPrompt";
 import { useYouTubeData } from "./hooks/useYouTubeData";
@@ -360,6 +361,7 @@ export function HomePage({ userName, userSegment, onNavigate }: HomePageProps) {
                 </div>
                 <StreakChip streak={dashboard?.gamification.streak ?? 0} />
               </div>
+              <MomentoRayo />
               <PalavraDoDia onEngaged={() => { void loadDashboard(); }} />
               <SemanaViva refreshKey={dashboard?.gamification.xp ?? 0} />
               <AliancaCard refreshKey={dashboard?.gamification.xp ?? 0} />

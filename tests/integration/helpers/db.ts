@@ -99,6 +99,7 @@ const TRUNCATE_ORDER: ReadonlyArray<string> = [
   "user_xp",
   "push_subscriptions",
   "verse_amens",
+  "momento_attendances",
   "email_sends",
   "couple_prayers",
   "couple_prayer_requests",

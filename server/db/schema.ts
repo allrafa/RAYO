@@ -1321,6 +1321,18 @@ export async function initializeSchema() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_email_sends_kind_date ON email_sends(kind, send_date)`);
 
+  // DIFERENCIAL_PLAN.md D3 — Momento RAYO: presença na oração síncrona
+  // das 21h. 1 selo por dia (+5 XP), alimenta a chama via xp_log.
+  await query(`
+    CREATE TABLE IF NOT EXISTS momento_attendances (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      momento_date DATE NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, momento_date)
+    )
+  `);
+
   // DIFERENCIAL_PLAN.md D2 — Pedidos de oração do casal. status
   // open|answered; responder ("Deus respondeu 🙌") vira testemunho —
   // a memória espiritual da aliança.
