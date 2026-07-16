@@ -74,14 +74,24 @@ ao vivo:
 
 ## Roadmap (iterações do loop, direto na main)
 
-1. **Iteração 2 — "A Palavra te encontra" (D1)**: push diário + thread
-   do dia + testes de integração do tick.
-2. **Iteração 3 — "Pedidos & Testemunhos" (D2)**: tabela + API + seção
-   no AliancaCard + marcos do casal + testes.
-3. **Iteração 4 — "O Momento" (D3)**: sala realtime + card com
-   countdown/presença/améns + attendance XP + lembrete push + testes.
-4. **Iteração 5 — "Polimento e prova"**: revisão visual, suítes
-   completas, CI da main verde, fechamento deste plano.
+1. **Iteração 2 — "A Palavra te encontra" (D1)** ✅ (fd35ca9, CI verde)
+2. **Iteração 3 — "Pedidos & Testemunhos" (D2)** ✅ (6c33ce2, CI verde)
+3. **Iteração 4 — "O Momento" (D3)** ✅ (26ede56, CI verde)
+4. **Iteração 5 — "Polimento e prova"** ✅: prova visual com DOIS
+   navegadores simultâneos — presença ao vivo ("Você e mais 1 orando
+   agora") e amém flutuando na tela do outro em tempo real; pedidos &
+   testemunhos validados; suíte de integração completa verde.
+
+## Status final do loop (2026-07-16)
+
+As três frentes entregues na main com CI verde em todos os commits.
+Go-live: push (D1/D3 lembrete) depende de VAPID_* em produção; o
+Momento abre sozinho todo dia às 21h (nenhuma config extra); a thread
+do dia começa a postar quando EMAIL_SCHEDULER_ENABLED=1 (o mesmo
+scheduler dos e-mails).
+
+Próximos patamares parqueados: grupos/células, Momento com áudio ao
+vivo, Momento por comunidade, Pix no checkout.
 
 ## Notas de operação
 
