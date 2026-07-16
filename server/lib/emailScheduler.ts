@@ -23,6 +23,8 @@ import {
 } from "./email.js";
 import { cartaForDate, cartaEditionForDate } from "./cartas.js";
 import { getTodayItem } from "../features/home/service.js";
+import { isPushConfigured, sendPushToUser, type PushPayload } from "./push.js";
+import { verseForDate } from "../features/home/verses.js";
 
 const TICK_MS = 5 * 60 * 1000;
 const BATCH_PER_TICK = 50;
@@ -195,14 +197,125 @@ async function tickCartaSemanal(sp: SpNow, now: Date): Promise<number> {
   return sent;
 }
 
+// ── D1 (DIFERENCIAL_PLAN.md) — a Palavra sai do app ─────────────────
+
+/** Usuário-sistema que assina a thread do dia (o mesmo do seed da
+ *  comunidade). Idempotente. */
+async function ensureSystemUserId(): Promise<number> {
+  const { rows } = await query<{ id: number }>(
+    `INSERT INTO users (email, password_hash, name, segments)
+     VALUES ('comunidade@rayo.app.br', 'seed_no_login', 'Equipe RAYO', '{casados}')
+     ON CONFLICT (email) DO UPDATE SET name = 'Equipe RAYO'
+     RETURNING id`,
+  );
+  return rows[0].id;
+}
+
+/** Cria a thread diária da Palavra em c/geral (1x/dia; claim no ledger
+ *  em nome do usuário-sistema). Devolve o id do post de hoje (criado
+ *  agora ou já existente) pra que o push aponte pra conversa. */
+export async function tickVersePost(
+  sp: SpNow,
+  now: Date,
+): Promise<{ created: boolean; postId: number | null }> {
+  const systemId = await ensureSystemUserId();
+  const verse = verseForDate(now);
+  const title = `🌿 Palavra do dia · ${verse.ref}`;
+
+  const findToday = async (): Promise<number | null> => {
+    const { rows } = await query<{ id: number }>(
+      `SELECT id FROM posts
+        WHERE user_id = $1 AND title = $2
+          AND created_at >= NOW() - INTERVAL '20 hours'
+        ORDER BY id DESC LIMIT 1`,
+      [systemId, title],
+    );
+    return rows[0]?.id ?? null;
+  };
+
+  if (!(await claimSend(systemId, "verse_post", sp.date))) {
+    return { created: false, postId: await findToday() };
+  }
+  const { rows: forums } = await query<{ id: number }>(
+    `SELECT id FROM forums WHERE slug = 'geral' LIMIT 1`,
+  );
+  if (forums.length === 0) {
+    await releaseClaim(systemId, "verse_post", sp.date).catch(() => {});
+    return { created: false, postId: null };
+  }
+  const content =
+    `“${verse.text}”\n\n— ${verse.ref}\n\n` +
+    `Diga amém 🙏 e conta pra gente: como essa palavra te encontra hoje?`;
+  const { rows: post } = await query<{ id: number }>(
+    `INSERT INTO posts (forum_id, user_id, title, content, category)
+     VALUES ($1, $2, $3, $4, 'Espiritualidade')
+     RETURNING id`,
+    [forums[0].id, systemId, title, content],
+  );
+  return { created: true, postId: post[0].id };
+}
+
+/** Push diário da Palavra (~8h SP) pra quem tem push ativo. `sender` e
+ *  `pushReady` são injetáveis pros testes. Sem VAPID: nem claim — quando
+ *  as chaves entrarem, o dia ainda estará disponível. */
+export async function tickVersePush(
+  sp: SpNow,
+  now: Date,
+  postId: number | null,
+  sender: (userId: number, payload: PushPayload) => Promise<void> = sendPushToUser,
+  pushReady: () => boolean = isPushConfigured,
+): Promise<number> {
+  if (!pushReady()) return 0;
+  const { rows: users } = await query<{ id: number }>(
+    `SELECT u.id
+       FROM users u
+      WHERE u.email NOT LIKE 'deleted_%'
+        AND COALESCE(
+              (u.notification_preferences -> 'notifications' ->> 'push')::boolean,
+              TRUE
+            )
+        AND EXISTS (SELECT 1 FROM push_subscriptions ps WHERE ps.user_id = u.id)
+        AND NOT EXISTS (
+              SELECT 1 FROM email_sends es
+               WHERE es.user_id = u.id AND es.kind = 'verse_push' AND es.send_date = $1::date
+            )
+      ORDER BY u.id
+      LIMIT ${BATCH_PER_TICK}`,
+    [sp.date],
+  );
+  const verse = verseForDate(now);
+  const body =
+    verse.text.length > 130 ? `${verse.text.slice(0, 127)}…` : verse.text;
+  const link = postId ? `/c/geral/p/${postId}` : "/";
+  let sent = 0;
+  for (const u of users) {
+    if (!(await claimSend(u.id, "verse_push", sp.date))) continue;
+    try {
+      await sender(u.id, {
+        title: `Palavra do dia 🌿 ${verse.ref}`,
+        body: `“${body}”`,
+        link,
+      });
+      sent++;
+      await sleep(SEND_SPACING_MS);
+    } catch (err) {
+      await releaseClaim(u.id, "verse_push", sp.date).catch(() => {});
+      logger.warn("EmailScheduler", `verse_push falhou pra user ${u.id}: ${(err as Error).message}`);
+    }
+  }
+  return sent;
+}
+
 /** Um tick do scheduler — exportado pra ser chamado direto nos testes
  *  (sem setInterval). Devolve contadores por tipo. */
 export async function runEmailSchedulerTick(
   now: Date = new Date(),
-): Promise<{ missao: number; carta: number }> {
+): Promise<{ missao: number; carta: number; versePost: boolean; versePush: number }> {
   const sp = spNowParts(now);
   let missao = 0;
   let carta = 0;
+  let versePost = false;
+  let versePush = 0;
   // Janela da manhã: depois das 12h local não faz sentido "missão do dia".
   if (sp.hour >= 7 && sp.hour < 12) {
     missao = await tickMissaoDoDia(sp);
@@ -210,7 +323,14 @@ export async function runEmailSchedulerTick(
   if (sp.weekday === 0 && sp.hour >= 8 && sp.hour < 12) {
     carta = await tickCartaSemanal(sp, now);
   }
-  return { missao, carta };
+  // D1 — a Palavra sai do app: thread do dia primeiro (o push aponta
+  // pra ela quando existir).
+  if (sp.hour >= 8 && sp.hour < 12) {
+    const post = await tickVersePost(sp, now);
+    versePost = post.created;
+    versePush = await tickVersePush(sp, now, post.postId);
+  }
+  return { missao, carta, versePost, versePush };
 }
 
 let interval: ReturnType<typeof setInterval> | null = null;
