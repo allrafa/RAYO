@@ -214,6 +214,137 @@ export async function unpair(userId: number): Promise<{ unpaired: boolean }> {
   return { unpaired: rows.length > 0 };
 }
 
+// ── Pedidos de oração & testemunhos (DIFERENCIAL_PLAN.md D2) ─────────
+// A oração do casal ganha objeto (pelo que oramos) e memória (o que
+// Deus respondeu). Lista compartilhada: qualquer um dos dois adiciona,
+// responde ou remove.
+
+const MAX_OPEN_REQUESTS = 20;
+
+export interface PrayerRequest {
+  id: number;
+  text: string;
+  status: "open" | "answered";
+  created_by: number;
+  createdByMe: boolean;
+  answer_note: string | null;
+  answered_at: string | null;
+  created_at: string;
+}
+
+export async function listPrayerRequests(
+  userId: number,
+): Promise<{ open: PrayerRequest[]; answered: PrayerRequest[] } | { error: "NOT_PAIRED" }> {
+  const couple = await getCouple(userId);
+  if (!couple) return { error: "NOT_PAIRED" };
+  const { rows } = await query<Omit<PrayerRequest, "createdByMe">>(
+    `SELECT id, text, status, created_by, answer_note,
+            answered_at::text AS answered_at, created_at::text AS created_at
+       FROM couple_prayer_requests
+      WHERE couple_id = $1
+      ORDER BY (status = 'open') DESC, COALESCE(answered_at, created_at) DESC
+      LIMIT 60`,
+    [couple.id],
+  );
+  const mapped = rows.map((r) => ({ ...r, createdByMe: r.created_by === userId }));
+  return {
+    open: mapped.filter((r) => r.status === "open"),
+    answered: mapped.filter((r) => r.status === "answered"),
+  };
+}
+
+export async function createPrayerRequest(
+  userId: number,
+  rawText: string,
+): Promise<{ request: PrayerRequest } | { error: "NOT_PAIRED" | "INVALID_TEXT" | "LIMIT_REACHED" }> {
+  const couple = await getCouple(userId);
+  if (!couple) return { error: "NOT_PAIRED" };
+  const text = rawText.trim();
+  if (text.length < 3 || text.length > 280) return { error: "INVALID_TEXT" };
+  const { rows: count } = await query<{ n: number }>(
+    `SELECT COUNT(*)::int AS n FROM couple_prayer_requests
+      WHERE couple_id = $1 AND status = 'open'`,
+    [couple.id],
+  );
+  if (count[0].n >= MAX_OPEN_REQUESTS) return { error: "LIMIT_REACHED" };
+  const { rows } = await query<Omit<PrayerRequest, "createdByMe">>(
+    `INSERT INTO couple_prayer_requests (couple_id, created_by, text)
+     VALUES ($1, $2, $3)
+     RETURNING id, text, status, created_by, answer_note,
+               answered_at::text AS answered_at, created_at::text AS created_at`,
+    [couple.id, userId, text],
+  );
+  const { rows: me } = await query<{ name: string }>(
+    `SELECT name FROM users WHERE id = $1`,
+    [userId],
+  );
+  await createNotification({
+    userId: couple.partnerId,
+    kind: "couple_prayer_request",
+    title: `${me[0]?.name ?? "Seu cônjuge"} adicionou um pedido de oração 🙏`,
+    body: text.length > 90 ? `${text.slice(0, 87)}…` : text,
+    link: "/",
+    payload: { request_id: rows[0].id },
+  });
+  return { request: { ...rows[0], createdByMe: true } };
+}
+
+export async function answerPrayerRequest(
+  userId: number,
+  requestId: number,
+  rawNote?: string,
+): Promise<
+  | { answered: true; alreadyAnswered: boolean }
+  | { error: "NOT_PAIRED" | "NOT_FOUND" | "INVALID_NOTE" }
+> {
+  const couple = await getCouple(userId);
+  if (!couple) return { error: "NOT_PAIRED" };
+  const note = (rawNote ?? "").trim();
+  if (note.length > 280) return { error: "INVALID_NOTE" };
+  const { rows: existing } = await query<{ id: number; status: string; text: string }>(
+    `SELECT id, status, text FROM couple_prayer_requests
+      WHERE id = $1 AND couple_id = $2`,
+    [requestId, couple.id],
+  );
+  if (existing.length === 0) return { error: "NOT_FOUND" };
+  if (existing[0].status === "answered") return { answered: true, alreadyAnswered: true };
+  await query(
+    `UPDATE couple_prayer_requests
+        SET status = 'answered', answered_at = NOW(), answered_by = $3,
+            answer_note = NULLIF($4, '')
+      WHERE id = $1 AND couple_id = $2`,
+    [requestId, couple.id, userId, note],
+  );
+  const { rows: me } = await query<{ name: string }>(
+    `SELECT name FROM users WHERE id = $1`,
+    [userId],
+  );
+  await createNotification({
+    userId: couple.partnerId,
+    kind: "couple_testimony",
+    title: "Deus respondeu 🙌",
+    body: `${me[0]?.name ?? "Seu cônjuge"} marcou "${existing[0].text.slice(0, 60)}${existing[0].text.length > 60 ? "…" : ""}" como respondido.`,
+    link: "/",
+    payload: { request_id: requestId },
+  });
+  return { answered: true, alreadyAnswered: false };
+}
+
+export async function deletePrayerRequest(
+  userId: number,
+  requestId: number,
+): Promise<{ deleted: boolean } | { error: "NOT_PAIRED" }> {
+  const couple = await getCouple(userId);
+  if (!couple) return { error: "NOT_PAIRED" };
+  const { rows } = await query(
+    `DELETE FROM couple_prayer_requests
+      WHERE id = $1 AND couple_id = $2
+      RETURNING id`,
+    [requestId, couple.id],
+  );
+  return { deleted: rows.length > 0 };
+}
+
 // ── Estado agregado (o que o AliancaCard consome) ────────────────────
 
 export interface AliancaPaired {

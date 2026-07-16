@@ -26,6 +26,34 @@ function messageFor(c: Celebration): { emoji: string; title: string; subtitle: s
       subtitle: "Vocês agora caminham juntos no RAYO. Que Deus guarde essa jornada a dois.",
     };
   }
+  if (c.kind === "testemunho") {
+    return {
+      emoji: "🙌",
+      title: "Deus respondeu!",
+      subtitle: "Guardem esse testemunho no coração — e contem pra alguém o que Ele fez.",
+    };
+  }
+  if (c.kind === "couple_streak") {
+    if (c.value >= 90) {
+      return {
+        emoji: "🔥🔥",
+        title: "90 dias de chama a dois!",
+        subtitle: "Três meses caminhando juntos com Deus, todos os dias. Que aliança!",
+      };
+    }
+    if (c.value >= 30) {
+      return {
+        emoji: "🔥🔥",
+        title: "Um mês de chama do casal!",
+        subtitle: "30 dias em que os dois estiveram presentes. Constância a dois transforma.",
+      };
+    }
+    return {
+      emoji: "🔥🔥",
+      title: "7 dias de chama a dois!",
+      subtitle: "Uma semana inteira juntos na presença. Não deixem a chama apagar.",
+    };
+  }
   if (c.kind === "levelup") {
     return {
       emoji: "🌟",

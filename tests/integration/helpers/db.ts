@@ -101,6 +101,7 @@ const TRUNCATE_ORDER: ReadonlyArray<string> = [
   "verse_amens",
   "email_sends",
   "couple_prayers",
+  "couple_prayer_requests",
   "couple_devotional_completions",
   "couples",
   "couple_invites",

@@ -10,7 +10,7 @@
 // perde a chama e reconquista os 7 dias meses depois celebra de novo.
 
 export interface Celebration {
-  kind: "levelup" | "streak" | "paired";
+  kind: "levelup" | "streak" | "paired" | "couple_streak" | "testemunho";
   value: number;
 }
 

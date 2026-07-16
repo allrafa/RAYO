@@ -1321,6 +1321,24 @@ export async function initializeSchema() {
   `);
   await query(`CREATE INDEX IF NOT EXISTS idx_email_sends_kind_date ON email_sends(kind, send_date)`);
 
+  // DIFERENCIAL_PLAN.md D2 — Pedidos de oração do casal. status
+  // open|answered; responder ("Deus respondeu 🙌") vira testemunho —
+  // a memória espiritual da aliança.
+  await query(`
+    CREATE TABLE IF NOT EXISTS couple_prayer_requests (
+      id SERIAL PRIMARY KEY,
+      couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+      created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      text VARCHAR(280) NOT NULL,
+      status VARCHAR(12) NOT NULL DEFAULT 'open',
+      answer_note VARCHAR(280),
+      answered_at TIMESTAMP,
+      answered_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    )
+  `);
+  await query(`CREATE INDEX IF NOT EXISTS idx_cpr_couple ON couple_prayer_requests(couple_id, status)`);
+
   // RITMO_PLAN.md F1 — Devocional do casal: cada cônjuge confirma o
   // "Fizemos juntos" 1x/dia; quando as duas confirmações do dia existem,
   // o dia devocional do casal se completa (XP + missão pros dois).
